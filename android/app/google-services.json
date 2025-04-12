@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "565108991397",
+    "project_id": "soi-app-ff0f0",
+    "storage_bucket": "soi-app-ff0f0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:565108991397:android:35c7343da5dd75a200344c",
+        "android_client_info": {
+          "package_name": "com.example.flutter_swift_camera"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLqALdYIUFsTOF_bwfQJ1Rz-grjrg55Jc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
