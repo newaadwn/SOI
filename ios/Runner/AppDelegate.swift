@@ -1,5 +1,6 @@
 import UIKit
 import Flutter
+import Firebase
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -7,6 +8,7 @@ import Flutter
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
+    FirebaseApp.configure()
     
     // 1️⃣ SwiftCameraPlugin 먼저 등록
     SwiftCameraPlugin.register(with: self.registrar(forPlugin: "SwiftCameraPlugin")!)
@@ -20,3 +22,5 @@ import Flutter
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }
+
+

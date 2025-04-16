@@ -47,6 +47,14 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	
+	<!-- Firebase Phone Auth 관련 설정 -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
+	
+	<!-- 전화번호 인증 관련 권한 설명 -->
+	<key>NSContactsUsageDescription</key>
+	<string>이 앱은 전화번호 인증을 위해 연락처 정보에 접근할 수 있습니다.</string>
+	
 	<!-- 카메라 사용 관련 권한 설명 -->
 	<key>NSCameraUsageDescription</key>
 	<string>이 앱은 카메라를 사용하여 사진 촬영 및 동영상 녹화를 수행합니다. 카메라 접근 권한을 허용해 주세요.</string>
