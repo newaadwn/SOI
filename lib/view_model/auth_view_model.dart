@@ -180,28 +180,46 @@ class AuthViewModel extends ChangeNotifier {
     try {
       // 전화번호 형식 확인 및 정규화
       String formattedPhone = phoneNumber;
+
+      // 한국 번호의 경우 (+82)
       if (phoneNumber.startsWith('0')) {
         // 앞의 0을 제거
         formattedPhone = phoneNumber.substring(1);
       }
-      
+
       final String fullPhoneNumber = "+82$formattedPhone";
       print('Formatted phone number: $fullPhoneNumber');
-      
+
       await _auth.verifyPhoneNumber(
         phoneNumber: fullPhoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) async {
           try {
-            await _auth.signInWithCredential(credential);
-            print('Auto verification completed successfully');
+            // iOS에서는 자동 인증이 가능할 수 있음
+            UserCredential userCredential = await _auth.signInWithCredential(
+              credential,
+            );
+            print(
+              'Auto verification completed successfully: ${userCredential.user?.uid}',
+            );
           } catch (e) {
             print('Error in auto verification: $e');
             Fluttertoast.showToast(msg: '자동 인증 중 오류가 발생했습니다: $e');
           }
         },
         verificationFailed: (FirebaseAuthException e) {
-          print('Verification failed: ${e.message}');
-          Fluttertoast.showToast(msg: '인증 실패: ${e.message}');
+          print('Verification failed: ${e.code} - ${e.message}');
+          String errorMessage = '인증 실패';
+
+          // 오류 코드에 따른 사용자 친화적 메시지
+          if (e.code == 'invalid-phone-number') {
+            errorMessage = '유효하지 않은 전화번호 형식입니다.';
+          } else if (e.code == 'too-many-requests') {
+            errorMessage = '너무 많은 시도가 있었습니다. 잠시 후 다시 시도해주세요.';
+          } else if (e.code == 'quota-exceeded') {
+            errorMessage = '일일 SMS 한도를 초과했습니다. 내일 다시 시도해주세요.';
+          }
+
+          Fluttertoast.showToast(msg: errorMessage);
         },
         codeSent: (String verificationId, int? resendToken) {
           print('SMS code sent. Verification ID: $verificationId');
@@ -213,7 +231,7 @@ class AuthViewModel extends ChangeNotifier {
           this.verificationId = verificationId;
           codeAutoRetrievalTimeout(verificationId);
         },
-        timeout: const Duration(seconds: 60), // 시간 증가
+        timeout: const Duration(seconds: 120), // 시간 증가
       );
     } catch (e) {
       print('Error verifying phone number: $e');
@@ -227,15 +245,17 @@ class AuthViewModel extends ChangeNotifier {
       Fluttertoast.showToast(msg: '인증 ID가 없습니다. 다시 시도해주세요.');
       return;
     }
-    
+
     try {
       print('Signing in with SMS code. Verification ID: $verificationId');
       PhoneAuthCredential credential = PhoneAuthProvider.credential(
         verificationId: verificationId,
         smsCode: smsCode,
       );
-      
-      UserCredential userCredential = await _auth.signInWithCredential(credential);
+
+      UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
       if (userCredential.user != null) {
         print('Successfully signed in: ${userCredential.user?.uid}');
         onSuccess();
