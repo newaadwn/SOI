@@ -24,10 +24,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AudioViewModel()),
         ChangeNotifierProvider(create: (_) => CommentAudioViewModel()),
       ],
-      child: MaterialApp(
-        title: 'Flutter Camera with Swift Preview',
-        home: StartScreen(),
-      ),
+      child: MaterialApp(home: StartScreen()),
     );
   }
 }

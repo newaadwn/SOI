@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
-import '../../model/editable_text_model.dart';
 import '../../theme/theme.dart';
 import '../../view_model/auth_view_model.dart';
 import '../../view_model/category_view_model.dart';
@@ -29,20 +28,12 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
   double get screenWidth => MediaQuery.of(context).size.width;
   double get screenHeight => MediaQuery.of(context).size.height;
 
-  // 텍스트 요소 리스트
-  final List<EditableTextElement> _textElements = [];
-
   String dropdownValue = '';
 
   TextEditingController captionStringController = TextEditingController();
 
   @override
   void dispose() {
-    // 모든 텍스트 요소의 컨트롤러와 포커스 노드를 해제
-    for (var element in _textElements) {
-      element.controller.dispose();
-      element.focusNode.dispose();
-    }
     super.dispose();
   }
 
@@ -93,16 +84,17 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                     Positioned(
                       top: 250,
                       left: 75,
-                      child: isRecording
-                          ? SizedBox(
-                              height: 100,
-                              child: Lottie.asset(
-                                'assets/recording_ui.json',
-                                repeat: true,
-                                animate: true,
-                              ),
-                            )
-                          : SizedBox(),
+                      child:
+                          isRecording
+                              ? SizedBox(
+                                height: 100,
+                                child: Lottie.asset(
+                                  'assets/recording_ui.json',
+                                  repeat: true,
+                                  animate: true,
+                                ),
+                              )
+                              : SizedBox(),
                     ),
                   ],
                 ),
@@ -113,10 +105,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                   ),
                   decoration: InputDecoration(
                     hintText: '켑션 추가하기...',
-                    hintStyle:
-                        AppTheme.lightTheme.textTheme.labelMedium!.copyWith(
-                      color: Color(0xff535252),
-                    ),
+                    hintStyle: AppTheme.lightTheme.textTheme.labelMedium!
+                        .copyWith(color: Color(0xff535252)),
                     border: InputBorder.none,
                   ),
                   textAlign: TextAlign.center,
@@ -161,18 +151,25 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
         IconButton(
           onPressed: () async {
             // 1. 캡처 영역 데이터를 미리 가져옵니다.
-            final boundary = _globalKey.currentContext?.findRenderObject()
-                as RenderRepaintBoundary?;
+            final boundary =
+                _globalKey.currentContext?.findRenderObject()
+                    as RenderRepaintBoundary?;
             if (boundary == null) return;
             final capturedImageFuture = boundary.toImage(pixelRatio: 2.0);
 
             // 2. 필요한 Provider 데이터도 미리 받아옵니다.
-            final categoryViewModel =
-                Provider.of<CategoryViewModel>(context, listen: false);
-            final authViewModel =
-                Provider.of<AuthViewModel>(context, listen: false);
-            final audioViewModel =
-                Provider.of<AudioViewModel>(context, listen: false);
+            final categoryViewModel = Provider.of<CategoryViewModel>(
+              context,
+              listen: false,
+            );
+            final authViewModel = Provider.of<AuthViewModel>(
+              context,
+              listen: false,
+            );
+            final audioViewModel = Provider.of<AudioViewModel>(
+              context,
+              listen: false,
+            );
 
             // 3. 카테고리 id와 닉네임 등 미리 캡처 (필요 시)
             final currentCategoryId = widget.categoryId;
@@ -193,7 +190,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
             );
           },
           icon: Icon(Icons.file_download_outlined, color: Colors.white),
-        )
+        ),
       ],
     );
   }

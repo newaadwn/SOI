@@ -45,7 +45,12 @@ target 'Runner' do
   use_modular_headers!
 
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
-
+  
+  # Remove the precompiled Firebase SDK approach and use standard pod instead
+  # This will ensure proper framework embedding
+  pod 'Firebase/Firestore'
+  pod 'Firebase/Auth'  # 전화인증을 위한 Auth 모듈 명시적 추가
+  
   target 'RunnerTests' do
     inherit! :search_paths
   end
@@ -54,5 +59,15 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
+    
+    # Fix for Firebase frameworks not being found at runtime
+    target.build_configurations.each do |config|
+      config.build_settings['BUILD_LIBRARY_FOR_DISTRIBUTION'] = 'YES'
+      
+      # Ensure frameworks are properly signed and embedded
+      config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ""
+      config.build_settings['CODE_SIGNING_REQUIRED'] = "NO"
+      config.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
+    end
   end
 end
