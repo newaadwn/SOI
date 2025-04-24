@@ -18,7 +18,7 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
   @override
   void initState() {
     super.initState();
-    currentPageIndex = 0;
+    currentPageIndex = 1;
   }
 
   @override

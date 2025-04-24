@@ -22,8 +22,10 @@ class AuthFinalScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
-    AuthViewModel authViewModel =
-        Provider.of<AuthViewModel>(context, listen: false);
+    AuthViewModel authViewModel = Provider.of<AuthViewModel>(
+      context,
+      listen: false,
+    );
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       body: Center(
@@ -48,9 +50,12 @@ class AuthFinalScreen extends StatelessWidget {
                     birthDate,
                   );
                   Navigator.pushNamedAndRemoveUntil(
-                      context, '/home_navigation_screen', (route) => false);
+                    context,
+                    '/home_navigation_screen',
+                    (route) => false,
+                  );
                 } catch (e) {
-                  print('Error creating user in Firestore: $e');
+                  debugPrint('Error creating user in Firestore: $e');
                 }
               },
               style: ElevatedButton.styleFrom(

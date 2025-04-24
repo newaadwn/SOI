@@ -2,6 +2,11 @@ import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:ming_cute_icons/ming_cute_icons.dart';
+
+import '../../theme/theme.dart';
+import 'photo_editor_screen.dart';
+//import 'package:flutter_svg/flutter_svg.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -14,6 +19,11 @@ class _CameraScreenState extends State<CameraScreen> {
   // Swift와 통신할 플랫폼 채널
   static const MethodChannel platform = MethodChannel('com.soi.camera');
   String imagePath = '';
+  bool isFlashOn = false; // 플래시 상태 추적
+
+  // ✅ 추가: 줌 레벨 관리
+  String currentZoom = '1x'; // 기본 줌 레벨
+  double brightnessValue = 0.5; // 기본 밝기 값
 
   // ✅ 추가: 초기화 시 카메라 세션 시작
   @override
@@ -39,7 +49,17 @@ class _CameraScreenState extends State<CameraScreen> {
       setState(() {
         imagePath = result;
       });
-      await _uploadImage(File(result));
+
+      // 사진 촬영 후 편집 화면으로 이동
+      if (result.isNotEmpty) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PhotoEditorScreen(imagePath: result),
+          ),
+        );
+      }
+      _uploadImage(File(result));
     } on PlatformException catch (e) {
       debugPrint("Error taking picture: ${e.message}");
     }
@@ -58,10 +78,40 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void> _toggleFlash() async {
     try {
       await platform.invokeMethod('toggleFlash');
+      setState(() {
+        isFlashOn = !isFlashOn;
+      });
     } on PlatformException catch (e) {
       debugPrint("Error toggling flash: ${e.message}");
     }
   }
+
+  // ✅ 추가: 줌 레벨 설정 함수
+  /*Future<void> _setZoomLevel(String zoom) async {
+    double zoomFactor;
+    switch (zoom) {
+      case '.5':
+        zoomFactor = 0.5;
+        break;
+      case '1x':
+        zoomFactor = 1.0;
+        break;
+      case '3':
+        zoomFactor = 3.0;
+        break;
+      default:
+        zoomFactor = 1.0;
+    }
+
+    try {
+      await platform.invokeMethod('setZoomLevel', {'zoom': zoomFactor});
+      setState(() {
+        currentZoom = zoom;
+      });
+    } on PlatformException catch (e) {
+      debugPrint("Error setting zoom level: ${e.message}");
+    }
+  }*/
 
   // 촬영한 이미지 Firebase Storage 업로드
   Future<void> _uploadImage(File imageFile) async {
@@ -79,72 +129,177 @@ class _CameraScreenState extends State<CameraScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ 수정: 내장 카메라 프리뷰로 UI 변경
+    double screenWidth = MediaQuery.of(context).size.width;
+    double screenHeight = MediaQuery.of(context).size.height;
+
     return Scaffold(
-      appBar: AppBar(title: Text('Camera Screen')),
+      backgroundColor: Colors.black, // 배경을 검정색으로 설정
+      extendBodyBehindAppBar: true, // AppBar 뒤로 본문 확장
+      appBar: AppBar(
+        title: Text(
+          'SOI',
+          style: TextStyle(color: AppTheme.lightTheme.colorScheme.secondary),
+        ),
+        backgroundColor: AppTheme.lightTheme.colorScheme.surface,
+        toolbarHeight: 70 / 852 * screenHeight,
+      ),
       body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // ✅ 추가: 네이티브 카메라 프리뷰를 직접 화면에 표시
-          Expanded(
-            flex: 3,
-            child: UiKitView(
-              viewType: 'com.soi.camera/preview',
-              onPlatformViewCreated: (int id) {
-                debugPrint('카메라 뷰 생성됨: $id');
-              },
-              creationParams: <String, dynamic>{},
-              creationParamsCodec: const StandardMessageCodec(),
+          SizedBox(height: 100 / 852 * screenHeight),
+          // ✅ 수정: 카메라 프리뷰 영역 (전체 화면)
+          ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: SizedBox(
+              width: 355 / 393 * screenWidth,
+              height: 472 / 852 * screenHeight,
+              child: UiKitView(
+                viewType: 'com.soi.camera/preview',
+                onPlatformViewCreated: (int id) {
+                  debugPrint('카메라 뷰 생성됨: $id');
+                },
+                creationParams: <String, dynamic>{},
+                creationParamsCodec: const StandardMessageCodec(),
+              ),
             ),
           ),
+          SizedBox(height: 44 / 852 * screenHeight),
 
-          // 기존 기능: 카메라 전환, 플래시 토글, 촬영
-          Expanded(
-            flex: 1,
+          // ✅ 추가: 카메라 그리드 라인
+          IgnorePointer(
+            ignoring: true,
+            child: CustomPaint(painter: GridPainter()),
+          ),
+
+          // ✅ 추가: 중앙 하단 줌 옵션
+          /*Center(
             child: Container(
-              color: Colors.black,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    IconButton(
-                      onPressed: _switchCamera,
-                      icon: Icon(
-                        Icons.switch_camera,
-                        size: 32,
-                        color: Colors.white,
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: _toggleFlash,
-                      icon: Icon(Icons.flash_on, size: 32, color: Colors.white),
-                    ),
-                    IconButton(
-                      onPressed: _takePicture,
-                      icon: Icon(
-                        Icons.camera_alt,
-                        size: 32,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
+              padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildZoomOption('.5'),
+                  SizedBox(width: 24),
+                  _buildZoomOption('1x'),
+                  SizedBox(width: 24),
+                  _buildZoomOption('3'),
+                ],
+              ),
+            ),
+          ),*/
+
+          // ✅ 수정: 하단 버튼 레이아웃 변경
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              // 플래시 버튼
+              Container(
+                width: 50,
+                height: 50,
+                child: IconButton(
+                  onPressed: _toggleFlash,
+                  icon: Icon(
+                    isFlashOn ? Icons.flash_on : Icons.flash_off,
+                    color: Colors.white,
+                    size: 28,
+                  ),
+                  padding: EdgeInsets.zero,
                 ),
               ),
-            ),
-          ),
 
-          // 촬영한 이미지 미리보기 (있을 경우)
-          if (imagePath.isNotEmpty)
-            Container(
-              height: 100,
-              color: Colors.black,
-              child: Padding(
-                padding: const EdgeInsets.all(8.0),
-                child: Image.file(File(imagePath), height: 100),
+              // 촬영 버튼
+              GestureDetector(
+                onTap: _takePicture,
+                child: Container(
+                  width: 80,
+                  height: 80,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 5),
+                  ),
+                  child: Center(
+                    child: Container(
+                      width: 65,
+                      height: 65,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
+
+              // 카메라 전환 버튼
+              SizedBox(
+                width: 56 / 393 * screenWidth,
+                height: 47 / 852 * screenHeight,
+                child: IconButton(
+                  onPressed: _switchCamera,
+                  icon: Image.asset("assets/switch.png"),
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
+
+  // ✅ 추가: 줌 옵션 버튼 위젯
+  /* Widget _buildZoomOption(String zoom) {
+    final isSelected = currentZoom == zoom;
+    return GestureDetector(
+      onTap: () => _setZoomLevel(zoom),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? Colors.white : Colors.transparent,
+          borderRadius: BorderRadius.circular(15),
+        ),
+        child: Text(
+          zoom,
+          style: TextStyle(
+            color: isSelected ? Colors.black : Colors.white,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
+          ),
+        ),
+      ),
+    );
+  }*/
+}
+
+// ✅ 추가: 그리드 라인 그리는 Custom Painter
+class GridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint =
+        Paint()
+          ..color = Colors.white.withOpacity(0.5)
+          ..strokeWidth = 0.5
+          ..style = PaintingStyle.stroke;
+
+    // 수직선 그리기
+    final double cellWidth = size.width / 3;
+    for (int i = 1; i < 3; i++) {
+      final x = cellWidth * i;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
+    }
+
+    // 수평선 그리기
+    final double cellHeight = size.height / 3;
+    for (int i = 1; i < 3; i++) {
+      final y = cellHeight * i;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

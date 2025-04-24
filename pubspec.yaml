@@ -54,6 +54,7 @@ dependencies:
   path_provider: ^2.1.5
   audioplayers: ^5.2.1
   flutter_sound: ^9.28.0
+  ming_cute_icons: ^0.0.7
 
 dev_dependencies:
   flutter_test:
@@ -77,9 +78,32 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
-  #   - images/a_dot_ham.jpeg
+  assets:
+    - assets/auth_final.png
+    - assets/branding.png
+    - assets/brush.png
+    - assets/camera_button.png
+    - assets/camera_button.svg
+    - assets/camera_switch.svg
+    - assets/camera_turn.png
+    - assets/category_plus.png
+    - assets/flash_on.svg
+    - assets/flash.svg
+    - assets/imoji.png
+    - assets/login.png
+    - assets/next.png
+    - assets/plus_menu.png
+    - assets/plus.png
+    - assets/profile.png
+    - assets/recording_progress.json
+    - assets/recording_ui.json
+    - assets/recording_ui.png
+    - assets/recording.json
+    - assets/SOI_logo.png
+    - assets/SOI.png
+    - assets/text.png
+    - assets/voice.png
+    - assets/switch.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware

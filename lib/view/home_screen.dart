@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(color: AppTheme.lightTheme.colorScheme.secondary),
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        toolbarHeight: 70,
+        toolbarHeight: 70 / 852 * screenHeight,
         actions: [
           IconButton(
             onPressed: () {

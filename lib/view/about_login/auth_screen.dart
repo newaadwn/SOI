@@ -46,7 +46,7 @@ class _AuthScreenState extends State<AuthScreen> {
       });
     });
 
-    print('AuthViewModel 초기화 완료');
+    debugPrint('AuthViewModel 초기화 완료');
   }
 
   @override
@@ -59,9 +59,70 @@ class _AuthScreenState extends State<AuthScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        automaticallyImplyLeading: false,
+        iconTheme: IconThemeData(color: Colors.white),
+        elevation: 0,
+        leading:
+            currentPage > 0
+                ? IconButton(
+                  icon: Icon(Icons.arrow_back_ios),
+                  onPressed: _goToPreviousPage,
+                )
+                : null,
+        actions: [
+          // 다음 버튼을 상단 우측에 배치
+          if (currentPage < 4 && currentPage != 2) // 마지막 페이지가 아닐 때만 다음 버튼 표시
+            Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: TextButton(
+                onPressed: () {
+                  _handleNextButtonPressed();
+                },
+                child: Text(
+                  "다음",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: AppTheme.lightTheme.colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+        ],
+        // 상단 중앙에 단계 표시 점들 배치
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(5, (index) {
+            return Container(
+              width: 8,
+              height: 8,
+              margin: EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color:
+                    index == currentPage
+                        ? AppTheme.lightTheme.colorScheme.primary
+                        : Colors.grey.shade300,
+              ),
+            );
+          }),
+        ),
+        centerTitle: true,
+      ),
       body: PageView(
         controller: _pageController,
-        physics: const NeverScrollableScrollPhysics(), // 스와이프로 이동 방지
+        physics:
+            (currentPage != 2)
+                ? ScrollPhysics()
+                : NeverScrollableScrollPhysics(),
+        onPageChanged: (index) {
+          setState(() {
+            currentPage = index;
+          });
+        },
         children: [
           // 1. 이름 입력 페이지
           _buildNamePage(screenHeight),
@@ -82,32 +143,105 @@ class _AuthScreenState extends State<AuthScreen> {
   // 1. 전화번호 입력 페이지
   // -------------------------
   Widget _buildPhoneNumberPage(double screenHeight) {
+    final controller = TextEditingController();
+    // 전화번호 입력 여부를 확인하는 상태 변수
+    final ValueNotifier<bool> hasPhone = ValueNotifier<bool>(false);
+
     return _buildScrollContainer(
       screenHeight,
-      _buildInputPage(
-        title: 'SOI 접속을 위해 전화번호를 입력해주세요.',
-        hintText: '전화번호',
-        keyboardType: TextInputType.phone,
-        buttonText: '인증번호 받기',
-        icon: Icon(
-          SolarIconsOutline.phone,
-          color: const Color(0xffC0C0C0),
-          size: 24,
-        ),
-        onNext: (value) {
-          phoneNumber = value;
-          // 실제 Auth 로직 호출
-          _authViewModel.verifyPhoneNumber(
-            phoneNumber,
-            (verificationId, resendToken) {
-              // 성공적으로 인증번호 전송
-              _goToNextPage();
+      Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'SOI 접속을 위해 전화번호를 입력해주세요.',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.lightTheme.colorScheme.onSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 24),
+          Container(
+            width: 239,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 17),
+                Icon(
+                  SolarIconsOutline.phone,
+                  color: const Color(0xffC0C0C0),
+                  size: 24,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: '전화번호',
+                      hintStyle: TextStyle(
+                        fontSize: 16,
+                        color: const Color(0xffC0C0C0),
+                      ),
+                      contentPadding: EdgeInsets.only(bottom: 6),
+                    ),
+                    onChanged: (value) {
+                      // 전화번호 입력 여부에 따라 버튼 표시 상태 변경
+                      hasPhone.value = value.isNotEmpty;
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 24),
+          // 전화번호가 입력되면 버튼 표시
+          ValueListenableBuilder<bool>(
+            valueListenable: hasPhone,
+            builder: (context, hasPhoneValue, child) {
+              return hasPhoneValue
+                  ? ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                      minimumSize: Size(239, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      // 전화번호 저장
+                      phoneNumber = controller.text;
+                      // 인증번호 받기 로직 실행
+                      _authViewModel.verifyPhoneNumber(
+                        phoneNumber,
+                        (verificationId, resendToken) {
+                          // 성공적으로 인증번호 전송되면 다음 페이지로
+                          _goToNextPage();
+                        },
+                        (verificationId) {
+                          // 타임아웃 등 처리
+                        },
+                      );
+                    },
+                    child: Text(
+                      '인증번호 받기',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                  : SizedBox.shrink();
             },
-            (verificationId) {
-              // Auto-retrieval timeout 등
-            },
-          );
-        },
+          ),
+        ],
       ),
     );
   }
@@ -116,18 +250,92 @@ class _AuthScreenState extends State<AuthScreen> {
   // 2. 인증번호 입력 페이지
   // -------------------------
   Widget _buildSmsCodePage(double screenHeight) {
+    final ValueNotifier<bool> hasCode = ValueNotifier<bool>(false);
+    final controller = TextEditingController();
     return _buildScrollContainer(
       screenHeight,
-      _buildInputPage(
-        title: '인증번호를 입력해주세요.',
-        hintText: '인증번호',
-        keyboardType: TextInputType.number,
-        buttonText: '인증하기',
-        onNext: (value) {
-          smsCode = value;
-          // 실제 Auth 로직 호출
-          _authViewModel.signInWithSmsCode(smsCode, _goToNextPage);
-        },
+      Column(
+        children: [
+          Text(
+            '인증번호를 입력해주세요.',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.lightTheme.colorScheme.onSecondary,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          SizedBox(height: 24),
+          Container(
+            width: 239,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 17),
+                Icon(
+                  SolarIconsOutline.key,
+                  color: const Color(0xffC0C0C0),
+                  size: 24,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      hintText: '인증번호',
+                      hintStyle: TextStyle(
+                        fontSize: 16,
+                        color: const Color(0xffC0C0C0),
+                      ),
+                      contentPadding: EdgeInsets.only(bottom: 6),
+                    ),
+                    onChanged: (value) {
+                      // 인증번호 입력 여부에 따라 버튼 표시 상태 변경
+                      hasCode.value = value.isNotEmpty;
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: 24),
+          ValueListenableBuilder<bool>(
+            valueListenable: hasCode,
+            builder: (context, hasCodeValue, child) {
+              return hasCodeValue
+                  ? ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                      minimumSize: Size(239, 44),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () {
+                      _authViewModel.signInWithSmsCode(controller.text, () {
+                        // 인자를 받아들이되 사용하지 않음
+                        _goToNextPage();
+                      });
+                    },
+                    child: Text(
+                      '인증하기',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                  : SizedBox.shrink();
+            },
+          ),
+        ],
       ),
     );
   }
@@ -233,28 +441,6 @@ class _AuthScreenState extends State<AuthScreen> {
           ],
         ),
         SizedBox(height: 24),
-        ElevatedButton(
-          onPressed: () {
-            // 버튼 클릭 시 다음 페이지로 넘어간 뒤,
-            // onNext 콜백에 텍스트필드 값을 넘겨줍니다.
-            _goToNextPage();
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.lightTheme.colorScheme.primary,
-            padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: Text(
-            "다음",
-            style: TextStyle(
-              fontSize: 16,
-              color: AppTheme.lightTheme.colorScheme.secondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -266,7 +452,7 @@ class _AuthScreenState extends State<AuthScreen> {
     return _buildScrollContainer(
       screenHeight,
       _buildInputPage(
-        title: '사용하실 닉네임을 입력해주세요.',
+        title: '사용하실 아이디를 입력해주세요.',
         hintText: '',
         keyboardType: TextInputType.text,
         buttonText: '다음',
@@ -343,35 +529,18 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                     contentPadding: EdgeInsets.only(bottom: 6),
                   ),
+                  onSubmitted: (value) {
+                    // 텍스트 입력 완료 시 onNext 콜백 호출
+                    if (value.isNotEmpty) {
+                      onNext(value);
+                    }
+                  },
                 ),
               ),
             ],
           ),
         ),
-        SizedBox(height: 24),
-        ElevatedButton(
-          onPressed: () {
-            // 버튼 클릭 시 다음 페이지로 넘어간 뒤,
-            // onNext 콜백에 텍스트필드 값을 넘겨줍니다.
-            onNext(controller.text);
-            //_goToNextPage();
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.lightTheme.colorScheme.primary,
-            padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-          child: Text(
-            buttonText,
-            style: TextStyle(
-              fontSize: 16,
-              color: AppTheme.lightTheme.colorScheme.secondary,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
+        // 하단 다음 버튼 제거 - 상단 우측의 다음 버튼으로 대체됨
       ],
     );
   }
@@ -382,7 +551,6 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildScrollContainer(double screenHeight, Widget child) {
     return SingleChildScrollView(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         constraints: BoxConstraints(minHeight: screenHeight),
         alignment: Alignment.center,
         child: child,
@@ -448,5 +616,38 @@ class _AuthScreenState extends State<AuthScreen> {
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
+  }
+
+  // -------------------------
+  // 이전 페이지로 이동
+  // -------------------------
+  void _goToPreviousPage() {
+    _pageController.previousPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  // -------------------------
+  // 다음 버튼 클릭 시 처리
+  // -------------------------
+  void _handleNextButtonPressed() {
+    switch (currentPage) {
+      case 0:
+        _goToNextPage();
+        break;
+      case 1:
+        _goToNextPage();
+        break;
+      case 2:
+        _goToNextPage();
+        break;
+      case 3:
+        _goToNextPage();
+        break;
+      case 4:
+        // 마지막 페이지에서는 다음 버튼이 표시되지 않으므로 이 코드는 실행되지 않음
+        break;
+    }
   }
 }

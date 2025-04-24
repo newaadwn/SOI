@@ -97,35 +97,77 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
             result(FlutterError(code: "NO_PHOTO_OUTPUT", message: "Photo output not available", details: nil))
             return
         }
-        let settings = AVCapturePhotoSettings()
+        
+        // 수정된 이미지 설정
+        let settings = AVCapturePhotoSettings(format: [
+            AVVideoCodecKey: AVVideoCodecType.jpeg,
+            AVVideoCompressionPropertiesKey: [
+                AVVideoQualityKey: 0.9
+            ]
+        ])
+        
+        // HEIF 대신 JPEG 사용 (iOS 11 이상)
+        if #available(iOS 11.0, *) {
+            // ✅ 수정: 중복 키 제거 (kCVPixelBufferPixelFormatTypeKey와 "PixelFormatType"이 동일함)
+            settings.previewPhotoFormat = [
+                "Width" as String: 1280,
+                "Height" as String: 720,
+                "PixelFormatType" as String: kCVPixelFormatType_32BGRA
+            ]
+        }
+        
         if currentDevice?.hasFlash == true {
             settings.flashMode = flashMode
         }
+        
+        // 자동 화이트 밸런스 설정
+        if let currentDevice = currentDevice, currentDevice.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+            do {
+                try currentDevice.lockForConfiguration()
+                currentDevice.whiteBalanceMode = .continuousAutoWhiteBalance
+                currentDevice.unlockForConfiguration()
+            } catch {
+                print("화이트 밸런스 설정 실패: \(error)")
+            }
+        }
+        
         photoCaptureResult = result
         photoOutput.capturePhoto(with: settings, delegate: self)
     }
     
     // 촬영 완료 후 델리게이트 메서드
     public func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
-        if let error = error {
-            photoCaptureResult?(FlutterError(code: "CAPTURE_ERROR", message: error.localizedDescription, details: nil))
-            return
-        }
-        guard let imageData = photo.fileDataRepresentation() else {
-            photoCaptureResult?(FlutterError(code: "NO_IMAGE_DATA", message: "Could not get image data", details: nil))
-            return
-        }
-        // 임시 디렉토리에 이미지 저장
-        let tempDir = NSTemporaryDirectory()
-        let filePath = tempDir + "/\(UUID().uuidString).jpg"
-        let fileURL = URL(fileURLWithPath: filePath)
-        do {
-            try imageData.write(to: fileURL)
-            photoCaptureResult?(filePath)
-        } catch {
-            photoCaptureResult?(FlutterError(code: "FILE_SAVE_ERROR", message: error.localizedDescription, details: nil))
-        }
+    if let error = error {
+        photoCaptureResult?(FlutterError(code: "CAPTURE_ERROR", message: error.localizedDescription, details: nil))
+        return
     }
+    
+    // 단순화된 이미지 처리 방식 사용
+    var imageData: Data?
+    
+    if #available(iOS 11.0, *) {
+        // 직접 JPEG 데이터 사용
+        imageData = photo.fileDataRepresentation()
+    } else {
+        imageData = photo.fileDataRepresentation()
+    }
+    
+    guard let imageData = imageData else {
+        photoCaptureResult?(FlutterError(code: "NO_IMAGE_DATA", message: "Could not get image data", details: nil))
+        return
+    }
+    
+    // 임시 디렉토리에 이미지 저장
+    let tempDir = NSTemporaryDirectory()
+    let filePath = tempDir + "/\(UUID().uuidString).jpg"
+    let fileURL = URL(fileURLWithPath: filePath)
+    do {
+        try imageData.write(to: fileURL)
+        photoCaptureResult?(filePath)
+    } catch {
+        photoCaptureResult?(FlutterError(code: "FILE_SAVE_ERROR", message: error.localizedDescription, details: nil))
+    }
+}
     
     // 카메라 전환 기능 (후면 <-> 전면)
     func switchCamera(result: @escaping FlutterResult) {
