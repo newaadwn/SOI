@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:ming_cute_icons/ming_cute_icons.dart';
 
 import '../../theme/theme.dart';
 import 'photo_editor_screen.dart';
@@ -52,6 +51,9 @@ class _CameraScreenState extends State<CameraScreen> {
 
       // 사진 촬영 후 편집 화면으로 이동
       if (result.isNotEmpty) {
+        // Firebase 업로드는 나중에 처리하도록 변경
+        // _uploadImage(File(result));  // 이 부분을 잠시 주석 처리
+
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -59,9 +61,11 @@ class _CameraScreenState extends State<CameraScreen> {
           ),
         );
       }
-      _uploadImage(File(result));
     } on PlatformException catch (e) {
       debugPrint("Error taking picture: ${e.message}");
+    } catch (e) {
+      // 추가 예외 처리
+      debugPrint("Unexpected error: $e");
     }
   }
 

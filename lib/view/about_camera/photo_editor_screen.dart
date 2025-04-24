@@ -12,6 +12,45 @@ class PhotoEditorScreen extends StatefulWidget {
 }
 
 class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
+  late File _imageFile;
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadImage();
+  }
+
+  // 이미지 로딩 함수 추가
+  Future<void> _loadImage() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      _imageFile = File(widget.imagePath);
+      if (!await _imageFile.exists()) {
+        setState(() {
+          _errorMessage = "이미지 파일이 존재하지 않습니다.";
+          _isLoading = false;
+        });
+        return;
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = "이미지 로딩 중 오류 발생: $e";
+        _isLoading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -25,25 +64,60 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
         elevation: 0,
       ),
       body: Center(
-        child: Container(
-          width: 354,
-          height: 471,
-          clipBehavior: Clip.antiAlias, // 이 설정은 유지합니다
-          decoration: BoxDecoration(
-            color: Colors.black,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: ClipRRect(
-            // 이미지를 감싸는 ClipRRect 추가
-            borderRadius: BorderRadius.circular(16), // 동일한 radius 적용
-            child: Image.file(
-              File(widget.imagePath),
-              width: 354, // 명시적 너비 지정
-              height: 471, // 명시적 높이 지정
-              fit: BoxFit.cover,
-            ),
-          ),
-        ),
+        child:
+            _isLoading
+                ? const CircularProgressIndicator()
+                : _errorMessage != null
+                ? Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: Colors.white),
+                )
+                : Container(
+                  width: 354,
+                  height: 471,
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.file(
+                      _imageFile,
+                      width: 354,
+                      height: 471,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.broken_image,
+                                color: Colors.white,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                '이미지를 불러올 수 없습니다.',
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                error.toString(),
+                                style: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 12,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
       ),
     );
   }
