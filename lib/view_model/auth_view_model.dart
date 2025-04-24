@@ -15,6 +15,9 @@ class AuthViewModel extends ChangeNotifier {
 
   GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
+  // 개발 환경인지 확인하는 플래그
+  final bool isTestMode = true;
+
   // 검색 결과 리스트 가져오기
   List<String> get searchResults => _searchResults;
 
@@ -78,7 +81,7 @@ class AuthViewModel extends ChangeNotifier {
         'profile_image': '', // 프로필 이미지 URL
       }, SetOptions(merge: true));
     } catch (e) {
-      print('Error creating user document: $e');
+      debugPrint('Error creating user document: $e');
       rethrow;
     }
   }
@@ -95,14 +98,14 @@ class AuthViewModel extends ChangeNotifier {
       if (documentSnapshot.exists) {
         // 닉네임 필드 가져오기
         String? fetchedNickName = documentSnapshot.get('nick_name');
-        print('Fetched Nickname: $fetchedNickName');
+        debugPrint('Fetched Nickname: $fetchedNickName');
         return fetchedNickName ?? 'Default Nickname';
       } else {
-        print('User document does not exist');
+        debugPrint('User document does not exist');
         return 'Default Nickname'; // 기본 닉네임 반환
       }
     } catch (e) {
-      print('Error fetching user document: $e');
+      debugPrint('Error fetching user document: $e');
       rethrow;
     }
   }
@@ -166,7 +169,7 @@ class AuthViewModel extends ChangeNotifier {
 
       notifyListeners();
     } catch (e) {
-      print('Error searching users: $e');
+      debugPrint('Error searching users: $e');
       rethrow;
     }
   }
@@ -188,66 +191,86 @@ class AuthViewModel extends ChangeNotifier {
       }
 
       final String fullPhoneNumber = "+82$formattedPhone";
-      print('Formatted phone number: $fullPhoneNumber');
+      debugPrint('Formatted phone number: $fullPhoneNumber');
 
-      await _auth.verifyPhoneNumber(
-        phoneNumber: fullPhoneNumber,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          try {
-            // iOS에서는 자동 인증이 가능할 수 있음
-            UserCredential userCredential = await _auth.signInWithCredential(
-              credential,
+      // 개발 환경이면 reCAPTCHA 우회
+      if (isTestMode) {
+        await _auth.verifyPhoneNumber(
+          phoneNumber: fullPhoneNumber,
+          verificationCompleted: (PhoneAuthCredential credential) async {
+            try {
+              await _auth.signInWithCredential(credential);
+              debugPrint('Auto verification completed successfully');
+            } catch (e) {
+              debugPrint('Error in auto verification: $e');
+              Fluttertoast.showToast(msg: '자동 인증 중 오류가 발생했습니다: $e');
+            }
+          },
+          verificationFailed: (FirebaseAuthException e) {
+            debugPrint('Verification failed: ${e.message}');
+            Fluttertoast.showToast(msg: '인증 실패: ${e.message}');
+          },
+          codeSent: (String verificationId, int? resendToken) {
+            debugPrint('SMS code sent. Verification ID: $verificationId');
+            this.verificationId = verificationId;
+            codeSent(verificationId, resendToken);
+          },
+          codeAutoRetrievalTimeout: (String verificationId) {
+            debugPrint(
+              'Auto retrieval timeout. Verification ID: $verificationId',
             );
-            print(
-              'Auto verification completed successfully: ${userCredential.user?.uid}',
+            this.verificationId = verificationId;
+            codeAutoRetrievalTimeout(verificationId);
+          },
+          timeout: const Duration(seconds: 60), // 시간 증가
+          autoRetrievedSmsCodeForTesting: '123456', // 테스트용 자동 코드
+        );
+      } else {
+        await _auth.verifyPhoneNumber(
+          phoneNumber: fullPhoneNumber,
+          verificationCompleted: (PhoneAuthCredential credential) async {
+            try {
+              await _auth.signInWithCredential(credential);
+              debugPrint('Auto verification completed successfully');
+            } catch (e) {
+              debugPrint('Error in auto verification: $e');
+              Fluttertoast.showToast(msg: '자동 인증 중 오류가 발생했습니다: $e');
+            }
+          },
+          verificationFailed: (FirebaseAuthException e) {
+            debugPrint('Verification failed: ${e.message}');
+            Fluttertoast.showToast(msg: '인증 실패: ${e.message}');
+          },
+          codeSent: (String verificationId, int? resendToken) {
+            debugPrint('SMS code sent. Verification ID: $verificationId');
+            this.verificationId = verificationId;
+            codeSent(verificationId, resendToken);
+          },
+          codeAutoRetrievalTimeout: (String verificationId) {
+            debugPrint(
+              'Auto retrieval timeout. Verification ID: $verificationId',
             );
-          } catch (e) {
-            print('Error in auto verification: $e');
-            Fluttertoast.showToast(msg: '자동 인증 중 오류가 발생했습니다: $e');
-          }
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          print('Verification failed: ${e.code} - ${e.message}');
-          String errorMessage = '인증 실패';
-
-          // 오류 코드에 따른 사용자 친화적 메시지
-          if (e.code == 'invalid-phone-number') {
-            errorMessage = '유효하지 않은 전화번호 형식입니다.';
-          } else if (e.code == 'too-many-requests') {
-            errorMessage = '너무 많은 시도가 있었습니다. 잠시 후 다시 시도해주세요.';
-          } else if (e.code == 'quota-exceeded') {
-            errorMessage = '일일 SMS 한도를 초과했습니다. 내일 다시 시도해주세요.';
-          }
-
-          Fluttertoast.showToast(msg: errorMessage);
-        },
-        codeSent: (String verificationId, int? resendToken) {
-          print('SMS code sent. Verification ID: $verificationId');
-          this.verificationId = verificationId;
-          codeSent(verificationId, resendToken);
-        },
-        codeAutoRetrievalTimeout: (String verificationId) {
-          print('Auto retrieval timeout. Verification ID: $verificationId');
-          this.verificationId = verificationId;
-          codeAutoRetrievalTimeout(verificationId);
-        },
-        timeout: const Duration(seconds: 120), // 시간 증가
-      );
+            this.verificationId = verificationId;
+            codeAutoRetrievalTimeout(verificationId);
+          },
+          timeout: const Duration(seconds: 60), // 시간 증가
+        );
+      }
     } catch (e) {
-      print('Error verifying phone number: $e');
+      debugPrint('Error verifying phone number: $e');
       Fluttertoast.showToast(msg: '전화번호 인증 중 오류가 발생했습니다: $e');
     }
   }
 
   // SMS 코드로 로그인
-  Future<void> signInWithSmsCode(String smsCode, Function onSuccess) async {
+  Future<void> signInWithSmsCode(String smsCode, Function() onSuccess) async {
     if (verificationId.isEmpty) {
       Fluttertoast.showToast(msg: '인증 ID가 없습니다. 다시 시도해주세요.');
       return;
     }
 
     try {
-      print('Signing in with SMS code. Verification ID: $verificationId');
+      debugPrint('Signing in with SMS code. Verification ID: $verificationId');
       PhoneAuthCredential credential = PhoneAuthProvider.credential(
         verificationId: verificationId,
         smsCode: smsCode,
@@ -257,13 +280,13 @@ class AuthViewModel extends ChangeNotifier {
         credential,
       );
       if (userCredential.user != null) {
-        print('Successfully signed in: ${userCredential.user?.uid}');
-        onSuccess();
+        debugPrint('Successfully signed in: ${userCredential.user?.uid}');
+        onSuccess(); // 인자 없이 호출
       } else {
         Fluttertoast.showToast(msg: '로그인에 실패했습니다.');
       }
     } catch (e) {
-      print('Error signing in with SMS code: $e');
+      debugPrint('Error signing in with SMS code: $e');
       Fluttertoast.showToast(msg: '인증 코드 확인 중 오류가 발생했습니다: $e');
     }
   }

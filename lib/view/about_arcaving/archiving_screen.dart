@@ -44,15 +44,11 @@ class _ArchivingScreenState extends State<ArchivingScreen>
             style: TextStyle(color: AppTheme.lightTheme.colorScheme.secondary),
           ),
           backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-          toolbarHeight: 70,
+          toolbarHeight: 70 / 852 * screenHeight,
           actions: [
             IconButton(
               onPressed: () {},
-              icon: Iconify(
-                Uil.setting,
-                color: Colors.white,
-                size: 30,
-              ),
+              icon: Iconify(Uil.setting, color: Colors.white, size: 30),
             ),
           ],
           bottom: PreferredSize(
@@ -80,17 +76,11 @@ class _ArchivingScreenState extends State<ArchivingScreen>
                 ),
                 IconButton(
                   onPressed: () {},
-                  icon: Icon(
-                    Icons.search,
-                    color: Colors.white,
-                  ),
+                  icon: Icon(Icons.search, color: Colors.white),
                 ),
                 IconButton(
                   onPressed: () {},
-                  icon: Icon(
-                    Icons.add,
-                    color: Colors.white,
-                  ),
+                  icon: Icon(Icons.add, color: Colors.white),
                 ),
               ],
             ),
