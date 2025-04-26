@@ -4,20 +4,54 @@ import 'dart:ui' as ui;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import '../model/photo_model.dart';
 import 'audio_view_model.dart';
 import 'auth_view_model.dart';
+import 'package:flutter/rendering.dart';
+import 'package:provider/provider.dart';
 
 class CategoryViewModel extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
 
   final List<String> _selectedNames = [];
+  List<Map<String, dynamic>> _userCategories = []; // 사용자 카테고리 저장 리스트
 
   List<String> get selectedNames => _selectedNames;
+  List<Map<String, dynamic>> get userCategories =>
+      _userCategories; // 카테고리 getter 추가
 
   String audioUrl = '';
+
+  // 현재 로그인한 유저의 카테고리 정보를 가져오는 메소드
+  Future<void> loadUserCategories(String uid) async {
+    try {
+      // Firestore에서 현재 사용자의 카테고리 가져오기
+      final snapshot =
+          await _firestore
+              .collection('categories')
+              .where('userId', arrayContains: uid)
+              .get();
+
+      _userCategories =
+          snapshot.docs.map((doc) {
+            final data = doc.data();
+            return {
+              'id': doc.id,
+              'name': data['name'] ?? '무제',
+              'imageUrl': data['imageUrl'] ?? '',
+            };
+          }).toList();
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('사용자 카테고리 로드 오류: $e');
+      _userCategories = []; // 오류 시 빈 리스트로 초기화
+      notifyListeners();
+    }
+  }
 
   /// 모든 카테고리 데이터를 가져오면서
   /// 각 카테고리의 첫번째 사진 URL과 프로필 이미지들을 함께 합친 스트림
@@ -146,10 +180,7 @@ class CategoryViewModel extends ChangeNotifier {
 
       if (audioFilePath != null) {
         // 예시: AudioViewModel에 있는 업로드 함수를 사용하거나 여기서 직접 업로드
-        audioUrl = await audioViewModel.uploadAudioToFirestorage(
-          categoryId,
-          nickName,
-        );
+        audioUrl = await audioViewModel.uploadAudioToFirestorage();
       }
 
       // 사진 업로드 (context 의존성이 제거된 uploadPhoto로 처리)
@@ -165,28 +196,72 @@ class CategoryViewModel extends ChangeNotifier {
     }
   }
 
+  Future<String?> uploadPhotoStorage(File imageFile) async {
+    try {
+      // 이미지 색상 보정 (Flutter에서)
+      final img = await decodeImageFromList(imageFile.readAsBytesSync());
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      final paint =
+          Paint()
+            ..colorFilter = const ColorFilter.mode(
+              Colors.transparent, // 녹색 색조 제거를 위한 설정
+              BlendMode.overlay,
+            );
+      canvas.drawImage(img, Offset.zero, paint);
+
+      // 처리된 이미지 저장
+      final fileName = DateTime.now().millisecondsSinceEpoch.toString();
+      final ref = _storage.ref().child('categories_photos/$fileName');
+
+      // 파일 업로드
+      await ref.putFile(imageFile);
+
+      // 다운로드 URL 가져오기
+      final downloadUrl = await ref.getDownloadURL();
+      return downloadUrl;
+    } catch (e) {
+      debugPrint("이미지 업로드 오류: $e");
+      return null;
+    }
+  }
+
   /// uploadPhoto의 context 매개변수를 제거하여 UI와 분리한 버전
   Future<void> uploadPhoto(
     String categoryId,
     String nickName,
     String filePath,
     String audioUrl,
-    String captionString,
-  ) async {
-    final fileName = DateTime.now().millisecondsSinceEpoch.toString();
-    final file = File(filePath);
+    String captionString, {
+    String? imageUrl, // 이미 있는 이미지 URL을 위한 선택적 매개변수 추가
+  }) async {
+    String downloadUrl;
 
-    if (!file.existsSync()) {
-      debugPrint('File does not exist: $filePath');
-      return;
+    // 이미지 URL이 이미 제공된 경우 그것을 사용
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      downloadUrl = imageUrl;
+    } else {
+      // 파일 경로로부터 이미지 업로드
+      final fileName = DateTime.now().millisecondsSinceEpoch.toString();
+      final file = File(filePath);
+
+      if (!file.existsSync()) {
+        debugPrint('File does not exist: $filePath');
+        return;
+      }
+
+      try {
+        // 1) Firebase Storage 업로드
+        final ref = _storage.ref().child('categories_photos/$fileName');
+        await ref.putFile(file);
+        downloadUrl = await ref.getDownloadURL();
+      } catch (e) {
+        debugPrint('Error uploading photo to storage: $e');
+        rethrow;
+      }
     }
 
     try {
-      // 1) Firebase Storage 업로드
-      final ref = _storage.ref().child('categories_photos/$fileName');
-      await ref.putFile(file);
-      final imageUrl = await ref.getDownloadURL();
-
       // 2) 카테고리의 'userId' 목록 가져오기
       final categoryDoc =
           await _firestore.collection('categories').doc(categoryId).get();
@@ -200,7 +275,7 @@ class CategoryViewModel extends ChangeNotifier {
       final photoId = photoRef.id;
 
       final photo = PhotoModel(
-        imageUrl: imageUrl,
+        imageUrl: downloadUrl,
         createdAt: Timestamp.now(),
         userNickname: nickName,
         userIds: userIds,
@@ -214,7 +289,7 @@ class CategoryViewModel extends ChangeNotifier {
       await photoRef.set(photo.toMap());
       notifyListeners();
     } catch (e) {
-      debugPrint('Error uploading photo: $e');
+      debugPrint('Error uploading photo metadata: $e');
       rethrow;
     }
   }
@@ -355,62 +430,6 @@ class CategoryViewModel extends ChangeNotifier {
     }
   }
 
-  /// 특정 카테고리에 사진 업로드
-  /*Future<void> uploadPhoto(
-    String categoryId,
-    String nickName,
-    String filePath,
-    String audioUrl,
-    BuildContext context,
-  ) async {
-    final fileName = DateTime.now().millisecondsSinceEpoch.toString();
-    final file = File(filePath);
-
-    if (!file.existsSync()) {
-      debugPrint('File does not exist: $filePath');
-      return;
-    }
-
-    try {
-      // 1) Firebase Storage 업로드
-      final ref = _storage.ref().child('categories_photos/$fileName');
-      await ref.putFile(file);
-      final imageUrl = await ref.getDownloadURL();
-
-      // 2) 해당 카테고리의 'userId' 목록 가져오기
-      final categoryDoc =
-          await _firestore.collection('categories').doc(categoryId).get();
-      final List<String> userIds =
-          List<String>.from(categoryDoc['userId'] ?? []);
-
-      // 3) 현재 사용자 ID 가져오기
-      final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
-
-      // 4) Firestore에 사진 문서 생성
-      final categoryRef = _firestore.collection('categories').doc(categoryId);
-      final photoRef = categoryRef.collection('photos').doc();
-      final photoId = photoRef.id;
-
-      // 5) PhotoModel 인스턴스 생성
-      final photo = PhotoModel(
-        imageUrl: imageUrl,
-        createdAt: Timestamp.now(),
-        userNickname: nickName,
-        userIds: userIds,
-        userId: authViewModel.getUserId!,
-        audioUrl: audioUrl,
-        id: photoId,
-      );
-
-      // 6) Firestore에 사진 정보 저장
-      await photoRef.set(photo.toMap());
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error uploading photo: $e');
-      rethrow;
-    }
-  }*/
-
   /// 특정 사진 문서의 ID 가져오기
   Future<String?> getPhotoDocumentId(String categoryId, String imageUrl) async {
     try {
@@ -450,5 +469,10 @@ class CategoryViewModel extends ChangeNotifier {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs.map(PhotoModel.fromDocument).toList());
+  }
+
+  void addCategory(Map<String, dynamic> category) {
+    userCategories.add(category);
+    notifyListeners(); // 중요: 리스너에게 변경 알림
   }
 }

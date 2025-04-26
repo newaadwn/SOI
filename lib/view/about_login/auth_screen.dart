@@ -7,9 +7,7 @@ import '../../view_model/auth_view_model.dart';
 import 'auth_final_screen.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, this.authViewModel});
-
-  final AuthViewModel? authViewModel;
+  const AuthScreen({super.key});
 
   @override
   _AuthScreenState createState() => _AuthScreenState();
@@ -40,9 +38,7 @@ class _AuthScreenState extends State<AuthScreen> {
     // Provider에서 AuthViewModel을 가져오거나 widget에서 전달된 것을 사용
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
-        _authViewModel =
-            widget.authViewModel ??
-            Provider.of<AuthViewModel>(context, listen: false);
+        _authViewModel = Provider.of<AuthViewModel>(context, listen: false);
       });
     });
 

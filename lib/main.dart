@@ -11,6 +11,9 @@ import 'package:flutter_swift_camera/view/about_category/category_select_screen.
 import 'package:flutter_swift_camera/view/home_navigator_screen.dart';
 import 'package:flutter_swift_camera/view/home_screen.dart';
 import 'package:provider/provider.dart';
+import 'view/about_login/auth_final_screen.dart';
+import 'view/about_login/auth_screen.dart';
+import 'view/about_login/login_screen.dart';
 import 'view/about_login/start_screen.dart';
 import 'view_model/auth_view_model.dart';
 import 'view_model/category_view_model.dart';
@@ -62,10 +65,11 @@ class MyApp extends StatelessWidget {
           '/camera': (context) => const CameraScreen(),
           '/archiving': (context) => const ArchivingScreen(),
           '/start': (context) => const StartScreen(),
+          '/auth': (context) => const AuthScreen(),
+          '/login': (context) => const LoginScreen(),
 
           // 카테고리 관련 라우트
           '/category_select': (context) => const CategorySelectScreen(),
-
           '/category_add_screen': (context) => const CategoryAddScreen(),
 
           // 아카이빙 관련 라우트

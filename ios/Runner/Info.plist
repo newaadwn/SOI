@@ -39,7 +39,7 @@
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>FirebaseAppDelegateProxyEnabled</key>
-	<false/>
+	<true/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
@@ -82,7 +82,7 @@
 	
 	<!-- Firebase Phone Auth 관련 설정 -->
 	<key>FirebaseAppDelegateProxyEnabled</key>
-	<false/>
+	<true/>
 	
 	<!-- 전화번호 인증 관련 권한 설명 -->
 	<key>NSContactsUsageDescription</key>
@@ -105,6 +105,17 @@
 	<!-- (선택 사항) 사진 라이브러리 읽기 사용 권한 설명 -->
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>이 앱은 사진 라이브러리에서 이미지를 불러오기 위해 접근 권한이 필요합니다.</string>
+	
+	<!-- reCAPTCHA 웹뷰 설정 -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
+	
+	<!-- iOS에서 UiKitView 사용을 허용합니다 -->
+	<key>io.flutter.embedded_views_preview</key>
+	<true/>
 	
 </dict>
 </plist>

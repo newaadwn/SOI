@@ -13,6 +13,14 @@ class AudioViewModel extends ChangeNotifier {
   bool _isRecording = false; // 녹음 중인지 여부
   String? _audioFilePath; // 녹음된 파일 경로
 
+  // 실시간 audio 레벨을 위한 스트림 컨트롤러
+  final StreamController<double> _dbLevelController =
+      StreamController<double>.broadcast();
+  StreamSubscription<RecordingDisposition>? _recorderSubscription;
+
+  /// 실시간 오디오 레벨 스트림 (데시벨)
+  Stream<double> get dbLevelStream => _dbLevelController.stream;
+
   // 녹음 시간 추적
   final Duration _recordingDuration = Duration.zero;
   Duration get recordingDuration => _recordingDuration;
@@ -22,9 +30,6 @@ class AudioViewModel extends ChangeNotifier {
 
   /// Getter: 오디오 파일 경로
   String? get audioFilePath => _audioFilePath;
-
-  // 녹음 시간 갱신용 타이머
-  //Timer? _timer;
 
   // 녹음 시간 문자열 포맷 (예: 00:05, 01:23)
   String get formattedRecordingDuration {
@@ -55,19 +60,28 @@ class AudioViewModel extends ChangeNotifier {
   Future<void> startRecording() async {
     final String path =
         '${(await getTemporaryDirectory()).path}/audio_${DateTime.now().millisecondsSinceEpoch}.aac';
+    // 녹음 시작
     await _recorder?.startRecorder(toFile: path);
+    // 오디오 레벨 업데이트 구독 설정 (50ms 간격)
+    _recorder?.setSubscriptionDuration(const Duration(milliseconds: 50));
+    _recorderSubscription = _recorder?.onProgress?.listen((event) {
+      // 데시벨 값을 스트림에 추가
+      _dbLevelController.add(event.decibels ?? 0.0);
+    });
     _isRecording = true;
     notifyListeners(); // 녹음 상태 변경 알림
   }
 
   /// 녹음 중지
   Future<void> stopRecording() async {
+    // 레벨 업데이트 구독 해제
+    await _recorderSubscription?.cancel();
     final String? path = await _recorder?.stopRecorder();
     _isRecording = false;
     if (path != null) {
       _audioFilePath = path;
     }
-    print('Audio file path: $_audioFilePath');
+    debugPrint('Audio file path: $_audioFilePath');
     notifyListeners(); // 녹음 상태 변경 알림
   }
 
@@ -78,23 +92,21 @@ class AudioViewModel extends ChangeNotifier {
   }
 
   /// 녹음 파일을 Firebase Storage에 업로드 후 다운로드 URL 반환
-  Future<String> uploadAudioToFirestorage(
-    String categoryId,
-    String nickName,
-  ) async {
+  Future<String> uploadAudioToFirestorage() async {
     if (_audioFilePath == null) {
       throw Exception('No audio file to upload');
     }
 
     // 녹음된 파일을 AAC로 변환 (필요시)
-    final aacFilePath = await _convertToAAC(_audioFilePath!);
+    //final aacFilePath = await _convertToAAC(_audioFilePath!);
 
     // Firebase Storage에 업로드 (확장자는 m4a로 변경)
     final fileName = 'audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
     final ref = FirebaseStorage.instance.ref().child(
       'categories_audio/$fileName',
     );
-    final file = File(aacFilePath);
+    //final file = File(aacFilePath);
+    final file = File(_audioFilePath!);
     await ref.putFile(file);
     _audioFilePath = null; // 파일 경로 초기화
     return await ref.getDownloadURL();
@@ -102,6 +114,9 @@ class AudioViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
+    // 구독 및 컨트롤러 해제
+    _recorderSubscription?.cancel();
+    _dbLevelController.close();
     _recorder?.closeRecorder();
     _recorder = null;
     super.dispose();

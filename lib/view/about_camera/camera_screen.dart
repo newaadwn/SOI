@@ -1,11 +1,10 @@
-import 'dart:io';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'dart:io';
 import '../../theme/theme.dart';
+import '../../view_model/category_view_model.dart';
 import 'photo_editor_screen.dart';
-//import 'package:flutter_svg/flutter_svg.dart';
+import 'package:provider/provider.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -15,6 +14,8 @@ class CameraScreen extends StatefulWidget {
 }
 
 class _CameraScreenState extends State<CameraScreen> {
+  late CategoryViewModel _categoryViewModel;
+
   // Swift와 통신할 플랫폼 채널
   static const MethodChannel platform = MethodChannel('com.soi.camera');
   String imagePath = '';
@@ -28,7 +29,6 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void initState() {
     super.initState();
-    // 카메라 리소스 초기화
     _initCamera();
   }
 
@@ -49,17 +49,37 @@ class _CameraScreenState extends State<CameraScreen> {
         imagePath = result;
       });
 
-      // 사진 촬영 후 편집 화면으로 이동
+      // 사진 촬영 후 처리
       if (result.isNotEmpty) {
-        // Firebase 업로드는 나중에 처리하도록 변경
-        // _uploadImage(File(result));  // 이 부분을 잠시 주석 처리
+        // 이미지 파일 생성
+        final imageFile = File(result);
 
+        // 옵션 1: 로컬 파일 경로만 사용하여 편집 화면으로 이동 (Firebase 사용 안 함)
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => PhotoEditorScreen(imagePath: result),
           ),
         );
+
+        // 옵션 2: Firebase Storage에 업로드하면서 동시에 로컬 경로도 전달 (필요 시 주석 해제)
+        /*
+        final String? downloadUrl = await _categoryViewModel.uploadPhotoStorage(
+          imageFile,
+        );
+
+        // 다운로드 URL이 있으면 편집 화면으로 이동
+        debugPrint("다운로드 URL: $downloadUrl");
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => PhotoEditorScreen(
+              downloadUrl: downloadUrl,
+              imagePath: result,
+            ),
+          ),
+        );
+        */
       }
     } on PlatformException catch (e) {
       debugPrint("Error taking picture: ${e.message}");
@@ -118,21 +138,28 @@ class _CameraScreenState extends State<CameraScreen> {
   }*/
 
   // 촬영한 이미지 Firebase Storage 업로드
-  Future<void> _uploadImage(File imageFile) async {
+
+  // ✅ 추가: 카메라 최적화 메서드
+  Future<void> _optimizeCamera() async {
     try {
-      String fileName = 'images/${DateTime.now().millisecondsSinceEpoch}.jpg';
-      Reference ref = FirebaseStorage.instance.ref().child(fileName);
-      UploadTask uploadTask = ref.putFile(imageFile);
-      TaskSnapshot snapshot = await uploadTask;
-      String downloadUrl = await snapshot.ref.getDownloadURL();
-      debugPrint('Image uploaded: $downloadUrl');
-    } catch (e) {
-      debugPrint("Upload error: $e");
+      // 카메라 최적화 설정 요청
+      await platform.invokeMethod('optimizeCamera');
+    } on PlatformException catch (e) {
+      debugPrint("Error optimizing camera: ${e.message}");
     }
   }
 
+  bool _isInitialized = false;
+
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      _categoryViewModel = Provider.of<CategoryViewModel>(
+        context,
+        listen: false,
+      );
+      _isInitialized = true;
+    }
     double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
 
@@ -161,8 +188,16 @@ class _CameraScreenState extends State<CameraScreen> {
                 viewType: 'com.soi.camera/preview',
                 onPlatformViewCreated: (int id) {
                   debugPrint('카메라 뷰 생성됨: $id');
+
+                  // 카메라 포커스 설정 및 최적화
+                  Future.delayed(const Duration(milliseconds: 500), () {
+                    _optimizeCamera();
+                  });
                 },
-                creationParams: <String, dynamic>{},
+                creationParams: <String, dynamic>{
+                  'useSRGBColorSpace': true, // sRGB 색상 공간 사용 설정
+                  'useHighQuality': true, // 고품질 설정 추가
+                },
                 creationParamsCodec: const StandardMessageCodec(),
               ),
             ),

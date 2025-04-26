@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
 import '../../view_model/auth_view_model.dart';
 import 'auth_screen.dart';
+import 'login_screen.dart';
 
 class StartScreen extends StatelessWidget {
   const StartScreen({super.key});
@@ -11,10 +12,10 @@ class StartScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
-    AuthViewModel authViewModel = Provider.of<AuthViewModel>(
-      context,
-      listen: false,
-    );
+    // AuthViewModel authViewModel = Provider.of<AuthViewModel>(
+    //  context,
+    //  listen: false,
+    //);
 
     // 로그인 상태 확인
     /*WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -36,12 +37,7 @@ class StartScreen extends StatelessWidget {
             SizedBox(height: (201 / 852) * screenHeight),
             ElevatedButton(
               onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder:
-                        (context) => AuthScreen(authViewModel: authViewModel),
-                  ),
-                );
+                Navigator.pushNamed(context, '/auth');
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.lightTheme.colorScheme.primary,
@@ -56,6 +52,33 @@ class StartScreen extends StatelessWidget {
                 alignment: Alignment.center,
                 child: Text(
                   '시작하기',
+                  style: TextStyle(
+                    color: AppTheme.lightTheme.colorScheme.onPrimary,
+                    fontSize: (24 / 852) * screenHeight,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+            SizedBox(height: (19 / 852) * screenHeight),
+            ElevatedButton(
+              onPressed: () {
+                // 로그인 페이지로 이동
+                Navigator.pushNamed(context, '/login');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Container(
+                width: (239 / 393) * screenWidth,
+                height: (59 / 852) * screenHeight,
+                alignment: Alignment.center,
+                child: Text(
+                  '로그인',
                   style: TextStyle(
                     color: AppTheme.lightTheme.colorScheme.onPrimary,
                     fontSize: (24 / 852) * screenHeight,
