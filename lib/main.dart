@@ -11,7 +11,6 @@ import 'package:flutter_swift_camera/view/about_category/category_select_screen.
 import 'package:flutter_swift_camera/view/home_navigator_screen.dart';
 import 'package:flutter_swift_camera/view/home_screen.dart';
 import 'package:provider/provider.dart';
-import 'view/about_login/auth_final_screen.dart';
 import 'view/about_login/auth_screen.dart';
 import 'view/about_login/login_screen.dart';
 import 'view/about_login/start_screen.dart';

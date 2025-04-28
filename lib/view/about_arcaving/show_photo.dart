@@ -36,7 +36,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../../theme/theme.dart';
 import '../../view_model/category_view_model.dart';
 import '../../model/photo_model.dart';
@@ -46,15 +45,18 @@ class ShowPhotoScreen extends StatelessWidget {
   final String categoryId; // 카테고리 ID를 외부에서 전달
   final String categoryName; // 카테고리 이름을 외부에서 전달
 
-  const ShowPhotoScreen(
-      {Key? key, required this.categoryId, required this.categoryName})
-      : super(key: key);
+  const ShowPhotoScreen({
+    Key? key,
+    required this.categoryId,
+    required this.categoryName,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final categoryViewModel =
-        Provider.of<CategoryViewModel>(context, listen: false);
-    final random = Random();
+    final categoryViewModel = Provider.of<CategoryViewModel>(
+      context,
+      listen: false,
+    );
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
@@ -65,16 +67,7 @@ class ShowPhotoScreen extends StatelessWidget {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              categoryName,
-              style: const TextStyle(color: Colors.white),
-            ),
-            IconButton(
-              icon: const Icon(Icons.calendar_month, color: Colors.white),
-              onPressed: () {
-                // 필요한 동작 구현
-              },
-            ),
+            Text(categoryName, style: const TextStyle(color: Colors.white)),
           ],
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
@@ -91,32 +84,36 @@ class ShowPhotoScreen extends StatelessWidget {
           final photos = snapshot.data ?? [];
           if (photos.isEmpty) {
             return const Center(
-                child:
-                    Text('사진이 없습니다.', style: TextStyle(color: Colors.white)));
+              child: Text('사진이 없습니다.', style: TextStyle(color: Colors.white)),
+            );
           }
 
           // MasonryGridView를 사용하여 사진들을 다양한 높이로 배치
-          return MasonryGridView.count(
-            crossAxisCount: 2,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
+          return GridView.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 0.7,
+            ),
             padding: const EdgeInsets.all(8.0),
             itemCount: photos.length,
             itemBuilder: (context, index) {
               final photo = photos[index];
               // 랜덤 높이: 200 ~ 350 사이 (예시)
-              final randomHeight = 90 + random.nextInt(110);
+
               return GestureDetector(
                 onTap: () {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ShowDetailedPhoto(
-                        photos: photos,
-                        initialIndex: index,
-                        categoryName: categoryName,
-                        categoryId: categoryId,
-                      ),
+                      builder:
+                          (_) => ShowDetailedPhoto(
+                            photos: photos,
+                            initialIndex: index,
+                            categoryName: categoryName,
+                            categoryId: categoryId,
+                          ),
                     ),
                   );
                 },
@@ -124,14 +121,11 @@ class ShowPhotoScreen extends StatelessWidget {
                   alignment: Alignment.bottomCenter,
                   children: [
                     SizedBox(
-                      width: 169,
-                      height: randomHeight.toDouble(),
+                      width: 175,
+                      height: 232,
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(6),
-                        child: Image.network(
-                          photo.imageUrl,
-                          fit: BoxFit.cover,
-                        ),
+                        child: Image.network(photo.imageUrl, fit: BoxFit.cover),
                       ),
                     ),
                     Text(

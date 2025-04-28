@@ -3,14 +3,11 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import '../model/photo_model.dart';
 import 'audio_view_model.dart';
 import 'auth_view_model.dart';
-import 'package:flutter/rendering.dart';
-import 'package:provider/provider.dart';
 
 class CategoryViewModel extends ChangeNotifier {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -184,13 +181,7 @@ class CategoryViewModel extends ChangeNotifier {
       }
 
       // 사진 업로드 (context 의존성이 제거된 uploadPhoto로 처리)
-      await uploadPhoto(
-        categoryId,
-        nickName,
-        filePath,
-        audioUrl,
-        captionString,
-      );
+      await uploadPhoto(categoryId, nickName, filePath, audioUrl);
     } catch (e) {
       debugPrint('Error saving edited photo: $e');
     }
@@ -231,8 +222,7 @@ class CategoryViewModel extends ChangeNotifier {
     String categoryId,
     String nickName,
     String filePath,
-    String audioUrl,
-    String captionString, {
+    String audioUrl, {
     String? imageUrl, // 이미 있는 이미지 URL을 위한 선택적 매개변수 추가
   }) async {
     String downloadUrl;

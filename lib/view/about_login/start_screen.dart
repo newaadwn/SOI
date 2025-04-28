@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
-import '../../view_model/auth_view_model.dart';
-import 'auth_screen.dart';
-import 'login_screen.dart';
 
 class StartScreen extends StatelessWidget {
   const StartScreen({super.key});

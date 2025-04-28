@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import 'dart:io'; // File 클래스를 사용하기 위한 import 추가
-import 'package:path_provider/path_provider.dart'; // getTemporaryDirectory 사용을 위한 import 추가
+import 'dart:io';
 import 'package:provider/provider.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // Firebase Auth 추가
 import '../../theme/theme.dart';
-import '../../view_model/audio_view_model.dart'; // AudioViewModel import
-import '../../view_model/category_view_model.dart'; // CategoryViewModel import 추가
-import '../../view_model/auth_view_model.dart'; // AuthViewModel 추가
-import 'dart:async'; // StreamSubscription을 사용하기 위한 import 추가
-import 'package:audio_waveforms/audio_waveforms.dart'; // audio_waveforms 패키지 추가
+import '../../view_model/audio_view_model.dart';
+import '../../view_model/category_view_model.dart';
+import '../../view_model/auth_view_model.dart';
+
+// 분리된 위젯들을 임포트
+import 'widgets/photo_display_widget.dart';
+import 'widgets/audio_recorder_widget.dart';
+import 'widgets/category_list_widget.dart';
+import 'widgets/add_category_widget.dart';
 
 class PhotoEditorScreen extends StatefulWidget {
   final String? downloadUrl;
@@ -22,51 +23,29 @@ class PhotoEditorScreen extends StatefulWidget {
 }
 
 class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
+  // 상태 변수
   bool _isLoading = true;
   String? _errorMessage;
   bool _useDownloadUrl = false;
-  bool _useLocalImage = false; // 로컬 이미지 사용 여부 추가
-
-  // 오디오 녹음 관련 변수
-  late AudioViewModel _audioViewModel;
-  late CategoryViewModel _categoryViewModel; // CategoryViewModel 추가
-  late AuthViewModel _authViewModel; // AuthViewModel 추가
-  bool _isRecording = false;
-  // RecorderController for audio_waveforms
-  late RecorderController recorderController;
-  String? recordedFilePath; // 녹음된 파일 경로 저장
-
-  // 커스텀 파형을 위한 변수
-  // (파형은 AudioWaveforms 위젯이 관리합니다)
-  //late DateTime _lastUpdateTime;
-
-  // 카테고리 로딩 상태
+  bool _useLocalImage = false;
   bool _loadingCategories = true;
-
-  final controller = DraggableScrollableController();
-
-  // PhotoEditorScreen 클래스에 상태 변수 추가
-  bool _showAddCategoryUI = false; // 카테고리 추가 UI 표시 여부
-  TextEditingController _categoryNameController =
-      TextEditingController(); // 카테고리 이름 입력용
-
-  // 선택된 카테고리 ID와 전송 모드 상태 추적 변수 추가
+  bool _showAddCategoryUI = false;
   String? _selectedCategoryId;
   bool _isSendMode = false;
+
+  // 컨트롤러
+  final _draggableScrollController = DraggableScrollableController();
+  final _categoryNameController = TextEditingController();
+
+  // ViewModel 인스턴스
+  late AudioViewModel _audioViewModel;
+  late CategoryViewModel _categoryViewModel;
+  late AuthViewModel _authViewModel;
 
   @override
   void initState() {
     super.initState();
-    // audio_waveforms 설정
-    recorderController =
-        RecorderController()
-          ..androidEncoder = AndroidEncoder.aac
-          ..androidOutputFormat = AndroidOutputFormat.mpeg4
-          ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
-          ..sampleRate = 44100;
-    recorderController.checkPermission();
     _loadImage();
-    // _lastUpdateTime = DateTime.now();
   }
 
   @override
@@ -77,36 +56,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
     _categoryViewModel = Provider.of<CategoryViewModel>(context, listen: false);
     _authViewModel = Provider.of<AuthViewModel>(context, listen: false);
 
-    // 현재 로그인한 유저의 카테고리 로드 - 추가된 부분
+    // 현재 로그인한 유저의 카테고리 로드
     _loadUserCategories();
-  }
-
-  // 사용자 카테고리 로드 메서드 - 개선
-  Future<void> _loadUserCategories() async {
-    setState(() {
-      _loadingCategories = true;
-    });
-
-    try {
-      // 현재 로그인한 유저의 UID 가져오기
-      final currentUser = _authViewModel.currentUser;
-      if (currentUser != null) {
-        // CategoryViewModel의 메서드 호출하여 카테고리 로드
-        await _categoryViewModel.loadUserCategories(currentUser.uid);
-
-        // 디버그: 로드된 카테고리 확인
-        debugPrint('로드된 카테고리 수: ${_categoryViewModel.userCategories.length}');
-      }
-    } catch (e) {
-      debugPrint('카테고리 로드 오류: $e');
-    } finally {
-      // 로딩 상태 업데이트 (위젯 다시 그리기)
-      if (mounted) {
-        setState(() {
-          _loadingCategories = false;
-        });
-      }
-    }
   }
 
   // 이미지 로딩 함수 개선
@@ -152,39 +103,33 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
     });
   }
 
-  // 녹음 시작 함수
-  Future<void> _startRecording() async {
-    try {
-      // audio_waveforms 플러그인 녹음 시작 (파형 캡처)
-      await recorderController.record();
-      // AudioViewModel의 녹음 시작 함수 사용
-      await _audioViewModel.startRecording();
-      setState(() => _isRecording = true);
-    } catch (e) {
-      debugPrint('녹음 시작 오류: $e');
-    }
-  }
+  // 사용자 카테고리 로드 메서드
+  Future<void> _loadUserCategories() async {
+    setState(() {
+      _loadingCategories = true;
+    });
 
-  // 녹음 중지 함수
-  Future<void> _stopRecording() async {
     try {
-      // audio_waveforms 플러그인 녹음 중지
-      await recorderController.stop();
-      // AudioViewModel의 녹음 중지 함수 사용
-      await _audioViewModel.stopRecording();
-      setState(() => _isRecording = false);
-      // AudioViewModel에서 가져온 파일 경로 저장
-      recordedFilePath = _audioViewModel.audioFilePath;
-      // AudioViewModel을 사용해 업로드 (선택적)
-      if (recordedFilePath != null) {
-        await _audioViewModel.uploadAudioToFirestorage();
+      // 현재 로그인한 유저의 UID 가져오기
+      final currentUser = _authViewModel.currentUser;
+      if (currentUser != null) {
+        // CategoryViewModel의 메서드 호출하여 카테고리 로드
+        await _categoryViewModel.loadUserCategories(currentUser.uid);
+        debugPrint('로드된 카테고리 수: ${_categoryViewModel.userCategories.length}');
       }
     } catch (e) {
-      debugPrint('녹음 중지 오류: $e');
+      debugPrint('카테고리 로드 오류: $e');
+    } finally {
+      // 로딩 상태 업데이트 (위젯 다시 그리기)
+      if (mounted) {
+        setState(() {
+          _loadingCategories = false;
+        });
+      }
     }
   }
 
-  // 카테고리에 사진과 음성 업로드 함수 추가
+  // 카테고리에 사진과 음성 업로드 함수
   Future<void> _savePhotoAndAudioToCategory(String categoryId) async {
     setState(() {
       _isLoading = true;
@@ -200,15 +145,14 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
         imagePath = widget.imagePath!;
       } else if (_useDownloadUrl && widget.downloadUrl != null) {
         // 다운로드 URL을 사용하는 경우 그 URL을 사용
-        // Firebase Storage에서 이미 사용 가능한 URL이므로 다시 저장하지 않고 그대로 사용
+        // AudioViewModel을 사용하여 오디오 처리
+        final String audioUrl = await _audioViewModel.processAudioForUpload();
+
         await _categoryViewModel.uploadPhoto(
           categoryId,
           userNickName,
           "", // 로컬 파일 경로는 없음
-          recordedFilePath != null
-              ? await _audioViewModel.uploadAudioToFirestorage()
-              : "", // 오디오가 있을 때만 업로드
-          '', // 캡션 문자열
+          audioUrl, // 오디오가 있을 때만 업로드
           imageUrl: widget.downloadUrl, // 이미 있는 URL 사용
         );
 
@@ -217,7 +161,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                '${recordedFilePath != null ? "사진과 음성이" : "사진이"} 업로드되었습니다',
+                '${audioUrl.isNotEmpty ? "사진과 음성이" : "사진이"} 업로드되었습니다',
               ),
             ),
           );
@@ -234,18 +178,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
 
       // 로컬 이미지가 있는 경우에만 계속 진행
       if (imagePath.isNotEmpty) {
-        // 오디오 URL 가져오기
-        String audioUrl = '';
-
-        // 녹음된 오디오가 있을 경우에만 업로드 시도
-        if (recordedFilePath != null) {
-          try {
-            audioUrl = await _audioViewModel.uploadAudioToFirestorage();
-          } catch (e) {
-            debugPrint('오디오 업로드 오류: $e');
-            // 오디오 업로드 실패해도 사진은 계속 업로드
-          }
-        }
+        // AudioViewModel을 사용하여 오디오 처리
+        final String audioUrl = await _audioViewModel.processAudioForUpload();
 
         // 카테고리에 업로드
         await _categoryViewModel.uploadPhoto(
@@ -253,7 +187,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
           userNickName,
           imagePath,
           audioUrl,
-          '', // 캡션 문자열 (필요시 추가)
         );
 
         // 성공 메시지 표시
@@ -293,10 +226,72 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
     }
   }
 
+  // 카테고리 선택 처리 함수
+  void _handleCategorySelection(String categoryId) {
+    // 이미 선택된 카테고리를 다시 클릭했을 때 (전송 실행)
+    if (_selectedCategoryId == categoryId) {
+      _savePhotoAndAudioToCategory(categoryId);
+    } else {
+      // 새로운 카테고리 선택 (선택 모드로 변경)
+      setState(() {
+        _selectedCategoryId = categoryId;
+        _isSendMode = true;
+      });
+    }
+  }
+
+  // 카테고리 생성 처리 함수
+  Future<void> _createNewCategory() async {
+    // 카테고리 이름 검증
+    if (_categoryNameController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('카테고리 이름을 입력해주세요')));
+      return;
+    }
+
+    // 카테고리 저장 로직 호출
+    try {
+      // 현재 사용자 정보 가져오기
+      final String? userId = _authViewModel.getUserId;
+      final String userNickName =
+          await _authViewModel.getNickNameFromFirestore();
+
+      // 메이트 리스트 준비 (여기서는 예시로 현재 사용자만 포함)
+      List<String> mates = [userNickName];
+
+      // 카테고리 생성
+      await _categoryViewModel.createCategory(
+        _categoryNameController.text.trim(),
+        mates,
+        userId!,
+      );
+
+      // 화면 갱신
+      _loadUserCategories();
+
+      // 원래 화면으로 돌아가기
+      setState(() {
+        _showAddCategoryUI = false;
+        _categoryNameController.clear();
+      });
+
+      // 성공 메시지
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('카테고리가 생성되었습니다')));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('카테고리 생성 중 오류가 발생했습니다')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
     double screenWidth = MediaQuery.of(context).size.width;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -325,86 +320,19 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Container(
+                          // 이미지 표시 위젯
+                          PhotoDisplayWidget(
+                            imagePath: widget.imagePath,
+                            downloadUrl: widget.downloadUrl,
+                            useLocalImage: _useLocalImage,
+                            useDownloadUrl: _useDownloadUrl,
                             width: 354 / 393 * screenWidth,
                             height: 471 / 852 * screenHeight,
-                            clipBehavior: Clip.antiAlias,
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(16),
-                              child: _buildImageWidget(),
-                            ),
                           ),
-                          SizedBox(height: 40 / 852 * screenHeight),
-                          // Record UI
-                          GestureDetector(
-                            onTap: _isRecording ? null : _startRecording,
-                            child: Container(
-                              height: 64,
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              decoration: BoxDecoration(
-                                color: Colors.grey.shade900,
-                                borderRadius: BorderRadius.circular(32),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (_isRecording)
-                                    GestureDetector(
-                                      onTap: _stopRecording,
-                                      child: Container(
-                                        width: 32,
-                                        height: 32,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey.shade800,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          Icons.delete,
-                                          color: Colors.white,
-                                          size: 18,
-                                        ),
-                                      ),
-                                    ),
-                                  if (_isRecording)
-                                    SizedBox(width: 12 / 393 * screenWidth),
-                                  _isRecording
-                                      ? AudioWaveforms(
-                                        size: Size(
-                                          160 / 393 * screenWidth,
-                                          50 / 852 * screenHeight,
-                                        ),
-                                        recorderController: recorderController,
-                                        waveStyle: const WaveStyle(
-                                          waveColor: Colors.white,
-                                          extendWaveform: true,
-                                          showMiddleLine: false,
-                                        ),
-                                      )
-                                      : Icon(
-                                        Icons.mic,
-                                        color: Colors.white,
-                                        size: 32 / 393 * screenWidth,
-                                      ),
-                                  if (_isRecording)
-                                    SizedBox(width: 12 / 393 * screenWidth),
-                                  if (_isRecording)
-                                    Consumer<AudioViewModel>(
-                                      builder:
-                                          (context, vm, child) => Text(
-                                            vm.formattedRecordingDuration,
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 14 / 393 * screenWidth,
-                                            ),
-                                          ),
-                                    ),
-                                ],
-                              ),
-                            ),
+                          SizedBox(height: 20 / 852 * screenHeight),
+                          // 오디오 녹음 위젯
+                          AudioRecorderWidget(
+                            onRecordingCompleted: null, // AudioViewModel에서 처리
                           ),
                         ],
                       ),
@@ -413,12 +341,11 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
         ),
       ),
       bottomSheet: DraggableScrollableSheet(
-        controller: controller,
+        controller: _draggableScrollController,
         initialChildSize: 0.2,
         minChildSize: 0.2,
         maxChildSize: 0.8,
         expand: false,
-
         builder: (context, scrollController) {
           return Container(
             decoration: BoxDecoration(
@@ -442,9 +369,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                   ),
                 ),
 
-                // 헤더 영역: 제목과 닫기/뒤로가기 버튼
+                // 헤더 영역: 카테고리 추가 UI를 표시할 때 필요한 헤더
                 if (_showAddCategoryUI)
-                  // 뒤로가기 버튼을 더 크고 눈에 띄게 만들기
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -452,14 +378,12 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                         icon: Icon(Icons.arrow_back_ios, color: Colors.white),
                         onPressed: () {
                           // 뒤로가기 기능
-                          debugPrint("뒤로가기 클릭됨");
                           setState(() {
                             _showAddCategoryUI = false;
                             _categoryNameController.clear();
                           });
                         },
                       ),
-
                       Text(
                         '새 카테고리 만들기',
                         style: TextStyle(
@@ -470,64 +394,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                       ),
                       // 확인 버튼
                       ElevatedButton(
-                        onPressed: () async {
-                          // 카테고리 이름 검증
-                          if (_categoryNameController.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('카테고리 이름을 입력해주세요')),
-                            );
-                            return;
-                          }
-
-                          // 카테고리 저장 로직 호출
-                          try {
-                            final authViewModel = Provider.of<AuthViewModel>(
-                              context,
-                              listen: false,
-                            );
-                            final categoryViewModel =
-                                Provider.of<CategoryViewModel>(
-                                  context,
-                                  listen: false,
-                                );
-
-                            // 현재 사용자 정보 가져오기
-                            final String? userId = authViewModel.getUserId;
-                            final String userNickName =
-                                await authViewModel.getNickNameFromFirestore();
-
-                            // 메이트 리스트 준비 (여기서는 예시로 현재 사용자만 포함)
-                            List<String> mates = [userNickName];
-
-                            // 카테고리 생성
-                            await categoryViewModel.createCategory(
-                              _categoryNameController.text.trim(),
-                              mates,
-                              userId!,
-                            );
-
-                            // 화면 갱신
-                            _loadUserCategories();
-
-                            // 원래 화면으로 돌아가기
-                            setState(() {
-                              _showAddCategoryUI = false;
-                              _categoryNameController.clear();
-                            });
-
-                            // 성공 메시지
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('카테고리가 생성되었습니다')),
-                            );
-                          } catch (e) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('카테고리 생성 중 오류가 발생했습니다')),
-                            );
-                          }
-                        },
+                        onPressed: _createNewCategory,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xff323232),
-
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -550,8 +419,21 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                     duration: Duration(milliseconds: 300),
                     child:
                         _showAddCategoryUI
-                            ? _buildAddCategoryUI(scrollController)
-                            : _buildCategoryListUI(scrollController),
+                            ? AddCategoryWidget(
+                              textController: _categoryNameController,
+                              scrollController: scrollController,
+                            )
+                            : CategoryListWidget(
+                              scrollController: scrollController,
+                              selectedCategoryId: _selectedCategoryId,
+                              onCategorySelected: _handleCategorySelection,
+                              onAddCategoryPressed: () {
+                                setState(() {
+                                  _showAddCategoryUI = true;
+                                });
+                              },
+                              isLoading: _loadingCategories,
+                            ),
                   ),
                 ),
               ],
@@ -562,235 +444,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
     );
   }
 
-  // 이미지 위젯을 결정하는 메소드 추가
-  Widget _buildImageWidget() {
-    // 로컬 이미지를 우선적으로 사용
-    if (_useLocalImage) {
-      return Image.file(
-        File(widget.imagePath!),
-        width: 354,
-        height: 471,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return const Icon(Icons.error, color: Colors.white);
-        },
-      );
-    }
-    // Firebase 다운로드 URL 사용
-    else if (_useDownloadUrl) {
-      return CachedNetworkImage(
-        imageUrl: widget.downloadUrl!,
-        width: 354,
-        height: 471,
-        fit: BoxFit.cover,
-        placeholder:
-            (context, url) => const Center(child: CircularProgressIndicator()),
-        errorWidget:
-            (context, url, error) =>
-                const Icon(Icons.error, color: Colors.white),
-      );
-    }
-    // 둘 다 없는 경우 에러 메시지 표시
-    else {
-      return const Center(
-        child: Text("이미지를 불러올 수 없습니다.", style: TextStyle(color: Colors.white)),
-      );
-    }
-  }
-
-  // 카테고리 아이템 위젯
-  Widget _buildCategoryItem({
-    String? imageUrl,
-    IconData? icon,
-    required String label,
-    required VoidCallback onTap,
-    String? categoryId, // 카테고리 ID 파라미터 추가
-  }) {
-    // 선택된 카테고리인지 확인 (전송 모드)
-    final bool isSelected =
-        categoryId != null && categoryId == _selectedCategoryId;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 80,
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 이미지 또는 아이콘 원형 컨테이너
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: icon != null ? Colors.grey.shade200 : Colors.transparent,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? Colors.blue : Colors.grey.shade300,
-                  width: isSelected ? 2 : 1,
-                ),
-              ),
-              child: ClipOval(
-                child:
-                    isSelected
-                        ? Icon(Icons.send, size: 30, color: Colors.blue)
-                        : icon != null
-                        ? Icon(icon, size: 30, color: Colors.grey.shade700)
-                        : (imageUrl != null && imageUrl.isNotEmpty)
-                        ? CachedNetworkImage(
-                          imageUrl: imageUrl,
-                          fit: BoxFit.cover,
-                          placeholder:
-                              (context, url) => Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                ),
-                              ),
-                          errorWidget:
-                              (context, url, error) => Icon(
-                                Icons.image,
-                                size: 30,
-                                color: Colors.grey.shade400,
-                              ),
-                        )
-                        : Icon(
-                          Icons.image,
-                          size: 30,
-                          color: Colors.grey.shade400,
-                        ),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // 카테고리 이름
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: isSelected ? Colors.blue : Colors.white,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // 카테고리 목록 UI 위젯
-  Widget _buildCategoryListUI(ScrollController scrollController) {
-    return _loadingCategories
-        ? Center(child: CircularProgressIndicator())
-        : Consumer<CategoryViewModel>(
-          builder: (context, viewModel, child) {
-            final categories = viewModel.userCategories;
-
-            return GridView.builder(
-              key: ValueKey('category_list'),
-              controller: scrollController,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                childAspectRatio: 0.8,
-                crossAxisSpacing: 10,
-                mainAxisSpacing: 10,
-              ),
-              padding: const EdgeInsets.all(16),
-              itemCount: categories.isEmpty ? 1 : categories.length + 1,
-              itemBuilder: (context, index) {
-                if (index == 0) {
-                  return _buildCategoryItem(
-                    icon: Icons.add,
-                    label: '추가하기',
-                    onTap: () {
-                      // 상태 변경으로 카테고리 추가 UI 표시
-                      setState(() {
-                        _showAddCategoryUI = true;
-                      });
-                    },
-                  );
-                } else if (categories.isEmpty) {
-                  return Center(
-                    child: Text(
-                      '카테고리가 없습니다.\n추가해 보세요!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey, fontSize: 14),
-                    ),
-                  );
-                } else {
-                  final category = categories[index - 1];
-                  final categoryId = category['id'];
-
-                  return StreamBuilder<String?>(
-                    stream: viewModel.getFirstPhotoUrlStream(categoryId),
-                    builder: (context, asyncSnapshot) {
-                      return _buildCategoryItem(
-                        imageUrl: asyncSnapshot.data,
-                        label: category['name'],
-                        categoryId: categoryId, // 카테고리 ID 전달
-                        onTap: () {
-                          // 카테고리 클릭 처리
-                          if (_selectedCategoryId == categoryId) {
-                            // 이미 선택된 카테고리를 다시 클릭했을 때 (전송 실행)
-                            _savePhotoAndAudioToCategory(categoryId);
-                          } else {
-                            // 새로운 카테고리 선택 (선택 모드로 변경)
-                            setState(() {
-                              _selectedCategoryId = categoryId;
-                              _isSendMode = true;
-                            });
-                            debugPrint('선택된 카테고리: ${category['name']} (전송 모드)');
-                          }
-                        },
-                      );
-                    },
-                  );
-                }
-              },
-            );
-          },
-        );
-  }
-
-  // 카테고리 추가 UI 위젯
-  Widget _buildAddCategoryUI(ScrollController scrollController) {
-    return SingleChildScrollView(
-      key: ValueKey('add_category'),
-      controller: scrollController,
-      padding: EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // 카테고리 이름 입력 필드
-          TextField(
-            controller: _categoryNameController,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: Colors.grey.shade100,
-              hintText: '카테고리 이름 입력',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-            ),
-          ),
-          SizedBox(height: 20),
-
-          // 선택된 메이트 보여주기 영역 (필요시 구현)
-        ],
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _categoryNameController.dispose();
-    recorderController.dispose();
     super.dispose();
   }
 }

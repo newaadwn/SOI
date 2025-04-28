@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:io';
 import '../../theme/theme.dart';
-import '../../view_model/category_view_model.dart';
 import 'photo_editor_screen.dart';
-import 'package:provider/provider.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -14,8 +11,6 @@ class CameraScreen extends StatefulWidget {
 }
 
 class _CameraScreenState extends State<CameraScreen> {
-  late CategoryViewModel _categoryViewModel;
-
   // Swift와 통신할 플랫폼 채널
   static const MethodChannel platform = MethodChannel('com.soi.camera');
   String imagePath = '';
@@ -52,7 +47,6 @@ class _CameraScreenState extends State<CameraScreen> {
       // 사진 촬영 후 처리
       if (result.isNotEmpty) {
         // 이미지 파일 생성
-        final imageFile = File(result);
 
         // 옵션 1: 로컬 파일 경로만 사용하여 편집 화면으로 이동 (Firebase 사용 안 함)
         Navigator.push(
@@ -154,10 +148,6 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   Widget build(BuildContext context) {
     if (!_isInitialized) {
-      _categoryViewModel = Provider.of<CategoryViewModel>(
-        context,
-        listen: false,
-      );
       _isInitialized = true;
     }
     double screenWidth = MediaQuery.of(context).size.width;
