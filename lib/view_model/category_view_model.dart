@@ -53,12 +53,12 @@ class CategoryViewModel extends ChangeNotifier {
   /// 모든 카테고리 데이터를 가져오면서
   /// 각 카테고리의 첫번째 사진 URL과 프로필 이미지들을 함께 합친 스트림
   Stream<List<Map<String, dynamic>>> streamUserCategoriesWithDetails(
-    String nickName,
+    String id,
     AuthViewModel authViewModel,
   ) {
     return _firestore
         .collection('categories')
-        .where('mates', arrayContains: nickName)
+        .where('mates', arrayContains: id)
         .snapshots()
         .asyncMap((querySnapshot) async {
           final results = <Map<String, dynamic>>[];
@@ -152,7 +152,7 @@ class CategoryViewModel extends ChangeNotifier {
   Future<void> saveEditedPhoto(
     Future<ui.Image> capturedImageFuture,
     String categoryId,
-    String nickName,
+    String id,
     String? audioFilePath,
     AudioViewModel audioViewModel,
     String captionString,
@@ -181,7 +181,7 @@ class CategoryViewModel extends ChangeNotifier {
       }
 
       // 사진 업로드 (context 의존성이 제거된 uploadPhoto로 처리)
-      await uploadPhoto(categoryId, nickName, filePath, audioUrl);
+      await uploadPhoto(categoryId, id, filePath, audioUrl);
     } catch (e) {
       debugPrint('Error saving edited photo: $e');
     }
@@ -189,6 +189,20 @@ class CategoryViewModel extends ChangeNotifier {
 
   Future<String?> uploadPhotoStorage(File imageFile) async {
     try {
+      // 파일 존재 여부 확인
+      if (!await imageFile.exists()) {
+        debugPrint('이미지 파일이 존재하지 않습니다: ${imageFile.path}');
+        throw Exception('Image file does not exist: ${imageFile.path}');
+      }
+
+      // 이미지 읽기 가능 여부 확인
+      try {
+        await imageFile.readAsBytes();
+      } catch (e) {
+        debugPrint('이미지 파일을 읽을 수 없습니다: $e');
+        throw Exception('Cannot read image file: $e');
+      }
+
       // 이미지 색상 보정 (Flutter에서)
       final img = await decodeImageFromList(imageFile.readAsBytesSync());
       final recorder = ui.PictureRecorder();
@@ -220,7 +234,7 @@ class CategoryViewModel extends ChangeNotifier {
   /// uploadPhoto의 context 매개변수를 제거하여 UI와 분리한 버전
   Future<void> uploadPhoto(
     String categoryId,
-    String nickName,
+    String id,
     String filePath,
     String audioUrl, {
     String? imageUrl, // 이미 있는 이미지 URL을 위한 선택적 매개변수 추가
@@ -267,11 +281,11 @@ class CategoryViewModel extends ChangeNotifier {
       final photo = PhotoModel(
         imageUrl: downloadUrl,
         createdAt: Timestamp.now(),
-        userNickname: nickName,
         userIds: userIds,
-        userId: '', // 필요 시 현재 사용자 ID 또는 관련 값을 할당
+        userID: id, // 필요 시 현재 사용자 ID 또는 관련 값을 할당
         audioUrl: audioUrl,
         id: photoId,
+
         //captionString: captionString,
       );
 
@@ -357,11 +371,11 @@ class CategoryViewModel extends ChangeNotifier {
   }
 
   /// 특정 유저 닉네임을 포함하는 카테고리 목록을 스트림으로 반환
-  Stream<List<Map<String, dynamic>>> streamUserCategories(String nickName) {
+  Stream<List<Map<String, dynamic>>> streamUserCategories(String id) {
     // Firestore의 snapshots()를 이용해 실시간 업데이트를 감지합니다.
     return _firestore
         .collection('categories')
-        .where('mates', arrayContains: nickName)
+        .where('mates', arrayContains: id)
         .snapshots()
         .map(
           (querySnapshot) =>
@@ -393,8 +407,8 @@ class CategoryViewModel extends ChangeNotifier {
   }
 
   /// 카테고리에 사용자 닉네임 추가
-  Future<void> addUserToCategory(String categoryId, String nickName) async {
-    await _updateCategoryField(categoryId, 'mates', nickName);
+  Future<void> addUserToCategory(String categoryId, String id) async {
+    await _updateCategoryField(categoryId, 'mates', id);
   }
 
   /// 카테고리에 사용자 UID 추가

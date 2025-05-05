@@ -5,14 +5,14 @@ import '../../theme/theme.dart';
 import '../../view_model/auth_view_model.dart';
 
 class AuthFinalScreen extends StatelessWidget {
-  final String nickname;
+  final String id;
   final String name;
   final String phone;
   final String birthDate;
 
   const AuthFinalScreen({
     super.key,
-    required this.nickname,
+    required this.id,
     required this.name,
     required this.phone,
     required this.birthDate,
@@ -43,8 +43,7 @@ class AuthFinalScreen extends StatelessWidget {
                 try {
                   await authViewModel.createUserInFirestore(
                     authViewModel.getCurrentUserId!,
-                    "",
-                    nickname,
+                    id,
                     name,
                     phone,
                     birthDate,

@@ -47,7 +47,7 @@ class _MyRecordScreenState extends State<MyRecordScreen> {
     super.initState();
     // 이메일이나 닉네임을 미리 가져와요.
     final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
-    authViewModel.getNickNameFromFirestore().then((value) {
+    authViewModel.getIdFromFirestore().then((value) {
       setState(() {
         nickName = value;
       });

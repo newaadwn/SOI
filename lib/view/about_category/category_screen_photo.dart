@@ -40,7 +40,7 @@ class _CategoryScreenPhotoState extends State<CategoryScreenPhoto> {
       appBar: _buildAppBar(categoryViewModel),
       body: FutureBuilder<String>(
         // Firestore에서 사용자의 닉네임을 가져옴
-        future: authViewModel.getNickNameFromFirestore(),
+        future: authViewModel.getIdFromFirestore(),
         builder: (context, nicknameSnapshot) {
           return SingleChildScrollView(
             child: StreamBuilder<List<PhotoModel>>(

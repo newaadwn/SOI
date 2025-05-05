@@ -345,7 +345,7 @@ class _CategoryAddScreenState extends State<CategoryAddScreen> {
                           // AuthViewModel에서 현재 닉네임과 userId 가져오기
                           final String? userId = authViewModel.getUserId;
                           final String userNickName =
-                              await authViewModel.getNickNameFromFirestore();
+                              await authViewModel.getIdFromFirestore();
 
                           // 현재 CategoryViewModel의 selectedNames는 사용자가 추가한 다른 친구들입니다.
                           List<String> mates = List.from(

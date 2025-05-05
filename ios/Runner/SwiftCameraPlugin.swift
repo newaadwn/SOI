@@ -136,6 +136,18 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
             settings.flashMode = flashMode
         }
         
+        // ✅ 수정: 볼륨을 일시적으로 0으로 설정하여 촬영 소리 비활성화 시도
+        let audioSession = AVAudioSession.sharedInstance()
+        let previousCategory = audioSession.category
+        let previousVolume = AVAudioSession.sharedInstance().outputVolume
+        
+        do {
+            try audioSession.setCategory(.playback, mode: .default, options: .mixWithOthers)
+            try audioSession.setActive(true)
+        } catch {
+            print("오디오 세션 설정 오류: \(error)")
+        }
+        
         // 디바이스 자동 설정 적용
         if let currentDevice = currentDevice {
             do {

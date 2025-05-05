@@ -137,7 +137,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
 
     try {
       // 현재 사용자 닉네임 가져오기
-      final userNickName = await _authViewModel.getNickNameFromFirestore();
+      final userNickName = await _authViewModel.getIdFromFirestore();
       String imagePath = '';
 
       // 로컬 이미지 경로나 다운로드 URL 중 하나 선택
@@ -254,8 +254,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
     try {
       // 현재 사용자 정보 가져오기
       final String? userId = _authViewModel.getUserId;
-      final String userNickName =
-          await _authViewModel.getNickNameFromFirestore();
+      final String userNickName = await _authViewModel.getIdFromFirestore();
 
       // 메이트 리스트 준비 (여기서는 예시로 현재 사용자만 포함)
       List<String> mates = [userNickName];

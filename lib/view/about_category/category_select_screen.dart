@@ -46,7 +46,7 @@ class _CategorySelectScreenState extends State<CategorySelectScreen> {
           ),
           Expanded(
             child: FutureBuilder<String>(
-              future: authViewModel.getNickNameFromFirestore(),
+              future: authViewModel.getIdFromFirestore(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());

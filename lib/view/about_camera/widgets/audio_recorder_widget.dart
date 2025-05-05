@@ -85,7 +85,17 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         final bool isRecording = viewModel.isRecording;
 
         return GestureDetector(
-          onTap: isRecording ? null : _startRecording,
+          onLongPressStart: (details) {
+            if (!isRecording) {
+              _startRecording();
+            }
+          },
+          onLongPressEnd: (details) {
+            if (isRecording) {
+              _stopRecording();
+            }
+          },
+
           child: Container(
             height: 64,
             padding: const EdgeInsets.symmetric(horizontal: 16),

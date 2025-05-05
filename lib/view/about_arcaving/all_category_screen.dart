@@ -1,38 +1,3 @@
-/*
- * AllCategoryScreen
- * 
- * 이 파일은 사용자의 모든 카테고리(개인 및 공유 카테고리)를 그리드 형태로 보여주는 화면입니다.
- * 
- * 기능:
- * 1. Firebase에서 사용자의 닉네임을 가져옵니다.
- * 2. 닉네임을 기반으로 사용자가 접근할 수 있는 모든 카테고리를 실시간으로 불러옵니다.
- * 3. 카테고리를 그리드 형태로 표시하며, 각 카테고리는 대표 이미지와 이름을 포함합니다.
- * 4. 각 카테고리에 참여하는 사용자들의 프로필 이미지를 작은 원형 아이콘으로 표시합니다.
- * 5. 카테고리를 탭하면 해당 카테고리의 사진들을 볼 수 있는 ShowPhotoScreen으로 이동합니다.
- * 
- * 데이터 흐름:
- * - AuthViewModel을 통해 현재 로그인한 사용자의 닉네임을 Firebase에서 가져옵니다.
- * - CategoryViewModel의 streamUserCategoriesWithDetails 메서드를 사용하여 
- *   사용자가 접근할 수 있는 모든 카테고리의 실시간 스트림을 구독합니다.
- * - StreamBuilder를 사용하여 카테고리 데이터가 변경될 때마다 UI를 자동으로 업데이트합니다.
- * - 카테고리를 클릭하면 해당 카테고리의 ID와 이름을 ShowPhotoScreen에 전달합니다.
- * 
- * 주요 위젯:
- * - StreamBuilder: Firebase의 실시간 데이터 스트림을 구독하여 UI를 업데이트합니다.
- * - GridView.builder: 카테고리를 2열 그리드 형태로 효율적으로 표시합니다.
- * - CircleAvatar: 참여자 프로필 이미지를 원형으로 표시합니다.
- * - SingleChildScrollView: 카테고리가 많을 경우 스크롤할 수 있게 합니다.
- * - InkWell: 카테고리 항목에 탭 동작을 추가합니다.
- * 
- * 상태 관리:
- * - nickName: 사용자의 닉네임을 저장하는 상태 변수입니다. 이 값이 로드되기 전에는 
- *   로딩 인디케이터를 표시합니다.
- * 
- * 참고사항:
- * - 화면의 크기에 따라 UI 요소의 크기가 자동으로 조정됩니다(반응형 디자인).
- * - 카테고리가 없을 경우 '등록된 카테고리가 없습니다.' 메시지를 표시합니다.
- */
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
@@ -55,7 +20,7 @@ class _AllCategoryScreenState extends State<AllCategoryScreen> {
     super.initState();
     // 이메일이나 닉네임을 미리 가져와요.
     final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
-    authViewModel.getNickNameFromFirestore().then((value) {
+    authViewModel.getIdFromFirestore().then((value) {
       setState(() {
         nickName = value;
       });
@@ -111,6 +76,7 @@ class _AllCategoryScreenState extends State<AllCategoryScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
+
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: categoryViewModel.streamUserCategoriesWithDetails(
           nickName!,
@@ -172,7 +138,6 @@ class _AllCategoryScreenState extends State<AllCategoryScreen> {
                         child: InkWell(
                           // 탭하면 사진 화면으로 이동해요.
                           onTap: () {
-                            print(category['profileImages']);
                             Navigator.push(
                               context,
                               MaterialPageRoute(

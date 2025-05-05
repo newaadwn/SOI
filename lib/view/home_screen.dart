@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../theme/theme.dart';
 import '../view_model/auth_view_model.dart';
 import '../view_model/category_view_model.dart';
+import 'widgets/custom_drawer.dart'; // 커스텀 Drawer 임포트 추가
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
+
       appBar: AppBar(
         title: Text(
           'SOI',
@@ -32,6 +34,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
         toolbarHeight: 70 / 852 * screenHeight,
+
         actions: [
           IconButton(
             onPressed: () {
@@ -46,7 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: FutureBuilder<String>(
-        future: authViewModel.getNickNameFromFirestore(),
+        future: authViewModel.getIdFromFirestore(),
         builder: (context, nickSnapshot) {
           if (nickSnapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());

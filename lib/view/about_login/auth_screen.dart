@@ -22,7 +22,7 @@ class _AuthScreenState extends State<AuthScreen> {
   String smsCode = '';
   String name = '';
   String birthDate = '';
-  String nickName = '';
+  String id = '';
 
   // 현재 페이지 인덱스
   int currentPage = 0;
@@ -129,7 +129,7 @@ class _AuthScreenState extends State<AuthScreen> {
           //     인증번호 입력 페이지
           _buildSmsCodePage(screenHeight),
           // 4. 닉네임 입력 페이지
-          _buildNickNamePage(screenHeight),
+          _buildIdPage(screenHeight),
         ],
       ),
     );
@@ -444,7 +444,7 @@ class _AuthScreenState extends State<AuthScreen> {
   // -------------------------
   // 5. 닉네임 입력 페이지
   // -------------------------
-  Widget _buildNickNamePage(double screenHeight) {
+  Widget _buildIdPage(double screenHeight) {
     return _buildScrollContainer(
       screenHeight,
       _buildInputPage(
@@ -453,13 +453,13 @@ class _AuthScreenState extends State<AuthScreen> {
         keyboardType: TextInputType.text,
         buttonText: '다음',
         onNext: (value) {
-          nickName = value;
+          id = value;
           Navigator.push(
             context,
             MaterialPageRoute(
               builder:
                   (context) => AuthFinalScreen(
-                    nickname: nickName,
+                    id: id,
                     name: name,
                     phone: phoneNumber,
                     birthDate: birthDate,

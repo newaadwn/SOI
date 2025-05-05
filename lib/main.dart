@@ -45,6 +45,8 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -56,7 +58,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         initialRoute: '/',
-
+        debugShowCheckedModeBanner: false,
         routes: {
           '/': (context) => const StartScreen(),
           '/home': (context) => const HomeScreen(),

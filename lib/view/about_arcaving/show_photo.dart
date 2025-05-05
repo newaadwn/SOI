@@ -31,8 +31,6 @@
  * - 랜덤 높이를 생성하여 시각적으로 더 다양한 그리드 레이아웃을 만듭니다.
  * - 캘린더 버튼 기능은 아직 구현되지 않았습니다.
  */
-
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';

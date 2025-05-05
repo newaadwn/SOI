@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:iconify_flutter/icons/uil.dart';
-import 'package:iconify_flutter/iconify_flutter.dart';
+import 'package:flutter_swift_camera/view/widgets/custom_drawer.dart';
+import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
 import 'all_category_screen.dart';
 import 'my_record_screen.dart';
 import 'share_record_screen.dart';
+import '../../../view_model/auth_view_model.dart';
 
 class ArchivingScreen extends StatefulWidget {
   const ArchivingScreen({super.key});
@@ -13,86 +14,159 @@ class ArchivingScreen extends StatefulWidget {
   State<ArchivingScreen> createState() => _ArchivingScreenState();
 }
 
-class _ArchivingScreenState extends State<ArchivingScreen>
-    with TickerProviderStateMixin {
-  late final TabController _tabController;
+class _ArchivingScreenState extends State<ArchivingScreen> {
+  int _selectedIndex = 0;
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
+  // 탭 화면 목록
+  final List<Widget> _screens = const [
+    AllCategoryScreen(),
+    MyRecordScreen(),
+    ShareRecordScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
     double screenHeight = MediaQuery.of(context).size.height;
+    double screenWidth = MediaQuery.of(context).size.width;
 
-    return DefaultTabController(
-      initialIndex: 1,
-      length: 3,
-      child: Scaffold(
+    return Scaffold(
+      backgroundColor: AppTheme.lightTheme.colorScheme.surface,
+      drawer: CustomDrawer(),
+      appBar: AppBar(
+        centerTitle: true,
+        title: Text(
+          'SOI',
+          style: TextStyle(color: AppTheme.lightTheme.colorScheme.secondary),
+        ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        appBar: AppBar(
-          title: Text(
-            'SOI',
-            style: TextStyle(color: AppTheme.lightTheme.colorScheme.secondary),
-          ),
-          backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-          toolbarHeight: 70 / 852 * screenHeight,
-          actions: [
-            IconButton(
-              onPressed: () {},
-              icon: Iconify(Uil.setting, color: Colors.white, size: 30),
-            ),
-          ],
-          bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(60),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TabBar(
-                    controller: _tabController,
-                    dividerColor: Colors.transparent,
-                    indicatorColor: Colors.white,
-                    labelColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color: Color(0xFFD9D9D9),
-                      fontSize: 17.9 / 852 * screenHeight,
-                      fontFamily: 'Pretendard Variable',
-                      fontWeight: FontWeight.w600,
+        toolbarHeight: 70 / 852 * screenHeight,
+        leading: Consumer<AuthViewModel>(
+          builder: (context, authViewModel, _) {
+            return FutureBuilder<String>(
+              future: authViewModel.getIdFromFirestore(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
                     ),
-                    tabs: <Widget>[
-                      Tab(text: '전체'),
-                      Tab(text: '나의 기록'),
-                      Tab(text: '공유 기록'),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () {},
-                  icon: Icon(Icons.search, color: Colors.white),
-                ),
-                IconButton(
-                  onPressed: () {},
-                  icon: Icon(Icons.add, color: Colors.white),
-                ),
+                  );
+                }
+
+                return StreamBuilder<List>(
+                  stream: authViewModel.getprofileImages([snapshot.data ?? '']),
+                  builder: (context, imageSnapshot) {
+                    String profileImageUrl = '';
+                    if (imageSnapshot.hasData &&
+                        imageSnapshot.data!.isNotEmpty) {
+                      profileImageUrl = imageSnapshot.data!.first as String;
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1),
+                        ),
+                        child: Builder(
+                          builder:
+                              (context) =>
+                                  profileImageUrl.isNotEmpty
+                                      ? InkWell(
+                                        onTap: () {
+                                          Scaffold.of(context).openDrawer();
+                                        },
+                                        child: SizedBox(
+                                          width: 34,
+                                          height: 34,
+                                          child: CircleAvatar(
+                                            backgroundImage: NetworkImage(
+                                              profileImageUrl,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      : InkWell(
+                                        onTap: () {
+                                          Scaffold.of(context).openDrawer();
+                                        },
+                                        child: const CircleAvatar(
+                                          backgroundColor: Colors.grey,
+                                          child: Icon(
+                                            Icons.person,
+                                            color: Colors.white,
+                                            size: 34,
+                                          ),
+                                        ),
+                                      ),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            );
+          },
+        ),
+        actions: [
+          IconButton(
+            onPressed: () {},
+            icon: Image.asset('assets/person_add.png', width: 19, height: 19),
+          ),
+          IconButton(
+            onPressed: () {},
+            icon: Icon(Icons.add, color: Colors.white),
+          ),
+        ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(60),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildChip('전체', 0),
+                const SizedBox(width: 8),
+                _buildChip('나의 기록', 1),
+                const SizedBox(width: 8),
+                _buildChip('공유 기록', 2),
               ],
             ),
           ),
         ),
-        body: TabBarView(
-          controller: _tabController,
-          children: const <Widget>[
-            AllCategoryScreen(),
-            MyRecordScreen(),
-            ShareRecordScreen(),
-          ],
+      ),
+      body: _screens[_selectedIndex],
+    );
+  }
+
+  // 선택 가능한 Chip 위젯 생성
+  Widget _buildChip(String label, int index) {
+    final isSelected = _selectedIndex == index;
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedIndex = index;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? Color(0xff292929) : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
         ),
       ),
     );
