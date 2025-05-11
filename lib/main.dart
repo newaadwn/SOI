@@ -11,9 +11,10 @@ import 'package:flutter_swift_camera/view/about_category/category_select_screen.
 import 'package:flutter_swift_camera/view/home_navigator_screen.dart';
 import 'package:flutter_swift_camera/view/home_screen.dart';
 import 'package:provider/provider.dart';
-import 'view/about_login/auth_screen.dart';
+import 'view/about_login/register_screen.dart';
 import 'view/about_login/login_screen.dart';
 import 'view/about_login/start_screen.dart';
+import 'view/about_setting/privacy.dart';
 import 'view_model/auth_view_model.dart';
 import 'view_model/category_view_model.dart';
 import 'view_model/audio_view_model.dart';
@@ -77,6 +78,8 @@ class MyApp extends StatelessWidget {
           '/share_record': (context) => const ShareRecordScreen(),
           '/my_record': (context) => const MyRecordScreen(),
           '/all_category': (context) => const AllCategoryScreen(),
+
+          '/privacy_policy': (context) => const PrivacyPolicyScreen(),
         },
         theme: ThemeData(iconTheme: IconThemeData(color: Colors.white)),
       ),

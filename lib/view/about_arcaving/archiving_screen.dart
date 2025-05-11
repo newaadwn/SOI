@@ -42,70 +42,73 @@ class _ArchivingScreenState extends State<ArchivingScreen> {
         toolbarHeight: 70 / 852 * screenHeight,
         leading: Consumer<AuthViewModel>(
           builder: (context, authViewModel, _) {
-            return FutureBuilder<String>(
-              future: authViewModel.getIdFromFirestore(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
+            return FutureBuilder(
+              future: authViewModel.getUserProfileImageUrl(),
+              builder: (context, imageSnapshot) {
+                String profileImageUrl = imageSnapshot.data ?? '';
+
+                return Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 1),
                     ),
-                  );
-                }
-
-                return StreamBuilder<List>(
-                  stream: authViewModel.getprofileImages([snapshot.data ?? '']),
-                  builder: (context, imageSnapshot) {
-                    String profileImageUrl = '';
-                    if (imageSnapshot.hasData &&
-                        imageSnapshot.data!.isNotEmpty) {
-                      profileImageUrl = imageSnapshot.data!.first as String;
-                    }
-
-                    return Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 1),
-                        ),
-                        child: Builder(
-                          builder:
-                              (context) =>
-                                  profileImageUrl.isNotEmpty
-                                      ? InkWell(
-                                        onTap: () {
-                                          Scaffold.of(context).openDrawer();
-                                        },
-                                        child: SizedBox(
-                                          width: 34,
-                                          height: 34,
-                                          child: CircleAvatar(
-                                            backgroundImage: NetworkImage(
-                                              profileImageUrl,
-                                            ),
-                                          ),
+                    child: Builder(
+                      builder:
+                          (context) =>
+                              profileImageUrl.isNotEmpty
+                                  ? InkWell(
+                                    onTap: () {
+                                      Scaffold.of(context).openDrawer();
+                                    },
+                                    child: SizedBox(
+                                      width: 34,
+                                      height: 34,
+                                      child: CircleAvatar(
+                                        backgroundImage: NetworkImage(
+                                          profileImageUrl,
                                         ),
-                                      )
-                                      : InkWell(
-                                        onTap: () {
-                                          Scaffold.of(context).openDrawer();
+                                        onBackgroundImageError: (
+                                          exception,
+                                          stackTrace,
+                                        ) {
+                                          debugPrint(
+                                            '프로필 이미지 로드 오류: $exception',
+                                          );
+                                          // 유효하지 않은 이미지 URL을 정리
+                                          Future.microtask(
+                                            () =>
+                                                authViewModel
+                                                    .cleanInvalidProfileImageUrl(),
+                                          );
                                         },
-                                        child: const CircleAvatar(
-                                          backgroundColor: Colors.grey,
-                                          child: Icon(
-                                            Icons.person,
-                                            color: Colors.white,
-                                            size: 34,
-                                          ),
-                                        ),
+                                        child:
+                                            profileImageUrl.isEmpty
+                                                ? const Icon(
+                                                  Icons.person,
+                                                  color: Colors.white,
+                                                  size: 24,
+                                                )
+                                                : null,
                                       ),
-                        ),
-                      ),
-                    );
-                  },
+                                    ),
+                                  )
+                                  : InkWell(
+                                    onTap: () {
+                                      Scaffold.of(context).openDrawer();
+                                    },
+                                    child: const CircleAvatar(
+                                      backgroundColor: Colors.grey,
+                                      child: Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                        size: 34,
+                                      ),
+                                    ),
+                                  ),
+                    ),
+                  ),
                 );
               },
             );

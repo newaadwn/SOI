@@ -58,7 +58,7 @@ class AuthFinalScreen extends StatelessWidget {
                 }
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                backgroundColor: Color(0xff323232),
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

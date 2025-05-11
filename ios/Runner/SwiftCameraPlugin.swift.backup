@@ -1,0 +1,553 @@
+import Flutter
+import UIKit
+import AVFoundation
+
+// 간단한 카메라 플러그인 구현
+public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDelegate {
+    var captureSession: AVCaptureSession?
+    var photoOutput: AVCapturePhotoOutput?
+    var currentDevice: AVCaptureDevice?
+    var flashMode: AVCaptureDevice.FlashMode = .off
+    var isUsingFrontCamera: Bool = false
+    var photoCaptureResult: FlutterResult?
+    
+    public static func register(with registrar: FlutterPluginRegistrar) {
+        // 플랫폼 채널 등록 및 핸들러 설정
+        let channel = FlutterMethodChannel(name: "com.soi.camera", binaryMessenger: registrar.messenger())
+        let instance = SwiftCameraPlugin()
+        registrar.addMethodCallDelegate(instance, channel: channel)
+        
+        // 카메라 초기화
+        instance.setupCamera()
+        
+        // 플랫폼 뷰 등록 - nil 체크 추가
+        guard let captureSession = instance.captureSession else {
+            print("경고: 카메라 세션이 초기화되지 않았습니다")
+            return
+        }
+        
+        // 플랫폼 뷰 팩토리 등록
+        registrar.register(
+            CameraPreviewFactory(captureSession: captureSession),
+            withId: "com.soi.camera/preview"
+        )
+    }
+    
+    // 기본 카메라 설정
+    func setupCamera() {
+        captureSession = AVCaptureSession()
+        captureSession?.sessionPreset = .photo
+        
+        // 기본 후면 카메라 설정
+        if let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) {
+            currentDevice = device
+            beginSession()
+        }
+    }
+    
+    // 카메라 세션 시작
+    func beginSession() {
+        guard let session = captureSession, let device = currentDevice else { return }
+        
+        do {
+            // 카메라 입력 설정
+            let input = try AVCaptureDeviceInput(device: device)
+            if session.canAddInput(input) {
+                session.addInput(input)
+            }
+            
+            // 사진 출력 설정
+            photoOutput = AVCapturePhotoOutput()
+            if let photoOutput = photoOutput, session.canAddOutput(photoOutput) {
+                session.addOutput(photoOutput)
+            }
+            
+            // 세션 시작
+            DispatchQueue.global(qos: .userInitiated).async {
+                session.startRunning()
+            }
+        } catch {
+            print("카메라 세션 설정 오류: \(error)")
+        }
+    }
+    
+    // 플랫폼 채널 메서드 처리
+    public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        switch call.method {
+        case "initCamera":
+            initCamera(result: result)
+        case "takePicture":
+            takePicture(result: result)    
+        case "switchCamera":
+            switchCamera(result: result)
+        case "setFlash":
+            setFlash(call: call, result: result)
+        case "pauseCamera":
+            pauseCamera(result: result)
+        case "resumeCamera":
+            resumeCamera(result: result)
+        case "disposeCamera":
+            disposeCamera(result: result)
+        case "optimizeCamera":
+            optimizeCamera(result: result)
+        default:
+            result(FlutterMethodNotImplemented)
+        }
+    }
+
+    // ✅ 추가: 카메라 초기화 메서드
+    func initCamera(result: @escaping FlutterResult) {
+        // 이미 setupCamera에서 초기화되었으므로 성공 반환
+        if captureSession == nil {
+            setupCamera()
+        }
+        result("Camera initialized")
+    }   
+    
+    // 촬영 기능
+    func takePicture(result: @escaping FlutterResult) {
+        guard let photoOutput = self.photoOutput else {
+            result(FlutterError(code: "NO_PHOTO_OUTPUT", message: "Photo output not available", details: nil))
+            return
+        }
+        
+        // 수정된 이미지 설정 - 컬러 스페이스와 포맷 설정 추가
+        let settings = AVCapturePhotoSettings(format: [
+            AVVideoCodecKey: AVVideoCodecType.jpeg
+        ])
+        
+        // HEIF 대신 JPEG 사용 (iOS 11 이상)
+        if #available(iOS 11.0, *) {
+            settings.previewPhotoFormat = nil // 불필요한 프리뷰 설정 제거
+            
+            // 고품질 이미지 설정
+            settings.isHighResolutionPhotoEnabled = true
+            
+            // 자동 이미지 처리 설정
+            if #available(iOS 13.0, *) {
+                // 최대 허용 우선순위를 넘지 않도록 설정
+                let maxPriority = photoOutput.maxPhotoQualityPrioritization
+                if maxPriority.rawValue >= AVCapturePhotoOutput.QualityPrioritization.quality.rawValue {
+                    settings.photoQualityPrioritization = .quality
+                } else {
+                    settings.photoQualityPrioritization = maxPriority
+                }
+            }
+        }
+        
+        // 플래시 설정
+        if currentDevice?.hasFlash == true {
+            settings.flashMode = flashMode
+        }
+        
+        // ✅ 수정: 볼륨을 일시적으로 0으로 설정하여 촬영 소리 비활성화 시도
+        let audioSession = AVAudioSession.sharedInstance()
+        let previousCategory = audioSession.category
+        let previousVolume = AVAudioSession.sharedInstance().outputVolume
+        
+        do {
+            try audioSession.setCategory(.playback, mode: .default, options: .mixWithOthers)
+            try audioSession.setActive(true)
+        } catch {
+            print("오디오 세션 설정 오류: \(error)")
+        }
+        
+        // 디바이스 자동 설정 적용
+        if let currentDevice = currentDevice {
+            do {
+                try currentDevice.lockForConfiguration()
+                
+                // 자동 화이트 밸런스 설정
+                if currentDevice.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+                    currentDevice.whiteBalanceMode = .continuousAutoWhiteBalance
+                }
+                
+                // 자동 노출 설정
+                if currentDevice.isExposureModeSupported(.continuousAutoExposure) {
+                    currentDevice.exposureMode = .continuousAutoExposure
+                }
+                
+                // 자동 초점 설정
+                if currentDevice.isFocusModeSupported(.continuousAutoFocus) {
+                    currentDevice.focusMode = .continuousAutoFocus
+                }
+                
+                currentDevice.unlockForConfiguration()
+            } catch {
+                print("카메라 설정 실패: \(error)")
+            }
+        }
+        
+        photoCaptureResult = result
+        photoOutput.capturePhoto(with: settings, delegate: self)
+    }
+    
+    // 촬영 완료 후 델리게이트 메서드
+    public func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        if let error = error {
+            photoCaptureResult?(FlutterError(code: "CAPTURE_ERROR", message: error.localizedDescription, details: nil))
+            return
+        }
+        
+        // 색상 처리가 개선된 이미지 데이터 획득 방식
+        var imageData: Data?
+        
+        if #available(iOS 11.0, *) {
+            // 수정: sRGB 색상 공간으로 변환된 이미지 데이터 생성
+            if let cgImage = photo.cgImageRepresentation() {
+                // 이미지 방향 수정: 전면 카메라의 경우 좌우 반전 적용
+                let orientation: UIImage.Orientation = isUsingFrontCamera ? .leftMirrored : .right
+                
+                // 색상 처리 방식 변경
+                let uiImage = UIImage(cgImage: cgImage, scale: 1.0, orientation: orientation)
+                
+                // RGB 색상 채널 균형 조정
+                let ciImage = CIImage(cgImage: cgImage)
+                let filter = CIFilter(name: "CIColorControls")
+                filter?.setValue(ciImage, forKey: kCIInputImageKey)
+                filter?.setValue(1.0, forKey: kCIInputSaturationKey) // 색상 포화도 정상화
+                filter?.setValue(0.0, forKey: kCIInputBrightnessKey) // 밝기 조정 없음
+                
+                if let outputImage = filter?.outputImage {
+                    let context = CIContext()
+                    if let processedCGImage = context.createCGImage(outputImage, from: outputImage.extent) {
+                        let processedUIImage = UIImage(cgImage: processedCGImage, scale: 1.0, orientation: orientation)
+                        imageData = processedUIImage.jpegData(compressionQuality: 1.0)
+                    }
+                } else {
+                    imageData = uiImage.jpegData(compressionQuality: 1.0)
+                }
+            } else {
+                // 기본 JPEG 데이터 사용 (fallback)
+                imageData = photo.fileDataRepresentation()
+            }
+        } else {
+            imageData = photo.fileDataRepresentation()
+        }
+        
+        guard let imageData = imageData else {
+            photoCaptureResult?(FlutterError(code: "NO_IMAGE_DATA", message: "Could not get image data", details: nil))
+            return
+        }
+        
+        // 임시 디렉토리에 이미지 저장
+        let tempDir = NSTemporaryDirectory()
+        let filePath = tempDir + "/\(UUID().uuidString).jpg"
+        let fileURL = URL(fileURLWithPath: filePath)
+        do {
+            try imageData.write(to: fileURL)
+            photoCaptureResult?(filePath)
+        } catch {
+            photoCaptureResult?(FlutterError(code: "FILE_SAVE_ERROR", message: error.localizedDescription, details: nil))
+        }
+    }
+    
+    // 카메라 전환 기능 (후면 <-> 전면)
+    func switchCamera(result: @escaping FlutterResult) {
+        guard let captureSession = captureSession,
+              let currentInput = captureSession.inputs.first as? AVCaptureDeviceInput else {
+            result(FlutterError(code: "NO_CAMERA", message: "No current camera", details: nil))
+            return
+        }
+        captureSession.beginConfiguration()
+        captureSession.removeInput(currentInput)
+        isUsingFrontCamera.toggle()
+        let newPosition: AVCaptureDevice.Position = isUsingFrontCamera ? .front : .back
+        if let newDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: newPosition) {
+            currentDevice = newDevice
+            do {
+                let newInput = try AVCaptureDeviceInput(device: newDevice)
+                if captureSession.canAddInput(newInput) {
+                    captureSession.addInput(newInput)
+                }
+            } catch {
+                result(FlutterError(code: "SWITCH_ERROR", message: error.localizedDescription, details: nil))
+                captureSession.commitConfiguration()
+                return
+            }
+        }
+        captureSession.commitConfiguration()
+        result("Camera switched")
+    }
+    
+    // 플래시 토글 기능 (on/off)
+    func toggleFlash(result: @escaping FlutterResult) {
+        flashMode = (flashMode == .off) ? .on : .off
+        result("Flash toggled")
+    }
+    
+    // 플래시 설정 기능
+    func setFlash(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        guard let args = call.arguments as? [String: Any],
+              let isOn = args["isOn"] as? Bool else {
+            result(FlutterError(code: "INVALID_ARGS", message: "Missing or invalid isOn parameter", details: nil))
+            return
+        }
+        
+        flashMode = isOn ? .on : .off
+        result("Flash set to \(isOn ? "on" : "off")")
+    }
+
+    // 모달 방식으로 카메라 프리뷰를 띄우는 메서드
+    func openCameraPreview(result: @escaping FlutterResult) {
+        DispatchQueue.main.async {
+            // 루트 뷰 컨트롤러 가져오기
+            if let rootVC = UIApplication.shared.windows.first?.rootViewController {
+                // CameraViewController 인스턴스 생성 (아래의 CameraViewController.swift 참고)
+                let cameraVC = CameraViewController()
+                cameraVC.modalPresentationStyle = .fullScreen // 전체 화면으로 표시
+                rootVC.present(cameraVC, animated: true) {
+                    result("Camera preview opened")
+                }
+            } else {
+                result(FlutterError(code: "NO_ROOT_VC", message: "No root view controller available", details: nil))
+            }
+        }
+    }
+    
+    // ✅ 추가: 카메라 최적화 메서드
+    func optimizeCamera(result: @escaping FlutterResult) {
+        guard let currentDevice = currentDevice else {
+            result(FlutterError(code: "NO_CAMERA", message: "No camera available", details: nil))
+            return
+        }
+        
+        do {
+            try currentDevice.lockForConfiguration()
+            
+            // 자동 화이트 밸런스 설정
+            if currentDevice.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+                currentDevice.whiteBalanceMode = .continuousAutoWhiteBalance
+            }
+            
+            // 자동 노출 설정
+            if currentDevice.isExposureModeSupported(.continuousAutoExposure) {
+                currentDevice.exposureMode = .continuousAutoExposure
+                
+                // 노출 보정 설정 (약간 밝게)
+                if currentDevice.isExposurePointOfInterestSupported {
+                    currentDevice.exposurePointOfInterest = CGPoint(x: 0.5, y: 0.5)
+                    
+                    if currentDevice.exposureMode == .continuousAutoExposure || 
+                       currentDevice.exposureMode == .autoExpose {
+                        // 약간 밝게 조정 (0.0이 기본값, 양수는 밝게, 음수는 어둡게)
+                        currentDevice.setExposureTargetBias(0.3, completionHandler: nil)
+                    }
+                }
+            }
+            
+            // 자동 초점 설정
+            if currentDevice.isFocusModeSupported(.continuousAutoFocus) {
+                currentDevice.focusMode = .continuousAutoFocus
+                if currentDevice.isFocusPointOfInterestSupported {
+                    currentDevice.focusPointOfInterest = CGPoint(x: 0.5, y: 0.5)
+                }
+            }
+            
+            // 성능 향상 설정: iOS 15 이상에서 고품질 사진 포맷 선택
+            if #available(iOS 15.0, *) {
+                let formats = currentDevice.formats
+                if let bestFormat = formats.first(where: { format in
+                    let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+                    return CMFormatDescriptionGetMediaType(format.formatDescription) == kCMMediaType_Video &&
+                           dimensions.width >= 1920 && dimensions.height >= 1080 &&
+                           format.isHighPhotoQualitySupported
+                }) {
+                    currentDevice.activeFormat = bestFormat
+                }
+            } else {
+                // iOS 12~14: 해상도 기준으로 포맷 선택
+                let formats = currentDevice.formats
+                if let fallbackFormat = formats.first(where: { format in
+                    let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+                    return CMFormatDescriptionGetMediaType(format.formatDescription) == kCMMediaType_Video &&
+                           dimensions.width >= 1920 && dimensions.height >= 1080
+                }) {
+                    currentDevice.activeFormat = fallbackFormat
+                }
+            }
+            
+            // 캡처 품질 우선 설정
+            currentDevice.unlockForConfiguration()
+            result("Camera optimized")
+        } catch {
+            result(FlutterError(code: "OPTIMIZATION_ERROR", message: error.localizedDescription, details: nil))
+        }
+    }
+    
+    // MARK: - Camera Lifecycle Management
+    
+    // 카메라 일시 정지
+    func pauseCamera(result: @escaping FlutterResult) {
+        guard let captureSession = captureSession, captureSession.isRunning else {
+            result(FlutterError(code: "SESSION_ERROR", message: "Camera session is not running", details: nil))
+            return
+        }
+        
+        captureSession.stopRunning()
+        result("Camera paused")
+    }
+    
+    // 카메라 재개 - 더 강력한 처리 추가
+    func resumeCamera(result: @escaping FlutterResult) {
+        // 세션이 nil이거나 무효화되었다면 다시 생성
+        if captureSession == nil {
+            setupCamera()
+            guard let captureSession = captureSession else {
+                result(FlutterError(code: "INIT_ERROR", message: "Failed to reinitialize camera session", details: nil))
+                return
+            }
+            
+            // 새 세션 시작
+            if !captureSession.isRunning {
+                DispatchQueue.global(qos: .userInitiated).async {
+                    captureSession.startRunning()
+                }
+            }
+            result("Camera reinitialized and resumed")
+            return
+        }
+        
+        // 세션이 이미 실행 중이면 성공 반환
+        guard let captureSession = captureSession, !captureSession.isRunning else {
+            result("Camera session is already running")
+            return
+        }
+        
+        // 기존 세션 다시 시작
+        DispatchQueue.global(qos: .userInitiated).async {
+            captureSession.startRunning()
+        }
+        result("Camera resumed")
+    }
+    
+    // 카메라 리소스 해제
+    func disposeCamera(result: @escaping FlutterResult) {
+        guard let captureSession = captureSession else {
+            result(FlutterError(code: "SESSION_ERROR", message: "Camera session is not initialized", details: nil))
+            return
+        }
+        
+        // 모든 입력 및 출력을 세션에서 제거
+        for input in captureSession.inputs {
+            captureSession.removeInput(input)
+        }
+        for output in captureSession.outputs {
+            captureSession.removeOutput(output)
+        }
+        
+        // 세션 중지
+        captureSession.stopRunning()
+        self.captureSession = nil
+        self.photoOutput = nil
+        self.currentDevice = nil
+        
+        result("Camera disposed")
+    }
+}
+
+// MARK: - Platform View 구현
+
+// ✅ 추가: 카메라 프리뷰를 위한 플랫폼 뷰 팩토리
+class CameraPreviewFactory: NSObject, FlutterPlatformViewFactory {
+    private let captureSession: AVCaptureSession
+    
+    init(captureSession: AVCaptureSession) {
+        self.captureSession = captureSession
+        super.init()
+    }
+    
+    func create(withFrame frame: CGRect, viewIdentifier viewId: Int64, arguments args: Any?) -> FlutterPlatformView {
+        return CameraPreviewView(
+            frame: frame,
+            viewIdentifier: viewId,
+            arguments: args,
+            captureSession: captureSession
+        )
+    }
+    
+    func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
+        return FlutterStandardMessageCodec.sharedInstance()
+    }
+}
+
+// ➊ PreviewView 정의
+class PreviewView: UIView {
+  override func layoutSubviews() {
+    super.layoutSubviews()
+    if let layer = layer as? AVCaptureVideoPreviewLayer {
+      layer.videoGravity = .resizeAspectFill
+      layer.connection?.videoOrientation = .portrait
+      
+      // 개선된 품질 설정 추가
+      layer.contentsScale = UIScreen.main.scale  // 디스플레이 스케일에 맞추기
+      layer.minificationFilter = .trilinear       // 품질 향상을 위한 필터 적용
+      layer.magnificationFilter = .trilinear      // 품질 향상을 위한 필터 적용
+    }
+  }
+  
+  override class var layerClass: AnyClass {
+    return AVCaptureVideoPreviewLayer.self
+  }
+}
+
+class CameraPreviewView: NSObject, FlutterPlatformView {
+  private var _view: PreviewView
+  private var previewLayer: AVCaptureVideoPreviewLayer?
+
+  init(frame: CGRect, viewIdentifier: Int64, arguments args: Any?, captureSession: AVCaptureSession) {
+    _view = PreviewView(frame: frame)
+    super.init()
+    
+    // 매개변수 확인
+    var useSRGBColorSpace = false
+    var viewId: String? = nil
+    
+    if let argsDict = args as? [String: Any] {
+      if let colorSpace = argsDict["useSRGBColorSpace"] as? Bool {
+        useSRGBColorSpace = colorSpace
+      }
+      // 추가: 뷰 ID 확인 (Flutter에서 전달되는 고유 식별자)
+      if let id = argsDict["viewId"] as? String {
+        viewId = id
+        print("카메라 뷰 생성 - 뷰 ID: \(id)")
+      }
+    }
+    
+    // 세션 유효성 검사 및 재시작
+    if captureSession.isRunning == false {
+      print("카메라 세션이 실행 중이 아님, 다시 시작합니다")
+      DispatchQueue.global(qos: .userInitiated).async {
+        captureSession.startRunning()
+      }
+    }
+    
+    // 캡처 세션 품질 설정 개선
+    if captureSession.sessionPreset != .photo {
+        captureSession.sessionPreset = .photo
+    }
+    
+    previewLayer = _view.layer as? AVCaptureVideoPreviewLayer
+    previewLayer?.session = captureSession
+    previewLayer?.videoGravity = .resizeAspectFill
+    previewLayer?.connection?.videoOrientation = .portrait
+    
+    // 미리보기 품질 향상 설정
+    previewLayer?.contentsScale = UIScreen.main.scale * 2  // 고해상도 설정
+    previewLayer?.minificationFilter = .trilinear
+    previewLayer?.magnificationFilter = .trilinear
+    
+    _view.frame = frame
+    _view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    
+    // 세션 확인 및 시작 - 동기화 문제 해결
+    if !captureSession.isRunning {
+      DispatchQueue.global(qos: .userInitiated).async { 
+        captureSession.startRunning() 
+        print("플랫폼 뷰에서 세션 시작됨 \(String(describing: viewId))")
+      }
+    }
+  }
+
+  func view() -> UIView { _view }
+}

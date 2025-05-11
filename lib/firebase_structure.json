@@ -1,0 +1,51 @@
+
+{
+    "users": {
+      "{uid}": {
+        "uid": "Firebase Auth UID",
+        "createdAt": "Timestamp",
+        "lastLogin": "Timestamp",
+        "id": "사용자 닉네임/아이디",
+        "name": "사용자 이름",
+        "phone": "전화번호(0 제외)",
+        "birth_date": "생년월일",
+        "profile_image": "프로필 이미지 URL"
+      }
+    },
+    "categories": {
+      "{categoryId}": {
+        "name": "카테고리 이름",
+        "imageUrl": "카테고리 이미지 URL",
+        "userId": ["카테고리 생성자 ID"],
+        "mates": ["카테고리에 속한 사용자 ID"],
+        "photos": {
+          "{photoId}": {
+            "imageUrl": "사진 URL",
+            "createdAt": "Timestamp",
+            "audioUrl": "음성 녹음 URL (선택)",
+            "caption": "사진 설명",
+            "comments": {
+              "{nickName}": {
+                "createdAt": "Timestamp",
+                "userNickname": "댓글 작성자 닉네임",
+                "audioUrl": "음성 댓글 URL",
+                "userId": "댓글 작성자 UID"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+
+  {
+    "storages": {
+      "categories_audio": {
+        "audio_{timestamp}.m4a": "사진에 첨부된 오디오 파일"
+      },
+      "categories_comments_audio": {
+        "{nickName}_comment_{seconds}": "댓글에 첨부된 오디오 파일"
+      }
+    }
+  }

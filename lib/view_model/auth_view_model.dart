@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:http/http.dart' as http;
 
 class AuthViewModel extends ChangeNotifier {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -51,16 +52,37 @@ class AuthViewModel extends ChangeNotifier {
       return Stream.value([]);
     }
 
+    debugPrint('Fetching profile images for mates: $mates');
+
     return _firestore
         .collection('users')
         .where('id', whereIn: mates)
         .snapshots()
-        .map(
-          (querySnapshot) =>
-              querySnapshot.docs
-                  .map((doc) => doc['profile_image'] as String)
-                  .toList(),
-        );
+        .map((querySnapshot) {
+          // mates에 정확히 매치되는 프로필 이미지만 추출합니다
+          List<String> profileImages = [];
+          for (var doc in querySnapshot.docs) {
+            try {
+              String userId = doc['id'] as String;
+              String profileImage = doc['profile_image'] as String;
+
+              // 유효한 프로필 이미지만 추가 (빈 문자열이나 null이 아닌)
+              if (mates.contains(userId) && profileImage.isNotEmpty) {
+                profileImages.add(profileImage);
+                debugPrint(
+                  'Added profile image for user $userId: $profileImage',
+                );
+              } else if (profileImage.isEmpty) {
+                debugPrint('User $userId has empty profile image');
+              }
+            } catch (e) {
+              debugPrint('Error processing user doc: $e');
+            }
+          }
+
+          debugPrint('Final profile images count: ${profileImages.length}');
+          return profileImages;
+        });
   }
 
   void clearSearchResults() {
@@ -461,7 +483,7 @@ class AuthViewModel extends ChangeNotifier {
       // 이미지 선택
       final XFile? pickedImage = await _imagePicker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 80, // 이미지 품질 (0-100)
+        imageQuality: 100, // 이미지 품질 (0-100)
       );
 
       if (pickedImage == null) {
@@ -526,7 +548,7 @@ class AuthViewModel extends ChangeNotifier {
 
       // 2. 파일 이름 생성 (고유한 파일명 보장)
       final String fileName =
-          'profile_${uid}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          'profile_${uid}_${DateTime.now().millisecondsSinceEpoch}.png';
 
       // 3. Firebase Storage에 업로드
       final Reference storageRef = FirebaseStorage.instance
@@ -542,7 +564,7 @@ class AuthViewModel extends ChangeNotifier {
         uploadTask = storageRef.putFile(compressedFile);
       } else if (compressedFile is XFile) {
         // If compression returned an XFile object
-        uploadTask = storageRef.putFile(File((compressedFile as XFile).path));
+        uploadTask = storageRef.putFile(File((compressedFile).path));
       } else {
         // Fallback to original file if compression result is unexpected
         uploadTask = storageRef.putFile(imageFile);
@@ -595,6 +617,65 @@ class AuthViewModel extends ChangeNotifier {
       debugPrint('프로필 이미지 업데이트 중 오류 발생: $e');
       Fluttertoast.showToast(msg: '프로필 이미지를 업데이트하는 중 오류가 발생했습니다');
       return false;
+    }
+  }
+
+  Future<void> deleteUser() async {
+    try {
+      // Firestore에서 사용자 문서 삭제
+      String? uid = _auth.currentUser?.uid;
+      if (uid != null) {
+        await _firestore.collection('users').doc(uid).delete();
+        debugPrint('Firestore에서 사용자 문서 삭제 완료');
+      }
+
+      // Firebase Authentication에서 사용자 삭제
+      _auth.currentUser?.delete();
+      //FirebaseAuth.instance.currentUser!.delete();
+      debugPrint('Firebase Authentication에서 사용자 삭제 완료');
+    } catch (e) {
+      debugPrint('사용자 삭제 중 오류 발생: $e');
+    }
+  }
+
+  /// 프로필 이미지 URL이 유효한지 확인하는 함수
+  Future<bool> isValidImageUrl(String imageUrl) async {
+    if (imageUrl.isEmpty) return false;
+
+    try {
+      // Firebase Storage의 URL이라면 URL 구조를 검사
+      if (imageUrl.contains('firebasestorage.googleapis.com')) {
+        // HTTP 헤더만 요청하여 이미지가 존재하는지 확인 (빠른 방법)
+        final http.Response response = await http.head(Uri.parse(imageUrl));
+        return response.statusCode == 200;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('이미지 URL 확인 중 오류 발생: $e');
+      return false;
+    }
+  }
+
+  /// 유효하지 않은 프로필 이미지 URL을 초기화하는 함수
+  Future<void> cleanInvalidProfileImageUrl() async {
+    try {
+      final String? uid = _auth.currentUser?.uid;
+      if (uid == null) return;
+
+      // 현재 사용자의 프로필 이미지 URL 가져오기
+      final String profileImageUrl = await getUserProfileImageUrl();
+
+      // URL이 유효하지 않으면 빈 문자열로 초기화
+      if (profileImageUrl.isNotEmpty &&
+          !(await isValidImageUrl(profileImageUrl))) {
+        debugPrint('유효하지 않은 프로필 이미지 URL 초기화: $profileImageUrl');
+        await _firestore.collection('users').doc(uid).update({
+          'profile_image': '',
+        });
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('프로필 이미지 URL 정리 중 오류 발생: $e');
     }
   }
 }

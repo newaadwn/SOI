@@ -8,17 +8,7 @@ class StartScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
-    // AuthViewModel authViewModel = Provider.of<AuthViewModel>(
-    //  context,
-    //  listen: false,
-    //);
 
-    // 로그인 상태 확인
-    /*WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (authViewModel.isLoggedIn) {
-        Navigator.pushReplacementNamed(context, '/home_screen');
-      }
-    });*/
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       body: Center(
@@ -36,7 +26,7 @@ class StartScreen extends StatelessWidget {
                 Navigator.pushNamed(context, '/auth');
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                backgroundColor: Color(0xff323232),
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -63,7 +53,7 @@ class StartScreen extends StatelessWidget {
                 Navigator.pushNamed(context, '/login');
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                backgroundColor: Color(0xff323232),
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

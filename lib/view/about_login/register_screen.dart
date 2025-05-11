@@ -76,13 +76,18 @@ class _AuthScreenState extends State<AuthScreen> {
                 onPressed: () {
                   _handleNextButtonPressed();
                 },
-                child: Text(
-                  "다음",
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppTheme.lightTheme.colorScheme.primary,
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Row(
+                  children: [
+                    Text(
+                      "다음",
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios, color: Colors.white),
+                  ],
                 ),
               ),
             ),
@@ -100,8 +105,8 @@ class _AuthScreenState extends State<AuthScreen> {
                 shape: BoxShape.circle,
                 color:
                     index == currentPage
-                        ? AppTheme.lightTheme.colorScheme.primary
-                        : Colors.grey.shade300,
+                        ? Color(0xff323232)
+                        : Color(0xffd9d9d9),
               ),
             );
           }),
@@ -204,7 +209,7 @@ class _AuthScreenState extends State<AuthScreen> {
               return hasPhoneValue
                   ? ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                      backgroundColor: Color(0xff323232),
                       minimumSize: Size(239, 44),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -307,7 +312,7 @@ class _AuthScreenState extends State<AuthScreen> {
               return hasCodeValue
                   ? ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                      backgroundColor: Color(0xff323232),
                       minimumSize: Size(239, 44),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),

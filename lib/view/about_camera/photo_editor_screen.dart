@@ -5,6 +5,7 @@ import '../../theme/theme.dart';
 import '../../view_model/audio_view_model.dart';
 import '../../view_model/category_view_model.dart';
 import '../../view_model/auth_view_model.dart';
+import 'camera_screen.dart'; // 카메라 화면 import 추가
 
 // 분리된 위젯들을 임포트
 import 'widgets/photo_display_widget.dart';
@@ -173,6 +174,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
           _isSendMode = false;
           _selectedCategoryId = null;
         });
+
+        // 카메라 화면으로 돌아가기 (pushReplacement 사용)
+        _navigateBackToCamera();
         return;
       }
 
@@ -199,13 +203,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
             ),
           );
         }
-      } else {
-        // 이미지 경로가 비어있는 경우
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('업로드할 이미지가 없습니다')));
-        }
+
+        // 사진 업로드 후 카메라 화면으로 돌아가기
+        _navigateBackToCamera();
       }
     } catch (e) {
       debugPrint('사진 및 음성 업로드 오류: $e');
@@ -284,6 +284,16 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text('카테고리 생성 중 오류가 발생했습니다')));
     }
+  }
+
+  // 카메라 화면으로 돌아가는 함수
+  void _navigateBackToCamera() {
+    // 카메라 화면으로 돌아갈 때 pushReplacement 사용하여
+    // 깔끔한 화면 전환 및 새로운 카메라 세션 시작
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => const CameraScreen()),
+    );
   }
 
   @override

@@ -72,7 +72,14 @@ class _MyRecordScreenState extends State<MyRecordScreen> {
             return SizedBox(
               width: 20,
               height: 20,
-              child: CircleAvatar(backgroundImage: NetworkImage(imageUrl)),
+              child: CircleAvatar(
+                backgroundImage: NetworkImage(imageUrl),
+                onBackgroundImageError: (exception, stackTrace) {
+                  debugPrint('이미지 로딩 오류: $exception');
+                },
+                child:
+                    imageUrl.isEmpty ? Image.asset('assets/profile.png') : null,
+              ),
             );
           }).toList(),
     );
@@ -199,12 +206,31 @@ class _MyRecordScreenState extends State<MyRecordScreen> {
                                         width: 175,
                                         height: 145,
                                         fit: BoxFit.cover,
+                                        errorBuilder: (
+                                          context,
+                                          error,
+                                          stackTrace,
+                                        ) {
+                                          debugPrint('카테고리 이미지 로드 오류: $error');
+                                          return Container(
+                                            width: 175,
+                                            height: 145,
+                                            color: const Color(0xFF383838),
+                                            child: const Icon(
+                                              Icons.image_not_supported,
+                                              color: Colors.white54,
+                                            ),
+                                          );
+                                        },
                                       ),
                                     )
                                     : SizedBox(
                                       width: 175,
                                       height: 145,
-                                      child: const Icon(Icons.photo),
+                                      child: const Icon(
+                                        Icons.photo,
+                                        color: Colors.white54,
+                                      ),
                                     ),
                                 SizedBox(
                                   height:

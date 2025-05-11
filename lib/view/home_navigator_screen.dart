@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/theme.dart';
+import '../view_model/auth_view_model.dart';
 import 'about_arcaving/archiving_screen.dart';
 import 'about_camera/camera_screen.dart';
 import 'home_screen.dart';
@@ -19,6 +21,23 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
   void initState() {
     super.initState();
     currentPageIndex = 1;
+
+    // 앱이 실행될 때 잘못된 프로필 이미지 URL을 확인하고 정리
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _cleanInvalidProfileImages();
+    });
+  }
+
+  // 잘못된 프로필 이미지 URL을 확인하고 정리하는 함수
+  Future<void> _cleanInvalidProfileImages() async {
+    try {
+      final authViewModel = Provider.of<AuthViewModel>(context, listen: false);
+      if (authViewModel.currentUser != null) {
+        await authViewModel.cleanInvalidProfileImageUrl();
+      }
+    } catch (e) {
+      debugPrint('프로필 이미지 정리 중 오류 발생: $e');
+    }
   }
 
   @override
@@ -67,12 +86,15 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
           ],
         ),
       ),
-      body:
-          <Widget>[
-            const HomeScreen(),
-            const CameraScreen(),
-            const ArchivingScreen(),
-          ][currentPageIndex],
+      body: IndexedStack(
+        index: currentPageIndex,
+        children: [
+          const HomeScreen(),
+          // 매번 새로운 카메라 스크린 인스턴스 생성
+          currentPageIndex == 1 ? CameraScreen(key: UniqueKey()) : Container(),
+          const ArchivingScreen(),
+        ],
+      ),
     );
   }
 }

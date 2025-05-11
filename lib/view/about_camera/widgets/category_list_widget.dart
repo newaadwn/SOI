@@ -15,13 +15,13 @@ class CategoryListWidget extends StatelessWidget {
   final bool isLoading;
 
   const CategoryListWidget({
-    Key? key,
+    super.key,
     required this.scrollController,
     this.selectedCategoryId,
     required this.onCategorySelected,
     required this.onAddCategoryPressed,
     required this.isLoading,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

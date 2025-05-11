@@ -50,6 +50,72 @@ class CategoryViewModel extends ChangeNotifier {
     }
   }
 
+  /// 카테고리 데이터를 가져오는 함수
+  Stream<List<Map<String, dynamic>>> streamUserCategories(String id) {
+    return _firestore
+        .collection('categories')
+        .where('mates', arrayContains: id)
+        .snapshots()
+        .asyncMap((querySnapshot) async {
+          final results = <Map<String, dynamic>>[];
+
+          for (final doc in querySnapshot.docs) {
+            final data = doc.data();
+            final categoryId = doc.id;
+            final mates = (data['mates'] as List).cast<String>();
+
+            // 첫번째 사진 URL을 한 번만 Future로 가져오기
+            final photosSnapshot =
+                await _firestore
+                    .collection('categories')
+                    .doc(categoryId)
+                    .collection('photos')
+                    .orderBy('createdAt', descending: false)
+                    .limit(1)
+                    .get();
+
+            String? firstPhotoUrl;
+            if (photosSnapshot.docs.isNotEmpty) {
+              firstPhotoUrl =
+                  photosSnapshot.docs.first.data()['imageUrl'] as String?;
+            }
+
+            results.add({
+              'id': categoryId,
+              'name': data['name'],
+              'mates': mates,
+              'firstPhotoUrl': firstPhotoUrl,
+            });
+          }
+          return results;
+        });
+  }
+
+  /// 카테고리에 속한 mates들의 프로필 이미지를 가져오는 함수
+  Future<List<String>> getCategoryProfileImages(
+    List<String> mates,
+    AuthViewModel authViewModel,
+  ) async {
+    if (mates.isEmpty) {
+      return [];
+    }
+
+    // mates 리스트에 대한 프로필 이미지만 가져오도록 수정
+    final completer = Completer<List<String>>();
+    final subscription = authViewModel
+        .getprofileImages(mates)
+        .listen(
+          (urls) {
+            completer.complete(urls.cast<String>());
+          },
+          onError: (e) {
+            completer.completeError(e);
+          },
+        );
+
+    return completer.future.whenComplete(() => subscription.cancel());
+  }
+
   /// 모든 카테고리 데이터를 가져오면서
   /// 각 카테고리의 첫번째 사진 URL과 프로필 이미지들을 함께 합친 스트림
   Stream<List<Map<String, dynamic>>> streamUserCategoriesWithDetails(
@@ -85,24 +151,25 @@ class CategoryViewModel extends ChangeNotifier {
             }
 
             // mates에 해당하는 프로필 이미지 목록 가져오기 (한 번만 Future로 처리)
-            final profileImages =
-                await (() async {
-                  if (mates.isEmpty) return [];
-                  final completer = Completer<List<String>>();
-                  final subscription = authViewModel
-                      .getprofileImages(mates)
-                      .listen(
-                        (urls) {
-                          completer.complete(urls.cast<String>());
-                        },
-                        onError: (e) {
-                          completer.completeError(e);
-                        },
-                      );
-                  return completer.future.whenComplete(
-                    () => subscription.cancel(),
+            var profileImages = <String>[];
+            if (mates.isNotEmpty) {
+              // mates 리스트에 대한 프로필 이미지만 가져오도록 수정
+              final completer = Completer<List<String>>();
+              final subscription = authViewModel
+                  .getprofileImages(mates)
+                  .listen(
+                    (urls) {
+                      // 가져온 프로필 이미지 중에서 mates에 속한 사용자의 이미지만 필터링
+                      completer.complete(urls.cast<String>());
+                    },
+                    onError: (e) {
+                      completer.completeError(e);
+                    },
                   );
-                })();
+              profileImages = await completer.future.whenComplete(
+                () => subscription.cancel(),
+              );
+            }
 
             results.add({
               'id': categoryId,
@@ -371,7 +438,7 @@ class CategoryViewModel extends ChangeNotifier {
   }
 
   /// 특정 유저 닉네임을 포함하는 카테고리 목록을 스트림으로 반환
-  Stream<List<Map<String, dynamic>>> streamUserCategories(String id) {
+  /*Stream<List<Map<String, dynamic>>> streamUserCategories(String id) {
     // Firestore의 snapshots()를 이용해 실시간 업데이트를 감지합니다.
     return _firestore
         .collection('categories')
@@ -389,7 +456,7 @@ class CategoryViewModel extends ChangeNotifier {
                   )
                   .toList(),
         );
-  }
+  }*/
 
   /// 새 카테고리 생성
   Future<void> createCategory(String name, List mates, String userId) async {
