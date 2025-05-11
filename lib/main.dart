@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_swift_camera/firebase_options.dart';
-import 'package:flutter_swift_camera/view/about_arcaving/archiving_screen.dart';
-import 'package:flutter_swift_camera/view/about_arcaving/all_category_screen.dart';
-import 'package:flutter_swift_camera/view/about_arcaving/my_record_screen.dart';
-import 'package:flutter_swift_camera/view/about_arcaving/share_record_screen.dart';
-import 'package:flutter_swift_camera/view/about_camera/camera_screen.dart';
-import 'package:flutter_swift_camera/view/about_category/category_add_screen.dart';
-import 'package:flutter_swift_camera/view/about_category/category_select_screen.dart';
-import 'package:flutter_swift_camera/view/home_navigator_screen.dart';
-import 'package:flutter_swift_camera/view/home_screen.dart';
+import 'package:flutter_swift_camera/views/about_arcaving/archiving_screen.dart';
+import 'package:flutter_swift_camera/views/about_arcaving/all_category_screen.dart';
+import 'package:flutter_swift_camera/views/about_arcaving/my_record_screen.dart';
+import 'package:flutter_swift_camera/views/about_arcaving/share_record_screen.dart';
+import 'package:flutter_swift_camera/views/about_camera/camera_screen.dart';
+import 'package:flutter_swift_camera/views/about_category/category_add_screen.dart';
+import 'package:flutter_swift_camera/views/about_category/category_select_screen.dart';
+import 'package:flutter_swift_camera/views/home_navigator_screen.dart';
+import 'package:flutter_swift_camera/views/home_screen.dart';
 import 'package:provider/provider.dart';
-import 'view/about_login/register_screen.dart';
-import 'view/about_login/login_screen.dart';
-import 'view/about_login/start_screen.dart';
-import 'view/about_setting/privacy.dart';
-import 'view_model/auth_view_model.dart';
-import 'view_model/category_view_model.dart';
-import 'view_model/audio_view_model.dart';
-import 'view_model/comment_view_model.dart';
+import 'views/about_login/register_screen.dart';
+import 'views/about_login/login_screen.dart';
+import 'views/about_login/start_screen.dart';
+import 'views/about_setting/privacy.dart';
+import 'controllers/auth_controller.dart';
+import 'controllers/category_controller.dart';
+import 'controllers/audio_controller.dart';
+import 'controllers/comment_controller.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:ui'; // PlatformDispatcher를 위해 필요
 
@@ -52,10 +52,24 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthViewModel()),
-        ChangeNotifierProvider(create: (_) => CategoryViewModel()),
-        ChangeNotifierProvider(create: (_) => AudioViewModel()),
-        ChangeNotifierProvider(create: (_) => CommentAudioViewModel()),
+        ChangeNotifierProvider(create: (_) => AuthController()),
+        ChangeNotifierProvider(create: (_) => CategoryController()),
+        ChangeNotifierProvider(
+          create: (_) {
+            final controller = AudioController();
+            // 미리 초기화 실행
+            controller.initialize();
+            return controller;
+          },
+        ),
+        ChangeNotifierProvider(
+          create: (_) {
+            final controller = CommentController();
+            // 미리 초기화 실행
+            controller.initialize();
+            return controller;
+          },
+        ),
       ],
       child: MaterialApp(
         initialRoute: '/',
