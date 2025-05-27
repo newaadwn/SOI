@@ -193,6 +193,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.0.5"
+  contacts_service:
+    dependency: "direct main"
+    description:
+      name: contacts_service
+      sha256: f6d5ea33b31dfcdcd2e65d8abdc836502e04ddb0f66a96aa726fa9891ea9671e
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.6.3"
   cross_file:
     dependency: transitive
     description:
@@ -225,14 +233,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.8"
-  equatable:
-    dependency: transitive
-    description:
-      name: equatable
-      sha256: "567c64b3cb4cf82397aac55f4f0cbd3ca20d77c6c03bedbc4ceaddc08904aef7"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.7"
   fake_async:
     dependency: transitive
     description:
@@ -398,6 +398,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.4.1"
+  flutter_contacts:
+    dependency: "direct main"
+    description:
+      name: flutter_contacts
+      sha256: "388d32cd33f16640ee169570128c933b45f3259bddbfae7a100bb49e5ffea9ae"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.9+2"
   flutter_firebase_recaptcha:
     dependency: "direct main"
     description:
@@ -664,14 +672,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.20.2"
-  intl_phone_number_input:
-    dependency: "direct main"
-    description:
-      name: intl_phone_number_input
-      sha256: "1c4328713a9503ab26a1fdbb6b00b4cada68c18aac922b35bedbc72eff1297c3"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.7.4"
   js:
     dependency: transitive
     description:
@@ -704,30 +704,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.1"
-  libphonenumber_platform_interface:
-    dependency: transitive
-    description:
-      name: libphonenumber_platform_interface
-      sha256: f801f6c65523f56504b83f0890e6dad584ab3a7507dca65fec0eed640afea40f
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.4.2"
-  libphonenumber_plugin:
-    dependency: transitive
-    description:
-      name: libphonenumber_plugin
-      sha256: c615021d9816fbda2b2587881019ed595ecdf54d999652d7e4cce0e1f026368c
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.3"
-  libphonenumber_web:
-    dependency: transitive
-    description:
-      name: libphonenumber_web
-      sha256: "8186f420dbe97c3132283e52819daff1e55d60d6db46f7ea5ac42f42a28cc2ef"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.3.2"
   lints:
     dependency: transitive
     description:
@@ -809,7 +785,7 @@ packages:
     source: hosted
     version: "2.1.0"
   path:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: path
       sha256: "75cca69d1490965be98c73ceaea117e8a04dd21217b37b292c9ddbec0d955bc5"
@@ -960,6 +936,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.4"
+  quiver:
+    dependency: transitive
+    description:
+      name: quiver
+      sha256: ea0b925899e64ecdfbf9c7becb60d5b50e706ade44a85b2363be2a22d88117d2
+      url: "https://pub.dev"
+    source: hosted
+    version: "3.2.2"
   rxdart:
     dependency: transitive
     description:
@@ -1157,38 +1141,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
-  webview_flutter:
-    dependency: "direct main"
-    description:
-      name: webview_flutter
-      sha256: caf0f5a1012aa3c2d33c4215adc72dc1194bb59a2d3ed901f457965626805e66
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.11.0"
-  webview_flutter_android:
-    dependency: "direct main"
-    description:
-      name: webview_flutter_android
-      sha256: "6b0eae02b7604954b80ee9a29507ac38f5de74b712faa6fee33abc1cdedc1b21"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.4.2"
-  webview_flutter_platform_interface:
-    dependency: transitive
-    description:
-      name: webview_flutter_platform_interface
-      sha256: "18b1640839cf6546784a524c72aded5b6e86b23e7167dc2311cc96f7658b64bd"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.11.0"
-  webview_flutter_wkwebview:
-    dependency: "direct main"
-    description:
-      name: webview_flutter_wkwebview
-      sha256: c9f9be526fa0d3347374ceaa05c4b3acb85f4f112abd62f7d74b7d301fa515ff
-      url: "https://pub.dev"
-    source: hosted
-    version: "3.20.0"
   win32:
     dependency: transitive
     description:

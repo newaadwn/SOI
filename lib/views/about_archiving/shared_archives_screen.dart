@@ -1,70 +1,77 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_swift_camera/controllers/category_controller.dart';
-import 'package:provider/provider.dart';
-import '../../controllers/auth_controller.dart';
-import '../../theme/theme.dart';
-import 'show_photo.dart';
+/*
+ * SharedArchivesScreen
+ * 
+ * 이 화면은 사용자가 다른 사용자와 공유한 카테고리(아카이빙)를 보여주는 화면입니다.
+ * 
+ * 기능:
+ * 1. 사용자의 닉네임을 Firebase에서 가져옵니다.
+ * 2. 현재 사용자가 다른 사용자들과 공유하고 있는 카테고리만 필터링하여 표시합니다.
+ * 3. 각 카테고리는 그리드 형태로 표시되며, 각 항목에는 대표 이미지와 카테고리 이름이 표시됩니다.
+ * 4. 카테고리 참여자들의 프로필 이미지가 작은 원형 아이콘으로 표시됩니다.
+ * 5. 카테고리를 탭하면 해당 카테고리의 사진을 모두 볼 수 있는 CategoryPhotosScreen으로 이동합니다.
+ * 
+ * 데이터 흐름:
+ * - AuthController을 통해 사용자의 닉네임을 가져옵니다.
+ * - CategoryController을 통해 사용자가 속한 카테고리 정보를 실시간으로 스트리밍합니다.
+ * - 카테고리 중 현재 사용자와 다른 사용자가 함께 있는 카테고리만 필터링합니다.
+ * 
+ * 주요 위젯:
+ * - GridView: 공유 카테고리를 그리드 형태로 표시합니다.
+ * - StreamBuilder: Firebase에서 실시간으로 카테고리 데이터를 가져옵니다.
+ */
 
-class AllCategoryScreen extends StatefulWidget {
-  const AllCategoryScreen({super.key});
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/category_controller.dart';
+import '../../theme/theme.dart';
+import '../../controllers/auth_controller.dart';
+import 'category_photos_screen.dart';
+
+class SharedArchivesScreen extends StatefulWidget {
+  const SharedArchivesScreen({super.key});
 
   @override
-  State<AllCategoryScreen> createState() => _AllCategoryScreenState();
+  State<SharedArchivesScreen> createState() => _SharedArchivesScreenState();
 }
 
-class _AllCategoryScreenState extends State<AllCategoryScreen> {
+class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
   String? nickName;
-  final Map<String, List<String>> _categoryProfileImages = {};
 
   @override
   void initState() {
     super.initState();
     // 이메일이나 닉네임을 미리 가져와요.
-    final authViewModel = Provider.of<AuthController>(context, listen: false);
-    authViewModel.getIdFromFirestore().then((value) {
+    final authController = Provider.of<AuthController>(context, listen: false);
+    authController.getIdFromFirestore().then((value) {
       setState(() {
         nickName = value;
       });
     });
   }
 
-  Widget _buildProfileRow(List<String> profileImages) {
-    // 이미지가 없거나 비어있으면 기본 이미지 하나만 표시
-    if (profileImages.isEmpty) {
-      return SizedBox(
-        width: 20,
-        height: 20,
-        child: Image.asset('assets/profile.png'),
-      );
-    }
-
-    // 최대 3개까지만 표시하도록 제한
-    final displayImages = profileImages.take(3).toList();
-
+  Widget _buildProfileRow(Map<String, dynamic> category) {
+    // profileImages 리스트 안의 각 항목을 확인해요.
+    final List images = category['profileImages'] as List;
     return Row(
       children:
-          displayImages.map<Widget>((imageUrl) {
+          images.map<Widget>((imageUrl) {
             // 만약 이미지가 빈 문자열이면, 기본 이미지를 보여줘요.
             if (imageUrl.toString().isEmpty) {
-              return Container(
+              return SizedBox(
                 width: 20,
                 height: 20,
-                margin: const EdgeInsets.only(right: 4),
                 child: Image.asset('assets/profile.png'),
               );
             }
             // 값이 있으면 해당 이미지를 원형으로 보여줘요.
-            return Container(
+            return SizedBox(
               width: 20,
               height: 20,
-              margin: const EdgeInsets.only(right: 4),
               child: CircleAvatar(
                 backgroundImage: NetworkImage(imageUrl),
                 onBackgroundImageError: (exception, stackTrace) {
-                  debugPrint('이미지 로딩 오류: $exception');
-                  // 에러 발생 시 별도 처리가 필요하면 여기에 추가
+                  debugPrint('프로필 이미지 로딩 오류: $exception');
                 },
-                // 이미지 로드 실패 시 기본 이미지 표시
                 child:
                     imageUrl.isEmpty ? Image.asset('assets/profile.png') : null,
               ),
@@ -73,39 +80,9 @@ class _AllCategoryScreenState extends State<AllCategoryScreen> {
     );
   }
 
-  // 카테고리에 대한 프로필 이미지를 가져오는 함수
-  Future<void> _loadProfileImages(String categoryId, List<String> mates) async {
-    // Skip if already loaded
-    if (_categoryProfileImages.containsKey(categoryId)) {
-      return;
-    }
-
-    final authController = Provider.of<AuthController>(context, listen: false);
-    final categoryController = Provider.of<CategoryController>(
-      context,
-      listen: false,
-    );
-
-    try {
-      final profileImages = await categoryController.getCategoryProfileImages(
-        mates,
-        authController,
-      );
-      setState(() {
-        _categoryProfileImages[categoryId] = profileImages;
-      });
-    } catch (e) {
-      debugPrint('프로필 이미지 로딩 오류: $e');
-      setState(() {
-        _categoryProfileImages[categoryId] = [];
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     // 화면의 너비와 높이를 가져와요.
-    double screenWidth = MediaQuery.of(context).size.width;
     double screenHeight = MediaQuery.of(context).size.height;
 
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
@@ -123,12 +100,15 @@ class _AllCategoryScreenState extends State<AllCategoryScreen> {
       context,
       listen: false,
     );
+    final authController = Provider.of<AuthController>(context, listen: false);
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        // 기존의 streamUserCategoriesWithDetails 대신 streamUserCategories 함수 사용
-        stream: categoryController.streamUserCategories(nickName!),
+        stream: categoryController.streamUserCategoriesWithDetails(
+          nickName!,
+          authController,
+        ),
         builder: (context, snapshot) {
           // 데이터가 불러오는 중일때
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -139,15 +119,22 @@ class _AllCategoryScreenState extends State<AllCategoryScreen> {
           // 에러가 생겼을 때
           if (snapshot.hasError) {
             return const Center(
-              child: Text(
-                '카테고리 로딩 중 오류가 발생했습니다.',
-                style: TextStyle(color: Colors.white),
-              ),
+              child: CircularProgressIndicator(color: Colors.white),
             );
           }
-          // 데이터 없으면
+
           final categories = snapshot.data ?? [];
-          if (categories.isEmpty) {
+          // 사용자 카테고리만 필터링합니다.
+          final userCategories =
+              categories
+                  .where(
+                    (category) =>
+                        ((category['mates'] as List).contains(nickName) &&
+                            category['mates'].length != 1),
+                  )
+                  .toList();
+
+          if (userCategories.isEmpty) {
             return const Center(
               child: Text(
                 '등록된 카테고리가 없습니다.',
@@ -156,18 +143,10 @@ class _AllCategoryScreenState extends State<AllCategoryScreen> {
             );
           }
 
-          // 모든 카테고리에 대해 프로필 이미지 로드 요청
-          for (var category in categories) {
-            final categoryId = category['id'] as String;
-            final mates = (category['mates'] as List).cast<String>();
-            _loadProfileImages(categoryId, mates);
-          }
-
-          // 데이터가 있으면 화면을 스크롤할 수 있도록 만듭니다.
           return SingleChildScrollView(
             child: Padding(
               padding: EdgeInsets.symmetric(
-                horizontal: (17 / 393) * screenWidth,
+                horizontal: (17 / 393) * MediaQuery.of(context).size.width,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -183,13 +162,9 @@ class _AllCategoryScreenState extends State<AllCategoryScreen> {
                           mainAxisSpacing: 8,
                           crossAxisSpacing: 8,
                         ),
-                    itemCount: categories.length,
+                    itemCount: userCategories.length,
                     itemBuilder: (context, index) {
-                      final category = categories[index];
-                      final categoryId = category['id'] as String;
-                      final profileImages =
-                          _categoryProfileImages[categoryId] ?? [];
-
+                      final category = userCategories[index];
                       return Container(
                         decoration: ShapeDecoration(
                           color: const Color(0xFF292929),
@@ -198,13 +173,12 @@ class _AllCategoryScreenState extends State<AllCategoryScreen> {
                           ),
                         ),
                         child: InkWell(
-                          // 탭하면 사진 화면으로 이동해요.
                           onTap: () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder:
-                                    (context) => ShowPhotoScreen(
+                                    (context) => CategoryPhotosScreen(
                                       categoryId: category['id'],
                                       categoryName: category['name'],
                                     ),
@@ -215,7 +189,6 @@ class _AllCategoryScreenState extends State<AllCategoryScreen> {
                             padding: const EdgeInsets.all(8.0),
                             child: Column(
                               children: [
-                                // 대표 사진을 보여줘요.
                                 category['firstPhotoUrl'] != null
                                     ? ClipRRect(
                                       borderRadius: BorderRadius.circular(6),
@@ -250,12 +223,16 @@ class _AllCategoryScreenState extends State<AllCategoryScreen> {
                                         color: Colors.white54,
                                       ),
                                     ),
-                                SizedBox(height: 8 / 852 * screenHeight),
+                                SizedBox(
+                                  height:
+                                      8 /
+                                      852 *
+                                      MediaQuery.of(context).size.height,
+                                ),
                                 Row(
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    // 카테고리 이름 보여줘요.
                                     Text(
                                       category['name'],
                                       style: TextStyle(
@@ -267,8 +244,7 @@ class _AllCategoryScreenState extends State<AllCategoryScreen> {
                                         fontSize: 16 / 852 * screenHeight,
                                       ),
                                     ),
-                                    // 프로필 사진들을 함수로 쉽게 보여줘요.
-                                    _buildProfileRow(profileImages),
+                                    _buildProfileRow(category),
                                   ],
                                 ),
                               ],

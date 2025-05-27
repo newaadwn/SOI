@@ -2,25 +2,27 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme.dart';
 import '../controllers/auth_controller.dart';
-import 'about_arcaving/archiving_screen.dart';
+import 'about_archiving/archive_main_screen.dart';
 import 'about_camera/camera_screen.dart';
 import 'home_screen.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 class HomePageNavigationBar extends StatefulWidget {
-  const HomePageNavigationBar({super.key});
+  final int currentPageIndex;
+
+  HomePageNavigationBar({super.key, required this.currentPageIndex});
 
   @override
   State<HomePageNavigationBar> createState() => _HomePageNavigationBarState();
 }
 
 class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
-  int currentPageIndex = 0;
+  late int _currentPageIndex;
 
   @override
   void initState() {
     super.initState();
-    currentPageIndex = 1;
+    _currentPageIndex = widget.currentPageIndex;
 
     // 앱이 실행될 때 잘못된 프로필 이미지 URL을 확인하고 정리
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -51,10 +53,10 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
           labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
           onDestinationSelected: (int index) {
             setState(() {
-              currentPageIndex = index;
+              _currentPageIndex = index;
             });
           },
-          selectedIndex: currentPageIndex,
+          selectedIndex: _currentPageIndex,
           destinations: <Widget>[
             const NavigationDestination(
               selectedIcon: Icon(Icons.home, color: Colors.white, size: 31),
@@ -87,12 +89,12 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
         ),
       ),
       body: IndexedStack(
-        index: currentPageIndex,
+        index: _currentPageIndex,
         children: [
           const HomeScreen(),
           // 매번 새로운 카메라 스크린 인스턴스 생성
-          currentPageIndex == 1 ? CameraScreen(key: UniqueKey()) : Container(),
-          const ArchivingScreen(),
+          _currentPageIndex == 1 ? CameraScreen(key: UniqueKey()) : Container(),
+          const ArchiveMainScreen(),
         ],
       ),
     );

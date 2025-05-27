@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:io';
 import '../../theme/theme.dart';
 import 'photo_editor_screen.dart';
 
@@ -323,23 +324,7 @@ class _CameraScreenState extends State<CameraScreen>
                   child: SizedBox(
                     width: 355 / 393 * screenWidth,
                     height: 472 / 852 * screenHeight,
-                    child: UiKitView(
-                      viewType: 'com.soi.camera/preview',
-                      onPlatformViewCreated: (int id) {
-                        debugPrint('카메라 뷰 생성됨: $id');
-
-                        // 카메라 뷰가 생성된 후 최적화 설정 - 지연 시간 축소
-                        Future.delayed(const Duration(milliseconds: 200), () {
-                          _optimizeCamera();
-                        });
-                      },
-                      creationParams: <String, dynamic>{
-                        'useSRGBColorSpace': true, // sRGB 색상 공간 사용 설정
-                        'useHighQuality': true, // 고품질 설정
-                        'resumeExistingSession': true, // 기존 세션 재사용 설정 추가
-                      },
-                      creationParamsCodec: const StandardMessageCodec(),
-                    ),
+                    child: _buildCameraPreview(),
                   ),
                 );
               },
@@ -406,28 +391,50 @@ class _CameraScreenState extends State<CameraScreen>
     );
   }
 
-  // ✅ 추가: 줌 옵션 버튼 위젯
-  /* Widget _buildZoomOption(String zoom) {
-    final isSelected = currentZoom == zoom;
-    return GestureDetector(
-      onTap: () => _setZoomLevel(zoom),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(15),
-        ),
-        child: Text(
-          zoom,
-          style: TextStyle(
-            color: isSelected ? Colors.black : Colors.white,
-            fontWeight: FontWeight.w600,
-            fontSize: 16,
-          ),
-        ),
-      ),
-    );
-  }*/
+  // 플랫폼에 따라 다른 카메라 프리뷰 위젯 생성
+  Widget _buildCameraPreview() {
+    if (Platform.isAndroid) {
+      return AndroidView(
+        viewType: 'com.soi.camera/preview',
+        onPlatformViewCreated: (int id) {
+          debugPrint('안드로이드 카메라 뷰 생성됨: $id');
+
+          // 카메라 뷰가 생성된 후 최적화 설정 - 지연 시간 축소
+          Future.delayed(const Duration(milliseconds: 200), () {
+            _optimizeCamera();
+          });
+        },
+        creationParams: <String, dynamic>{
+          'useSRGBColorSpace': true, // sRGB 색상 공간 사용 설정
+          'useHighQuality': true, // 고품질 설정
+          'resumeExistingSession': true, // 기존 세션 재사용 설정 추가
+        },
+        creationParamsCodec: const StandardMessageCodec(),
+      );
+    } else if (Platform.isIOS) {
+      return UiKitView(
+        viewType: 'com.soi.camera/preview',
+        onPlatformViewCreated: (int id) {
+          debugPrint('iOS 카메라 뷰 생성됨: $id');
+
+          // 카메라 뷰가 생성된 후 최적화 설정 - 지연 시간 축소
+          Future.delayed(const Duration(milliseconds: 200), () {
+            _optimizeCamera();
+          });
+        },
+        creationParams: <String, dynamic>{
+          'useSRGBColorSpace': true, // sRGB 색상 공간 사용 설정
+          'useHighQuality': true, // 고품질 설정
+          'resumeExistingSession': true, // 기존 세션 재사용 설정 추가
+        },
+        creationParamsCodec: const StandardMessageCodec(),
+      );
+    } else {
+      return Center(
+        child: Text('지원되지 않는 플랫폼입니다', style: TextStyle(color: Colors.white)),
+      );
+    }
+  }
 }
 
 // ✅ 추가: 그리드 라인 그리는 Custom Painter

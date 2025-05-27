@@ -170,7 +170,7 @@ class _LoginScreenState extends State<LoginScreen> {
               return hasPhoneValue
                   ? ElevatedButton(
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.lightTheme.colorScheme.primary,
+                      backgroundColor: Color(0xff323232),
                       minimumSize: Size(239, 44),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -327,8 +327,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       // 3. 그 외에는 인증하기 버튼 표시
                       : ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              AppTheme.lightTheme.colorScheme.primary,
+                          backgroundColor: Color(0xff323232),
                           minimumSize: Size(239, 44),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),

@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_swift_camera/firebase_options.dart';
-import 'package:flutter_swift_camera/views/about_arcaving/archiving_screen.dart';
-import 'package:flutter_swift_camera/views/about_arcaving/all_category_screen.dart';
-import 'package:flutter_swift_camera/views/about_arcaving/my_record_screen.dart';
-import 'package:flutter_swift_camera/views/about_arcaving/share_record_screen.dart';
+import 'package:flutter_swift_camera/views/about_archiving/archive_main_screen.dart';
+import 'package:flutter_swift_camera/views/about_archiving/all_archives_screen.dart';
+import 'package:flutter_swift_camera/views/about_archiving/personal_archives_screen.dart';
+import 'package:flutter_swift_camera/views/about_archiving/shared_archives_screen.dart';
 import 'package:flutter_swift_camera/views/about_camera/camera_screen.dart';
 import 'package:flutter_swift_camera/views/about_category/category_add_screen.dart';
 import 'package:flutter_swift_camera/views/about_category/category_select_screen.dart';
 import 'package:flutter_swift_camera/views/home_navigator_screen.dart';
 import 'package:flutter_swift_camera/views/home_screen.dart';
 import 'package:provider/provider.dart';
+import 'views/about_contacts/addContacts.dart';
 import 'views/about_login/register_screen.dart';
 import 'views/about_login/login_screen.dart';
 import 'views/about_login/start_screen.dart';
@@ -19,6 +20,7 @@ import 'controllers/auth_controller.dart';
 import 'controllers/category_controller.dart';
 import 'controllers/audio_controller.dart';
 import 'controllers/comment_controller.dart';
+import 'controllers/contacts_controller.dart';
 import 'package:flutter/rendering.dart';
 import 'dart:ui'; // PlatformDispatcher를 위해 필요
 
@@ -54,22 +56,10 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => CategoryController()),
-        ChangeNotifierProvider(
-          create: (_) {
-            final controller = AudioController();
-            // 미리 초기화 실행
-            controller.initialize();
-            return controller;
-          },
-        ),
-        ChangeNotifierProvider(
-          create: (_) {
-            final controller = CommentController();
-            // 미리 초기화 실행
-            controller.initialize();
-            return controller;
-          },
-        ),
+        ChangeNotifierProvider(create: (_) => AudioController()),
+        ChangeNotifierProvider(create: (_) => CommentController()),
+
+        ChangeNotifierProvider(create: (_) => ContactsController()),
       ],
       child: MaterialApp(
         initialRoute: '/',
@@ -77,9 +67,10 @@ class MyApp extends StatelessWidget {
         routes: {
           '/': (context) => const StartScreen(),
           '/home': (context) => const HomeScreen(),
-          '/home_navigation_screen': (context) => const HomePageNavigationBar(),
+          '/home_navigation_screen':
+              (context) => HomePageNavigationBar(currentPageIndex: 0),
           '/camera': (context) => const CameraScreen(),
-          '/archiving': (context) => const ArchivingScreen(),
+          '/archiving': (context) => const ArchiveMainScreen(),
           '/start': (context) => const StartScreen(),
           '/auth': (context) => const AuthScreen(),
           '/login': (context) => const LoginScreen(),
@@ -89,11 +80,13 @@ class MyApp extends StatelessWidget {
           '/category_add_screen': (context) => const CategoryAddScreen(),
 
           // 아카이빙 관련 라우트
-          '/share_record': (context) => const ShareRecordScreen(),
-          '/my_record': (context) => const MyRecordScreen(),
-          '/all_category': (context) => const AllCategoryScreen(),
+          '/share_record': (context) => const SharedArchivesScreen(),
+          '/my_record': (context) => const PersonalArchivesScreen(),
+          '/all_category': (context) => const AllArchivesScreen(),
 
           '/privacy_policy': (context) => const PrivacyPolicyScreen(),
+
+          '/add_contacts': (context) => const AddcontactsPage(),
         },
         theme: ThemeData(iconTheme: IconThemeData(color: Colors.white)),
       ),

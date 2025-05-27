@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_swift_camera/controllers/category_controller.dart';
-import 'package:flutter_swift_camera/views/about_arcaving/archiving_screen.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
@@ -8,6 +7,7 @@ import '../../controllers/audio_controller.dart';
 import '../../controllers/auth_controller.dart';
 
 // 분리된 위젯들을 임포트
+import '../home_navigator_screen.dart';
 import 'widgets/photo_display_widget.dart';
 import 'widgets/audio_recorder_widget.dart';
 import 'widgets/category_list_widget.dart';
@@ -140,7 +140,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
     });
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => const ArchivingScreen()),
+      MaterialPageRoute(
+        builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
+      ),
     );
     try {
       // 현재 사용자 닉네임 가져오기
@@ -276,11 +278,14 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
         _categoryNameController.clear();
       });
 
+      if (!context.mounted) return;
+
       // 성공 메시지
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('카테고리가 생성되었습니다')));
     } catch (e) {
+      if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('카테고리 생성 중 오류가 발생했습니다')));

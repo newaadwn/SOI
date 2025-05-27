@@ -1,5 +1,5 @@
 /*
- * ShowDetailedPhoto
+ * PhotoDetailScreen
  * 
  * 이 파일은 사진 상세 보기 페이지를 구현한 코드입니다.
  * 
@@ -31,13 +31,13 @@ import 'package:provider/provider.dart';
 import '../../models/photo_model.dart';
 import '../../controllers/category_controller.dart';
 
-class ShowDetailedPhoto extends StatefulWidget {
+class PhotoDetailScreen extends StatefulWidget {
   final List<PhotoModel> photos;
   final int initialIndex;
   final String categoryName;
   final String categoryId;
 
-  const ShowDetailedPhoto({
+  const PhotoDetailScreen({
     super.key,
     required this.photos,
     this.initialIndex = 0,
@@ -46,10 +46,10 @@ class ShowDetailedPhoto extends StatefulWidget {
   });
 
   @override
-  State<ShowDetailedPhoto> createState() => _ShowDetailedPhotoState();
+  State<PhotoDetailScreen> createState() => _PhotoDetailScreenState();
 }
 
-class _ShowDetailedPhotoState extends State<ShowDetailedPhoto> {
+class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   @override
   Widget build(BuildContext context) {
     CategoryController categoryViewModel = Provider.of<CategoryController>(

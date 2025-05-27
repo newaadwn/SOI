@@ -1,40 +1,45 @@
 /*
- * ShareRecordScreen
+ * PersonalArchivesScreen
  * 
- * 이 화면은 사용자가 다른 사용자와 공유한 카테고리(아카이빙)를 보여주는 화면입니다.
+ * 이 화면은 사용자의 개인 아카이빙 카테고리를 표시하는 화면입니다.
+ * 개인적으로 만든 카테고리(다른 사용자와 공유하지 않은 카테고리)만 표시합니다.
  * 
- * 기능:
- * 1. 사용자의 닉네임을 Firebase에서 가져옵니다.
- * 2. 현재 사용자가 다른 사용자들과 공유하고 있는 카테고리만 필터링하여 표시합니다.
- * 3. 각 카테고리는 그리드 형태로 표시되며, 각 항목에는 대표 이미지와 카테고리 이름이 표시됩니다.
- * 4. 카테고리 참여자들의 프로필 이미지가 작은 원형 아이콘으로 표시됩니다.
- * 5. 카테고리를 탭하면 해당 카테고리의 사진을 모두 볼 수 있는 ShowPhotoScreen으로 이동합니다.
+ * 기능 설명:
+ * 1. Firebase에서 사용자의 닉네임을 불러옵니다.
+ * 2. 닉네임을 이용하여 이 사용자가 생성한 개인 카테고리 목록을 불러옵니다.
+ * 3. 각 카테고리는 그리드 형태로 표시됩니다.
+ * 4. 각 카테고리 항목에는 대표 이미지와 카테고리 이름이 표시됩니다.
+ * 5. 카테고리를 탭하면 해당 카테고리에 포함된 모든 사진을 볼 수 있는 CategoryPhotosScreen으로 이동합니다.
  * 
  * 데이터 흐름:
- * - AuthController을 통해 사용자의 닉네임을 가져옵니다.
- * - CategoryController을 통해 사용자가 속한 카테고리 정보를 실시간으로 스트리밍합니다.
- * - 카테고리 중 현재 사용자와 다른 사용자가 함께 있는 카테고리만 필터링합니다.
+ * - AuthController: 사용자의 닉네임을 Firebase에서 가져오는 역할을 합니다.
+ * - CategoryController: 사용자의 카테고리 정보를 실시간으로 스트리밍합니다.
+ * - 카테고리 필터링: 'mates' 배열에 사용자의 닉네임만 포함된 카테고리를 개인 카테고리로 판단하여 표시합니다.
  * 
- * 주요 위젯:
- * - GridView: 공유 카테고리를 그리드 형태로 표시합니다.
- * - StreamBuilder: Firebase에서 실시간으로 카테고리 데이터를 가져옵니다.
+ * 주요 컴포넌트:
+ * - StreamBuilder: Firebase의 실시간 데이터를 구독하여 UI를 업데이트합니다.
+ * - GridView: 카테고리를 2열 그리드 형태로 표시합니다.
+ * - _buildProfileRow: 카테고리에 참여한 사용자의 프로필 이미지를 표시합니다(이 화면에서는 자기 자신만 표시됨).
+ * 
+ * 상태 관리:
+ * - nickName: 사용자의 닉네임을 저장하는 상태 변수입니다.
  */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_swift_camera/controllers/category_controller.dart';
 import 'package:provider/provider.dart';
-import '../../controllers/category_controller.dart';
-import '../../theme/theme.dart';
 import '../../controllers/auth_controller.dart';
-import 'show_photo.dart';
+import '../../theme/theme.dart';
+import 'category_photos_screen.dart';
 
-class ShareRecordScreen extends StatefulWidget {
-  const ShareRecordScreen({super.key});
+class PersonalArchivesScreen extends StatefulWidget {
+  const PersonalArchivesScreen({super.key});
 
   @override
-  State<ShareRecordScreen> createState() => _ShareRecordScreenState();
+  State<PersonalArchivesScreen> createState() => _PersonalArchivesScreenState();
 }
 
-class _ShareRecordScreenState extends State<ShareRecordScreen> {
+class _PersonalArchivesScreenState extends State<PersonalArchivesScreen> {
   String? nickName;
 
   @override
@@ -70,7 +75,7 @@ class _ShareRecordScreenState extends State<ShareRecordScreen> {
               child: CircleAvatar(
                 backgroundImage: NetworkImage(imageUrl),
                 onBackgroundImageError: (exception, stackTrace) {
-                  debugPrint('프로필 이미지 로딩 오류: $exception');
+                  debugPrint('이미지 로딩 오류: $exception');
                 },
                 child:
                     imageUrl.isEmpty ? Image.asset('assets/profile.png') : null,
@@ -83,6 +88,7 @@ class _ShareRecordScreenState extends State<ShareRecordScreen> {
   @override
   Widget build(BuildContext context) {
     // 화면의 너비와 높이를 가져와요.
+
     double screenHeight = MediaQuery.of(context).size.height;
 
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
@@ -128,9 +134,9 @@ class _ShareRecordScreenState extends State<ShareRecordScreen> {
           final userCategories =
               categories
                   .where(
-                    (category) =>
-                        ((category['mates'] as List).contains(nickName) &&
-                            category['mates'].length != 1),
+                    (category) => category['mates'].every(
+                      (element) => element == nickName,
+                    ),
                   )
                   .toList();
 
@@ -174,11 +180,14 @@ class _ShareRecordScreenState extends State<ShareRecordScreen> {
                         ),
                         child: InkWell(
                           onTap: () {
+                            print(
+                              "category['profileImages']: ${category['profileImages']}",
+                            );
                             Navigator.push(
                               context,
                               MaterialPageRoute(
                                 builder:
-                                    (context) => ShowPhotoScreen(
+                                    (context) => CategoryPhotosScreen(
                                       categoryId: category['id'],
                                       categoryName: category['name'],
                                     ),

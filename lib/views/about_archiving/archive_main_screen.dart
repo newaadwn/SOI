@@ -3,25 +3,25 @@ import 'package:flutter_swift_camera/controllers/auth_controller.dart';
 import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
 import '../widgets/custom_drawer.dart';
-import 'all_category_screen.dart';
-import 'my_record_screen.dart';
-import 'share_record_screen.dart';
+import 'all_archives_screen.dart';
+import 'personal_archives_screen.dart';
+import 'shared_archives_screen.dart';
 
-class ArchivingScreen extends StatefulWidget {
-  const ArchivingScreen({super.key});
+class ArchiveMainScreen extends StatefulWidget {
+  const ArchiveMainScreen({super.key});
 
   @override
-  State<ArchivingScreen> createState() => _ArchivingScreenState();
+  State<ArchiveMainScreen> createState() => _ArchiveMainScreenState();
 }
 
-class _ArchivingScreenState extends State<ArchivingScreen> {
+class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   int _selectedIndex = 0;
 
   // 탭 화면 목록
   final List<Widget> _screens = const [
-    AllCategoryScreen(),
-    MyRecordScreen(),
-    ShareRecordScreen(),
+    AllArchivesScreen(),
+    PersonalArchivesScreen(),
+    SharedArchivesScreen(),
   ];
 
   @override
@@ -116,7 +116,9 @@ class _ArchivingScreenState extends State<ArchivingScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.pushNamed(context, '/add_contacts');
+            },
             icon: Image.asset('assets/person_add.png', width: 19, height: 19),
           ),
           IconButton(
