@@ -1,4 +1,4 @@
-import 'package:contacts_service/contacts_service.dart' as contact_plugin;
+import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter/material.dart';
 
@@ -24,28 +24,29 @@ class ContactsService {
   }
 
   /// 모든 연락처 가져오기
-  Future<List<contact_plugin.Contact>> getAllContacts() async {
-    // 모든 연락처 목록을 가져옵니다
-    final Iterable<contact_plugin.Contact> contacts =
-        await contact_plugin.ContactsService.getContacts();
-    return contacts.toList();
+  Future<List<Contact>> getAllContacts() async {
+    // 연락처 권한 확인
+    if (!await FlutterContacts.requestPermission()) {
+      throw Exception('연락처 권한이 필요합니다');
+    }
+
+    // 모든 연락처 목록을 가져옵니다 (전화번호와 이메일 포함)
+    final List<Contact> contacts = await FlutterContacts.getContacts(
+      withProperties: true,
+      withPhoto: true,
+    );
+    return contacts;
   }
 
   /// 이름으로 연락처 검색
-  Future<List<contact_plugin.Contact>> searchContactsByName(
-    String query,
-  ) async {
-    // 주어진 이름으로 연락처를 검색합니다
-    final Iterable<contact_plugin.Contact> contacts = await contact_plugin
-        .ContactsService.getContacts(query: query);
-    return contacts.toList();
+  Future<List<Contact>> searchContactsByName(String query) async {
+    // 모든 연락처를 가져온 후 필터링
+    final contacts = await getAllContacts();
+    return filterContacts(contacts, query);
   }
 
   /// 연락처 목록 필터링 (이미 불러온 연락처에서 검색)
-  List<contact_plugin.Contact> filterContacts(
-    List<contact_plugin.Contact> contacts,
-    String query,
-  ) {
+  List<Contact> filterContacts(List<Contact> contacts, String query) {
     if (query.isEmpty) {
       // 검색어가 없으면 모든 연락처 반환
       return contacts;
@@ -57,12 +58,12 @@ class ContactsService {
     // 이름이나 전화번호에 검색어가 포함된 연락처만 필터링
     return contacts.where((contact) {
       // 이름에서 검색
-      final String name = contact.displayName?.toLowerCase() ?? '';
+      final String name = contact.displayName.toLowerCase();
 
       // 전화번호에서 검색
       final String phone =
-          contact.phones?.isNotEmpty == true
-              ? (contact.phones!.first.value?.toLowerCase() ?? '')
+          contact.phones.isNotEmpty
+              ? contact.phones.first.number.toLowerCase()
               : '';
 
       // 이름이나 전화번호에 검색어가 포함되면 true 반환
@@ -92,15 +93,12 @@ class ContactsService {
   }
 
   /// 연락처 아바타 위젯 생성
-  Widget buildContactAvatar(
-    contact_plugin.Contact contact, {
-    double radius = 20.0,
-  }) {
+  Widget buildContactAvatar(Contact contact, {double radius = 20.0}) {
     // 프로필 이미지가 있는 경우
-    if (contact.avatar != null && contact.avatar!.isNotEmpty) {
+    if (contact.photo != null && contact.photo!.isNotEmpty) {
       return CircleAvatar(
         radius: radius,
-        backgroundImage: MemoryImage(contact.avatar!),
+        backgroundImage: MemoryImage(contact.photo!),
       );
     }
 

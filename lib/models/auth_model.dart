@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,6 +16,9 @@ class AuthModel {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final ImagePicker _imagePicker = ImagePicker();
+
+  String? _verificationId;
+  ConfirmationResult? _confirmationResult;
 
   // 현재 로그인한 사용자 가져오기
   User? get currentUser => _auth.currentUser;
@@ -219,7 +223,27 @@ class AuthModel {
         });
   }
 
-  // 전화번호 인증 요청
+  // reCAPTCHA 초기화 및 재설정
+  Future<void> resetRecaptcha() async {
+    try {
+      debugPrint('reCAPTCHA 초기화 시작');
+
+      // Firebase Auth 설정 재초기화
+      await _auth.setSettings(
+        appVerificationDisabledForTesting: false,
+        forceRecaptchaFlow: false,
+      );
+
+      // 잠시 대기하여 설정이 완전히 적용되도록 함
+      await Future.delayed(const Duration(milliseconds: 1000));
+
+      debugPrint('reCAPTCHA 초기화 완료');
+    } catch (e) {
+      debugPrint('reCAPTCHA 초기화 중 오류: $e');
+    }
+  }
+
+  // 전화번호 인증 요청 (플랫폼별 구분)
   Future<void> verifyPhoneNumber(
     String phoneNumber,
     Function(String verificationId, int? resendToken) onCodeSent,
@@ -234,32 +258,85 @@ class AuthModel {
       final String fullPhoneNumber = "+82$formattedPhone";
       debugPrint('Formatted phone number: $fullPhoneNumber');
 
-      await _auth.verifyPhoneNumber(
-        phoneNumber: fullPhoneNumber,
-        verificationCompleted: (PhoneAuthCredential credential) async {
-          try {
-            await _auth.signInWithCredential(credential);
-            debugPrint('Auto verification completed successfully');
-          } catch (e) {
-            debugPrint('Error in auto verification: $e');
-            Fluttertoast.showToast(msg: '자동 인증 중 오류가 발생했습니다: $e');
-          }
-        },
-        verificationFailed: (FirebaseAuthException e) {
-          debugPrint('Verification failed: ${e.code} - ${e.message}');
-          Fluttertoast.showToast(msg: '인증 실패: ${e.message}');
-        },
-        codeSent: onCodeSent,
-        codeAutoRetrievalTimeout: codeAutoRetrievalTimeout,
-        timeout: const Duration(seconds: 60),
-      );
+      if (kIsWeb) {
+        // 웹 플랫폼에서는 signInWithPhoneNumber 사용
+        await _signInWithPhoneNumberWeb(fullPhoneNumber, onCodeSent);
+      } else {
+        // 네이티브 플랫폼에서는 verifyPhoneNumber 사용
+        await _verifyPhoneNumberNative(
+          fullPhoneNumber,
+          onCodeSent,
+          codeAutoRetrievalTimeout,
+        );
+      }
     } catch (e) {
       debugPrint('Error verifying phone number: $e');
       Fluttertoast.showToast(msg: '전화번호 인증 중 오류가 발생했습니다: $e');
     }
   }
 
-  // SMS 코드로 로그인
+  // 웹용 전화번호 인증
+  Future<void> _signInWithPhoneNumberWeb(
+    String phoneNumber,
+    Function(String verificationId, int? resendToken) onCodeSent,
+  ) async {
+    try {
+      // 웹에서는 RecaptchaVerifier를 사용하여 signInWithPhoneNumber 호출
+      _confirmationResult = await _auth.signInWithPhoneNumber(phoneNumber);
+
+      // 확인 결과를 저장하고 콜백 호출
+      _verificationId = _confirmationResult!.verificationId;
+      onCodeSent(_confirmationResult!.verificationId, null);
+
+      debugPrint(
+        "Web phone auth started, verificationId: ${_confirmationResult!.verificationId}",
+      );
+    } catch (e) {
+      debugPrint('Web phone auth error: $e');
+      rethrow;
+    }
+  }
+
+  // 네이티브용 전화번호 인증
+  Future<void> _verifyPhoneNumberNative(
+    String phoneNumber,
+    Function(String verificationId, int? resendToken) onCodeSent,
+    Function(String verificationId) codeAutoRetrievalTimeout,
+  ) async {
+    try {
+      // reCAPTCHA 캐시 문제 해결을 위한 대기 시간 추가
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      await _auth.setSettings(
+        appVerificationDisabledForTesting: false,
+        forceRecaptchaFlow: false,
+      );
+
+      await _auth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        forceResendingToken: null,
+        timeout: const Duration(seconds: 120),
+        verificationCompleted: (PhoneAuthCredential credential) {
+          debugPrint("credential :: $credential");
+        },
+        verificationFailed: (FirebaseAuthException exception) {
+          debugPrint("exception :: $exception");
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          _verificationId = verificationId;
+          onCodeSent(verificationId, resendToken);
+          debugPrint("verificationId :: $verificationId");
+          debugPrint("resendToken :: $resendToken");
+        },
+        codeAutoRetrievalTimeout: codeAutoRetrievalTimeout,
+      );
+    } catch (e) {
+      debugPrint('Native phone auth error: $e');
+      rethrow;
+    }
+  }
+
+  // SMS 코드로 로그인 (플랫폼별 구분)
   Future<bool> signInWithSmsCode(String verificationId, String smsCode) async {
     if (verificationId.isEmpty) {
       Fluttertoast.showToast(msg: '인증 ID가 없습니다. 다시 시도해주세요.');
@@ -268,6 +345,51 @@ class AuthModel {
 
     try {
       debugPrint('Signing in with SMS code. Verification ID: $verificationId');
+
+      if (kIsWeb) {
+        // 웹에서는 ConfirmationResult.confirm() 사용
+        return await _signInWithSmsCodeWeb(smsCode);
+      } else {
+        // 네이티브에서는 PhoneAuthCredential 사용
+        return await _signInWithSmsCodeNative(verificationId, smsCode);
+      }
+    } catch (e) {
+      debugPrint('Error signing in with SMS code: $e');
+      Fluttertoast.showToast(msg: '인증 코드 확인 중 오류가 발생했습니다: $e');
+      return false;
+    }
+  }
+
+  // 웹용 SMS 코드 확인
+  Future<bool> _signInWithSmsCodeWeb(String smsCode) async {
+    if (_confirmationResult == null) {
+      Fluttertoast.showToast(msg: '전화번호 인증을 먼저 진행해주세요.');
+      return false;
+    }
+
+    try {
+      UserCredential userCredential = await _confirmationResult!.confirm(
+        smsCode,
+      );
+      if (userCredential.user != null) {
+        debugPrint('Successfully signed in (web): ${userCredential.user?.uid}');
+        return true;
+      } else {
+        Fluttertoast.showToast(msg: '로그인에 실패했습니다.');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('Web SMS verification error: $e');
+      rethrow;
+    }
+  }
+
+  // 네이티브용 SMS 코드 확인
+  Future<bool> _signInWithSmsCodeNative(
+    String verificationId,
+    String smsCode,
+  ) async {
+    try {
       PhoneAuthCredential credential = PhoneAuthProvider.credential(
         verificationId: verificationId,
         smsCode: smsCode,
@@ -277,16 +399,17 @@ class AuthModel {
         credential,
       );
       if (userCredential.user != null) {
-        debugPrint('Successfully signed in: ${userCredential.user?.uid}');
+        debugPrint(
+          'Successfully signed in (native): ${userCredential.user?.uid}',
+        );
         return true;
       } else {
         Fluttertoast.showToast(msg: '로그인에 실패했습니다.');
         return false;
       }
     } catch (e) {
-      debugPrint('Error signing in with SMS code: $e');
-      Fluttertoast.showToast(msg: '인증 코드 확인 중 오류가 발생했습니다: $e');
-      return false;
+      debugPrint('Native SMS verification error: $e');
+      rethrow;
     }
   }
 

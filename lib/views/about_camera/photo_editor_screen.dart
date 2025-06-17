@@ -257,6 +257,15 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
     try {
       // 현재 사용자 정보 가져오기
       final String? userId = _authController.getUserId;
+
+      // 사용자가 인증되지 않은 경우 처리
+      if (userId == null) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('로그인이 필요합니다. 다시 로그인해주세요.')));
+        return;
+      }
+
       final String userNickName = await _authController.getIdFromFirestore();
 
       // 메이트 리스트 준비 (여기서는 예시로 현재 사용자만 포함)
@@ -266,7 +275,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
       await _categoryController.createCategory(
         _categoryNameController.text.trim(),
         mates,
-        userId!,
+        userId,
       );
 
       // 화면 갱신
@@ -376,48 +385,56 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
 
                 // 헤더 영역: 카테고리 추가 UI를 표시할 때 필요한 헤더
                 if (_showAddCategoryUI)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.arrow_back_ios, color: Colors.white),
-                        onPressed: () {
-                          // 뒤로가기 기능
-                          setState(() {
-                            _showAddCategoryUI = false;
-                            _categoryNameController.clear();
-                          });
-                        },
-                      ),
-                      Text(
-                        '새 카테고리 만들기',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+                          onPressed: () {
+                            // 뒤로가기 기능
+                            setState(() {
+                              _showAddCategoryUI = false;
+                              _categoryNameController.clear();
+                            });
+                          },
                         ),
-                      ),
-                      // 확인 버튼
-                      ElevatedButton(
-                        onPressed:
-                            () => _createNewCategory(
-                              _categoryNameController.text.trim(),
-                            ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xff323232),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                        Text(
+                          '새 카테고리 만들기',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
                           ),
-                          elevation: 0,
                         ),
-                        child: SizedBox(
+                        ElevatedButton(
+                          onPressed:
+                              () => _createNewCategory(
+                                _categoryNameController.text.trim(),
+                              ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xff323232),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.5),
+                            ),
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 10,
+                            ), // 패딩 조정
+                          ),
                           child: Text(
                             '저장',
-                            style: TextStyle(color: Colors.white),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 SizedBox(height: 12),
 
@@ -427,9 +444,49 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                     duration: Duration(milliseconds: 300),
                     child:
                         _showAddCategoryUI
-                            ? AddCategoryWidget(
-                              textController: _categoryNameController,
-                              scrollController: scrollController,
+                            ? Padding(
+                              // AddCategoryWidget을 Padding으로 감싸서 정렬
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                              ),
+                              child: Column(
+                                children: [
+                                  AddCategoryWidget(
+                                    textController: _categoryNameController,
+                                    scrollController: scrollController,
+                                  ),
+                                  SizedBox(height: 20),
+                                  ElevatedButton.icon(
+                                    onPressed: () {
+                                      // 친구 추가하기 로직
+                                    },
+                                    icon: Icon(
+                                      Icons.person_add_alt_1_outlined,
+                                      color: Color(0xffE2E2E2),
+                                    ),
+                                    label: Text(
+                                      '친구 추가하기',
+                                      style: TextStyle(
+                                        color: Color(0xffE2E2E2),
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Color(0xff323232),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          16.5,
+                                        ),
+                                      ),
+                                      elevation: 0,
+                                      minimumSize: Size(
+                                        double.infinity,
+                                        50,
+                                      ), // 버튼 크기 조정
+                                    ),
+                                  ),
+                                ],
+                              ),
                             )
                             : CategoryListWidget(
                               scrollController: scrollController,
@@ -455,6 +512,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
   @override
   void dispose() {
     _categoryNameController.dispose();
+    _draggableScrollController.dispose();
     super.dispose();
   }
 }

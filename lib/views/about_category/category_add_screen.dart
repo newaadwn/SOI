@@ -62,6 +62,15 @@ class _CategoryAddScreenState extends State<CategoryAddScreen> {
       final String categoryName = _categoryNameController.text;
       // AuthController에서 현재 닉네임과 userId 가져오기
       final String? userId = authController.getUserId;
+
+      // 사용자가 인증되지 않은 경우 처리
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('로그인이 필요합니다. 다시 로그인해주세요.')),
+        );
+        return;
+      }
+
       final String userNickName = await authController.getIdFromFirestore();
 
       // 현재 CategoryController의 selectedNames는 사용자가 추가한 다른 친구들입니다.
@@ -74,7 +83,7 @@ class _CategoryAddScreenState extends State<CategoryAddScreen> {
 
       try {
         // CategoryController의 createCategory를 호출하면 Firestore에 문서가 생성됩니다.
-        await categoryController.createCategory(categoryName, mates, userId!);
+        await categoryController.createCategory(categoryName, mates, userId);
         _categoryNameController.clear();
         categoryController.clearSelectedNames();
       } catch (e) {

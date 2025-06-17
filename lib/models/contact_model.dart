@@ -1,4 +1,4 @@
-import 'package:contacts_service/contacts_service.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 
 /// 연락처 정보를 저장하기 위한 모델 클래스
 class ContactModel {
@@ -23,17 +23,17 @@ class ContactModel {
   });
 
   /// Contact 객체로부터 ContactModel 객체 생성
-  factory ContactModel.fromContact(Contact contact) {
+  factory ContactModel.fromFlutterContact(Contact contact) {
     // 기본 전화번호
     String mainPhone = '';
     List<String> allPhones = [];
 
-    if (contact.phones != null && contact.phones!.isNotEmpty) {
-      mainPhone = contact.phones!.first.value ?? '';
+    if (contact.phones.isNotEmpty) {
+      mainPhone = contact.phones.first.number;
 
-      for (var phone in contact.phones!) {
-        if (phone.value != null && phone.value!.isNotEmpty) {
-          allPhones.add(phone.value!);
+      for (var phone in contact.phones) {
+        if (phone.number.isNotEmpty) {
+          allPhones.add(phone.number);
         }
       }
     }
@@ -42,18 +42,19 @@ class ContactModel {
     String? mainEmail;
     List<String> allEmails = [];
 
-    if (contact.emails != null && contact.emails!.isNotEmpty) {
-      mainEmail = contact.emails!.first.value;
+    if (contact.emails.isNotEmpty) {
+      mainEmail = contact.emails.first.address;
 
-      for (var email in contact.emails!) {
-        if (email.value != null && email.value!.isNotEmpty) {
-          allEmails.add(email.value!);
+      for (var email in contact.emails) {
+        if (email.address.isNotEmpty) {
+          allEmails.add(email.address);
         }
       }
     }
 
     return ContactModel(
-      displayName: contact.displayName ?? '이름 없음',
+      displayName:
+          contact.displayName.isNotEmpty ? contact.displayName : '이름 없음',
       phoneNumber: mainPhone,
       email: mainEmail,
       phoneNumbers: allPhones,

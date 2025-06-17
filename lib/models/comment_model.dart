@@ -102,29 +102,29 @@ class CommentModel {
     String photoId,
   ) async {
     try {
-      final categoryDoc = _firestore.collection('categories').doc(categoryId);
-      final comments = categoryDoc
+      final photoRef = _firestore
+          .collection('categories')
+          .doc(categoryId)
           .collection('photos')
-          .doc(photoId)
-          .collection('comments');
-      final documentSnapshot = await comments.get();
+          .doc(photoId);
 
-      if (documentSnapshot.docs.isNotEmpty) {
-        // 첫 문서의 userNickname 필드만 가져온다
-        String? fetchedNickName;
-        for (var doc in documentSnapshot.docs) {
-          fetchedNickName = doc.get('userNickname');
-          break;
-        }
-        debugPrint('Fetched Nickname: $fetchedNickName');
-        return fetchedNickName ?? 'Default Nickname';
+      // 가장 오래된 댓글을 가져와서 그 댓글 작성자의 닉네임(문서 ID)을 반환
+      final querySnapshot =
+          await photoRef
+              .collection('comments')
+              .orderBy('createdAt', descending: false) // 오래된 순으로 정렬
+              .limit(1) // 첫 번째 댓글만 가져옴
+              .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        return querySnapshot.docs.first.id; // 댓글의 문서 ID가 닉네임이라고 가정
       } else {
-        debugPrint('Document does not exist');
-        return 'Default Nickname';
+        // debugPrint('No comments found for photo $photoId in category $categoryId');
+        return 'No Nickname Found'; // 댓글이 없을 경우
       }
     } catch (e) {
-      debugPrint('Error fetching document: $e');
-      return 'Default Nickname';
+      debugPrint('Error fetching nickname from Firestore: $e');
+      return 'Error Nickname'; // 오류 발생 시
     }
   }
 

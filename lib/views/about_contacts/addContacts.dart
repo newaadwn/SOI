@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:contacts_service/contacts_service.dart' as contact_plugin;
 import 'package:provider/provider.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import '../../controllers/contacts_controller.dart';
 
 /// 연락처 목록을 표시하고 연락처를 친구로 추가하는 화면
@@ -148,18 +148,18 @@ class _AddcontactsPageState extends State<AddcontactsPage>
       child: ListView.builder(
         itemCount: controller.filteredContacts.length,
         itemBuilder: (context, index) {
-          contact_plugin.Contact contact = controller.filteredContacts[index];
+          Contact contact = controller.filteredContacts[index];
           String phoneNumber =
-              contact.phones?.isNotEmpty == true
-                  ? contact.phones!.first.value ?? ''
-                  : '';
+              contact.phones.isNotEmpty ? contact.phones.first.number : '';
           bool isAdded = controller.isContactAdded(phoneNumber);
 
           return ListTile(
             // 연락처 아바타
             leading: controller.buildContactAvatar(contact),
             // 연락처 이름
-            title: Text(contact.displayName ?? '이름 없음'),
+            title: Text(
+              contact.displayName.isNotEmpty ? contact.displayName : '이름 없음',
+            ),
             // 연락처 전화번호
             subtitle: Text(controller.formatPhoneNumber(phoneNumber)),
             // 추가 버튼 또는 이미 추가됨 아이콘
@@ -178,7 +178,7 @@ class _AddcontactsPageState extends State<AddcontactsPage>
   }
 
   // 연락처 추가 함수
-  Future<void> _addContact(contact_plugin.Contact contact) async {
+  Future<void> _addContact(Contact contact) async {
     // 로딩 표시
     showDialog(
       context: context,
@@ -197,7 +197,7 @@ class _AddcontactsPageState extends State<AddcontactsPage>
       SnackBar(
         content: Text(
           success
-              ? '${contact.displayName ?? "연락처"}가 추가되었습니다'
+              ? '${contact.displayName.isNotEmpty ? contact.displayName : "연락처"}가 추가되었습니다'
               : '연락처를 추가할 수 없습니다',
         ),
         duration: const Duration(seconds: 1),
@@ -206,11 +206,9 @@ class _AddcontactsPageState extends State<AddcontactsPage>
   }
 
   // 연락처 상세 정보 표시
-  void _showContactDetails(contact_plugin.Contact contact) {
+  void _showContactDetails(Contact contact) {
     final String phoneNumber =
-        contact.phones?.isNotEmpty == true
-            ? contact.phones!.first.value ?? ''
-            : '';
+        contact.phones.isNotEmpty ? contact.phones.first.number : '';
     final bool isAdded = _contactsController.isContactAdded(phoneNumber);
 
     showModalBottomSheet(
@@ -230,7 +228,7 @@ class _AddcontactsPageState extends State<AddcontactsPage>
               const SizedBox(height: 16),
               // 이름
               Text(
-                contact.displayName ?? '이름 없음',
+                contact.displayName.isNotEmpty ? contact.displayName : '이름 없음',
                 style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -238,20 +236,20 @@ class _AddcontactsPageState extends State<AddcontactsPage>
               ),
               const SizedBox(height: 8),
               // 전화번호 목록
-              if (contact.phones != null && contact.phones!.isNotEmpty)
-                ...contact.phones!.map((phone) {
+              if (contact.phones.isNotEmpty)
+                ...contact.phones.map((phone) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          _contactsController.formatPhoneNumber(phone.value),
+                          _contactsController.formatPhoneNumber(phone.number),
                           style: const TextStyle(fontSize: 16),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          phone.label ?? '',
+                          phone.label.name,
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey.shade600,
@@ -262,20 +260,20 @@ class _AddcontactsPageState extends State<AddcontactsPage>
                   );
                 }).toList(),
               // 이메일 목록
-              if (contact.emails != null && contact.emails!.isNotEmpty)
-                ...contact.emails!.map((email) {
+              if (contact.emails.isNotEmpty)
+                ...contact.emails.map((email) {
                   return Padding(
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          email.value ?? '',
+                          email.address,
                           style: const TextStyle(fontSize: 16),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          email.label ?? '',
+                          email.label.name,
                           style: TextStyle(
                             fontSize: 14,
                             color: Colors.grey.shade600,

@@ -32,7 +32,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-				<string>app-1-565108991397-ios-0f547042a3b3658600344c</string>
+				<string>app-1-1074708164096-ios-2ae5bd23299ff2cc4d32e5</string>
 			</array>
 		</dict>
 	</array>
@@ -106,11 +106,35 @@
 	<!-- <key>NSPhotoLibraryUsageDescription</key> -->
 	<!-- <string>이 앱은 사진 라이브러리에서 이미지를 불러오기 위해 접근 권한이 필요합니다.</string> -->
 
-	<!-- reCAPTCHA 웹뷰 설정 -->
+	<!-- reCAPTCHA 웹뷰 설정 및 네트워크 보안 -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>www.google.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.0</string>
+			</dict>
+			<key>www.gstatic.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.0</string>
+			</dict>
+			<key>googleapis.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.0</string>
+			</dict>
+		</dict>
 	</dict>
 
 	<!-- iOS에서 UiKitView 사용을 허용합니다 -->

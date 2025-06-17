@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
@@ -71,15 +72,37 @@ class CategoryModel {
   // 현재 로그인한 유저의 카테고리 정보를 가져오는 메소드
   Future<List<Map<String, dynamic>>> loadUserCategories(String uid) async {
     try {
-      // Firestore에서 현재 사용자의 카테고리 가져오기
-      final snapshot =
+      debugPrint('Loading categories for user: $uid');
+
+      // 첫 번째 시도: userId가 배열인 경우 (새로운 방식)
+      QuerySnapshot snapshot1 =
           await _firestore
               .collection('categories')
               .where('userId', arrayContains: uid)
               .get();
 
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
+      // 두 번째 시도: userId가 문자열인 경우 (기존 방식)
+      QuerySnapshot snapshot2 =
+          await _firestore
+              .collection('categories')
+              .where('userId', isEqualTo: uid)
+              .get();
+
+      // 두 결과를 합치기
+      List<QueryDocumentSnapshot> allDocs = [];
+      allDocs.addAll(snapshot1.docs);
+      allDocs.addAll(snapshot2.docs);
+
+      // 중복 제거 (같은 document ID가 있을 수 있음)
+      Map<String, QueryDocumentSnapshot> uniqueDocs = {};
+      for (var doc in allDocs) {
+        uniqueDocs[doc.id] = doc;
+      }
+
+      debugPrint('Found ${uniqueDocs.length} categories');
+
+      return uniqueDocs.values.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
         return {
           'id': doc.id,
           'name': data['name'] ?? '무제',
@@ -95,13 +118,25 @@ class CategoryModel {
   /// 새 카테고리 생성
   Future<void> createCategory(String name, List mates, String userId) async {
     try {
+      // 사용자 인증 상태 확인
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) {
+        throw Exception('사용자가 인증되지 않았습니다. 로그인이 필요합니다.');
+      }
+
+      debugPrint('Creating category with user: ${currentUser.uid}');
+
       await _firestore.collection('categories').add({
         'name': name,
         'mates': mates,
-        'userId': [userId],
+        'userId': [userId], // 배열로 저장하여 여러 사용자 지원
+        'createdAt': Timestamp.now(),
+        'photoCount': 0, // Initialize photoCount
       });
+
+      debugPrint('Category created successfully');
     } catch (e) {
-      debugPrint('카테고리 생성 오류: $e');
+      debugPrint('Error creating category: $e');
       rethrow;
     }
   }
@@ -280,50 +315,36 @@ class CategoryModel {
     if (imageUrl != null && imageUrl.isNotEmpty) {
       downloadUrl = imageUrl;
     } else {
-      // 파일 경로로부터 이미지 업로드
-      final fileName = DateTime.now().millisecondsSinceEpoch.toString();
-      final file = File(filePath);
-
-      if (!file.existsSync()) {
-        debugPrint('File does not exist: $filePath');
-        return;
-      }
-
-      try {
-        // 1) Firebase Storage 업로드
-        final ref = _storage.ref().child('categories_photos/$fileName');
-        await ref.putFile(file);
-        downloadUrl = await ref.getDownloadURL();
-      } catch (e) {
-        debugPrint('Error uploading photo to storage: $e');
-        rethrow;
+      // filePath가 비어있지 않은 경우에만 이미지 업로드 시도
+      if (filePath.isNotEmpty) {
+        File imageFile = File(filePath);
+        String? uploadedUrl = await uploadPhotoStorage(imageFile);
+        if (uploadedUrl == null) {
+          debugPrint('Failed to upload photo to storage.');
+          return; // 업로드 실패 시 함수 종료
+        }
+        downloadUrl = uploadedUrl;
+      } else {
+        debugPrint('No image file path provided and no existing image URL.');
+        return; // 이미지 경로도 없고 기존 URL도 없는 경우
       }
     }
 
     try {
-      // 2) 카테고리의 'userId' 목록 가져오기
-      final categoryDoc =
-          await _firestore.collection('categories').doc(categoryId).get();
-      final List<String> userIds = List<String>.from(
-        categoryDoc['userId'] ?? [],
-      );
-
-      // 3) 사진 문서 생성
       final categoryRef = _firestore.collection('categories').doc(categoryId);
-      final photoRef = categoryRef.collection('photos').doc();
-      final photoId = photoRef.id;
+      final photosCollection = categoryRef.collection('photos');
 
-      // 4) Firestore에 사진 정보 저장
-      await photoRef.set({
+      await photosCollection.add({
+        'userId': userId,
         'imageUrl': downloadUrl,
-        'createdAt': Timestamp.now(),
-        'userIds': userIds,
-        'userID': userId,
         'audioUrl': audioUrl,
-        'id': photoId,
+        'createdAt': Timestamp.now(),
       });
+
+      // Increment photoCount in the category document
+      await categoryRef.update({'photoCount': FieldValue.increment(1)});
     } catch (e) {
-      debugPrint('Error uploading photo metadata: $e');
+      debugPrint('Error uploading photo to Firestore: $e');
       rethrow;
     }
   }
@@ -373,14 +394,10 @@ class CategoryModel {
     QuerySnapshot categoriesSnapshot,
   ) async {
     final Map<String, int> categoryStats = {};
-    for (final category in categoriesSnapshot.docs) {
-      final photosSnapshot =
-          await _firestore
-              .collection('categories')
-              .doc(category.id)
-              .collection('photos')
-              .get();
-      categoryStats[category.id] = photosSnapshot.size;
+    for (final categoryDoc in categoriesSnapshot.docs) {
+      final data = categoryDoc.data() as Map<String, dynamic>?;
+      // Read photoCount directly from the category document
+      categoryStats[categoryDoc.id] = data?['photoCount'] as int? ?? 0;
     }
     return categoryStats;
   }

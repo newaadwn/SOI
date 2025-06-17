@@ -10,8 +10,8 @@ plugins {
 
 android {
     namespace = "com.example.flutter_swift_camera"
-    compileSdk = 34 // 최신 SDK 버전으로 업데이트
-    ndkVersion = flutter.ndkVersion
+    compileSdk = 35 // 플러그인 호환성을 위해 SDK 35로 업데이트
+    ndkVersion = "27.0.12077973" // 플러그인 호환성을 위해 NDK 버전 업데이트
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
@@ -27,8 +27,8 @@ android {
         applicationId = "com.example.flutter_swift_camera"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 21 // Firebase 요구사항
-        targetSdk = 34
+        minSdk = 24 // Flutter Sound 요구사항 - 기기 호환성 결정
+        targetSdk = 34 // 런타임 동작 버전
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         // 멀티덱스 활성화

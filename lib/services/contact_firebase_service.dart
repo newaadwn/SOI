@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import '../models/contact_model.dart';
 
 /// 연락처 정보를 Firebase에 저장하고 관리하는 서비스
@@ -26,7 +27,7 @@ class ContactFirebaseService {
       final docRef = await _friendsCollection.add(contact.toMap());
       return docRef.id;
     } catch (e) {
-      print('친구 추가 오류: $e');
+      debugPrint('친구 추가 오류: $e');
       rethrow;
     }
   }
@@ -43,7 +44,7 @@ class ContactFirebaseService {
             }).toList();
           });
     } catch (e) {
-      print('친구 목록 가져오기 오류: $e');
+      debugPrint('친구 목록 가져오기 오류: $e');
       rethrow;
     }
   }
@@ -53,7 +54,7 @@ class ContactFirebaseService {
     try {
       await _friendsCollection.doc(contactId).delete();
     } catch (e) {
-      print('친구 삭제 오류: $e');
+      debugPrint('친구 삭제 오류: $e');
       rethrow;
     }
   }
@@ -67,7 +68,7 @@ class ContactFirebaseService {
 
       await _friendsCollection.doc(contact.id).update(contact.toMap());
     } catch (e) {
-      print('친구 정보 업데이트 오류: $e');
+      debugPrint('친구 정보 업데이트 오류: $e');
       rethrow;
     }
   }
@@ -90,7 +91,7 @@ class ContactFirebaseService {
 
       return null;
     } catch (e) {
-      print('전화번호로 친구 검색 오류: $e');
+      debugPrint('전화번호로 친구 검색 오류: $e');
       rethrow;
     }
   }
@@ -101,7 +102,7 @@ class ContactFirebaseService {
       final contact = await findContactByPhone(phoneNumber);
       return contact != null;
     } catch (e) {
-      print('친구 존재 확인 오류: $e');
+      debugPrint('친구 존재 확인 오류: $e');
       return false;
     }
   }

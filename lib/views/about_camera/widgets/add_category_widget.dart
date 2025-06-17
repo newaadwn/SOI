@@ -6,11 +6,13 @@ import 'package:flutter/material.dart';
 class AddCategoryWidget extends StatelessWidget {
   final TextEditingController textController;
   final ScrollController scrollController;
+  final String? hintText; // hintText 파라미터 추가
 
   const AddCategoryWidget({
     Key? key,
     required this.textController,
     required this.scrollController,
+    this.hintText, // hintText 파라미터 추가
   }) : super(key: key);
 
   @override
@@ -28,7 +30,7 @@ class AddCategoryWidget extends StatelessWidget {
             decoration: InputDecoration(
               filled: true,
               fillColor: Colors.grey.shade100,
-              hintText: '카테고리 이름 입력',
+              hintText: hintText ?? '카테고리 이름을 입력해 주세요.', // 전달받은 hintText 사용
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
                 borderSide: BorderSide.none,

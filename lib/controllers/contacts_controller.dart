@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:contacts_service/contacts_service.dart' as contact_plugin;
+import 'package:flutter_contacts/flutter_contacts.dart';
 import '../models/contact_model.dart';
 import '../services/contacts_service.dart';
 import '../services/contact_firebase_service.dart';
@@ -12,15 +12,15 @@ class ContactsController with ChangeNotifier {
   final ContactFirebaseService _firebaseService = ContactFirebaseService();
 
   // 상태 변수
-  List<contact_plugin.Contact> _contacts = [];
-  List<contact_plugin.Contact> _filteredContacts = [];
+  List<Contact> _contacts = [];
+  List<Contact> _filteredContacts = [];
   Set<String> _addedContactPhones = {};
   bool _isLoading = true;
   bool _permissionDenied = false;
 
   // 상태 getter
-  List<contact_plugin.Contact> get contacts => _contacts;
-  List<contact_plugin.Contact> get filteredContacts => _filteredContacts;
+  List<Contact> get contacts => _contacts;
+  List<Contact> get filteredContacts => _filteredContacts;
   bool get isLoading => _isLoading;
   bool get permissionDenied => _permissionDenied;
   bool get hasContacts => _contacts.isNotEmpty;
@@ -70,7 +70,7 @@ class ContactsController with ChangeNotifier {
         notifyListeners();
       });
     } catch (e) {
-      print('저장된 연락처 불러오기 오류: $e');
+      debugPrint('저장된 연락처 불러오기 오류: $e');
     }
   }
 
@@ -87,7 +87,7 @@ class ContactsController with ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _isLoading = false;
-      print('연락처 가져오기 오류: $e');
+      debugPrint('연락처 가져오기 오류: $e');
       notifyListeners();
     }
   }
@@ -113,12 +113,10 @@ class ContactsController with ChangeNotifier {
   }
 
   /// 연락처 추가
-  Future<bool> addContact(contact_plugin.Contact contact) async {
+  Future<bool> addContact(Contact contact) async {
     // 전화번호 확인
     final String phoneNumber =
-        contact.phones?.isNotEmpty == true
-            ? contact.phones!.first.value ?? ''
-            : '';
+        contact.phones.isNotEmpty ? contact.phones.first.number : '';
 
     if (phoneNumber.isEmpty) {
       return false;
@@ -131,7 +129,7 @@ class ContactsController with ChangeNotifier {
 
     try {
       // ContactModel로 변환
-      final contactModel = ContactModel.fromContact(contact);
+      final contactModel = ContactModel.fromFlutterContact(contact);
 
       // Firebase에 저장
       await _firebaseService.addContact(contactModel);
@@ -142,7 +140,7 @@ class ContactsController with ChangeNotifier {
 
       return true;
     } catch (e) {
-      print('연락처 추가 오류: $e');
+      debugPrint('연락처 추가 오류: $e');
       return false;
     }
   }
@@ -158,10 +156,7 @@ class ContactsController with ChangeNotifier {
   }
 
   /// 연락처 아바타 위젯 생성
-  Widget buildContactAvatar(
-    contact_plugin.Contact contact, {
-    double radius = 20.0,
-  }) {
+  Widget buildContactAvatar(Contact contact, {double radius = 20.0}) {
     return _contactsService.buildContactAvatar(contact, radius: radius);
   }
 }

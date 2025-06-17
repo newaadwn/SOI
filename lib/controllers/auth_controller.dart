@@ -12,7 +12,7 @@ class AuthController extends ChangeNotifier {
   bool codeSent = false;
   bool _isUploading = false;
   List<String> _searchResults = [];
-  List<String> _searchProfileImage = [];
+  final List<String> _searchProfileImage = [];
 
   // 네비게이션 키
   GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -63,13 +63,21 @@ class AuthController extends ChangeNotifier {
     Function(String, int?) onCodeSent,
     Function(String) codeAutoRetrievalTimeout,
   ) async {
-    await _authModel.verifyPhoneNumber(phoneNumber, (
-      String verificationId,
-      int? token,
-    ) {
-      _verificationId = verificationId;
-      onCodeSent(verificationId, token);
-    }, codeAutoRetrievalTimeout);
+    try {
+      // reCAPTCHA 초기화 (restart 후 캐시 문제 해결)
+      await _authModel.resetRecaptcha();
+
+      await _authModel.verifyPhoneNumber(phoneNumber, (
+        String verificationId,
+        int? token,
+      ) {
+        _verificationId = verificationId;
+        onCodeSent(verificationId, token);
+      }, codeAutoRetrievalTimeout);
+    } catch (e) {
+      debugPrint('전화번호 인증 중 오류: $e');
+      Fluttertoast.showToast(msg: '전화번호 인증을 시작할 수 없습니다.');
+    }
   }
 
   // SMS 코드로 로그인
