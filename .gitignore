@@ -44,5 +44,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Firebase configuration files (contains sensitive data)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
 /lib/firebase_options.dart
 firebase_options.dart
