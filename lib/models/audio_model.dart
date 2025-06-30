@@ -27,6 +27,7 @@ class AudioModel {
       debugPrint('녹음 경로 설정: $recordingPath');
 
       // 녹음 시작
+      await _recorder.openRecorder();
       await _recorder.startRecorder(toFile: recordingPath);
 
       return recordingPath;

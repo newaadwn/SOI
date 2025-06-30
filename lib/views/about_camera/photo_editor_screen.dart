@@ -308,19 +308,20 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
 
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
+      resizeToAvoidBottomInset: false, // 키보드가 올라올 때 UI가 밀리지 않도록 설정
+      /* appBar: AppBar(
         title: Text(
           'SOI',
           style: TextStyle(color: AppTheme.lightTheme.colorScheme.secondary),
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
         toolbarHeight: 70 / 852 * screenHeight,
-      ),
+      ),*/
       body: SingleChildScrollView(
         child: Column(
           children: [
-            SizedBox(height: 20 / 852 * screenHeight),
             // Main content
+            SizedBox(height: 50 / 852 * screenHeight), // 상단 여백
             Center(
               child:
                   _isLoading
@@ -332,7 +333,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                       )
                       : Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.min,
+
                         children: [
                           // 이미지 표시 위젯
                           PhotoDisplayWidget(
@@ -343,7 +344,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                             width: 354 / 393 * screenWidth,
                             height: 471 / 852 * screenHeight,
                           ),
-                          SizedBox(height: 20 / 852 * screenHeight),
+                          SizedBox(height: 10 / 852 * screenHeight),
                           // 오디오 녹음 위젯
                           AudioRecorderWidget(
                             onRecordingCompleted: null, // AudioController에서 처리
@@ -358,14 +359,13 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
         controller: _draggableScrollController,
         initialChildSize: 0.2,
         minChildSize: 0.2,
-        maxChildSize: 0.8,
+        // maxChildSize: 0.5,
         expand: false,
         builder: (context, scrollController) {
           return Container(
             decoration: BoxDecoration(
-              color: Color(0xff4f4f4f),
+              color: Color(0xff171717),
               borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-              boxShadow: [BoxShadow(blurRadius: 10, color: Colors.black26)],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -373,8 +373,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                 // 드래그 핸들
                 Center(
                   child: Container(
-                    height: 4,
-                    width: 40,
+                    height: 5 / 852 * screenHeight,
+                    width: 109 / 393 * screenWidth,
                     margin: const EdgeInsets.only(top: 8, bottom: 16),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade300,
@@ -436,6 +436,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                       ],
                     ),
                   ),
+                if (_showAddCategoryUI) Divider(color: Color(0xff3d3d3d)),
                 SizedBox(height: 12),
 
                 // 콘텐츠 영역: 조건에 따라 카테고리 목록 또는 카테고리 추가 UI 표시
@@ -449,43 +450,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16.0,
                               ),
-                              child: Column(
-                                children: [
-                                  AddCategoryWidget(
-                                    textController: _categoryNameController,
-                                    scrollController: scrollController,
-                                  ),
-                                  SizedBox(height: 20),
-                                  ElevatedButton.icon(
-                                    onPressed: () {
-                                      // 친구 추가하기 로직
-                                    },
-                                    icon: Icon(
-                                      Icons.person_add_alt_1_outlined,
-                                      color: Color(0xffE2E2E2),
-                                    ),
-                                    label: Text(
-                                      '친구 추가하기',
-                                      style: TextStyle(
-                                        color: Color(0xffE2E2E2),
-                                        fontSize: 14,
-                                      ),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Color(0xff323232),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(
-                                          16.5,
-                                        ),
-                                      ),
-                                      elevation: 0,
-                                      minimumSize: Size(
-                                        double.infinity,
-                                        50,
-                                      ), // 버튼 크기 조정
-                                    ),
-                                  ),
-                                ],
+                              child: AddCategoryWidget(
+                                textController: _categoryNameController,
+                                scrollController: scrollController,
                               ),
                             )
                             : CategoryListWidget(

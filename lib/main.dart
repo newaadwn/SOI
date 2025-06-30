@@ -6,7 +6,6 @@ import 'package:flutter_swift_camera/views/about_archiving/all_archives_screen.d
 import 'package:flutter_swift_camera/views/about_archiving/personal_archives_screen.dart';
 import 'package:flutter_swift_camera/views/about_archiving/shared_archives_screen.dart';
 import 'package:flutter_swift_camera/views/about_camera/camera_screen.dart';
-import 'package:flutter_swift_camera/views/about_category/category_add_screen.dart';
 import 'package:flutter_swift_camera/views/about_category/category_select_screen.dart';
 import 'package:flutter_swift_camera/views/home_navigator_screen.dart';
 import 'package:flutter_swift_camera/views/home_screen.dart';
@@ -76,7 +75,6 @@ class MyApp extends StatelessWidget {
 
           // 카테고리 관련 라우트
           '/category_select': (context) => const CategorySelectScreen(),
-          '/category_add_screen': (context) => const CategoryAddScreen(),
 
           // 아카이빙 관련 라우트
           '/share_record': (context) => const SharedArchivesScreen(),
