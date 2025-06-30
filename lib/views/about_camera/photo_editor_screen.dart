@@ -319,7 +319,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
         child: Column(
           children: [
             // Main content
-            SizedBox(height: 50 / 852 * screenHeight), // 상단 여백
+            SizedBox(height: 70 / 852 * screenHeight), // 상단 여백
             Center(
               child:
                   _isLoading
@@ -342,7 +342,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                             width: 354 / 393 * screenWidth,
                             height: 471 / 852 * screenHeight,
                           ),
-                          SizedBox(height: 10 / 852 * screenHeight),
+                          SizedBox(height: 20 / 852 * screenHeight),
                           // 오디오 녹음 위젯
                           AudioRecorderWidget(
                             onRecordingCompleted: null, // AudioController에서 처리

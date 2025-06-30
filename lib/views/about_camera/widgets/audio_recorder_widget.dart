@@ -140,7 +140,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
                         showMiddleLine: false,
                       ),
                     )
-                    : const Icon(Icons.mic, color: Colors.white, size: 32),
+                    : const Icon(Icons.mic, color: Colors.white, size: 45),
                 if (isRecording) SizedBox(width: 12 / 393 * screenWidth),
                 if (isRecording)
                   Text(
