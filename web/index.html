@@ -32,9 +32,16 @@
   <title>flutter_swift_camera</title>
   <link rel="manifest" href="manifest.json">
 
-  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+  
+  <!-- reCAPTCHA for Firebase Phone Auth -->
+  <script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script>
 </head>
 <body>
+  <!-- reCAPTCHA container -->
+  <div id="recaptcha-container"></div>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

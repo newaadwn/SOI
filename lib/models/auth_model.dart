@@ -228,18 +228,38 @@ class AuthModel {
     try {
       debugPrint('reCAPTCHA 초기화 시작');
 
-      // Firebase Auth 설정 재초기화
-      await _auth.setSettings(
-        appVerificationDisabledForTesting: false,
-        forceRecaptchaFlow: false,
-      );
+      if (kIsWeb) {
+        // 웹에서는 reCAPTCHA 설정 초기화
+        await _auth.setSettings(
+          appVerificationDisabledForTesting: false,
+          forceRecaptchaFlow: true, // reCAPTCHA 강제 사용
+        );
 
-      // 잠시 대기하여 설정이 완전히 적용되도록 함
-      await Future.delayed(const Duration(milliseconds: 1000));
+        // 더 긴 대기 시간으로 reCAPTCHA 로드 완료 대기
+        await Future.delayed(const Duration(milliseconds: 2000));
+      } else {
+        // 모바일에서는 reCAPTCHA 비활성화
+        await _auth.setSettings(
+          appVerificationDisabledForTesting: false,
+          forceRecaptchaFlow: false,
+        );
+
+        await Future.delayed(const Duration(milliseconds: 1000));
+      }
 
       debugPrint('reCAPTCHA 초기화 완료');
     } catch (e) {
       debugPrint('reCAPTCHA 초기화 중 오류: $e');
+      // 재시도 로직 추가
+      await Future.delayed(const Duration(milliseconds: 1000));
+      try {
+        await _auth.setSettings(
+          appVerificationDisabledForTesting: false,
+          forceRecaptchaFlow: kIsWeb,
+        );
+      } catch (retryError) {
+        debugPrint('reCAPTCHA 재시도 실패: $retryError');
+      }
     }
   }
 
@@ -281,18 +301,51 @@ class AuthModel {
     Function(String verificationId, int? resendToken) onCodeSent,
   ) async {
     try {
-      // 웹에서는 RecaptchaVerifier를 사용하여 signInWithPhoneNumber 호출
-      _confirmationResult = await _auth.signInWithPhoneNumber(phoneNumber);
+      debugPrint('웹 전화번호 인증 시작: $phoneNumber');
 
-      // 확인 결과를 저장하고 콜백 호출
-      _verificationId = _confirmationResult!.verificationId;
-      onCodeSent(_confirmationResult!.verificationId, null);
+      // reCAPTCHA 로드 확인 및 재시도 로직
+      int retryCount = 0;
+      const maxRetries = 3;
 
-      debugPrint(
-        "Web phone auth started, verificationId: ${_confirmationResult!.verificationId}",
-      );
+      while (retryCount < maxRetries) {
+        try {
+          // 웹에서는 RecaptchaVerifier를 사용하여 signInWithPhoneNumber 호출
+          _confirmationResult = await _auth.signInWithPhoneNumber(phoneNumber);
+
+          // 확인 결과를 저장하고 콜백 호출
+          _verificationId = _confirmationResult!.verificationId;
+          onCodeSent(_confirmationResult!.verificationId, null);
+
+          debugPrint(
+            "웹 전화번호 인증 성공, verificationId: ${_confirmationResult!.verificationId}",
+          );
+          return; // 성공 시 메서드 종료
+        } catch (e) {
+          retryCount++;
+          debugPrint('웹 전화번호 인증 시도 $retryCount 실패: $e');
+
+          if (e.toString().contains('web-internal-error') ||
+              e.toString().contains('reCAPTCHA')) {
+            // reCAPTCHA 관련 오류 시 재시도
+            if (retryCount < maxRetries) {
+              debugPrint('reCAPTCHA 재시도 중... ($retryCount/$maxRetries)');
+              await Future.delayed(Duration(seconds: retryCount * 2));
+
+              // reCAPTCHA 재초기화
+              await resetRecaptcha();
+              continue;
+            }
+          }
+
+          // 최대 재시도 횟수 도달 또는 다른 오류
+          throw e;
+        }
+      }
+
+      throw Exception('웹 전화번호 인증 최대 재시도 횟수 초과');
     } catch (e) {
-      debugPrint('Web phone auth error: $e');
+      debugPrint('웹 전화번호 인증 최종 실패: $e');
+      Fluttertoast.showToast(msg: '전화번호 인증에 실패했습니다. 네트워크 연결을 확인하고 다시 시도해주세요.');
       rethrow;
     }
   }

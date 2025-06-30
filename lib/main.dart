@@ -58,7 +58,6 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CategoryController()),
         ChangeNotifierProvider(create: (_) => AudioController()),
         ChangeNotifierProvider(create: (_) => CommentController()),
-
         ChangeNotifierProvider(create: (_) => ContactsController()),
       ],
       child: MaterialApp(
@@ -68,7 +67,7 @@ class MyApp extends StatelessWidget {
           '/': (context) => const StartScreen(),
           '/home': (context) => const HomeScreen(),
           '/home_navigation_screen':
-              (context) => HomePageNavigationBar(currentPageIndex: 0),
+              (context) => HomePageNavigationBar(currentPageIndex: 1),
           '/camera': (context) => const CameraScreen(),
           '/archiving': (context) => const ArchiveMainScreen(),
           '/start': (context) => const StartScreen(),
@@ -83,9 +82,7 @@ class MyApp extends StatelessWidget {
           '/share_record': (context) => const SharedArchivesScreen(),
           '/my_record': (context) => const PersonalArchivesScreen(),
           '/all_category': (context) => const AllArchivesScreen(),
-
           '/privacy_policy': (context) => const PrivacyPolicyScreen(),
-
           '/add_contacts': (context) => const AddcontactsPage(),
         },
         theme: ThemeData(iconTheme: IconThemeData(color: Colors.white)),

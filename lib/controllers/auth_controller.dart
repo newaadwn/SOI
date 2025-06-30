@@ -64,6 +64,8 @@ class AuthController extends ChangeNotifier {
     Function(String) codeAutoRetrievalTimeout,
   ) async {
     try {
+      debugPrint('전화번호 인증 시작: $phoneNumber');
+
       // reCAPTCHA 초기화 (restart 후 캐시 문제 해결)
       await _authModel.resetRecaptcha();
 
@@ -72,11 +74,23 @@ class AuthController extends ChangeNotifier {
         int? token,
       ) {
         _verificationId = verificationId;
+        debugPrint('인증 ID 설정 완료: $verificationId');
         onCodeSent(verificationId, token);
       }, codeAutoRetrievalTimeout);
     } catch (e) {
       debugPrint('전화번호 인증 중 오류: $e');
-      Fluttertoast.showToast(msg: '전화번호 인증을 시작할 수 없습니다.');
+
+      // 구체적인 오류 메시지 제공
+      String errorMessage = '전화번호 인증을 시작할 수 없습니다.';
+      if (e.toString().contains('web-internal-error')) {
+        errorMessage = '네트워크 연결을 확인하고 다시 시도해주세요.';
+      } else if (e.toString().contains('reCAPTCHA')) {
+        errorMessage = '보안 인증에 실패했습니다. 잠시 후 다시 시도해주세요.';
+      } else if (e.toString().contains('invalid-phone-number')) {
+        errorMessage = '유효하지 않은 전화번호입니다. 형식을 확인해주세요.';
+      }
+
+      Fluttertoast.showToast(msg: errorMessage);
     }
   }
 
@@ -125,7 +139,7 @@ class AuthController extends ChangeNotifier {
   // 갤러리에서 이미지 선택 및 업로드
   Future<bool> updateProfileImage() async {
     try {
-      // 상태 업데이트
+      // 상태 업데이트 
       _isUploading = true;
       notifyListeners();
 
