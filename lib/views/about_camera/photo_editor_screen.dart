@@ -258,7 +258,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
       // 현재 사용자 정보 가져오기
       final String? userId = _authController.getUserId;
 
-      // 사용자가 인증되지 않은 경우 처리
       if (userId == null) {
         ScaffoldMessenger.of(
           context,
