@@ -245,7 +245,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
 
   // 카테고리 생성 처리 함수
   Future<void> _createNewCategory(String categoryName) async {
-    // 카테고리 이름 검증
     if (_categoryNameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(
         context,
