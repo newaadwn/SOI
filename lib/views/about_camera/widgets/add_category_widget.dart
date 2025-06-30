@@ -17,6 +17,9 @@ class AddCategoryWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    //final screenWidth = MediaQuery.of(context).size.width;
+    //final screenHeight = MediaQuery.of(context).size.height;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -25,7 +28,7 @@ class AddCategoryWidget extends StatelessWidget {
           onPressed: () {
             // 친구 추가하기 로직
           },
-          icon: Icon(Icons.person_add_alt, color: Color(0xffE2E2E2)),
+          icon: Image.asset('assets/person_add.png', width: 17, height: 17),
           label: Text(
             '친구 추가하기',
             style: TextStyle(color: Color(0xffE2E2E2), fontSize: 14),
@@ -41,17 +44,17 @@ class AddCategoryWidget extends StatelessWidget {
         ),
         TextField(
           controller: textController,
+          cursorColor: Color(0xffcccccc),
+          style: TextStyle(
+            color: Color(0xffcccccc), // 입력 글자색 지정
+          ),
           decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.grey.shade100,
-            hintText: hintText ?? '카테고리 이름을 입력해 주세요.', // 전달받은 hintText 사용
+            filled: false,
+            hintText: '카테고리 이름을 입력해 주세요.',
+            hintStyle: TextStyle(color: Color(0xffcccccc)),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
             ),
           ),
         ),
