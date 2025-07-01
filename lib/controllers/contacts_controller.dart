@@ -3,13 +3,11 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import '../models/contact_model.dart';
 import '../services/contacts_service.dart';
-import '../services/contact_firebase_service.dart';
 
 /// 연락처 관련 비즈니스 로직을 처리하는 컨트롤러
 class ContactsController with ChangeNotifier {
   // 서비스 객체 생성
   final ContactsService _contactsService = ContactsService();
-  final ContactFirebaseService _firebaseService = ContactFirebaseService();
 
   // 상태 변수
   List<Contact> _contacts = [];
@@ -64,7 +62,7 @@ class ContactsController with ChangeNotifier {
   void loadAddedContacts() {
     try {
       // Firebase에서 이미 추가된 연락처 목록 가져오기
-      _firebaseService.getContacts().listen((contacts) {
+      _contactsService.getContacts().listen((contacts) {
         _addedContactPhones =
             contacts.map((contact) => contact.phoneNumber).toSet();
         notifyListeners();
@@ -132,7 +130,7 @@ class ContactsController with ChangeNotifier {
       final contactModel = ContactModel.fromFlutterContact(contact);
 
       // Firebase에 저장
-      await _firebaseService.addContact(contactModel);
+      await _contactsService.addContact(contactModel);
 
       // 추가된 연락처 목록 업데이트
       _addedContactPhones.add(phoneNumber);

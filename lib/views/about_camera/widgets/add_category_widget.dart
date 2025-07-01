@@ -6,14 +6,12 @@ import 'package:flutter/material.dart';
 class AddCategoryWidget extends StatelessWidget {
   final TextEditingController textController;
   final ScrollController scrollController;
-  final String? hintText; // hintText 파라미터 추가
 
   const AddCategoryWidget({
-    Key? key,
+    super.key,
     required this.textController,
     required this.scrollController,
-    this.hintText, // hintText 파라미터 추가
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

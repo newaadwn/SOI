@@ -9,7 +9,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.flutter_swift_camera"
+    namespace = "com.newdawn.soiapp"
     compileSdk = 35 // 플러그인 호환성을 위해 SDK 35로 업데이트
     ndkVersion = "27.0.12077973" // 플러그인 호환성을 위해 NDK 버전 업데이트
 
@@ -24,7 +24,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.flutter_swift_camera"
+        applicationId = "com.newdawn.soiapp"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 24 // Flutter Sound 요구사항 - 기기 호환성 결정

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_swift_camera/controllers/category_controller.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
-import '../../theme/theme.dart';
 import '../../controllers/audio_controller.dart';
 import '../../controllers/auth_controller.dart';
 
