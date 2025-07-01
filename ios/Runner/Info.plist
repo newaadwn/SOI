@@ -32,7 +32,7 @@
 			<key>CFBundleURLSchemes</key>
 			<array>
 				<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-				<string>app-1-1074708164096-ios-8621504102c71a364d32e5</string>
+				<string>app-1-1074708164096-ios-f6a0558949723c8c4d32e5</string>
 			</array>
 		</dict>
 	</array>

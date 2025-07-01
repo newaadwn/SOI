@@ -139,7 +139,7 @@ class AuthController extends ChangeNotifier {
   // 갤러리에서 이미지 선택 및 업로드
   Future<bool> updateProfileImage() async {
     try {
-      // 상태 업데이트 
+      // 상태 업데이트
       _isUploading = true;
       notifyListeners();
 
