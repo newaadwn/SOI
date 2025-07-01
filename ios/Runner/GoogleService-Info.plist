@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.newdawn.soi-app</string>
+	<string>com.newdawn.soiapp</string>
 	<key>PROJECT_ID</key>
 	<string>soi-sns</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:1074708164096:ios:8621504102c71a364d32e5</string>
+	<string>1:1074708164096:ios:f6a0558949723c8c4d32e5</string>
 </dict>
 </plist>

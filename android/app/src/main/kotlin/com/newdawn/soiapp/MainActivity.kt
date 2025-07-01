@@ -1,4 +1,4 @@
-package com.example.flutter_swift_camera
+package com.newdawn.soiapp
 
 import android.Manifest
 import android.content.pm.PackageManager
