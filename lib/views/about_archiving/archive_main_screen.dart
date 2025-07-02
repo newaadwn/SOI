@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_swift_camera/controllers/auth_controller.dart';
+import '../../controllers/auth_controller.dart';
 import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
 import '../widgets/custom_drawer.dart';
@@ -41,9 +41,9 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
         toolbarHeight: 70 / 852 * screenHeight,
         leading: Consumer<AuthController>(
-          builder: (context, authViewModel, _) {
+          builder: (context, authController, _) {
             return FutureBuilder(
-              future: authViewModel.getUserProfileImageUrl(),
+              future: authController.getUserProfileImageUrl(),
               builder: (context, imageSnapshot) {
                 String profileImageUrl = imageSnapshot.data ?? '';
 
@@ -79,7 +79,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                           // 유효하지 않은 이미지 URL을 정리
                                           Future.microtask(
                                             () =>
-                                                authViewModel
+                                                authController
                                                     .cleanInvalidProfileImageUrl(),
                                           );
                                         },

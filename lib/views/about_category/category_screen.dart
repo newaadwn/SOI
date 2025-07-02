@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_swift_camera/controllers/category_controller.dart';
 import 'package:provider/provider.dart';
+import '../../controllers/category_controller.dart';
 import '../../controllers/auth_controller.dart';
 import 'category_screen_photo.dart';
 
@@ -17,16 +17,16 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categoryViewModel = Provider.of<CategoryController>(
+    final categoryController = Provider.of<CategoryController>(
       context,
       listen: false,
     );
-    final authViewModel = Provider.of<AuthController>(context, listen: false);
+    final authController = Provider.of<AuthController>(context, listen: false);
 
     return Scaffold(
       appBar: AppBar(
         title: FutureBuilder<String?>(
-          future: categoryViewModel.getCategoryName(widget.categoryId),
+          future: categoryController.getCategoryName(widget.categoryId),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
               return Text('Loading...');
@@ -52,7 +52,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 suffixIcon: IconButton(
                   icon: Icon(Icons.search),
                   onPressed: () {
-                    authViewModel.searchNickName(_searchController.text);
+                    authController.searchNickName(_searchController.text);
                   },
                 ),
               ),
@@ -60,18 +60,18 @@ class _CategoryScreenState extends State<CategoryScreen> {
           ),
           Expanded(
             child: Consumer<AuthController>(
-              builder: (context, authViewModel, child) {
+              builder: (context, authController, child) {
                 return ListView.builder(
-                  itemCount: authViewModel.searchResults.length,
+                  itemCount: authController.searchResults.length,
                   itemBuilder: (context, index) {
-                    final nickName = authViewModel.searchResults[index];
+                    final nickName = authController.searchResults[index];
                     return ListTile(
                       title: Text(nickName),
                       trailing: IconButton(
                         icon: Icon(Icons.add),
                         onPressed: () {
                           _addUserToCategory(context, nickName);
-                          _addUidToCategory(context, authViewModel.getUserId!);
+                          _addUidToCategory(context, authController.getUserId!);
                           Navigator.push(
                             context,
                             MaterialPageRoute(
@@ -96,18 +96,18 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   Future<void> _addUserToCategory(BuildContext context, String nickName) async {
     try {
-      final categoryViewModel = Provider.of<CategoryController>(
+      final categoryController = Provider.of<CategoryController>(
         context,
         listen: false,
       );
 
-      await categoryViewModel.addUserToCategory(widget.categoryId, nickName);
+      await categoryController.addUserToCategory(widget.categoryId, nickName);
 
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('사용자가 카테고리에 추가되었습니다.')));
     } catch (e) {
-      print('Error adding user to category: $e');
+      debugPrint('Error adding user to category: $e');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('사용자 추가 중 오류가 발생했습니다.')));
@@ -116,18 +116,18 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   Future<void> _addUidToCategory(BuildContext context, String uid) async {
     try {
-      final categoryViewModel = Provider.of<CategoryController>(
+      final categoryController = Provider.of<CategoryController>(
         context,
         listen: false,
       );
 
-      await categoryViewModel.addUidToCategory(widget.categoryId, uid);
+      await categoryController.addUidToCategory(widget.categoryId, uid);
 
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('사용자가 카테고리에 추가되었습니다.')));
     } catch (e) {
-      print('Error adding user to category: $e');
+      debugPrint('Error adding user to category: $e');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('사용자 추가 중 오류가 발생했습니다.')));

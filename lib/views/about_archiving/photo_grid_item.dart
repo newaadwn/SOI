@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
-import '../../models/photo_model.dart';
+import '../../models/photo_data_model.dart';
 import 'photo_detail_screen.dart';
 
 class PhotoGridItem extends StatefulWidget {
-  final PhotoModel photo;
-  final List<PhotoModel> allPhotos;
+  final PhotoDataModel photo;
+  final List<PhotoDataModel> allPhotos;
   final int currentIndex;
   final String categoryName;
   final String categoryId;
@@ -63,7 +62,7 @@ class _PhotoGridItemState extends State<PhotoGridItem>
             color: Colors.black.withOpacity(0.3),
             padding: const EdgeInsets.symmetric(vertical: 4.0),
             child: Text(
-              DateFormat('yyyy.MM.dd').format(widget.photo.createdAt.toDate()),
+              DateFormat('yyyy.MM.dd').format(widget.photo.createdAt),
               textAlign: TextAlign.center,
               style: const TextStyle(color: Colors.white),
             ),

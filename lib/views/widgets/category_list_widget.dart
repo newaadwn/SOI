@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_swift_camera/models/category_data_model.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/category_controller.dart';
 import 'category_item_widget.dart';
@@ -86,4 +87,8 @@ class CategoryListWidget extends StatelessWidget {
       },
     );
   }
+}
+
+extension on CategoryDataModel {
+  operator [](String other) {}
 }

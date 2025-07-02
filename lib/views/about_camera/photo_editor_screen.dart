@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_swift_camera/controllers/category_controller.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import '../../controllers/audio_controller.dart';
 import '../../controllers/auth_controller.dart';
+import '../../controllers/category_controller.dart';
+import '../../controllers/photo_controller.dart';
 
 // 분리된 위젯들을 임포트
 import '../home_navigator_screen.dart';
@@ -22,15 +23,16 @@ class PhotoEditorScreen extends StatefulWidget {
   State<PhotoEditorScreen> createState() => _PhotoEditorScreenState();
 }
 
-class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
+class _PhotoEditorScreenState extends State<PhotoEditorScreen>
+    with WidgetsBindingObserver {
   // 상태 변수
   bool _isLoading = true;
   String? _errorMessage;
   bool _useDownloadUrl = false;
   bool _useLocalImage = false;
-  bool _loadingCategories = true;
   bool _showAddCategoryUI = false;
   String? _selectedCategoryId;
+  bool _categoriesLoaded = false; // 카테고리 로드 상태 추적
 
   // 컨트롤러
   final _draggableScrollController = DraggableScrollableController();
@@ -40,11 +42,23 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
   late AudioController _audioController;
   late CategoryController _categoryController;
   late AuthController _authController;
+  late PhotoController _photoController;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadImage();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // 앱이 다시 활성화될 때 카테고리 목록을 새로고침
+    if (state == AppLifecycleState.resumed) {
+      _categoriesLoaded = false; // 플래그 리셋
+      _loadUserCategories(forceReload: true);
+    }
   }
 
   @override
@@ -58,9 +72,27 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
       listen: false,
     );
     _authController = Provider.of<AuthController>(context, listen: false);
+    _photoController = Provider.of<PhotoController>(context, listen: false);
 
-    // 현재 로그인한 유저의 카테고리 로드
-    _loadUserCategories();
+    // 현재 로그인한 유저의 카테고리 로드 (빌드 완료 후 실행)
+    if (!_categoriesLoaded) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadUserCategories();
+      });
+    }
+  }
+
+  @override
+  void didUpdateWidget(PhotoEditorScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 위젯이 업데이트될 때 (새로운 사진으로 변경되는 등) 카테고리 목록 새로고침
+    if (oldWidget.imagePath != widget.imagePath ||
+        oldWidget.downloadUrl != widget.downloadUrl) {
+      _categoriesLoaded = false; // 플래그 리셋
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadUserCategories(forceReload: true);
+      });
+    }
   }
 
   // 이미지 로딩 함수 개선
@@ -107,26 +139,53 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
   }
 
   // 사용자 카테고리 로드 메서드
-  Future<void> _loadUserCategories() async {
+  Future<void> _loadUserCategories({bool forceReload = false}) async {
+    if (!forceReload && _categoriesLoaded) return; // 이미 로드된 경우 스킵
+
     setState(() {
-      _loadingCategories = true;
+      _isLoading = true; // 로딩 시작
     });
 
     try {
       // 현재 로그인한 유저의 UID 가져오기
       final currentUser = _authController.currentUser;
       if (currentUser != null) {
+        debugPrint('현재 사용자 UID: ${currentUser.uid}');
+        debugPrint('현재 사용자 전화번호: ${currentUser.phoneNumber}');
+
+        // 사용자 닉네임도 확인
+        try {
+          final userNickName = await _authController.getIdFromFirestore();
+          debugPrint('현재 사용자 닉네임: $userNickName');
+        } catch (e) {
+          debugPrint('사용자 닉네임 가져오기 실패: $e');
+        }
+
         // CategoryController의 메서드 호출하여 카테고리 로드
-        await _categoryController.loadUserCategories(currentUser.uid);
+        await _categoryController.loadUserCategories(
+          currentUser.uid,
+          forceReload: forceReload,
+        );
+        _categoriesLoaded = true; // 로드 완료 표시
         debugPrint('로드된 카테고리 수: ${_categoryController.userCategories.length}');
+
+        // 카테고리 목록 상세 정보 출력
+        for (int i = 0; i < _categoryController.userCategories.length; i++) {
+          final category = _categoryController.userCategories[i];
+          debugPrint(
+            '카테고리 $i: ID=${category.id}, 이름=${category.name}, 멤버=${category.mates}',
+          );
+        }
+      } else {
+        debugPrint('현재 로그인한 사용자가 없습니다.');
       }
     } catch (e) {
       debugPrint('카테고리 로드 오류: $e');
     } finally {
-      // 로딩 상태 업데이트 (위젯 다시 그리기)
+      // 로딩 완료 처리 (성공 여부와 상관없이)
       if (mounted) {
         setState(() {
-          _loadingCategories = false;
+          _isLoading = false;
         });
       }
     }
@@ -134,78 +193,97 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
 
   // 카테고리에 사진과 음성 업로드 함수
   Future<void> _savePhotoAndAudioToCategory(String categoryId) async {
+    debugPrint('사진 업로드 시작: categoryId=$categoryId');
+
     setState(() {
       _isLoading = true;
     });
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(
-        builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
-      ),
-    );
+
     try {
       // 현재 사용자 닉네임 가져오기
       final userNickName = await _authController.getIdFromFirestore();
+      debugPrint('사용자 닉네임: $userNickName');
+
       String imagePath = '';
+      bool uploadSuccess = false;
 
       // 로컬 이미지 경로나 다운로드 URL 중 하나 선택
       if (_useLocalImage && widget.imagePath != null) {
+        debugPrint('로컬 이미지 업로드 시도: ${widget.imagePath}');
         imagePath = widget.imagePath!;
-      } else if (_useDownloadUrl && widget.downloadUrl != null) {
-        // 다운로드 URL을 사용하는 경우 그 URL을 사용
-        // AudioController를 사용하여 오디오 처리
-        final String audioUrl = await _audioController.processAudioForUpload();
 
-        await _categoryController.uploadPhoto(
-          categoryId,
-          userNickName,
-          "", // 로컬 파일 경로는 없음
-          audioUrl, // 오디오가 있을 때만 업로드
-          imageUrl: widget.downloadUrl, // 이미 있는 URL 사용
+        // AudioController를 사용하여 오디오 처리
+        final String audioPath = await _audioController.processAudioForUpload();
+        debugPrint('오디오 경로: $audioPath');
+
+        // Firebase Auth에서 UID 가져오기
+        final String? userId = _authController.getUserId;
+
+        if (userId == null) {
+          debugPrint('사용자 ID가 없습니다.');
+          throw Exception('사용자 ID가 없습니다. 로그인이 필요합니다.');
+        }
+
+        debugPrint('사용자 UID: $userId');
+
+        // PhotoController를 사용하여 사진 업로드 (Firebase UID 사용)
+        uploadSuccess = await _photoController.uploadPhoto(
+          imageFile: File(imagePath),
+          categoryId: categoryId,
+          userId: userId, // userNickName 대신 Firebase Auth UID 사용
+          userIds: [userId], // userNickName 대신 Firebase Auth UID 사용
+          audioFile: audioPath.isNotEmpty ? File(audioPath) : null,
         );
+
+        debugPrint('로컬 이미지 업로드 결과: $uploadSuccess');
+      } else if (_useDownloadUrl && widget.downloadUrl != null) {
+        debugPrint('다운로드 URL 업로드는 현재 지원되지 않습니다: ${widget.downloadUrl}');
+        // TODO: downloadUrl의 경우 URL에서 이미지를 다운로드한 후 업로드해야 함
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('URL 이미지는 현재 지원되지 않습니다.')));
+        return;
+      } else {
+        debugPrint('업로드할 이미지가 없습니다.');
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('업로드할 이미지가 없습니다.')));
+        return;
+      }
+
+      // 업로드 성공 시 처리
+      if (uploadSuccess) {
+        debugPrint('업로드 성공!');
 
         // 성공 메시지 표시
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                '${audioUrl.isNotEmpty ? "사진과 음성이" : "사진이"} 업로드되었습니다',
-              ),
+              content: Text('사진이 업로드되었습니다'),
+              backgroundColor: Colors.green,
             ),
           );
         }
 
-        // 상태 초기화하고 함수 종료
-        setState(() {
-          _isLoading = false;
-          _selectedCategoryId = null;
-        });
+        // 잠시 대기 후 화면 이동
+        await Future.delayed(Duration(milliseconds: 500));
 
-        // 카메라 화면으로 돌아가기 (pushReplacement 사용)
-
-        return;
-      }
-
-      // 로컬 이미지가 있는 경우에만 계속 진행
-      if (imagePath.isNotEmpty) {
-        // AudioController를 사용하여 오디오 처리
-        final String audioUrl = await _audioController.processAudioForUpload();
-
-        // 카테고리에 업로드
-        await _categoryController.uploadPhoto(
-          categoryId,
-          userNickName,
-          imagePath,
-          audioUrl,
-        );
-
-        // 성공 메시지 표시
+        // 홈 화면으로 이동
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
+            ),
+          );
+        }
+      } else {
+        debugPrint('업로드 실패');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                '${audioUrl.isNotEmpty ? "사진과 음성이" : "사진이"} 업로드되었습니다',
-              ),
+              content: Text('업로드에 실패했습니다.'),
+              backgroundColor: Colors.red,
             ),
           );
         }
@@ -213,16 +291,18 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
     } catch (e) {
       debugPrint('사진 및 음성 업로드 오류: $e');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('업로드 중 오류가 발생했습니다: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('업로드 중 오류가 발생했습니다: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     } finally {
       // 상태 초기화
       if (mounted) {
         setState(() {
           _isLoading = false;
-
           _selectedCategoryId = null;
         });
       }
@@ -255,6 +335,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
     try {
       // 현재 사용자 정보 가져오기
       final String? userId = _authController.getUserId;
+      debugPrint('카테고리 생성 - Firebase Auth UID: $userId');
 
       if (userId == null) {
         ScaffoldMessenger.of(
@@ -264,19 +345,22 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
       }
 
       final String userNickName = await _authController.getIdFromFirestore();
+      debugPrint('카테고리 생성 - 사용자 닉네임: $userNickName');
 
       // 메이트 리스트 준비 (여기서는 예시로 현재 사용자만 포함)
-      List<String> mates = [userNickName];
+      // 중요: mates 필드에는 Firebase Auth UID를 사용해야 함
+      List<String> mates = [userId]; // userNickName 대신 userId 사용
+      debugPrint('카테고리 생성 - mates 리스트: $mates');
 
       // 카테고리 생성
       await _categoryController.createCategory(
-        _categoryNameController.text.trim(),
-        mates,
-        userId,
+        name: _categoryNameController.text.trim(),
+        mates: mates,
       );
 
-      // 화면 갱신
-      _loadUserCategories();
+      // 카테고리 목록 강제 새로고침
+      _categoriesLoaded = false; // 플래그 리셋
+      await _loadUserCategories(forceReload: true);
 
       // 원래 화면으로 돌아가기
       setState(() {
@@ -286,11 +370,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
 
       if (!context.mounted) return;
 
-      // 성공 메시지
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('카테고리가 생성되었습니다')));
+      // 성공 메시지는 CategoryController에서 처리됨
     } catch (e) {
+      debugPrint('카테고리 생성 중 오류: $e');
       if (!context.mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -461,7 +543,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
                                   _showAddCategoryUI = true;
                                 });
                               },
-                              isLoading: _loadingCategories,
+                              isLoading: _categoryController.isLoading,
                             ),
                   ),
                 ),
@@ -475,6 +557,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _categoryNameController.dispose();
     _draggableScrollController.dispose();
     super.dispose();

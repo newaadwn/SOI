@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_swift_camera/controllers/category_controller.dart';
 import 'package:provider/provider.dart';
+import '../controllers/category_controller.dart';
 import '../theme/theme.dart';
 import '../controllers/auth_controller.dart';
 
@@ -14,8 +14,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
-    final authViewModel = Provider.of<AuthController>(context, listen: false);
-    final categoryViewModel = Provider.of<CategoryController>(
+    final authController = Provider.of<AuthController>(context, listen: false);
+    final categoryController = Provider.of<CategoryController>(
       context,
       listen: false,
     );
@@ -48,7 +48,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: FutureBuilder<String>(
-        future: authViewModel.getIdFromFirestore(),
+        future: authController.getIdFromFirestore(),
         builder: (context, nickSnapshot) {
           if (nickSnapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
@@ -58,7 +58,7 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           final nickName = nickSnapshot.data!;
           return StreamBuilder<List<Map<String, dynamic>>>(
-            stream: categoryViewModel.streamUserCategories(nickName),
+            stream: categoryController.streamUserCategoriesAsMap(nickName),
             builder: (context, catSnapshot) {
               if (catSnapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: CircularProgressIndicator());
@@ -125,7 +125,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   child: Row(
                                     children: [
                                       StreamBuilder<String?>(
-                                        stream: categoryViewModel
+                                        stream: categoryController
                                             .getFirstPhotoUrlStream(
                                               category['id'],
                                             ),

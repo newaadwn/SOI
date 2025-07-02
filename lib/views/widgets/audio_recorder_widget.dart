@@ -41,7 +41,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Provider에서 필요한 ViewModel 가져오기
+    // Provider에서 필요한 Controller 가져오기
     _audioController = Provider.of<AudioController>(context, listen: false);
   }
 
@@ -63,12 +63,13 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     try {
       // 파형 표시를 위한 녹음 컨트롤러 중지
       await recorderController.stop();
-      // AudioController의 녹음 중지 함수 호출
-      await _audioController.stopRecording();
+
+      // AudioController의 간단한 녹음 중지 함수 호출 (업로드 없이)
+      await _audioController.stopRecordingSimple();
 
       // 콜백이 있는 경우 녹음 파일 경로 전달
       if (widget.onRecordingCompleted != null) {
-        widget.onRecordingCompleted!(_audioController.audioFilePath);
+        widget.onRecordingCompleted!(_audioController.currentRecordingPath);
       }
 
       setState(() {}); // UI 갱신

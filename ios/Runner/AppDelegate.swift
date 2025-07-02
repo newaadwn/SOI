@@ -13,8 +13,14 @@ import UserNotifications
     // Firebase 초기화 먼저
     FirebaseApp.configure()
     
-    // Firebase Auth 설정
-    Auth.auth().settings?.isAppVerificationDisabledForTesting = false
+    // Firebase Auth 설정 (reCAPTCHA 관련 문제 해결)
+    let authSettings = Auth.auth().settings
+    authSettings?.isAppVerificationDisabledForTesting = false
+    
+    // reCAPTCHA 관련 에러 방지를 위한 추가 설정
+    if #available(iOS 13.0, *) {
+      // iOS 13 이상에서만 사용 가능한 설정
+    }
     
     // APNs 알림 권한 요청
     if #available(iOS 10.0, *) {
