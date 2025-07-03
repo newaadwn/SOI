@@ -24,7 +24,9 @@ class CategoryController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // ==================== 카테고리 관리 ====================  /// 사용자의 카테고리 목록을 가져오는 메소드
+  // ==================== 카테고리 관리 ====================
+
+  // 사용자의 카테고리 목록을 가져오는 메소드
   Future<void> loadUserCategories(
     String userId, {
     bool forceReload = false,

@@ -9,6 +9,7 @@ import '../models/contact_data_model.dart';
 class ContactRepository {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final FirebaseAuth _auth = FirebaseAuth.instance;
+  static final Permission _contactsPermission = Permission.contacts;
 
   // ==================== Firebase 연락처 관리 ====================
 
@@ -262,12 +263,12 @@ class ContactRepository {
 
   /// 연락처 권한 상태 확인
   Future<PermissionStatus> checkContactsPermission() async {
-    return await Permission.contacts.status;
+    return await _contactsPermission.status;
   }
 
   /// 연락처 권한 요청
   Future<PermissionStatus> requestContactsPermission() async {
-    return await Permission.contacts.request();
+    return await _contactsPermission.request();
   }
 
   /// 설정 앱으로 이동

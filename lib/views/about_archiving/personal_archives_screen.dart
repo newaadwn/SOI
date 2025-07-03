@@ -153,7 +153,7 @@ class _PersonalArchivesScreenState extends State<PersonalArchivesScreen> {
                         ),
                         child: InkWell(
                           onTap: () {
-                            print(
+                            debugPrint(
                               "category['profileImages']: ${category['profileImages']}",
                             );
                             Navigator.push(

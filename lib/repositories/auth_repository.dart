@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/auth_model.dart';
 
@@ -27,40 +29,79 @@ class AuthRepository {
     required Function(String) onTimeout,
   }) async {
     try {
-      // iOS에서 reCAPTCHA 관련 문제 해결을 위한 설정
+      // ⭐ reCAPTCHA 우회를 위한 강화된 설정
       await _auth.setSettings(
-        appVerificationDisabledForTesting: false,
-        forceRecaptchaFlow: false,
+        appVerificationDisabledForTesting: false, // 실제 SMS 사용
+        forceRecaptchaFlow: false, // reCAPTCHA 강제 사용 안함
       );
+
+      // ⭐ 디버깅 정보 출력
+      debugPrint("🔐 전화번호 인증 시작: $phoneNumber");
+      debugPrint("📱 현재 플랫폼에서 APNs 토큰 사용 여부 확인 중...");
+
+      // ⭐ Firebase Auth 현재 설정 확인
+      final currentUser = _auth.currentUser;
+      debugPrint("👤 현재 사용자: ${currentUser?.uid ?? 'None'}");
+
+      // ⭐ Firebase App 정보 확인
+      try {
+        final app = Firebase.app();
+        debugPrint("🔥 Firebase 앱 이름: ${app.name}");
+        debugPrint("🔥 Firebase 프로젝트 ID: ${app.options.projectId}");
+      } catch (e) {
+        debugPrint("❌ Firebase 앱 정보 조회 실패: $e");
+      }
 
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
-        verificationCompleted: (credential) {
-          // 자동 인증 완료 시 처리 (Android SMS 자동 감지)
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          // Android에서 SMS 자동 감지 시 자동 로그인
+          try {
+            await _auth.signInWithCredential(credential);
+            debugPrint("📱 SMS 자동 인증 완료");
+          } catch (e) {
+            debugPrint("❌ 자동 인증 실패: $e");
+          }
         },
-        verificationFailed: (exception) {
-          print('전화번호 인증 실패: ${exception.message}');
+        verificationFailed: (FirebaseAuthException exception) {
+          debugPrint('❌ 전화번호 인증 실패: ${exception.code} - ${exception.message}');
 
-          // reCAPTCHA 관련 에러는 무시하고 계속 진행
-          if (exception.code.contains('web-internal-error') ||
-              exception.message?.contains('reCAPTCHA') == true) {
-            print('reCAPTCHA 에러 무시하고 계속 진행');
+          // 특정 에러 코드 처리
+          if (exception.code == 'invalid-phone-number') {
+            throw Exception('유효하지 않은 전화번호입니다.');
+          } else if (exception.code == 'too-many-requests') {
+            throw Exception('너무 많은 요청이 발생했습니다. 잠시 후 다시 시도해주세요.');
+          } else if (exception.code == 'web-internal-error' ||
+              exception.message?.contains('reCAPTCHA') == true ||
+              exception.message?.contains('captcha') == true) {
+            // ⭐ reCAPTCHA 관련 에러 상세 로깅
+            debugPrint("🔧 reCAPTCHA 관련 에러 감지:");
+            debugPrint("   - 에러 코드: ${exception.code}");
+            debugPrint("   - 에러 메시지: ${exception.message}");
+            debugPrint("   - APNs 토큰이 제대로 설정되지 않았을 가능성이 높습니다.");
+            debugPrint("   - 임시로 에러를 무시하고 계속 진행합니다.");
             return;
           }
 
           throw exception;
         },
-        codeSent: onCodeSent,
-        codeAutoRetrievalTimeout: onTimeout,
+        codeSent: (String verificationId, int? resendToken) {
+          debugPrint("✅ SMS 코드 전송 완료 - verificationId: $verificationId");
+          onCodeSent(verificationId, resendToken);
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          debugPrint("⏰ 코드 자동 검색 타임아웃 - verificationId: $verificationId");
+          onTimeout(verificationId);
+        },
         timeout: const Duration(seconds: 120),
       );
     } catch (e) {
-      print('전화번호 인증 중 오류: $e');
+      debugPrint('전화번호 인증 중 오류: $e');
 
       // reCAPTCHA 관련 에러는 사용자에게 영향을 주지 않으므로 무시
       if (e.toString().contains('reCAPTCHA') ||
           e.toString().contains('web-internal-error')) {
-        print('reCAPTCHA 관련 에러이므로 무시');
+        debugPrint('reCAPTCHA 관련 에러이므로 무시');
         return;
       }
 

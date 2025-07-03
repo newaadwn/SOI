@@ -255,49 +255,23 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       if (uploadSuccess) {
         debugPrint('업로드 성공!');
 
-        // 성공 메시지 표시
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('사진이 업로드되었습니다'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
+          ),
+        );
 
         // 잠시 대기 후 화면 이동
-        await Future.delayed(Duration(milliseconds: 500));
+        Future.delayed(Duration(milliseconds: 500));
 
         // 홈 화면으로 이동
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
-            ),
-          );
-        }
+        //if (mounted) {}
       } else {
         debugPrint('업로드 실패');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('업로드에 실패했습니다.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
       }
     } catch (e) {
       debugPrint('사진 및 음성 업로드 오류: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('업로드 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
     } finally {
       // 상태 초기화
       if (mounted) {
