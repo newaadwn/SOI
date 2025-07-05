@@ -19,9 +19,9 @@ class CameraService {
   static const MethodChannel _channel = MethodChannel('com.soi.camera');
 
   bool _isGloballyInitialized = false;
-  static Widget? _cameraView;
-  final GlobalKey _cameraKey = GlobalKey();
-  static bool _isViewCreated = false;
+  //static Widget? _cameraView;
+  //final GlobalKey _cameraKey = GlobalKey();
+  //static final bool _isViewCreated = false;
 
   Future<void> globalInitialize() async {
     if (!_isGloballyInitialized) {
@@ -49,11 +49,9 @@ class CameraService {
 
   Widget getCameraView() {
     // 한 번 생성된 뷰는 절대 재생성하지 않음
-    debugPrint("isViewCreated: $_isViewCreated");
+    //debugPrint("isViewCreated: $_isViewCreated");
 
-    _cameraView = _buildCameraView();
-
-    return _cameraView!;
+    return _buildCameraView();
   }
 
   Widget _buildCameraView() {
@@ -192,7 +190,7 @@ class CameraService {
   Future<void> dispose() async {
     try {
       await _channel.invokeMethod('disposeCamera');
-      _cameraView = null;
+      // _cameraView = null;
       _isGloballyInitialized = false;
       debugPrint('카메라 리소스 정리 완료');
     } on PlatformException catch (e) {
