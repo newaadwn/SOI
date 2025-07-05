@@ -48,7 +48,7 @@ class _CameraScreenState extends State<CameraScreen>
     WidgetsBinding.instance.addObserver(this);
 
     // 카메라 초기화 시작
-    _cameraInitialization = _initCamera()
+    /*_cameraInitialization = _initCamera()
         .then((_) {
           if (mounted) {
             setState(() {
@@ -64,7 +64,12 @@ class _CameraScreenState extends State<CameraScreen>
               _isLoading = false;
             });
           }
-        });
+        });*/
+    _cameraService.activateSession();
+    setState(() {
+      _isLoading = false;
+      _isInitialized = true;
+    });
   }
 
   @override
@@ -94,7 +99,7 @@ class _CameraScreenState extends State<CameraScreen>
   }
 
   // ✅ 추가: 카메라 초기화 메서드 - 비동기 작업을 명확하게 처리
-  Future<void> _initCamera() async {
+  /*Future<void> _initCamera() async {
     try {
       // 카메라 초기화 요청
       await _cameraService.globalInitialize();
@@ -119,7 +124,7 @@ class _CameraScreenState extends State<CameraScreen>
       debugPrint("카메라 초기화 중 예상치 못한 오류: $e");
       rethrow;
     }
-  }
+  }*/
 
   // 플래시 토글 요청
   Future<void> _toggleFlash() async {

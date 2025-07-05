@@ -19,14 +19,15 @@ class CameraService {
   static const MethodChannel _channel = MethodChannel('com.soi.camera');
 
   bool _isGloballyInitialized = false;
-  Widget? _cameraView;
+  static Widget? _cameraView;
   final GlobalKey _cameraKey = GlobalKey();
+  static bool _isViewCreated = false;
 
   Future<void> globalInitialize() async {
     if (!_isGloballyInitialized) {
       try {
         await _channel
-            .invokeMethod('createPersistentSession')
+            .invokeMethod('initCamera')
             .timeout(
               const Duration(seconds: 1),
               onTimeout: () {
@@ -47,7 +48,11 @@ class CameraService {
   }
 
   Widget getCameraView() {
-    _cameraView ??= _buildCameraView();
+    // 한 번 생성된 뷰는 절대 재생성하지 않음
+    debugPrint("isViewCreated: $_isViewCreated");
+
+    _cameraView = _buildCameraView();
+
     return _cameraView!;
   }
 
@@ -55,7 +60,6 @@ class CameraService {
     // 플랫폼에 따라 다른 카메라 프리뷰 위젯 생성
     if (Platform.isAndroid) {
       return AndroidView(
-        key: _cameraKey,
         viewType: 'com.soi.camera/preview',
         onPlatformViewCreated: (int id) {
           debugPrint('안드로이드 카메라 뷰 생성됨: $id');
@@ -70,7 +74,6 @@ class CameraService {
       );
     } else if (Platform.isIOS) {
       return UiKitView(
-        key: _cameraKey,
         viewType: 'com.soi.camera/preview',
         onPlatformViewCreated: (int id) {
           debugPrint('iOS 카메라 뷰 생성됨: $id');
@@ -91,7 +94,7 @@ class CameraService {
 
   Future<void> activateSession() async {
     try {
-      await _channel.invokeMethod('activateSession');
+      await _channel.invokeMethod('resumeCamera');
       debugPrint('카메라 세션 활성화');
     } on PlatformException catch (e) {
       debugPrint("카메라 세션 활성화 오류: ${e.message}");
@@ -100,7 +103,7 @@ class CameraService {
 
   Future<void> deactivateSession() async {
     try {
-      await _channel.invokeMethod('deactivateSession');
+      await _channel.invokeMethod('pauseCamera');
       debugPrint('카메라 세션 비활성화');
     } on PlatformException catch (e) {
       debugPrint("카메라 세션 비활성화 오류: ${e.message}");
@@ -127,6 +130,8 @@ class CameraService {
 
   Future<void> optimizeCamera() async {
     try {
+      // 기존 네이티브 구현에 optimizeCamera 메서드가 없을 수 있으므로
+      // 안전하게 처리하거나 필요한 경우 네이티브에서 구현 필요
       await _channel.invokeMethod('optimizeCamera', {
         'autoFocus': true,
         'highQuality': true,
@@ -134,7 +139,12 @@ class CameraService {
       });
       debugPrint('카메라 최적화 완료');
     } on PlatformException catch (e) {
-      debugPrint("카메라 최적화 오류: ${e.message}");
+      // optimizeCamera 메서드가 구현되지 않은 경우 무시
+      if (e.code == 'unimplemented') {
+        debugPrint('카메라 최적화 메서드가 구현되지 않음 (무시)');
+      } else {
+        debugPrint("카메라 최적화 오류: ${e.message}");
+      }
     }
   }
 
@@ -147,24 +157,46 @@ class CameraService {
   }
 
   Future<void> setZoomLevel(String level) async {
-    await _channel.invokeMethod('setZoomLevel', {'level': level});
+    try {
+      await _channel.invokeMethod('setZoomLevel', {'level': level});
+    } on PlatformException catch (e) {
+      debugPrint("줌 레벨 설정 오류: ${e.message}");
+    }
   }
 
   Future<void> setBrightness(double value) async {
-    await _channel.invokeMethod('setBrightness', {'value': value});
+    try {
+      await _channel.invokeMethod('setBrightness', {'value': value});
+    } on PlatformException catch (e) {
+      debugPrint("밝기 설정 오류: ${e.message}");
+    }
   }
 
   Future<String> takePicture() async {
-    return await _channel.invokeMethod('takePicture');
+    try {
+      return await _channel.invokeMethod('takePicture');
+    } on PlatformException catch (e) {
+      debugPrint("사진 촬영 오류: ${e.message}");
+      return '';
+    }
   }
 
   Future<void> switchCamera() async {
-    await _channel.invokeMethod('switchCamera');
+    try {
+      await _channel.invokeMethod('switchCamera');
+    } on PlatformException catch (e) {
+      debugPrint("카메라 전환 오류: ${e.message}");
+    }
   }
 
   Future<void> dispose() async {
-    await _channel.invokeMethod('dispose');
-    _cameraView = null;
-    _isGloballyInitialized = false;
+    try {
+      await _channel.invokeMethod('disposeCamera');
+      _cameraView = null;
+      _isGloballyInitialized = false;
+      debugPrint('카메라 리소스 정리 완료');
+    } on PlatformException catch (e) {
+      debugPrint("카메라 리소스 정리 오류: ${e.message}");
+    }
   }
 }
