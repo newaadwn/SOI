@@ -24,6 +24,7 @@
  * - AudioPlayer: 음성 메모 재생을 담당하는 외부 패키지입니다.
  */
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -88,8 +89,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
               child: Stack(
                 alignment: Alignment.topCenter,
                 children: [
-                  Image.network(
-                    photo.imageUrl,
+                  CachedNetworkImage(
+                    imageUrl: photo.imageUrl,
                     width: 343,
                     height: 571,
                     fit: BoxFit.cover,

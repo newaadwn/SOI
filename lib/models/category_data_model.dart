@@ -26,8 +26,8 @@ class CategoryDataModel {
     return CategoryDataModel(
       id: id,
       name: data['name'] ?? '',
-      mates: (data['mates'] as List?)?.cast<String>() ?? [],
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      mates: (data['mates'] as List).cast<String>(),
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
       firstPhotoUrl: data['firstPhotoUrl'],
       photoCount: data['photoCount'] ?? 0,
     );

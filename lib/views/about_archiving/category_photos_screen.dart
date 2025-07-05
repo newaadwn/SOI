@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../controllers/category_controller.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/theme.dart';
 import '../../models/photo_data_model.dart';
 import 'photo_grid_item.dart'; // 상세 화면 임포트

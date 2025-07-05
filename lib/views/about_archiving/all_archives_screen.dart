@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
@@ -59,7 +60,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
               height: 20,
               margin: const EdgeInsets.only(right: 4),
               child: CircleAvatar(
-                backgroundImage: NetworkImage(imageUrl),
+                backgroundImage: CachedNetworkImageProvider(imageUrl),
                 onBackgroundImageError: (exception, stackTrace) {
                   debugPrint('이미지 로딩 오류: $exception');
                   // 에러 발생 시 별도 처리가 필요하면 여기에 추가

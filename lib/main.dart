@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_swift_camera/services/camera_service.dart';
 import 'controllers/contact_controller.dart';
 import 'controllers/photo_controller.dart';
 import 'firebase_options.dart';
@@ -29,7 +30,7 @@ import 'views/home_screen.dart'; // PlatformDispatcher를 위해 필요
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
+  await CameraService().globalInitialize();
   // Firebase 초기화
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 

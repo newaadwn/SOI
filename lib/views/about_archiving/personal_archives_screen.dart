@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
@@ -46,7 +47,7 @@ class _PersonalArchivesScreenState extends State<PersonalArchivesScreen> {
               width: 20,
               height: 20,
               child: CircleAvatar(
-                backgroundImage: NetworkImage(imageUrl),
+                backgroundImage: CachedNetworkImageProvider(imageUrl),
                 onBackgroundImageError: (exception, stackTrace) {
                   debugPrint('이미지 로딩 오류: $exception');
                 },

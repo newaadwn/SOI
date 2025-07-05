@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:io';
+import '../../services/camera_service.dart';
 import '../../theme/theme.dart';
 import 'photo_editor_screen.dart';
 
@@ -14,18 +14,30 @@ class CameraScreen extends StatefulWidget {
 class _CameraScreenState extends State<CameraScreen>
     with WidgetsBindingObserver {
   // Swift와 통신할 플랫폼 채널
-  static const MethodChannel platform = MethodChannel('com.soi.camera');
+  final CameraService _cameraService = CameraService();
+
+  // ✅ 추가: 카메라 관련 상태 변수
+
+  // 촬영된 이미지 경로
   String imagePath = '';
-  bool isFlashOn = false; // 플래시 상태 추적
+
+  // 플래시 상태 추적
+  bool isFlashOn = false;
 
   // ✅ 추가: 줌 레벨 관리
-  String currentZoom = '1x'; // 기본 줌 레벨
-  double brightnessValue = 0.5; // 기본 밝기 값
+
+  // 기본 줌 레벨
+  String currentZoom = '1x';
+
+  // 기본 밝기 값
+  double brightnessValue = 0.5;
 
   // 카메라 초기화 Future 추가
   Future<void>? _cameraInitialization;
   bool _isInitialized = false;
-  bool _isLoading = true; // 카메라 로딩 중 상태
+
+  // 카메라 로딩 중 상태
+  bool _isLoading = true;
 
   // ✅ 추가: 초기화 시 카메라 세션 시작
   @override
@@ -35,27 +47,24 @@ class _CameraScreenState extends State<CameraScreen>
     // 앱 라이프사이클 옵저버 등록
     WidgetsBinding.instance.addObserver(this);
 
-    // 지연 시간을 주어 이전 화면의 리소스 해제 및 메모리 정리 시간 확보
-    Future.delayed(const Duration(milliseconds: 300), () {
-      // 카메라 초기화 시작 - Future로 관리하여 UI에서 대기할 수 있도록 함
-      _cameraInitialization = _initCamera()
-          .then((_) {
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-                _isInitialized = true;
-              });
-            }
-          })
-          .catchError((error) {
-            debugPrint('카메라 초기화 오류: $error');
-            if (mounted) {
-              setState(() {
-                _isLoading = false;
-              });
-            }
-          });
-    });
+    // 카메라 초기화 시작
+    _cameraInitialization = _initCamera()
+        .then((_) {
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+              _isInitialized = true;
+            });
+          }
+        })
+        .catchError((error) {
+          debugPrint('카메라 초기화 오류: $error');
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        });
   }
 
   @override
@@ -64,7 +73,7 @@ class _CameraScreenState extends State<CameraScreen>
     WidgetsBinding.instance.removeObserver(this);
 
     // 카메라 리소스 정리
-    _disposeCamera();
+    _cameraService.deactivateSession();
     super.dispose();
   }
 
@@ -74,38 +83,22 @@ class _CameraScreenState extends State<CameraScreen>
     // 앱이 다시 활성화될 때 카메라 세션 복구
     if (state == AppLifecycleState.resumed) {
       if (_isInitialized) {
-        _resumeCamera();
+        _cameraService.resumeCamera();
       }
     }
     // 앱이 비활성화될 때 카메라 리소스 정리
     else if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
-      _pauseCamera();
+      _cameraService.pauseCamera();
     }
   }
 
   // ✅ 추가: 카메라 초기화 메서드 - 비동기 작업을 명확하게 처리
   Future<void> _initCamera() async {
     try {
-      // 먼저 카메라가 사용 가능한지 확인
-      // 이미지 로드 오류와 상관없이 카메라를 초기화하려면 기다려야 함
-      await Future.delayed(const Duration(milliseconds: 100));
-
-      // 카메라 초기화 요청 - Swift/iOS 코드에서도 초기화 완료 후 응답을 반환하도록 수정 필요
-      final result = await platform
-          .invokeMethod('initCamera')
-          .timeout(
-            const Duration(seconds: 5),
-            onTimeout: () {
-              debugPrint('카메라 초기화 타임아웃');
-              throw PlatformException(
-                code: 'TIMEOUT',
-                message: '카메라 초기화 시간이 초과되었습니다',
-              );
-            },
-          );
-
-      debugPrint('카메라 초기화 완료: $result');
+      // 카메라 초기화 요청
+      await _cameraService.globalInitialize();
+      debugPrint('카메라 초기화 완료');
       return;
     } on PlatformException catch (e) {
       debugPrint("카메라 초기화 오류: ${e.message}");
@@ -113,94 +106,52 @@ class _CameraScreenState extends State<CameraScreen>
       if (e.code != 'TIMEOUT') {
         await Future.delayed(const Duration(milliseconds: 500));
         try {
-          await platform.invokeMethod('initCamera');
+          await _cameraService.globalInitialize();
           debugPrint('카메라 초기화 재시도 성공');
           return;
         } catch (retryError) {
           debugPrint('카메라 초기화 재시도 실패: $retryError');
-          throw retryError; // 재시도 실패 시 오류 전달
+          rethrow; // 재시도 실패 시 오류 전달
         }
       }
-      throw e; // 오류를 상위로 전달하여 UI에서 적절히 처리
+      rethrow; // 오류를 상위로 전달하여 UI에서 적절히 처리
     } catch (e) {
       debugPrint("카메라 초기화 중 예상치 못한 오류: $e");
-      throw e;
+      rethrow;
     }
   }
 
-  // 카메라 세션 일시 중지
-  Future<void> _pauseCamera() async {
+  // 플래시 토글 요청
+  Future<void> _toggleFlash() async {
     try {
-      await platform.invokeMethod('pauseCamera');
-      debugPrint('카메라 세션 일시 중지');
-    } on PlatformException catch (e) {
-      debugPrint("카메라 일시 중지 오류: ${e.message}");
-    }
-  }
+      final bool newFlashState = !isFlashOn;
+      await _cameraService.setFlash(newFlashState);
 
-  // 카메라 세션 재개
-  Future<void> _resumeCamera() async {
-    try {
-      await platform.invokeMethod('resumeCamera');
-      debugPrint('카메라 세션 재개');
-
-      // 기존 설정(플래시 등) 복원
-      if (isFlashOn) {
-        await platform.invokeMethod('setFlash', {'isOn': true});
-      }
+      setState(() {
+        isFlashOn = newFlashState;
+      });
     } on PlatformException catch (e) {
-      debugPrint("카메라 재개 오류: ${e.message}");
-    }
-  }
-
-  // 카메라 리소스 정리
-  Future<void> _disposeCamera() async {
-    try {
-      await platform.invokeMethod('disposeCamera');
-      debugPrint('카메라 리소스 정리 완료');
-    } on PlatformException catch (e) {
-      debugPrint("카메라 리소스 정리 오류: ${e.message}");
+      debugPrint("플래시 전환 오류: ${e.message}");
     }
   }
 
   // 사진 촬영 요청
   Future<void> _takePicture() async {
     try {
-      final String result = await platform.invokeMethod('takePicture');
+      final String result = await _cameraService.takePicture();
       setState(() {
         imagePath = result;
       });
 
       // 사진 촬영 후 처리
       if (result.isNotEmpty) {
-        // 이미지 파일 생성
-
-        // 옵션 1: 로컬 파일 경로만 사용하여 편집 화면으로 이동 (Firebase 사용 안 함)
+        // 로컬 파일 경로만 사용하여 편집 화면으로 이동 (Firebase 사용 안 함)
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => PhotoEditorScreen(imagePath: result),
           ),
         );
-
-        // 옵션 2: Firebase Storage에 업로드하면서 동시에 로컬 경로도 전달 (필요 시 주석 해제)
-        /*
-        final String? downloadUrl = await _categoryViewModel.uploadPhotoStorage(
-          imageFile,
-        );
-
-        // 다운로드 URL이 있으면 편집 화면으로 이동
-        debugPrint("다운로드 URL: $downloadUrl");
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => PhotoEditorScreen(
-              downloadUrl: downloadUrl,
-              imagePath: result,
-            ),
-          ),
-        );
-        */
       }
     } on PlatformException catch (e) {
       debugPrint("Error taking picture: ${e.message}");
@@ -213,38 +164,9 @@ class _CameraScreenState extends State<CameraScreen>
   // 카메라 전환 요청
   Future<void> _switchCamera() async {
     try {
-      await platform.invokeMethod('switchCamera');
+      await _cameraService.switchCamera();
     } on PlatformException catch (e) {
       debugPrint("Error switching camera: ${e.message}");
-    }
-  }
-
-  // 플래시 토글 요청
-  Future<void> _toggleFlash() async {
-    try {
-      final bool newFlashState = !isFlashOn;
-      await platform.invokeMethod('setFlash', {'isOn': newFlashState});
-
-      setState(() {
-        isFlashOn = newFlashState;
-      });
-    } on PlatformException catch (e) {
-      debugPrint("플래시 전환 오류: ${e.message}");
-    }
-  }
-
-  // ✅ 수정: 카메라 최적화 메서드 - 더 구체적인 설정을 위해 매개변수 추가
-  Future<void> _optimizeCamera() async {
-    try {
-      // 카메라 최적화 설정 요청 - 설정값 전달
-      await platform.invokeMethod('optimizeCamera', {
-        'autoFocus': true,
-        'highQuality': true,
-        'stabilization': true,
-      });
-      debugPrint('카메라 최적화 완료');
-    } on PlatformException catch (e) {
-      debugPrint("카메라 최적화 오류: ${e.message}");
     }
   }
 
@@ -288,11 +210,6 @@ class _CameraScreenState extends State<CameraScreen>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           CircularProgressIndicator(color: Colors.white),
-                          SizedBox(height: 16),
-                          Text(
-                            '카메라 준비 중...',
-                            style: TextStyle(color: Colors.white),
-                          ),
                         ],
                       ),
                     ),
@@ -324,7 +241,7 @@ class _CameraScreenState extends State<CameraScreen>
                   child: SizedBox(
                     width: 355 / 393 * screenWidth,
                     height: 472 / 852 * screenHeight,
-                    child: _buildCameraPreview(),
+                    child: _cameraService.getCameraView(),
                   ),
                 );
               },
@@ -336,7 +253,7 @@ class _CameraScreenState extends State<CameraScreen>
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 // 플래시 버튼
-                Container(
+                SizedBox(
                   width: 50,
                   height: 50,
                   child: IconButton(
@@ -390,51 +307,4 @@ class _CameraScreenState extends State<CameraScreen>
       ),
     );
   }
-
-  // 플랫폼에 따라 다른 카메라 프리뷰 위젯 생성
-  Widget _buildCameraPreview() {
-    if (Platform.isAndroid) {
-      return AndroidView(
-        viewType: 'com.soi.camera/preview',
-        onPlatformViewCreated: (int id) {
-          debugPrint('안드로이드 카메라 뷰 생성됨: $id');
-
-          // 카메라 뷰가 생성된 후 최적화 설정 - 지연 시간 축소
-          Future.delayed(const Duration(milliseconds: 200), () {
-            _optimizeCamera();
-          });
-        },
-        creationParams: <String, dynamic>{
-          'useSRGBColorSpace': true, // sRGB 색상 공간 사용 설정
-          'useHighQuality': true, // 고품질 설정
-          'resumeExistingSession': true, // 기존 세션 재사용 설정 추가
-        },
-        creationParamsCodec: const StandardMessageCodec(),
-      );
-    } else if (Platform.isIOS) {
-      return UiKitView(
-        viewType: 'com.soi.camera/preview',
-        onPlatformViewCreated: (int id) {
-          debugPrint('iOS 카메라 뷰 생성됨: $id');
-
-          // 카메라 뷰가 생성된 후 최적화 설정 - 지연 시간 축소
-          Future.delayed(const Duration(milliseconds: 200), () {
-            _optimizeCamera();
-          });
-        },
-        creationParams: <String, dynamic>{
-          'useSRGBColorSpace': true, // sRGB 색상 공간 사용 설정
-          'useHighQuality': true, // 고품질 설정
-          'resumeExistingSession': true, // 기존 세션 재사용 설정 추가
-        },
-        creationParamsCodec: const StandardMessageCodec(),
-      );
-    } else {
-      return Center(
-        child: Text('지원되지 않는 플랫폼입니다', style: TextStyle(color: Colors.white)),
-      );
-    }
-  }
 }
-
-// ✅ 추가: 그리드 라인 그리는 Custom Painter

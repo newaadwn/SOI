@@ -71,11 +71,17 @@ class PhotoRepository {
     required String categoryId,
   }) async {
     try {
+      // 1. 사진 저장
       final docRef = await _firestore
           .collection('categories')
           .doc(categoryId)
           .collection('photos')
           .add(photo.toFirestore());
+
+      // 2. 카테고리의 firstPhotoUrl 업데이트(최신 사진으로)
+      await _firestore.collection('categories').doc(categoryId).update({
+        'firstPhotoUrl': photo.imageUrl,
+      });
 
       return docRef.id;
     } catch (e) {
