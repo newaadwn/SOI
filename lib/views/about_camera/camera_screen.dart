@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/camera_service.dart';
 import '../../theme/theme.dart';
 import 'photo_editor_screen.dart';
+import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -29,9 +32,6 @@ class _CameraScreenState extends State<CameraScreen>
   // 기본 줌 레벨
   String currentZoom = '1x';
 
-  // 기본 밝기 값
-  double brightnessValue = 0.5;
-
   // 카메라 초기화 Future 추가
   Future<void>? _cameraInitialization;
   bool _isInitialized = false;
@@ -47,24 +47,6 @@ class _CameraScreenState extends State<CameraScreen>
     // 앱 라이프사이클 옵저버 등록
     WidgetsBinding.instance.addObserver(this);
 
-    // 카메라 초기화 시작
-    /*_cameraInitialization = _initCamera()
-        .then((_) {
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-              _isInitialized = true;
-            });
-          }
-        })
-        .catchError((error) {
-          debugPrint('카메라 초기화 오류: $error');
-          if (mounted) {
-            setState(() {
-              _isLoading = false;
-            });
-          }
-        });*/
     _cameraService.activateSession();
     setState(() {
       _isLoading = false;
@@ -98,35 +80,7 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
-  // ✅ 추가: 카메라 초기화 메서드 - 비동기 작업을 명확하게 처리
-  /*Future<void> _initCamera() async {
-    try {
-      // 카메라 초기화 요청
-      await _cameraService.globalInitialize();
-      debugPrint('카메라 초기화 완료');
-      return;
-    } on PlatformException catch (e) {
-      debugPrint("카메라 초기화 오류: ${e.message}");
-      // 오류 발생 시 다시 시도
-      if (e.code != 'TIMEOUT') {
-        await Future.delayed(const Duration(milliseconds: 500));
-        try {
-          await _cameraService.globalInitialize();
-          debugPrint('카메라 초기화 재시도 성공');
-          return;
-        } catch (retryError) {
-          debugPrint('카메라 초기화 재시도 실패: $retryError');
-          rethrow; // 재시도 실패 시 오류 전달
-        }
-      }
-      rethrow; // 오류를 상위로 전달하여 UI에서 적절히 처리
-    } catch (e) {
-      debugPrint("카메라 초기화 중 예상치 못한 오류: $e");
-      rethrow;
-    }
-  }*/
-
-  // 플래시 토글 요청
+  // cameraservice에 플래시 토글 요청
   Future<void> _toggleFlash() async {
     try {
       final bool newFlashState = !isFlashOn;
@@ -140,7 +94,7 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
-  // 사진 촬영 요청
+  // cameraservice에 사진 촬영 요청
   Future<void> _takePicture() async {
     try {
       final String result = await _cameraService.takePicture();
@@ -166,7 +120,7 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
-  // 카메라 전환 요청
+  // cameraservice에 카메라 전환 요청
   Future<void> _switchCamera() async {
     try {
       await _cameraService.switchCamera();
@@ -241,13 +195,32 @@ class _CameraScreenState extends State<CameraScreen>
                 }
 
                 // 카메라 초기화 완료되면 카메라 뷰 표시
-                return ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: SizedBox(
-                    width: 355 / 393 * screenWidth,
-                    height: 472 / 852 * screenHeight,
-                    child: _cameraService.getCameraView(),
-                  ),
+                return Stack(
+                  alignment: Alignment.topCenter,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: SizedBox(
+                        width: 355 / 393 * screenWidth,
+                        height: 472 / 852 * screenHeight,
+                        child: _cameraService.getCameraView(),
+                      ),
+                    ),
+                    // 플래시 버튼
+                    SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: IconButton(
+                        onPressed: _toggleFlash,
+                        icon: Icon(
+                          isFlashOn ? EvaIcons.flash : EvaIcons.flashOff,
+                          color: Colors.white,
+                          size: 28,
+                        ),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
@@ -255,23 +228,62 @@ class _CameraScreenState extends State<CameraScreen>
 
             // ✅ 수정: 하단 버튼 레이아웃 변경
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // 플래시 버튼
-                SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: IconButton(
-                    onPressed: _toggleFlash,
-                    icon: Icon(
-                      isFlashOn ? Icons.flash_on : Icons.flash_off,
-                      color: Colors.white,
-                      size: 28,
+                //image picker로 갤러리에서 사진 선택
+
+                // 갤러리 버튼
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: InkWell(
+                      onTap: () {
+                        _cameraService.pickImageFromGallery().then((result) {
+                          if (result != null && result.isNotEmpty) {
+                            // 선택한 이미지 경로를 편집 화면으로 전달
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) =>
+                                        PhotoEditorScreen(imagePath: result),
+                              ),
+                            );
+                          }
+                        });
+                      },
+                      child: FutureBuilder(
+                        future: _cameraService.pickFirstImageFromGallery(),
+                        builder: (context, snapshot) {
+                          debugPrint("snapshot: ${snapshot.data}");
+                          return (snapshot.hasData)
+                              ? Container(
+                                width: 46,
+                                height: 46,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.rectangle,
+                                  borderRadius: BorderRadius.circular(8.76),
+
+                                  image: DecorationImage(
+                                    image: FileImage(File(snapshot.data!)),
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              )
+                              : Container(
+                                width: 46,
+                                height: 46,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.rectangle,
+                                  borderRadius: BorderRadius.circular(8.76),
+                                  color: Colors.white,
+                                ),
+                              );
+                        },
+                      ),
                     ),
-                    padding: EdgeInsets.zero,
                   ),
                 ),
-
                 // 촬영 버튼
                 GestureDetector(
                   onTap: _takePicture,
@@ -296,13 +308,15 @@ class _CameraScreenState extends State<CameraScreen>
                 ),
 
                 // 카메라 전환 버튼
-                SizedBox(
-                  width: 56 / 393 * screenWidth,
-                  height: 47 / 852 * screenHeight,
-                  child: IconButton(
-                    onPressed: _switchCamera,
-                    icon: Image.asset("assets/switch.png"),
-                    padding: EdgeInsets.zero,
+                Expanded(
+                  child: SizedBox(
+                    width: 67,
+                    height: 56,
+                    child: IconButton(
+                      onPressed: _switchCamera,
+                      icon: Image.asset("assets/switch.png"),
+                      padding: EdgeInsets.zero,
+                    ),
                   ),
                 ),
               ],

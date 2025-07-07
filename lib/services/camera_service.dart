@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 // 서비스 클래스: 카메라 관련 기능을 제공
 // 이 클래스는 싱글톤 패턴을 사용하여 앱 전체에서 하나의 인스턴스만 사용합니다.
@@ -22,6 +24,58 @@ class CameraService {
   //static Widget? _cameraView;
   //final GlobalKey _cameraKey = GlobalKey();
   //static final bool _isViewCreated = false;
+
+  final ImagePicker _imagePicker = ImagePicker();
+
+  // 갤러리에서 이미지를 선택할 때 사용할 필터 옵션
+  // 이 필터는 이미지 크기 제약을 무시하고 모든 이미지를 선택할 수 있도록 설정합니다.
+  final PMFilter filter = FilterOptionGroup(
+    imageOption: const FilterOption(
+      sizeConstraint: SizeConstraint(ignoreSize: true),
+    ),
+  );
+
+  // 갤러리의 첫 번째 사진을 골라서 반환하는 함수
+  // 이 함수는 갤러리에서 첫 번째 사진의 경로를 가져옵니다.
+  // 만약 갤러리가 비어있다면 null을 반환합니다.
+  Future<String?> pickFirstImageFromGallery() async {
+    try {
+      final List<AssetPathEntity> paths = await PhotoManager.getAssetPathList(
+        onlyAll: true,
+        filterOption: filter,
+      );
+
+      if (paths.isNotEmpty) {
+        final List<AssetEntity> assets = await paths.first.getAssetListPaged(
+          page: 0,
+          size: 1,
+        );
+
+        if (assets.isNotEmpty) {
+          // 실제 파일 경로 반환
+          final File? file = await assets.first.file;
+          return file?.path;
+        }
+      }
+    } catch (e) {
+      debugPrint("갤러리에서 이미지 선택 오류: $e");
+      return null;
+    }
+    return null;
+  }
+
+  // 갤러리에서 이미지를 선택하는 함수
+  Future<String?> pickImageFromGallery() async {
+    try {
+      final XFile? imageFile = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+      );
+      return imageFile?.path;
+    } catch (e) {
+      debugPrint("갤러리에서 이미지 선택 오류: $e");
+      return null;
+    }
+  }
 
   Future<void> globalInitialize() async {
     if (!_isGloballyInitialized) {

@@ -170,7 +170,7 @@ class PhotoController extends ChangeNotifier {
       _isLoading = false;
       _error = '사진을 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '사진을 불러오는 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '사진을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -219,7 +219,7 @@ class PhotoController extends ChangeNotifier {
       _isLoading = false;
       _error = '사용자 사진을 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '사용자 사진을 불러오는 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '사용자 사진을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -252,7 +252,7 @@ class PhotoController extends ChangeNotifier {
       _isLoading = false;
       _error = '사진 상세 정보를 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '사진 상세 정보를 불러오는 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '사진 상세 정보를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -278,14 +278,14 @@ class PhotoController extends ChangeNotifier {
       if (photos.isEmpty) {
         Fluttertoast.showToast(msg: '검색 결과가 없습니다.');
       } else {
-        Fluttertoast.showToast(msg: '${photos.length}개의 사진을 찾았습니다.');
+        debugPrint('${photos.length}개의 사진을 찾았습니다.');
       }
     } catch (e) {
       debugPrint('사진 검색 오류: $e');
       _isLoading = false;
       _error = '사진 검색 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '사진 검색 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '사진 검색 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -319,7 +319,7 @@ class PhotoController extends ChangeNotifier {
 
       if (success) {
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '사진 정보가 업데이트되었습니다.');
+        debugPrint('사진 정보가 업데이트되었습니다.');
 
         // 사진 목록 새로고침
         await loadPhotosByCategory(categoryId);
@@ -327,7 +327,7 @@ class PhotoController extends ChangeNotifier {
         return true;
       } else {
         // ❌ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: '사진 정보 업데이트에 실패했습니다.');
+        Fluttertoast.showToast(msg: '사진 정보 업데이트에 실패했습니다. 다시 시도해주세요.');
         return false;
       }
     } catch (e) {
@@ -335,7 +335,7 @@ class PhotoController extends ChangeNotifier {
       _isLoading = false;
       _error = '사진 업데이트 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '사진 업데이트 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '사진 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.');
       return false;
     }
   }
@@ -373,12 +373,12 @@ class PhotoController extends ChangeNotifier {
 
         return true;
       } else {
-        Fluttertoast.showToast(msg: '좋아요 처리에 실패했습니다.');
+        Fluttertoast.showToast(msg: '좋아요 처리에 실패했습니다. 다시 시도해주세요.');
         return false;
       }
     } catch (e) {
       debugPrint('사진 좋아요 토글 오류: $e');
-      Fluttertoast.showToast(msg: '좋아요 처리 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '좋아요 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
       return false;
     }
   }
@@ -426,7 +426,7 @@ class PhotoController extends ChangeNotifier {
         return true;
       } else {
         // ❌ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: '사진 삭제에 실패했습니다.');
+        Fluttertoast.showToast(msg: '사진 삭제에 실패했습니다. 다시 시도해주세요.');
         return false;
       }
     } catch (e) {
@@ -434,7 +434,7 @@ class PhotoController extends ChangeNotifier {
       _isLoading = false;
       _error = '사진 삭제 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '사진 삭제 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '사진 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
       return false;
     }
   }

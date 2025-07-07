@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:audioplayers/audioplayers.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import '../services/audio_service.dart';
 import '../models/audio_data_model.dart';
 
@@ -61,21 +60,21 @@ class AudioController extends ChangeNotifier {
 
       if (result.isSuccess) {
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '오디오 기능이 준비되었습니다.');
+        debugPrint('오디오 기능이 준비되었습니다.');
 
         // 녹음 진행률 모니터링 시작
         _startRecordingMonitoring();
       } else {
         // ✅ 실패 시 UI 피드백
         _error = result.error;
-        Fluttertoast.showToast(msg: result.error ?? '오디오 초기화에 실패했습니다.');
+        debugPrint(result.error ?? '오디오 초기화에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('오디오 컨트롤러 초기화 오류: $e');
       _isLoading = false;
       _error = '오디오 초기화 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '오디오 초기화 중 오류가 발생했습니다.');
+      debugPrint('오디오 초기화 중 오류가 발생했습니다.');
     }
   }
 
@@ -113,19 +112,19 @@ class AudioController extends ChangeNotifier {
         notifyListeners();
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '녹음이 시작되었습니다.');
+        debugPrint('녹음이 시작되었습니다.');
       } else {
         _isLoading = false;
         notifyListeners();
 
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '녹음을 시작할 수 없습니다.');
+        debugPrint(result.error ?? '녹음을 시작할 수 없습니다.');
       }
     } catch (e) {
       debugPrint('녹음 시작 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '녹음 시작 중 오류가 발생했습니다.');
+      debugPrint('녹음 시작 중 오류가 발생했습니다.');
     }
   }
 
@@ -163,17 +162,17 @@ class AudioController extends ChangeNotifier {
         notifyListeners();
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '녹음이 완료되었습니다.');
+        debugPrint('녹음이 완료되었습니다.');
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '녹음 완료에 실패했습니다.');
+        debugPrint(result.error ?? '녹음 완료에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('녹음 중지 오류: $e');
       _isRecording = false;
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '녹음 중지 중 오류가 발생했습니다.');
+      debugPrint('녹음 중지 중 오류가 발생했습니다.');
     }
   }
 
@@ -264,19 +263,19 @@ class AudioController extends ChangeNotifier {
         notifyListeners();
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '재생을 시작합니다.');
+        debugPrint('재생을 시작합니다.');
       } else {
         _isLoading = false;
         notifyListeners();
 
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '재생할 수 없습니다.');
+        debugPrint(result.error ?? '재생할 수 없습니다.');
       }
     } catch (e) {
       debugPrint('오디오 재생 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '재생 중 오류가 발생했습니다.');
+      debugPrint('재생 중 오류가 발생했습니다.');
     }
   }
 
@@ -304,7 +303,7 @@ class AudioController extends ChangeNotifier {
       _isLoading = false;
       _error = 'URL 오디오 재생 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: 'URL 오디오 재생 중 오류가 발생했습니다.');
+      debugPrint('URL 오디오 재생 중 오류가 발생했습니다.');
     }
   }
 
@@ -321,7 +320,7 @@ class AudioController extends ChangeNotifier {
       notifyListeners();
 
       if (!result.isSuccess) {
-        Fluttertoast.showToast(msg: result.error ?? '재생 중지에 실패했습니다.');
+        debugPrint(result.error ?? '재생 중지에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('재생 중지 오류: $e');
@@ -339,7 +338,7 @@ class AudioController extends ChangeNotifier {
         _isPlaying = false;
         notifyListeners();
       } else {
-        Fluttertoast.showToast(msg: result.error ?? '일시정지에 실패했습니다.');
+        debugPrint(result.error ?? '일시정지에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('재생 일시정지 오류: $e');
@@ -355,7 +354,7 @@ class AudioController extends ChangeNotifier {
         _isPlaying = true;
         notifyListeners();
       } else {
-        Fluttertoast.showToast(msg: result.error ?? '재생 재개에 실패했습니다.');
+        debugPrint(result.error ?? '재생 재개에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('재생 재개 오류: $e');
@@ -397,16 +396,16 @@ class AudioController extends ChangeNotifier {
         await _refreshAudioData(audioId);
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: 'MP3 변환이 완료되었습니다.');
+        debugPrint('MP3 변환이 완료되었습니다.');
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? 'MP3 변환에 실패했습니다.');
+        debugPrint(result.error ?? 'MP3 변환에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('MP3 변환 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: 'MP3 변환 중 오류가 발생했습니다.');
+      debugPrint('MP3 변환 중 오류가 발생했습니다.');
     }
   }
 
@@ -426,16 +425,16 @@ class AudioController extends ChangeNotifier {
         await _refreshAudioData(audioId);
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: 'AAC 변환이 완료되었습니다.');
+        debugPrint('AAC 변환이 완료되었습니다.');
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? 'AAC 변환에 실패했습니다.');
+        debugPrint(result.error ?? 'AAC 변환에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('AAC 변환 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: 'AAC 변환 중 오류가 발생했습니다.');
+      debugPrint('AAC 변환 중 오류가 발생했습니다.');
     }
   }
 
@@ -476,17 +475,17 @@ class AudioController extends ChangeNotifier {
         await _refreshAudioData(audioId);
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '업로드가 완료되었습니다.');
+        debugPrint('업로드가 완료되었습니다.');
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '업로드에 실패했습니다.');
+        debugPrint(result.error ?? '업로드에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('업로드 오류: $e');
       _isLoading = false;
       _uploadProgress = 0.0;
       notifyListeners();
-      Fluttertoast.showToast(msg: '업로드 중 오류가 발생했습니다.');
+      debugPrint('업로드 중 오류가 발생했습니다.');
     }
   }
 
@@ -534,7 +533,7 @@ class AudioController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      Fluttertoast.showToast(msg: '오디오 목록을 불러오는 중 오류가 발생했습니다.');
+      debugPrint('오디오 목록을 불러오는 중 오류가 발생했습니다.');
     }
   }
 
@@ -556,7 +555,7 @@ class AudioController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      Fluttertoast.showToast(msg: '오디오 목록을 불러오는 중 오류가 발생했습니다.');
+      debugPrint('오디오 목록을 불러오는 중 오류가 발생했습니다.');
     }
   }
 
@@ -582,16 +581,16 @@ class AudioController extends ChangeNotifier {
         notifyListeners();
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '오디오가 삭제되었습니다.');
+        debugPrint('오디오가 삭제되었습니다.');
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '오디오 삭제에 실패했습니다.');
+        debugPrint(result.error ?? '오디오 삭제에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('오디오 삭제 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '오디오 삭제 중 오류가 발생했습니다.');
+      debugPrint('오디오 삭제 중 오류가 발생했습니다.');
     }
   }
 
@@ -619,16 +618,16 @@ class AudioController extends ChangeNotifier {
         await _refreshAudioData(audioId);
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '오디오 정보가 업데이트되었습니다.');
+        debugPrint('오디오 정보가 업데이트되었습니다.');
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '정보 업데이트에 실패했습니다.');
+        debugPrint(result.error ?? '정보 업데이트에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('오디오 정보 업데이트 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '정보 업데이트 중 오류가 발생했습니다.');
+      debugPrint('정보 업데이트 중 오류가 발생했습니다.');
     }
   }
 

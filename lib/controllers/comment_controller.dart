@@ -61,21 +61,23 @@ class CommentController extends ChangeNotifier {
 
       if (result.isSuccess) {
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '댓글 기능이 준비되었습니다.');
+        debugPrint('댓글 기능이 준비되었습니다.');
 
         // 녹음 진행률 모니터링 시작
         _startRecordingMonitoring();
       } else {
         // ✅ 실패 시 UI 피드백
         _error = result.error;
-        Fluttertoast.showToast(msg: result.error ?? '댓글 초기화에 실패했습니다.');
+        Fluttertoast.showToast(
+          msg: result.error ?? '댓글 초기화에 실패했습니다. 다시 시도해주세요.',
+        );
       }
     } catch (e) {
       debugPrint('댓글 컨트롤러 초기화 오류: $e');
       _isLoading = false;
       _error = '댓글 초기화 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '댓글 초기화 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '댓글 초기화 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -112,19 +114,21 @@ class CommentController extends ChangeNotifier {
         notifyListeners();
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '녹음이 시작되었습니다.');
+        debugPrint('녹음이 시작되었습니다.');
       } else {
         _isLoading = false;
         notifyListeners();
 
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '녹음을 시작할 수 없습니다.');
+        Fluttertoast.showToast(
+          msg: result.error ?? '녹음을 시작할 수 없습니다. 다시 시도해주세요.',
+        );
       }
     } catch (e) {
       debugPrint('녹음 시작 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '녹음 시작 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '녹음 시작 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -151,13 +155,15 @@ class CommentController extends ChangeNotifier {
         notifyListeners();
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '녹음이 완료되었습니다.');
+        debugPrint('녹음이 완료되었습니다.');
       } else {
         _currentRecordingPath = null;
         notifyListeners();
 
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '녹음 완료에 실패했습니다.');
+        Fluttertoast.showToast(
+          msg: result.error ?? '녹음 완료에 실패했습니다. 다시 시도해주세요.',
+        );
       }
     } catch (e) {
       debugPrint('녹음 중지 오류: $e');
@@ -165,7 +171,7 @@ class CommentController extends ChangeNotifier {
       _currentRecordingPath = null;
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '녹음 중지 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '녹음 중지 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -178,7 +184,7 @@ class CommentController extends ChangeNotifier {
       // 최대 녹음 시간 (2분) 체크
       if (_recordingDuration >= 120) {
         stopRecording();
-        Fluttertoast.showToast(msg: '최대 녹음 시간(2분)에 도달했습니다.');
+        debugPrint('최대 녹음 시간(2분)에 도달했습니다.');
       }
     });
   }
@@ -232,19 +238,21 @@ class CommentController extends ChangeNotifier {
         notifyListeners();
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '댓글 재생을 시작합니다.');
+        debugPrint('댓글 재생을 시작합니다.');
       } else {
         _isLoading = false;
         notifyListeners();
 
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '댓글을 재생할 수 없습니다.');
+        Fluttertoast.showToast(
+          msg: result.error ?? '댓글을 재생할 수 없습니다. 다시 시도해주세요.',
+        );
       }
     } catch (e) {
       debugPrint('댓글 재생 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '댓글 재생 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '댓글 재생 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -261,7 +269,9 @@ class CommentController extends ChangeNotifier {
       notifyListeners();
 
       if (!result.isSuccess) {
-        Fluttertoast.showToast(msg: result.error ?? '재생 중지에 실패했습니다.');
+        Fluttertoast.showToast(
+          msg: result.error ?? '재생 중지에 실패했습니다. 다시 시도해주세요.',
+        );
       }
     } catch (e) {
       debugPrint('재생 중지 오류: $e');
@@ -300,7 +310,7 @@ class CommentController extends ChangeNotifier {
     String? description,
   }) async {
     if (_currentRecordingPath == null) {
-      Fluttertoast.showToast(msg: '업로드할 녹음 파일이 없습니다.');
+      Fluttertoast.showToast(msg: '업로드할 녹음 파일이 없습니다. 다시 녹음해주세요.');
       return;
     }
 
@@ -340,10 +350,12 @@ class CommentController extends ChangeNotifier {
         notifyListeners();
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '댓글이 업로드되었습니다.');
+        debugPrint('댓글이 업로드되었습니다.');
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '댓글 업로드에 실패했습니다.');
+        Fluttertoast.showToast(
+          msg: result.error ?? '댓글 업로드에 실패했습니다. 다시 시도해주세요.',
+        );
       }
     } catch (e) {
       debugPrint('댓글 업로드 오류: $e');
@@ -351,7 +363,7 @@ class CommentController extends ChangeNotifier {
       _uploadProgress = 0.0;
       _uploadSubscription?.cancel();
       notifyListeners();
-      Fluttertoast.showToast(msg: '댓글 업로드 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '댓글 업로드 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -379,16 +391,18 @@ class CommentController extends ChangeNotifier {
         await _refreshComment(commentId);
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '댓글이 수정되었습니다.');
+        debugPrint('댓글이 수정되었습니다.');
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '댓글 수정에 실패했습니다.');
+        Fluttertoast.showToast(
+          msg: result.error ?? '댓글 수정에 실패했습니다. 다시 시도해주세요.',
+        );
       }
     } catch (e) {
       debugPrint('댓글 수정 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '댓글 수정 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '댓글 수정 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -417,16 +431,18 @@ class CommentController extends ChangeNotifier {
         notifyListeners();
 
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '댓글이 삭제되었습니다.');
+        debugPrint('댓글이 삭제되었습니다.');
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '댓글 삭제에 실패했습니다.');
+        Fluttertoast.showToast(
+          msg: result.error ?? '댓글 삭제에 실패했습니다. 다시 시도해주세요.',
+        );
       }
     } catch (e) {
       debugPrint('댓글 삭제 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '댓글 삭제 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '댓글 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -448,17 +464,17 @@ class CommentController extends ChangeNotifier {
         final action = result.data['action'] as String;
         // ✅ UI 피드백
         if (action == 'added') {
-          Fluttertoast.showToast(msg: '좋아요를 추가했습니다.');
+          debugPrint('좋아요를 추가했습니다.');
         } else {
-          Fluttertoast.showToast(msg: '좋아요를 취소했습니다.');
+          debugPrint('좋아요를 취소했습니다.');
         }
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '좋아요 처리에 실패했습니다.');
+        Fluttertoast.showToast(msg: result.error ?? '다시 시도해주세요.');
       }
     } catch (e) {
       debugPrint('좋아요 토글 오류: $e');
-      Fluttertoast.showToast(msg: '좋아요 처리 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: ' 다시 시도해주세요.');
     }
   }
 
@@ -483,16 +499,18 @@ class CommentController extends ChangeNotifier {
 
       if (result.isSuccess) {
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '댓글 신고가 접수되었습니다.');
+        debugPrint('댓글 신고가 접수되었습니다.');
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '댓글 신고에 실패했습니다.');
+        Fluttertoast.showToast(
+          msg: result.error ?? '댓글 신고에 실패했습니다. 다시 시도해주세요.',
+        );
       }
     } catch (e) {
       debugPrint('댓글 신고 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '댓글 신고 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '댓글 신고 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -516,7 +534,7 @@ class CommentController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      Fluttertoast.showToast(msg: '댓글을 불러오는 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '댓글을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -538,7 +556,7 @@ class CommentController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      Fluttertoast.showToast(msg: '댓글을 불러오는 중 오류가 발생했습니다.');
+      Fluttertoast.showToast(msg: '댓글을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 

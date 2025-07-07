@@ -80,7 +80,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
+    //double screenHeight = MediaQuery.of(context).size.height;
 
     // AudioController 상태 구독
     return Consumer<AudioController>(
@@ -99,59 +99,70 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
             }
           },
 
-          child: Container(
-            height: 64,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(32),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isRecording)
-                  GestureDetector(
-                    onTap: _stopRecording,
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade800,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.delete,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                if (isRecording) SizedBox(width: 12 / 393 * screenWidth),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children:
                 isRecording
-                    ? AudioWaveforms(
-                      size: Size(
-                        160 / 393 * screenWidth,
-                        50 / 852 * screenHeight,
+                    ? [
+                      Container(
+                        width: 376 / 393 * screenWidth,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Color(0xff1c1c1c),
+                          borderRadius: BorderRadius.circular(14.6),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            SizedBox(width: 14),
+                            GestureDetector(
+                              onTap: _stopRecording,
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade800,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Image.asset(
+                                  'assets/trash.png',
+                                  width: 32,
+                                  height: 32,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 19.5),
+                            Expanded(
+                              child: AudioWaveforms(
+                                size: Size(1, 52),
+                                recorderController: recorderController,
+                                waveStyle: const WaveStyle(
+                                  waveColor: Colors.white,
+                                  extendWaveform: true,
+                                  showMiddleLine: false,
+                                ),
+                              ),
+                            ),
+
+                            Text(
+                              controller.formattedRecordingDuration,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(width: 24),
+                          ],
+                        ),
                       ),
-                      recorderController: recorderController,
-                      waveStyle: const WaveStyle(
-                        waveColor: Colors.white,
-                        extendWaveform: true,
-                        showMiddleLine: false,
+                    ]
+                    : [
+                      Image.asset(
+                        width: 64,
+                        height: 64,
+                        'assets/record_icon.png',
                       ),
-                    )
-                    : const Icon(Icons.mic, color: Colors.white, size: 45),
-                if (isRecording) SizedBox(width: 12 / 393 * screenWidth),
-                if (isRecording)
-                  Text(
-                    controller.formattedRecordingDuration,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14 / 393 * screenWidth,
-                    ),
-                  ),
-              ],
-            ),
+                    ],
           ),
         );
       },

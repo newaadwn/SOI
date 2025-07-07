@@ -84,7 +84,7 @@
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>이 앱은 촬영한 사진을 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다. 사진을 저장하여 나중에 쉽게 찾아볼 수 있습니다.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>이 앱은 사진 라이브러리에서 이미지를 불러오기 위해 접근 권한이 필요합니다. 이미지를 불러와서 많은 사람들과 공유할 수 있습니다.</string>
+	<string>This app needs access to photo library to show recent photos</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>

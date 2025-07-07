@@ -1,6 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import '../services/auth_service.dart';
 
 /// AuthController는 인증 관련 UI와 비즈니스 로직 사이의 중개 역할을 합니다.
@@ -73,12 +72,12 @@ class AuthController extends ChangeNotifier {
 
       // ✅ 결과에 따른 UI 처리
       if (!result.isSuccess) {
-        Fluttertoast.showToast(msg: result.error ?? "전화번호 인증에 실패했습니다.");
+        debugPrint(result.error ?? "전화번호 인증에 실패했습니다.");
       }
     } catch (e) {
       debugPrint('전화번호 인증 오류: $e');
       // ✅ 에러 시 UI 처리
-      Fluttertoast.showToast(msg: "전화번호 인증 중 오류가 발생했습니다.");
+      debugPrint("전화번호 인증 중 오류가 발생했습니다.");
     }
   }
 
@@ -91,11 +90,11 @@ class AuthController extends ChangeNotifier {
 
     if (result.isSuccess) {
       // ✅ 성공 시 UI 처리
-      Fluttertoast.showToast(msg: "로그인 성공!");
+      debugPrint("로그인 성공!");
       onSuccess();
     } else {
       // ✅ 실패 시 UI 처리 (에러 메시지 표시)
-      Fluttertoast.showToast(msg: result.error ?? "로그인에 실패했습니다.");
+      debugPrint(result.error ?? "로그인에 실패했습니다.");
     }
   }
 
@@ -128,9 +127,9 @@ class AuthController extends ChangeNotifier {
     final result = await _authService.signOut();
 
     if (result.isSuccess) {
-      Fluttertoast.showToast(msg: "로그아웃되었습니다.");
+      debugPrint("로그아웃되었습니다.");
     } else {
-      Fluttertoast.showToast(msg: result.error ?? "로그아웃 중 오류가 발생했습니다.");
+      debugPrint(result.error ?? "로그아웃 중 오류가 발생했습니다.");
     }
   }
 
@@ -153,15 +152,15 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        Fluttertoast.showToast(msg: '프로필 이미지가 업데이트되었습니다');
+        debugPrint('프로필 이미지가 업데이트되었습니다');
         return true;
       } else {
-        Fluttertoast.showToast(msg: result.error ?? '프로필 이미지 업데이트에 실패했습니다');
+        debugPrint(result.error ?? '프로필 이미지 업데이트에 실패했습니다');
         return false;
       }
     } catch (e) {
       debugPrint('프로필 이미지 업데이트 중 오류 발생: $e');
-      Fluttertoast.showToast(msg: '프로필 이미지를 업데이트하는 중 오류가 발생했습니다');
+      debugPrint('프로필 이미지를 업데이트하는 중 오류가 발생했습니다');
       _isUploading = false;
       notifyListeners();
       return false;
@@ -173,9 +172,9 @@ class AuthController extends ChangeNotifier {
     final result = await _authService.deleteAccount();
 
     if (result.isSuccess) {
-      Fluttertoast.showToast(msg: "계정이 삭제되었습니다.");
+      debugPrint("계정이 삭제되었습니다.");
     } else {
-      Fluttertoast.showToast(msg: result.error ?? "계정 삭제 중 오류가 발생했습니다.");
+      debugPrint(result.error ?? "계정 삭제 중 오류가 발생했습니다.");
     }
   }
 
