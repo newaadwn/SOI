@@ -187,3 +187,22 @@ class PhotoUploadResult {
     return PhotoUploadResult(isSuccess: false, error: error);
   }
 }
+
+/// 사진 검색 필터
+class PhotoSearchFilter {
+  final String? categoryId;
+  final String? userId;
+  final DateTime? startDate;
+  final DateTime? endDate;
+  final PhotoStatus? status;
+  final bool? hasAudio;
+
+  PhotoSearchFilter({
+    this.categoryId,
+    this.userId,
+    this.startDate,
+    this.endDate,
+    this.status,
+    this.hasAudio,
+  });
+}

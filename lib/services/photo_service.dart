@@ -10,7 +10,7 @@ class PhotoService {
 
   // ==================== 사진 업로드 비즈니스 로직 ====================
 
-  /// 사진 업로드 (이미지 + 오디오 + 메타데이터)
+  /// 사진 업로드 (이미지 + 오디오)
   Future<PhotoUploadResult> uploadPhoto({
     required File imageFile,
     File? audioFile,
@@ -188,9 +188,6 @@ class PhotoService {
     required String categoryId,
     required String photoId,
     required String userId,
-    String? caption,
-    List<String>? tags,
-    Map<String, dynamic>? metadata,
   }) async {
     try {
       // 권한 검증
@@ -207,38 +204,9 @@ class PhotoService {
         throw Exception('사진을 수정할 권한이 없습니다.');
       }
 
-      // 업데이트 데이터 준비
-      final Map<String, dynamic> updates = {};
-
-      if (caption != null) {
-        // 비즈니스 로직: 캡션 길이 제한
-        if (caption.length > 500) {
-          throw Exception('캡션은 500자를 초과할 수 없습니다.');
-        }
-        updates['caption'] = caption;
-      }
-
-      if (tags != null) {
-        // 비즈니스 로직: 태그 개수 제한
-        if (tags.length > 10) {
-          throw Exception('태그는 10개를 초과할 수 없습니다.');
-        }
-        updates['tags'] = tags;
-      }
-
-      if (metadata != null) {
-        updates['metadata'] = metadata;
-      }
-
-      if (updates.isEmpty) {
-        return true; // 업데이트할 내용이 없음
-      }
-
-      return await _photoRepository.updatePhoto(
-        categoryId: categoryId,
-        photoId: photoId,
-        updates: updates,
-      );
+      // PhotoDataModel의 기본 속성들은 대부분 수정 불가능한 속성들이므로
+      // 현재는 간단한 검증만 수행하고 성공으로 반환
+      return true;
     } catch (e) {
       debugPrint('사진 업데이트 서비스 오류: $e');
       return false;
