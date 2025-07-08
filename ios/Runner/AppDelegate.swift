@@ -3,6 +3,7 @@ import Flutter
 import Firebase
 import FirebaseAuth
 import UserNotifications
+import AVFoundation
 
 @main
 @objc class AppDelegate: FlutterAppDelegate {
@@ -70,6 +71,31 @@ import UserNotifications
     // SwiftAudioConverter 등록
     SwiftAudioConverter.register(with: self.registrar(forPlugin: "SwiftAudioConverter")!)
     
+    // 네이티브 오디오 녹음 MethodChannel 설정
+    let controller = window?.rootViewController as! FlutterViewController
+    let audioChannel = FlutterMethodChannel(name: "native_recorder", binaryMessenger: controller.binaryMessenger)
+    let audioRecorder = NativeAudioRecorder()
+    
+    audioChannel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in
+      switch call.method {
+      case "requestPermission":
+        audioRecorder.requestPermission(result: result)
+      case "startRecording":
+        if let args = call.arguments as? [String: Any],
+           let filePath = args["filePath"] as? String {
+          audioRecorder.startRecording(filePath: filePath, result: result)
+        } else {
+          result(FlutterError(code: "INVALID_ARGUMENTS", message: "Invalid arguments", details: nil))
+        }
+      case "stopRecording":
+        audioRecorder.stopRecording(result: result)
+      case "isRecording":
+        audioRecorder.isRecording(result: result)
+      default:
+        result(FlutterMethodNotImplemented)
+      }
+    }
+    
     // 2️⃣ 모든 플러그인 등록 (firebase_core 등)
     GeneratedPluginRegistrant.register(with: self)
 
@@ -136,4 +162,81 @@ import UserNotifications
       print("   2. Provisioning Profile 확인")
       print("   3. Firebase 콘솔에서 APNs 키 설정")
   }
+}
+
+// MARK: - 네이티브 오디오 녹음 클래스
+class NativeAudioRecorder: NSObject, AVAudioRecorderDelegate {
+    private var audioRecorder: AVAudioRecorder?
+    private var recordingStartTime: Date?
+    private var recordingSession: AVAudioSession?
+    
+    func requestPermission(result: @escaping FlutterResult) {
+        recordingSession = AVAudioSession.sharedInstance()
+        
+        do {
+            try recordingSession?.setCategory(.playAndRecord, mode: .default)
+            try recordingSession?.setActive(true)
+            
+            recordingSession?.requestRecordPermission { allowed in
+                DispatchQueue.main.async {
+                    result(allowed)
+                }
+            }
+        } catch {
+            result(FlutterError(code: "PERMISSION_ERROR", message: "Failed to request permission", details: error.localizedDescription))
+        }
+    }
+    
+    func startRecording(filePath: String, result: @escaping FlutterResult) {
+        let audioURL = URL(fileURLWithPath: filePath)
+        
+        // 🎯 고품질 오디오 설정 (현재 Flutter 설정보다 향상)
+        let settings: [String: Any] = [
+            AVFormatIDKey: kAudioFormatMPEG4AAC,
+            AVSampleRateKey: 44100,  // CD 품질 (기존 Flutter: 44100)
+            AVNumberOfChannelsKey: 1,  // 모노 (음성 녹음에 적합)
+            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
+            AVEncoderBitRateKey: 192000,  // 192kbps (기존 Flutter: 128kbps)
+            AVLinearPCMBitDepthKey: 16,
+            AVLinearPCMIsBigEndianKey: false,
+            AVLinearPCMIsFloatKey: false
+        ]
+        
+        do {
+            audioRecorder = try AVAudioRecorder(url: audioURL, settings: settings)
+            audioRecorder?.delegate = self
+            audioRecorder?.isMeteringEnabled = true
+            audioRecorder?.prepareToRecord()
+            
+            let success = audioRecorder?.record() ?? false
+            if success {
+                recordingStartTime = Date()
+                result(true)
+            } else {
+                result(FlutterError(code: "RECORDING_ERROR", message: "Failed to start recording", details: nil))
+            }
+        } catch {
+            result(FlutterError(code: "RECORDING_ERROR", message: "Failed to create recorder", details: error.localizedDescription))
+        }
+    }
+    
+    func stopRecording(result: @escaping FlutterResult) {
+        audioRecorder?.stop()
+        let filePath = audioRecorder?.url.path
+        audioRecorder = nil
+        recordingStartTime = nil
+        
+        result(filePath)
+    }
+    
+    func isRecording(result: @escaping FlutterResult) {
+        result(audioRecorder?.isRecording ?? false)
+    }
+    
+    // AVAudioRecorderDelegate
+    func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
+        if !flag {
+            print("Recording failed")
+        }
+    }
 }

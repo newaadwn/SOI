@@ -102,7 +102,7 @@ class AudioController extends ChangeNotifier {
 
       if (result.isSuccess) {
         _isRecording = true;
-        _currentRecordingPath = result.data as String?;
+        _currentRecordingPath = result.data;
         _recordingDuration = 0;
 
         // 녹음 시간 타이머 시작
@@ -381,7 +381,7 @@ class AudioController extends ChangeNotifier {
   // ==================== 오디오 변환 ====================
 
   /// MP3로 변환
-  Future<void> convertToMp3(String audioId) async {
+  /* Future<void> convertToMp3(String audioId) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -407,10 +407,10 @@ class AudioController extends ChangeNotifier {
       notifyListeners();
       debugPrint('MP3 변환 중 오류가 발생했습니다.');
     }
-  }
+  }*/
 
   /// AAC로 변환
-  Future<void> convertToAAC(String audioId) async {
+  /* Future<void> convertToAAC(String audioId) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -436,7 +436,7 @@ class AudioController extends ChangeNotifier {
       notifyListeners();
       debugPrint('AAC 변환 중 오류가 발생했습니다.');
     }
-  }
+  }*/
 
   // ==================== 업로드 관리 ====================
 

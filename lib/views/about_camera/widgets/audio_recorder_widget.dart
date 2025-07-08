@@ -12,15 +12,17 @@ class AudioRecorderWidget extends StatefulWidget {
   // 콜백은 선택 사항 (필요 없을 경우 null 허용)
   final Function(String?)? onRecordingCompleted;
 
-  const AudioRecorderWidget({Key? key, this.onRecordingCompleted})
-    : super(key: key);
+  const AudioRecorderWidget({super.key, this.onRecordingCompleted});
 
   @override
   State<AudioRecorderWidget> createState() => _AudioRecorderWidgetState();
 }
 
 class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
+  // audio관련 기능을 가지고 있는 controller
   late AudioController _audioController;
+
+  /// audio_waveforms 패키지의 녹음 컨트롤러를 설정
   late RecorderController recorderController;
 
   @override
@@ -49,6 +51,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
   Future<void> _startRecording() async {
     // 파형 표시를 위한 녹음 컨트롤러 시작
     try {
+      // 파형을 그리는 패키지의 녹음 컨트롤러 시작
       await recorderController.record();
       // AudioController의 녹음 시작 함수 호출
       await _audioController.startRecording();

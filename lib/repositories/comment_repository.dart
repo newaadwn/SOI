@@ -34,8 +34,14 @@ class CommentRepository {
 
   /// 녹음 시작
   Future<void> startRecording() async {
-    final path = 'comment_audio_${DateTime.now().millisecondsSinceEpoch}.aac';
-    await _recorder.startRecorder(toFile: path);
+    final path = 'comment_audio_${DateTime.now().millisecondsSinceEpoch}.ogg';
+    await _recorder.startRecorder(
+      toFile: path,
+      codec: Codec.opusOGG,
+      bitRate: 192000, // 192kbps - 고품질 음성
+      sampleRate: 48000, // 48kHz - Opus 최적화
+      numChannels: 2, // 스테레오 품질
+    );
   }
 
   /// 녹음 중지

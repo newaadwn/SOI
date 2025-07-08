@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import '../repositories/audio_repository.dart';
 import '../models/audio_data_model.dart';
@@ -13,9 +12,9 @@ class AudioService {
   final AudioRepository _repository = AudioRepository();
 
   // AudioConverter 기능을 위한 MethodChannel
-  static const MethodChannel _converterChannel = MethodChannel(
+  /*static const MethodChannel _converterChannel = MethodChannel(
     'com.app.audio_converter',
-  );
+  );*/
 
   // ==================== 비즈니스 로직 ====================
 
@@ -51,7 +50,7 @@ class AudioService {
   Future<AuthResult> initialize() async {
     try {
       // 1. 권한 확인
-      final micPermission = await _repository.requestMicrophonePermission();
+      final micPermission = await AudioRepository.requestPermission();
       if (!micPermission) {
         return AuthResult.failure('마이크 권한이 필요합니다.');
       }
@@ -90,11 +89,11 @@ class AudioService {
   /// 녹음 시작
   Future<AuthResult> startRecording() async {
     try {
-      if (_repository.isRecording) {
+      if (await AudioRepository.isRecording()) {
         return AuthResult.failure('이미 녹음이 진행 중입니다.');
       }
 
-      final recordingPath = await _repository.startRecording();
+      final recordingPath = await AudioRepository.startRecording();
       return AuthResult.success(recordingPath);
     } catch (e) {
       debugPrint('녹음 시작 오류: $e');
@@ -109,11 +108,11 @@ class AudioService {
     String? description,
   }) async {
     try {
-      if (!_repository.isRecording) {
+      if (!await AudioRepository.isRecording()) {
         return AuthResult.failure('진행 중인 녹음이 없습니다.');
       }
 
-      final recordingPath = await _repository.stopRecording();
+      final recordingPath = await AudioRepository.stopRecording();
       if (recordingPath == null) {
         return AuthResult.failure('녹음 파일을 저장할 수 없습니다.');
       }
@@ -143,7 +142,7 @@ class AudioService {
         originalPath: recordingPath,
         durationInSeconds: duration,
         fileSizeInMB: fileSize,
-        format: AudioFormat.aac,
+        format: AudioFormat.m4a,
         status: AudioStatus.recorded,
         createdAt: DateTime.now(),
         description: description,
@@ -163,7 +162,7 @@ class AudioService {
   /// 간단한 녹음 중지 (업로드 없이)
   Future<AuthResult> stopRecordingSimple() async {
     try {
-      final filePath = await _repository.stopRecording();
+      final filePath = await AudioRepository.stopRecording();
 
       if (filePath != null) {
         return AuthResult.success(filePath);
@@ -176,7 +175,7 @@ class AudioService {
   }
 
   /// 녹음 상태 확인
-  bool get isRecording => _repository.isRecording;
+  Future<bool> get isRecording => AudioRepository.isRecording();
 
   /// 녹음 진행률 스트림
   Stream<RecordingDisposition>? get recordingStream =>
@@ -250,7 +249,7 @@ class AudioService {
   // ==================== 오디오 변환 (AudioConverter 통합) ====================
 
   /// AAC/M4A 파일을 MP3로 변환
-  Future<AuthResult> convertToMp3(String audioId) async {
+  /*Future<AuthResult> convertToMp3(String audioId) async {
     try {
       final audioData = await _repository.getAudioData(audioId);
       if (audioData == null) {
@@ -295,10 +294,10 @@ class AudioService {
       });
       return AuthResult.failure('MP3 변환 중 오류가 발생했습니다.');
     }
-  }
+  }*/
 
   /// 오디오 파일을 AAC 포맷으로 변환
-  Future<AuthResult> convertToAAC(String audioId) async {
+  /*Future<AuthResult> convertToAAC(String audioId) async {
     try {
       final audioData = await _repository.getAudioData(audioId);
       if (audioData == null) {
@@ -343,7 +342,7 @@ class AudioService {
       });
       return AuthResult.failure('AAC 변환 중 오류가 발생했습니다.');
     }
-  }
+  }*/
 
   // ==================== 업로드 관리 ====================
 

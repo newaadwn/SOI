@@ -176,69 +176,6 @@ class PhotoRepository {
     }
   }
 
-  /// 사진 검색 (필터링)
-  Future<List<PhotoDataModel>> searchPhotos({
-    required PhotoSearchFilter filter,
-  }) async {
-    try {
-      Query query = _firestore.collectionGroup('photos');
-
-      // 카테고리 필터링
-      if (filter.categoryId != null) {
-        query = _firestore
-            .collection('categories')
-            .doc(filter.categoryId!)
-            .collection('photos');
-      }
-
-      // 사용자 필터링
-      if (filter.userId != null) {
-        query = query.where('userID', isEqualTo: filter.userId!);
-      }
-
-      // 상태 필터링
-      if (filter.status != null) {
-        query = query.where('status', isEqualTo: filter.status!.name);
-      } else {
-        query = query.where('status', isEqualTo: PhotoStatus.active.name);
-      }
-
-      // 날짜 범위 필터링
-      if (filter.startDate != null) {
-        query = query.where(
-          'createdAt',
-          isGreaterThanOrEqualTo: Timestamp.fromDate(filter.startDate!),
-        );
-      }
-      if (filter.endDate != null) {
-        query = query.where(
-          'createdAt',
-          isLessThanOrEqualTo: Timestamp.fromDate(filter.endDate!),
-        );
-      }
-
-      // 태그 필터링
-      if (filter.tags != null && filter.tags!.isNotEmpty) {
-        query = query.where('tags', arrayContainsAny: filter.tags!);
-      }
-
-      query = query.orderBy('createdAt', descending: true);
-
-      final querySnapshot = await query.get();
-      return querySnapshot.docs
-          .map(
-            (doc) => PhotoDataModel.fromFirestore(
-              doc.data() as Map<String, dynamic>,
-              doc.id,
-            ),
-          )
-          .toList();
-    } catch (e) {
-      debugPrint('사진 검색 오류: $e');
-      return [];
-    }
-  }
-
   // ==================== 사진 업데이트 ====================
 
   /// 사진 정보 업데이트

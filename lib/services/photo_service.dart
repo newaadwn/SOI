@@ -17,11 +17,6 @@ class PhotoService {
     required String categoryId,
     required String userId,
     required List<String> userIds,
-    String? caption,
-    double? latitude,
-    double? longitude,
-    List<String>? tags,
-    Map<String, dynamic>? metadata,
   }) async {
     try {
       // 입력 검증
@@ -70,11 +65,6 @@ class PhotoService {
         userIds: userIds,
         categoryId: categoryId,
         createdAt: DateTime.now(),
-        caption: caption,
-        latitude: latitude,
-        longitude: longitude,
-        tags: tags ?? [],
-        metadata: metadata,
       );
 
       // 4. Firestore에 메타데이터 저장
@@ -110,7 +100,6 @@ class PhotoService {
       categoryId: categoryId,
       userId: userId,
       userIds: [userId],
-      metadata: {'uploadType': 'simple'},
     );
   }
 
@@ -189,38 +178,6 @@ class PhotoService {
     } catch (e) {
       debugPrint('사진 상세 조회 서비스 오류: $e');
       return null;
-    }
-  }
-
-  /// 사진 검색
-  Future<List<PhotoDataModel>> searchPhotos({
-    required PhotoSearchFilter filter,
-    int? limit,
-  }) async {
-    try {
-      final photos = await _photoRepository.searchPhotos(filter: filter);
-
-      List<PhotoDataModel> filteredPhotos = _applyPhotoBusinessRules(photos);
-
-      // 텍스트 검색 로직 (클라이언트 사이드)
-      if (filter.searchQuery != null && filter.searchQuery!.isNotEmpty) {
-        final query = filter.searchQuery!.toLowerCase();
-        filteredPhotos =
-            filteredPhotos.where((photo) {
-              return photo.caption?.toLowerCase().contains(query) == true ||
-                  photo.tags.any((tag) => tag.toLowerCase().contains(query));
-            }).toList();
-      }
-
-      // 개수 제한
-      if (limit != null && limit > 0) {
-        filteredPhotos = filteredPhotos.take(limit).toList();
-      }
-
-      return filteredPhotos;
-    } catch (e) {
-      debugPrint('사진 검색 서비스 오류: $e');
-      return [];
     }
   }
 
@@ -376,38 +333,6 @@ class PhotoService {
   /// 사진 통계 조회
   Future<Map<String, int>> getPhotoStats(String categoryId) async {
     return await _photoRepository.getPhotoStats(categoryId);
-  }
-
-  /// 인기 태그 조회
-  Future<List<String>> getPopularTags({
-    String? categoryId,
-    int limit = 10,
-  }) async {
-    try {
-      final PhotoSearchFilter filter = PhotoSearchFilter(
-        categoryId: categoryId,
-      );
-
-      final photos = await _photoRepository.searchPhotos(filter: filter);
-
-      // 태그 빈도 계산
-      final Map<String, int> tagCounts = {};
-      for (final photo in photos) {
-        for (final tag in photo.tags) {
-          tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
-        }
-      }
-
-      // 빈도순 정렬
-      final sortedTags =
-          tagCounts.entries.toList()
-            ..sort((a, b) => b.value.compareTo(a.value));
-
-      return sortedTags.take(limit).map((e) => e.key).toList();
-    } catch (e) {
-      debugPrint('인기 태그 조회 오류: $e');
-      return [];
-    }
   }
 
   // ==================== 비즈니스 규칙 검증 ====================

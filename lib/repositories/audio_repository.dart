@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -12,13 +14,19 @@ class AudioRepository {
   final FirebaseStorage _storage = FirebaseStorage.instance;
   final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
   final FlutterSoundPlayer _player = FlutterSoundPlayer();
+  static const MethodChannel _channel = MethodChannel('native_recorder');
 
   // ==================== 권한 관리 ====================
 
   /// 마이크 권한 요청
-  Future<bool> requestMicrophonePermission() async {
-    final status = await Permission.microphone.request();
-    return status == PermissionStatus.granted;
+  static Future<bool> requestPermission() async {
+    try {
+      final bool granted = await _channel.invokeMethod('requestPermission');
+      return granted;
+    } catch (e) {
+      print('Error requesting permission: $e');
+      return false;
+    }
   }
 
   /// 저장소 권한 요청
@@ -39,25 +47,47 @@ class AudioRepository {
     await _recorder.closeRecorder();
   }
 
-  /// 녹음 시작
-  Future<String> startRecording() async {
-    final tempDir = await getTemporaryDirectory();
-    final recordingPath =
-        '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.aac';
-
-    await _recorder.openRecorder();
-    await _recorder.startRecorder(toFile: recordingPath, codec: Codec.aacADTS);
-
-    return recordingPath;
+  /// 네이티브 녹음 시작
+  /// [filePath]: 녹음 파일이 저장될 경로 (확장자 .m4a)
+  static Future<String> startRecording() async {
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final String fileExtension = '.m4a'; // 녹음 파일 확장자
+      String filePath =
+          '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+      final String started = await _channel.invokeMethod('startRecording', {
+        'filePath': filePath,
+      });
+      return started;
+    } catch (e) {
+      print('Error starting recording: $e');
+      return '';
+    }
   }
 
-  /// 녹음 중지
-  Future<String?> stopRecording() async {
-    return await _recorder.stopRecorder();
+  /// 네이티브 녹음 중지
+  /// Returns: 녹음된 파일 경로
+  static Future<String?> stopRecording() async {
+    try {
+      final String? filePath = await _channel.invokeMethod('stopRecording');
+      debugPrint('녹음 파일 경로: $filePath');
+      return filePath;
+    } catch (e) {
+      print('Error stopping recording: $e');
+      return null;
+    }
   }
 
   /// 녹음 상태 확인
-  bool get isRecording => _recorder.isRecording;
+  static Future<bool> isRecording() async {
+    try {
+      final bool recording = await _channel.invokeMethod('isRecording');
+      return recording;
+    } catch (e) {
+      print('Error checking recording status: $e');
+      return false;
+    }
+  }
 
   /// 녹음 레벨 스트림
   Stream<RecordingDisposition>? get recordingStream => _recorder.onProgress;
@@ -142,7 +172,10 @@ class AudioRepository {
     final audioFiles = tempDir.listSync().where(
       (file) =>
           file.path.contains('audio_') &&
-          (file.path.endsWith('.aac') || file.path.endsWith('.mp3')),
+          (file.path.endsWith('.ogg') ||
+              file.path.endsWith('.aac') ||
+              file.path.endsWith('.m4a') ||
+              file.path.endsWith('.wav')),
     );
 
     for (final file in audioFiles) {
@@ -236,8 +269,12 @@ class AudioRepository {
   /// 오디오 파일 업로드
   Future<String> uploadAudioFile(String audioId, String filePath) async {
     final file = File(filePath);
+
+    // 파일 확장자 추출
+    final fileExtension = filePath.split('.').last;
+
     final fileName =
-        'audio_${audioId}_${DateTime.now().millisecondsSinceEpoch}.aac';
+        'audio_${audioId}_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
     final ref = _storage.ref().child('audios').child(audioId).child(fileName);
 
     final uploadTask = ref.putFile(file);
@@ -262,8 +299,12 @@ class AudioRepository {
     String filePath,
   ) {
     final file = File(filePath);
+
+    // 파일 확장자 추출
+    final fileExtension = filePath.split('.').last;
+
     final fileName =
-        'audio_${audioId}_${DateTime.now().millisecondsSinceEpoch}.aac';
+        'audio_${audioId}_${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
     final ref = _storage.ref().child('audios').child(audioId).child(fileName);
 
     return ref.putFile(file).snapshotEvents;

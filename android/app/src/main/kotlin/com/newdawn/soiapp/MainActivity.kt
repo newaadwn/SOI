@@ -2,6 +2,8 @@ package com.newdawn.soiapp
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.media.MediaRecorder
+import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
@@ -10,8 +12,16 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.soi.camera"
+    private val AUDIO_CHANNEL = "native_recorder"
     private lateinit var cameraHandler: CameraHandler
     private val CAMERA_PERMISSION_CODE = 100
+    private val AUDIO_PERMISSION_CODE = 101
+    
+    // 네이티브 오디오 녹음 관련 변수
+    private var mediaRecorder: MediaRecorder? = null
+    private var recordingStartTime: Long = 0
+    private var isRecording = false
+    private var currentFilePath: String? = null
     
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -28,7 +38,7 @@ class MainActivity : FlutterActivity() {
             NativeCameraViewFactory(flutterEngine.dartExecutor.binaryMessenger)
         )
         
-        // 메서드 채널 설정
+        // 메서드 채널 설정 (카메라)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             // 권한 확인
             if (!checkCameraPermissions() && 
@@ -100,6 +110,32 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+        
+        // 🎯 네이티브 오디오 녹음 메서드 채널 설정
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AUDIO_CHANNEL).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "requestPermission" -> {
+                    requestAudioPermission(result)
+                }
+                "startRecording" -> {
+                    val filePath = call.argument<String>("filePath")
+                    if (filePath != null) {
+                        startRecording(filePath, result)
+                    } else {
+                        result.error("INVALID_ARGUMENTS", "Invalid file path", null)
+                    }
+                }
+                "stopRecording" -> {
+                    stopRecording(result)
+                }
+                "isRecording" -> {
+                    result.success(isRecording)
+                }
+                else -> {
+                    result.notImplemented()
+                }
+            }
+        }
     }
     
     // 권한 체크
@@ -128,6 +164,79 @@ class MainActivity : FlutterActivity() {
                 // 권한이 부여됨, 카메라 초기화 시도
                 cameraHandler.initCamera { _, _ -> }
             }
+        }
+        // 오디오 권한 결과는 별도 처리 (콜백 방식)
+    }
+    
+    // 🎯 네이티브 오디오 녹음 함수들
+    private fun requestAudioPermission(result: MethodChannel.Result) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
+            != PackageManager.PERMISSION_GRANTED) {
+            
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.RECORD_AUDIO),
+                AUDIO_PERMISSION_CODE
+            )
+            result.success(false)
+        } else {
+            result.success(true)
+        }
+    }
+
+    private fun startRecording(filePath: String, result: MethodChannel.Result) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
+            != PackageManager.PERMISSION_GRANTED) {
+            result.error("PERMISSION_ERROR", "Audio recording permission not granted", null)
+            return
+        }
+
+        try {
+            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                MediaRecorder(this)
+            } else {
+                @Suppress("DEPRECATION")
+                MediaRecorder()
+            }
+
+            mediaRecorder?.apply {
+                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setOutputFile(filePath)
+                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                
+                // 🎯 고품질 오디오 설정 (현재 Flutter 설정보다 향상)
+                setAudioSamplingRate(44100)  // CD 품질
+                setAudioChannels(1)  // 모노 (음성 녹음에 적합)
+                setAudioEncodingBitRate(192000)  // 192kbps (기존 Flutter Android: 160kbps)
+                
+                prepare()
+                start()
+                
+                recordingStartTime = System.currentTimeMillis()
+                isRecording = true
+                currentFilePath = filePath
+                
+                result.success(true)
+            }
+        } catch (e: Exception) {
+            result.error("RECORDING_ERROR", "Failed to start recording: ${e.message}", null)
+        }
+    }
+
+    private fun stopRecording(result: MethodChannel.Result) {
+        try {
+            mediaRecorder?.apply {
+                stop()
+                release()
+            }
+            mediaRecorder = null
+            isRecording = false
+            
+            result.success(currentFilePath)
+            currentFilePath = null
+        } catch (e: Exception) {
+            result.error("RECORDING_ERROR", "Failed to stop recording: ${e.message}", null)
         }
     }
 }

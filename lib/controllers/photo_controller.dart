@@ -47,11 +47,6 @@ class PhotoController extends ChangeNotifier {
     required String categoryId,
     required String userId,
     required List<String> userIds,
-    String? caption,
-    double? latitude,
-    double? longitude,
-    List<String>? tags,
-    Map<String, dynamic>? metadata,
   }) async {
     try {
       debugPrint('PhotoController: 업로드 시작');
@@ -88,11 +83,6 @@ class PhotoController extends ChangeNotifier {
         categoryId: categoryId,
         userId: userId,
         userIds: userIds,
-        caption: caption,
-        latitude: latitude,
-        longitude: longitude,
-        tags: tags,
-        metadata: metadata,
       );
 
       _isUploading = false;
@@ -143,7 +133,6 @@ class PhotoController extends ChangeNotifier {
       categoryId: categoryId,
       userId: userId,
       userIds: [userId],
-      metadata: {'uploadType': 'simple', 'audioUrl': audioUrl},
     );
   }
 
@@ -256,39 +245,6 @@ class PhotoController extends ChangeNotifier {
     }
   }
 
-  /// 사진 검색
-  Future<void> searchPhotos({
-    required PhotoSearchFilter filter,
-    int? limit,
-  }) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      final photos = await _photoService.searchPhotos(
-        filter: filter,
-        limit: limit,
-      );
-
-      _searchResults = photos;
-      _isLoading = false;
-      notifyListeners();
-
-      if (photos.isEmpty) {
-        Fluttertoast.showToast(msg: '검색 결과가 없습니다.');
-      } else {
-        debugPrint('${photos.length}개의 사진을 찾았습니다.');
-      }
-    } catch (e) {
-      debugPrint('사진 검색 오류: $e');
-      _isLoading = false;
-      _error = '사진 검색 중 오류가 발생했습니다.';
-      notifyListeners();
-      Fluttertoast.showToast(msg: '사진 검색 중 오류가 발생했습니다. 다시 시도해주세요.');
-    }
-  }
-
   // ==================== 사진 업데이트 ====================
 
   /// 사진 정보 업데이트
@@ -296,9 +252,6 @@ class PhotoController extends ChangeNotifier {
     required String categoryId,
     required String photoId,
     required String userId,
-    String? caption,
-    List<String>? tags,
-    Map<String, dynamic>? metadata,
   }) async {
     try {
       _isLoading = true;
@@ -309,9 +262,6 @@ class PhotoController extends ChangeNotifier {
         categoryId: categoryId,
         photoId: photoId,
         userId: userId,
-        caption: caption,
-        tags: tags,
-        metadata: metadata,
       );
 
       _isLoading = false;
@@ -465,20 +415,6 @@ class PhotoController extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('사진 통계 로드 오류: $e');
-    }
-  }
-
-  /// 인기 태그 로드
-  Future<void> loadPopularTags({String? categoryId, int limit = 10}) async {
-    try {
-      final tags = await _photoService.getPopularTags(
-        categoryId: categoryId,
-        limit: limit,
-      );
-      _popularTags = tags;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('인기 태그 로드 오류: $e');
     }
   }
 

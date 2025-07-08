@@ -152,7 +152,7 @@ class AudioDataModel {
 }
 
 /// 오디오 파일 포맷
-enum AudioFormat { aac, mp3, wav, m4a }
+enum AudioFormat { aac, mp3, wav, m4a, caf, ogg, webm }
 
 /// 오디오 상태
 enum AudioStatus {
