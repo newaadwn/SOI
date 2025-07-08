@@ -6,59 +6,115 @@ import 'package:flutter/material.dart';
 class AddCategoryWidget extends StatelessWidget {
   final TextEditingController textController;
   final ScrollController scrollController;
+  final VoidCallback onBackPressed;
+  final VoidCallback onSavePressed;
 
   const AddCategoryWidget({
     super.key,
     required this.textController,
     required this.scrollController,
+    required this.onBackPressed,
+    required this.onSavePressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    //final screenWidth = MediaQuery.of(context).size.width;
-    //final screenHeight = MediaQuery.of(context).size.height;
-
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 카테고리 이름 입력 필드
-        ElevatedButton.icon(
-          onPressed: () {
-            // 친구 추가하기 로직
-          },
-          icon: Image.asset('assets/person_add.png', width: 17, height: 17),
-          label: Text(
-            '친구 추가하기',
-            style: TextStyle(color: Color(0xffE2E2E2), fontSize: 14),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Color(0xff323232),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16.5),
-            ),
-            elevation: 0,
-            minimumSize: Size(117, 30), // 버튼 크기 조정
+        // 헤더 영역
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              IconButton(
+                icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+                onPressed: onBackPressed,
+              ),
+              Text(
+                '새 카테고리 만들기',
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              ElevatedButton(
+                onPressed: onSavePressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Color(0xff323232),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.5),
+                  ),
+                  elevation: 0,
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                ),
+                child: Text(
+                  '저장',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-        TextField(
-          controller: textController,
-          cursorColor: Color(0xffcccccc),
-          style: TextStyle(
-            color: Color(0xffcccccc), // 입력 글자색 지정
-          ),
-          decoration: InputDecoration(
-            filled: false,
-            hintText: '카테고리 이름을 입력해 주세요.',
-            hintStyle: TextStyle(color: Color(0xffcccccc)),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
+        Divider(color: Color(0xff3d3d3d)),
+        SizedBox(height: 12),
 
-        // 선택된 메이트 보여주기 영역 (필요시 구현)
+        // 스크롤 가능한 컨텐츠 영역
+        Expanded(
+          child: SingleChildScrollView(
+            controller: scrollController,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 친구 추가하기 버튼
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // 친구 추가하기 로직
+                  },
+                  icon: Image.asset(
+                    'assets/person_add.png',
+                    width: 17,
+                    height: 17,
+                  ),
+                  label: Text(
+                    '친구 추가하기',
+                    style: TextStyle(color: Color(0xffE2E2E2), fontSize: 14),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xff323232),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16.5),
+                    ),
+                    elevation: 0,
+                    minimumSize: Size(117, 30),
+                  ),
+                ),
+
+                // 카테고리 이름 입력 필드
+                TextField(
+                  controller: textController,
+                  cursorColor: Color(0xffcccccc),
+                  style: TextStyle(color: Color(0xffcccccc)),
+                  decoration: InputDecoration(
+                    filled: false,
+                    hintText: '카테고리 이름을 입력해 주세요.',
+                    hintStyle: TextStyle(color: Color(0xffcccccc)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

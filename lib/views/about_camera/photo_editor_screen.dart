@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_swift_camera/theme/theme.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import '../../controllers/audio_controller.dart';
@@ -238,7 +239,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         debugPrint('로컬 이미지 업로드 결과: $uploadSuccess');
       } else if (_useDownloadUrl && widget.downloadUrl != null) {
         debugPrint('다운로드 URL 업로드는 현재 지원되지 않습니다: ${widget.downloadUrl}');
-        // TODO: downloadUrl의 경우 URL에서 이미지를 다운로드한 후 업로드해야 함
+        // downloadUrl의 경우 URL에서 이미지를 다운로드한 후 업로드해야 함
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('URL 이미지는 현재 지원되지 않습니다.')));
@@ -264,9 +265,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
         // 잠시 대기 후 화면 이동
         Future.delayed(Duration(milliseconds: 500));
-
-        // 홈 화면으로 이동
-        //if (mounted) {}
       } else {
         debugPrint('업로드 실패');
       }
@@ -361,20 +359,17 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
     return Scaffold(
       backgroundColor: Colors.black,
-      resizeToAvoidBottomInset: false, // 키보드가 올라올 때 UI가 밀리지 않도록 설정
-      /* appBar: AppBar(
+      appBar: AppBar(
         title: Text(
           'SOI',
           style: TextStyle(color: AppTheme.lightTheme.colorScheme.secondary),
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        toolbarHeight: 70 / 852 * screenHeight,
-      ),*/
+      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
             // Main content
-            SizedBox(height: 70 / 852 * screenHeight), // 상단 여백
             Center(
               child:
                   _isLoading
@@ -410,9 +405,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       ),
       bottomSheet: DraggableScrollableSheet(
         controller: _draggableScrollController,
-        initialChildSize: 0.2,
+        initialChildSize: 0.25,
         minChildSize: 0.2,
-        // maxChildSize: 0.5,
+
         expand: false,
         builder: (context, scrollController) {
           return Container(
@@ -437,76 +432,43 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                 ),
 
                 // 헤더 영역: 카테고리 추가 UI를 표시할 때 필요한 헤더
-                if (_showAddCategoryUI)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.arrow_back_ios, color: Colors.white),
-                          onPressed: () {
-                            // 뒤로가기 기능
-                            setState(() {
-                              _showAddCategoryUI = false;
-                              _categoryNameController.clear();
-                            });
-                          },
-                        ),
-                        Text(
-                          '새 카테고리 만들기',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        ElevatedButton(
-                          onPressed:
-                              () => _createNewCategory(
-                                _categoryNameController.text.trim(),
-                              ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xff323232),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16.5),
-                            ),
-                            elevation: 0,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 10,
-                            ), // 패딩 조정
-                          ),
-                          child: Text(
-                            '저장',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                if (_showAddCategoryUI) Divider(color: Color(0xff3d3d3d)),
-                SizedBox(height: 12),
+                // (이제 AddCategoryWidget 내부에서 처리됨)
 
                 // 콘텐츠 영역: 조건에 따라 카테고리 목록 또는 카테고리 추가 UI 표시
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: Duration(milliseconds: 300),
                     child:
+                        // _showAddCategoryUI가 참이면 AddCategoryWidget, 거짓이면 CategoryListWidget
                         _showAddCategoryUI
-                            ? Padding(
-                              // AddCategoryWidget을 Padding으로 감싸서 정렬
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                              ),
-                              child: AddCategoryWidget(
-                                textController: _categoryNameController,
-                                scrollController: scrollController,
-                              ),
+                            ? AddCategoryWidget(
+                              textController: _categoryNameController,
+                              scrollController: scrollController,
+                              onBackPressed: () {
+                                setState(() {
+                                  _showAddCategoryUI = false;
+
+                                  _categoryNameController.clear();
+                                });
+                                // 시트를 0.2 크기로 애니메이션
+                                if (mounted) {
+                                  // 위젯이 아직 살아있는지 확인
+                                  Future.delayed(
+                                    Duration(milliseconds: 50),
+                                    () {
+                                      _draggableScrollController.animateTo(
+                                        0.25,
+                                        duration: Duration(milliseconds: 10),
+                                        curve: Curves.fastOutSlowIn,
+                                      );
+                                    },
+                                  );
+                                }
+                              },
+                              onSavePressed:
+                                  () => _createNewCategory(
+                                    _categoryNameController.text.trim(),
+                                  ),
                             )
                             : CategoryListWidget(
                               scrollController: scrollController,
@@ -516,6 +478,20 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                 setState(() {
                                   _showAddCategoryUI = true;
                                 });
+                                // 시트를 0.7 크기로 애니메이션
+                                if (mounted) {
+                                  // 위젯이 아직 살아있는지 확인
+                                  Future.delayed(
+                                    Duration(milliseconds: 50),
+                                    () {
+                                      _draggableScrollController.animateTo(
+                                        0.65,
+                                        duration: Duration(milliseconds: 10),
+                                        curve: Curves.fastOutSlowIn,
+                                      );
+                                    },
+                                  );
+                                }
                               },
                               isLoading: _categoryController.isLoading,
                             ),

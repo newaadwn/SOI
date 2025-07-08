@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 /// 카테고리 아이템 위젯
-///
 /// 각 카테고리를 표현하는 UI 요소입니다.
 /// 아이콘이나 이미지 URL을 함께 표시할 수 있습니다.
 class CategoryItemWidget extends StatelessWidget {
@@ -14,14 +13,14 @@ class CategoryItemWidget extends StatelessWidget {
   final String? selectedCategoryId;
 
   const CategoryItemWidget({
-    Key? key,
+    super.key,
     this.imageUrl,
     this.icon,
     required this.label,
     required this.onTap,
     this.categoryId,
     this.selectedCategoryId,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -45,7 +44,7 @@ class CategoryItemWidget extends StatelessWidget {
                 color: icon != null ? Colors.grey.shade200 : Colors.transparent,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isSelected ? Colors.blue : Colors.grey.shade300,
+                  color: isSelected ? Colors.blue : Colors.transparent,
                   width: isSelected ? 2 : 1,
                 ),
               ),
@@ -54,7 +53,7 @@ class CategoryItemWidget extends StatelessWidget {
                     isSelected
                         ? Icon(Icons.send, size: 30, color: Colors.blue)
                         : icon != null
-                        ? Icon(icon, size: 30, color: Colors.grey.shade700)
+                        ? Icon(icon, size: 40, color: Colors.black)
                         : (imageUrl != null && imageUrl!.isNotEmpty)
                         ? CachedNetworkImage(
                           imageUrl: imageUrl!,
@@ -63,6 +62,7 @@ class CategoryItemWidget extends StatelessWidget {
                               (context, url) => Center(
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
+                                  color: Colors.white,
                                 ),
                               ),
                           errorWidget:
