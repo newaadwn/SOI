@@ -20,6 +20,7 @@
  * - StreamBuilder: Firebase에서 실시간으로 카테고리 데이터를 가져옵니다.
  */
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/category_controller.dart';
@@ -68,7 +69,7 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
               width: 20,
               height: 20,
               child: CircleAvatar(
-                backgroundImage: NetworkImage(imageUrl),
+                backgroundImage: CachedNetworkImageProvider(imageUrl),
                 onBackgroundImageError: (exception, stackTrace) {
                   debugPrint('프로필 이미지 로딩 오류: $exception');
                 },

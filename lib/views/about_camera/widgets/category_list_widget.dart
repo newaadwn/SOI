@@ -66,14 +66,14 @@ class CategoryListWidget extends StatelessWidget {
             // 카테고리 아이템 표시
             else {
               final category = categories[index - 1];
-              final categoryId = category['id'];
+              final categoryId = category.id;
 
               return StreamBuilder<String?>(
                 stream: viewModel.getFirstPhotoUrlStream(categoryId),
                 builder: (context, asyncSnapshot) {
                   return CategoryItemWidget(
                     imageUrl: asyncSnapshot.data,
-                    label: category['name'],
+                    label: category.name,
                     categoryId: categoryId,
                     selectedCategoryId: selectedCategoryId,
                     onTap: () => onCategorySelected(categoryId),

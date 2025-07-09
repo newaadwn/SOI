@@ -1,7 +1,8 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_swift_camera/controllers/category_controller.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
+import '../../controllers/category_controller.dart';
 import '../../theme/theme.dart';
 import 'category_photos_screen.dart';
 
@@ -59,7 +60,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
               height: 20,
               margin: const EdgeInsets.only(right: 4),
               child: CircleAvatar(
-                backgroundImage: NetworkImage(imageUrl),
+                backgroundImage: CachedNetworkImageProvider(imageUrl),
                 onBackgroundImageError: (exception, stackTrace) {
                   debugPrint('이미지 로딩 오류: $exception');
                   // 에러 발생 시 별도 처리가 필요하면 여기에 추가
@@ -128,7 +129,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       body: StreamBuilder<List<Map<String, dynamic>>>(
         // 기존의 streamUserCategoriesWithDetails 대신 streamUserCategories 함수 사용
-        stream: categoryController.streamUserCategories(nickName!),
+        stream: categoryController.streamUserCategoriesAsMap(nickName!),
         builder: (context, snapshot) {
           // 데이터가 불러오는 중일때
           if (snapshot.connectionState == ConnectionState.waiting) {

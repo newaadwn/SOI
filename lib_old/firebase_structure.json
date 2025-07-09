@@ -1,0 +1,75 @@
+{
+  "users": {
+    "_userId_ (Firebase Auth UID)": {
+      "uid": "Firebase Auth UID (String)",
+      "createdAt": "Timestamp",
+      "lastLogin": "Timestamp", 
+      "id": "사용자 닉네임/아이디 (String)",
+      "name": "사용자 실명 (String)",
+      "phone": "전화번호 (String, 0 제거된 형태: 예. 1012345678)",
+      "birth_date": "생년월일 (String)",
+      "profile_image": "프로필 이미지 URL (String, Firebase Storage)",
+      "updatedAt": "Timestamp (프로필 업데이트 시)",
+      "friends": {
+        "_contactId_": {
+          "displayName": "연락처 표시 이름 (String)",
+          "phoneNumber": "연락처 주 전화번호 (String)",
+          "email": "연락처 주 이메일 (String, optional)",
+          "phoneNumbers": ["모든 전화번호 목록 (Array<String>)"],
+          "emails": ["모든 이메일 목록 (Array<String>)"],
+          "createdAt": "Timestamp",
+          "thumbnailUrl": "연락처 썸네일 URL (String, optional)"
+        }
+      }
+    }
+  },
+  "categories": {
+    "_categoryId_": {
+      "name": "카테고리 이름 (String)",
+      "userId": "카테고리 생성자들 UID 배열 (Array<String>)",
+      "mates": "카테고리에 속한 사용자 닉네임들 (Array<String>)",
+      "createdAt": "Timestamp",
+      "photoCount": "사진 개수 (Number)",
+      "imageUrl": "카테고리 대표 이미지 URL (String, optional)",
+      "photos": {
+        "_photoId_": {
+          "userId": "사진 업로더 UID (String)",
+          "imageUrl": "사진 URL (String, Firebase Storage)",
+          "audioUrl": "음성 녹음 URL (String, Firebase Storage)",
+          "createdAt": "Timestamp",
+          "comments": {
+            "_userNickname_ (문서 ID)": {
+              "createdAt": "Timestamp",
+              "userNickname": "댓글 작성자 닉네임 (String)",
+              "audioUrl": "음성 댓글 URL (String, Firebase Storage)",
+              "userId": "댓글 작성자 UID (String)"
+            }
+          }
+        }
+      }
+    }
+  },
+  "storage_structure": {
+    "profiles/": {
+      "_userId_/": {
+        "profile_image_files": "사용자 프로필 이미지들"
+      }
+    },
+    "categories/": {
+      "photos/": "카테고리별 사진들"
+    },
+    "categories_comments_audio/": "음성 댓글 파일들",
+    "audio/": "일반 음성 파일들"
+  },
+  "authentication": {
+    "provider": "Phone Authentication",
+    "recaptcha": "웹에서 reCAPTCHA 사용",
+    "sms_verification": "SMS 코드 인증"
+  },
+  "permissions_firestore_rules": {
+    "users": "인증된 사용자는 자신의 문서만 읽기/쓰기 가능",
+    "categories": "인증된 사용자는 모든 카테고리 읽기/쓰기 가능",
+    "photos": "인증된 사용자는 모든 사진 읽기/쓰기 가능",
+    "default": "인증된 사용자는 모든 문서 읽기/쓰기 가능 (개발 모드)"
+  }
+}

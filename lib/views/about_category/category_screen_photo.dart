@@ -1,12 +1,13 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_swift_camera/controllers/category_controller.dart';
 import 'package:provider/provider.dart';
-import '../../models/photo_model.dart';
+import '../../controllers/category_controller.dart';
 import '../../controllers/auth_controller.dart';
-import '../../controllers/comment_controller.dart';
+import '../../controllers/audio_controller.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
+import '../../models/photo_data_model.dart';
 
 class CategoryScreenPhoto extends StatefulWidget {
   final String categoryId; // 카테고리 ID
@@ -30,7 +31,7 @@ class _CategoryScreenPhotoState extends State<CategoryScreenPhoto> {
       listen: false,
     );
     final authController = Provider.of<AuthController>(context, listen: false);
-    final commentController = Provider.of<CommentController>(
+    final audioController = Provider.of<AudioController>(
       context,
       listen: false,
     );
@@ -57,10 +58,10 @@ class _CategoryScreenPhotoState extends State<CategoryScreenPhoto> {
                 }
 
                 // 사진 데이터가 있을 경우, 맵을 PhotoModel 객체로 변환
-                final List<PhotoModel> photos =
+                final List<PhotoDataModel> photos =
                     (photosSnapshot.data ?? [])
                         .map(
-                          (photoMap) => PhotoModel(
+                          (photoMap) => PhotoDataModel(
                             id: photoMap['id'] ?? '',
                             imageUrl: photoMap['imageUrl'] ?? '',
                             audioUrl: photoMap['audioUrl'] ?? '',
@@ -73,7 +74,10 @@ class _CategoryScreenPhotoState extends State<CategoryScreenPhoto> {
                             userIds:
                                 (photoMap['userIds'] as List<dynamic>?)
                                     ?.cast<String>() ??
-                                [], // Convert to List<String> and provide empty list if null
+                                [],
+                            categoryId:
+                                widget
+                                    .categoryId, // Convert to List<String> and provide empty list if null
                           ),
                         )
                         .toList();
@@ -90,7 +94,7 @@ class _CategoryScreenPhotoState extends State<CategoryScreenPhoto> {
                       context,
                       photos,
                       categoryController,
-                      commentController,
+                      audioController,
                       nicknameSnapshot.data,
                     ),
                   ],
@@ -140,9 +144,9 @@ class _CategoryScreenPhotoState extends State<CategoryScreenPhoto> {
   /// 사진을 그리드 형태로 보여주는 메서드
   Widget _buildPhotoGrid(
     BuildContext context,
-    List<PhotoModel> photos,
+    List<PhotoDataModel> photos,
     CategoryController categoryController,
-    CommentController commentController,
+    AudioController audioController,
     String? nickname,
   ) {
     return GridView.builder(
@@ -163,7 +167,7 @@ class _CategoryScreenPhotoState extends State<CategoryScreenPhoto> {
           context,
           photo,
           categoryController,
-          commentController,
+          audioController,
           nickname,
         );
       },
@@ -173,9 +177,9 @@ class _CategoryScreenPhotoState extends State<CategoryScreenPhoto> {
   /// 그리드의 각 사진 아이템 위젯
   Widget _buildPhotoItem(
     BuildContext context,
-    PhotoModel photo,
+    PhotoDataModel photo,
     CategoryController categoryController,
-    CommentController commentController,
+    AudioController audioController,
     String? nickname,
   ) {
     return Container(
@@ -196,7 +200,7 @@ class _CategoryScreenPhotoState extends State<CategoryScreenPhoto> {
               context,
               photo,
               categoryController,
-              commentController,
+              audioController,
               nickname,
             ),
         child: ClipRRect(
@@ -212,136 +216,39 @@ class _CategoryScreenPhotoState extends State<CategoryScreenPhoto> {
 
   void _showPhotoDialog(
     BuildContext context,
-    PhotoModel photo,
+    PhotoDataModel photo,
     CategoryController categoryController,
-    CommentController commentController,
+    AudioController audioController,
     String? nickname,
   ) {
-    // Get AuthController instance
-    final authController = Provider.of<AuthController>(context, listen: false);
-
     showDialog(
       context: context,
       builder:
           (_) => Dialog(
-            child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: commentController.fetchComments(
-                widget.categoryId,
-                photo.id,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.network(
+                    photo.imageUrl,
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                  ),
+                  ElevatedButton(
+                    child: const Text('음성녹음 듣기'),
+                    onPressed: () async {
+                      try {
+                        await audioController.playAudioFromUrl(photo.audioUrl);
+                      } catch (e) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('음성 재생 중 오류가 발생했습니다.')),
+                        );
+                      }
+                    },
+                  ),
+                  const Text('댓글 기능은 준비 중입니다.'),
+                ],
               ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return const Center(child: Text('Error fetching comments'));
-                }
-
-                final comments = snapshot.data!;
-                return StatefulBuilder(
-                  builder: (context, setState) {
-                    IconData playIcon = Icons.play_arrow;
-                    AudioPlayer audioPlayer = AudioPlayer();
-
-                    void playAudio(String audioUrl) async {
-                      await audioPlayer.play(UrlSource(audioUrl));
-                      setState(() {
-                        playIcon = Icons.pause;
-                      });
-                    }
-
-                    void pauseAudio() async {
-                      await audioPlayer.pause();
-                      setState(() {
-                        playIcon = Icons.play_arrow;
-                      });
-                    }
-
-                    return SingleChildScrollView(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Image.network(
-                            photo.imageUrl,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                          ),
-                          ElevatedButton(
-                            child: const Text('음성녹음 듣기'),
-                            onPressed: () async {
-                              playAudio(photo.audioUrl);
-                            },
-                          ),
-                          ElevatedButton(
-                            child: const Text('음성 답글 달기'),
-                            onPressed: () async {
-                              if (commentController.isRecording) {
-                                await commentController.stopRecording();
-                                final currentUserId =
-                                    authController.getUserId ?? "";
-
-                                // uploadAudio returns a bool, not a String
-                                final success = await commentController
-                                    .uploadAudio(
-                                      widget.categoryId,
-                                      photo.id,
-                                      nickname ?? "",
-                                      currentUserId,
-                                    );
-
-                                final String? audioUrl =
-                                    commentController.audioFilePath;
-
-                                final photoDocumentId = await categoryController
-                                    .getPhotoDocumentId(
-                                      widget.categoryId,
-                                      photo.imageUrl,
-                                    );
-
-                                if (photoDocumentId != null &&
-                                    audioUrl != null &&
-                                    success) {
-                                  await commentController.uploadAudio(
-                                    widget.categoryId,
-                                    photoDocumentId,
-                                    nickname ?? 'unknown_user',
-                                    currentUserId,
-                                  );
-                                }
-                              } else {
-                                await commentController.startRecording();
-                              }
-                            },
-                          ),
-                          const Text('Comments:'),
-                          ListView.builder(
-                            shrinkWrap: true,
-                            itemCount: comments.length,
-                            itemBuilder: (context, index) {
-                              final comment = comments[index];
-                              return ListTile(
-                                title: Text(comment['userNickname']),
-                                subtitle: Text(
-                                  comment['createdAt'].toDate().toString(),
-                                ),
-                                trailing: IconButton(
-                                  icon: Icon(playIcon),
-                                  onPressed: () {
-                                    if (playIcon == Icons.play_arrow) {
-                                      playAudio(comment['audioUrl']);
-                                    } else {
-                                      pauseAudio();
-                                    }
-                                  },
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                );
-              },
             ),
           ),
     );

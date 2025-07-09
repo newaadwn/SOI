@@ -56,12 +56,14 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget build(BuildContext context) {
     // 화면 크기 정보
     final double screenHeight = MediaQuery.of(context).size.height;
+    //final double screenWidth = MediaQuery.of(context).size.width;
 
     // Provider에서 AuthViewModel을 가져옴
     if (!mounted) return Container(); // 안전 검사
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         automaticallyImplyLeading: false,
@@ -109,9 +111,15 @@ class _LoginScreenState extends State<LoginScreen> {
     // 전화번호 입력 여부를 확인하는 상태 변수
     final ValueNotifier<bool> hasPhone = ValueNotifier<bool>(false);
 
-    return _buildScrollContainer(
-      screenHeight,
-      Column(
+    // 키보드 높이 감지
+    // 키보드 높이를 감지하여 패딩 조정
+    final keyboardHeight = MediaQuery.of(context).viewInsets.top;
+
+    return Container(
+      height: screenHeight,
+      alignment: Alignment.center,
+      padding: EdgeInsets.only(bottom: (keyboardHeight)),
+      child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
@@ -215,9 +223,16 @@ class _LoginScreenState extends State<LoginScreen> {
     final ValueNotifier<bool> hasCode = ValueNotifier<bool>(false);
     final controller = TextEditingController();
 
-    return _buildScrollContainer(
-      screenHeight,
-      Column(
+    // 키보드 높이 감지
+    // 키보드 높이를 감지하여 패딩 조정
+    final keyboardHeight = MediaQuery.of(context).viewInsets.top;
+
+    return Container(
+      height: screenHeight,
+      alignment: Alignment.center,
+      padding: EdgeInsets.only(bottom: (keyboardHeight + 20)),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             '인증번호를 입력해주세요.',
@@ -383,19 +398,6 @@ class _LoginScreenState extends State<LoginScreen> {
             },
           ),
         ],
-      ),
-    );
-  }
-
-  // -------------------------
-  // 공통으로 사용하는 Scroll + Container 위젯
-  // -------------------------
-  Widget _buildScrollContainer(double screenHeight, Widget child) {
-    return SingleChildScrollView(
-      child: Container(
-        constraints: BoxConstraints(minHeight: screenHeight),
-        alignment: Alignment.center,
-        child: child,
       ),
     );
   }

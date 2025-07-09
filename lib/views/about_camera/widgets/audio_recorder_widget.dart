@@ -12,15 +12,17 @@ class AudioRecorderWidget extends StatefulWidget {
   // 콜백은 선택 사항 (필요 없을 경우 null 허용)
   final Function(String?)? onRecordingCompleted;
 
-  const AudioRecorderWidget({Key? key, this.onRecordingCompleted})
-    : super(key: key);
+  const AudioRecorderWidget({super.key, this.onRecordingCompleted});
 
   @override
   State<AudioRecorderWidget> createState() => _AudioRecorderWidgetState();
 }
 
 class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
+  // audio관련 기능을 가지고 있는 controller
   late AudioController _audioController;
+
+  /// audio_waveforms 패키지의 녹음 컨트롤러를 설정
   late RecorderController recorderController;
 
   @override
@@ -49,6 +51,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
   Future<void> _startRecording() async {
     // 파형 표시를 위한 녹음 컨트롤러 시작
     try {
+      // 파형을 그리는 패키지의 녹음 컨트롤러 시작
       await recorderController.record();
       // AudioController의 녹음 시작 함수 호출
       await _audioController.startRecording();
@@ -63,12 +66,12 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     try {
       // 파형 표시를 위한 녹음 컨트롤러 중지
       await recorderController.stop();
-      // AudioController의 녹음 중지 함수 호출
-      await _audioController.stopRecording();
+      // AudioController의 간단한 녹음 중지 함수 호출
+      await _audioController.stopRecordingSimple();
 
       // 콜백이 있는 경우 녹음 파일 경로 전달
       if (widget.onRecordingCompleted != null) {
-        widget.onRecordingCompleted!(_audioController.audioFilePath);
+        widget.onRecordingCompleted!(_audioController.currentRecordingPath);
       }
 
       setState(() {}); // UI 갱신
@@ -80,7 +83,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
   @override
   Widget build(BuildContext context) {
     double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
+    //double screenHeight = MediaQuery.of(context).size.height;
 
     // AudioController 상태 구독
     return Consumer<AudioController>(
@@ -99,59 +102,70 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
             }
           },
 
-          child: Container(
-            height: 64,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade900,
-              borderRadius: BorderRadius.circular(32),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isRecording)
-                  GestureDetector(
-                    onTap: _stopRecording,
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade800,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.delete,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                if (isRecording) SizedBox(width: 12 / 393 * screenWidth),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children:
                 isRecording
-                    ? AudioWaveforms(
-                      size: Size(
-                        160 / 393 * screenWidth,
-                        50 / 852 * screenHeight,
+                    ? [
+                      Container(
+                        width: 376 / 393 * screenWidth,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          color: Color(0xff1c1c1c),
+                          borderRadius: BorderRadius.circular(14.6),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            SizedBox(width: 14),
+                            GestureDetector(
+                              onTap: _stopRecording,
+                              child: Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade800,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Image.asset(
+                                  'assets/trash.png',
+                                  width: 32,
+                                  height: 32,
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 19.5),
+                            Expanded(
+                              child: AudioWaveforms(
+                                size: Size(1, 52),
+                                recorderController: recorderController,
+                                waveStyle: const WaveStyle(
+                                  waveColor: Colors.white,
+                                  extendWaveform: true,
+                                  showMiddleLine: false,
+                                ),
+                              ),
+                            ),
+
+                            Text(
+                              controller.formattedRecordingDuration,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                              ),
+                            ),
+                            SizedBox(width: 24),
+                          ],
+                        ),
                       ),
-                      recorderController: recorderController,
-                      waveStyle: const WaveStyle(
-                        waveColor: Colors.white,
-                        extendWaveform: true,
-                        showMiddleLine: false,
+                    ]
+                    : [
+                      Image.asset(
+                        width: 64,
+                        height: 64,
+                        'assets/record_icon.png',
                       ),
-                    )
-                    : const Icon(Icons.mic, color: Colors.white, size: 45),
-                if (isRecording) SizedBox(width: 12 / 393 * screenWidth),
-                if (isRecording)
-                  Text(
-                    controller.formattedRecordingDuration,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14 / 393 * screenWidth,
-                    ),
-                  ),
-              ],
-            ),
+                    ],
           ),
         );
       },

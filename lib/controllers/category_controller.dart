@@ -1,82 +1,313 @@
-import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'auth_controller.dart';
-import '../models/category_model.dart';
-import '../models/auth_model.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import '../services/category_service.dart';
+import '../models/category_data_model.dart';
 
 /// 카테고리 관련 UI와 비즈니스 로직 사이의 중개 역할을 합니다.
 class CategoryController extends ChangeNotifier {
   // 상태 변수들
   final List<String> _selectedNames = [];
-  List<Map<String, dynamic>> _userCategories = [];
-  String audioUrl = '';
+  List<CategoryDataModel> _userCategories = [];
+  bool _isLoading = false;
+  String? _error;
+  String? _lastLoadedUserId; // 마지막으로 로드한 사용자 ID
+  DateTime? _lastLoadTime; // 마지막 로드 시간
+  static const Duration _cacheTimeout = Duration(seconds: 30); // 캐시 유효 시간
 
-  // 모델 인스턴스들
-  final CategoryModel _categoryModel = CategoryModel();
-  final AuthModel _authModel = AuthModel();
+  // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
+  final CategoryService _categoryService = CategoryService();
 
   // Getters
   List<String> get selectedNames => _selectedNames;
-  List<Map<String, dynamic>> get userCategories => _userCategories;
+  List<CategoryDataModel> get userCategories => _userCategories;
+  bool get isLoading => _isLoading;
+  String? get error => _error;
 
-  // 현재 로그인한 유저의 카테고리 정보를 가져오는 메소드
-  Future<void> loadUserCategories(String uid) async {
+  // ==================== 카테고리 관리 ====================
+
+  // 사용자의 카테고리 목록을 가져오는 메소드
+  Future<void> loadUserCategories(
+    String userId, {
+    bool forceReload = false,
+  }) async {
+    if (userId.isEmpty) {
+      debugPrint('loadUserCategories: userId가 비어있습니다.');
+      return;
+    }
+
+    debugPrint(
+      'loadUserCategories 시작: userId=$userId, forceReload=$forceReload',
+    );
+
+    // 캐시가 유효한지 확인
+    final now = DateTime.now();
+    final isCacheValid =
+        _lastLoadTime != null && now.difference(_lastLoadTime!) < _cacheTimeout;
+
+    debugPrint(
+      '캐시 상태: isLoading=$_isLoading, lastLoadedUserId=$_lastLoadedUserId, isCacheValid=$isCacheValid',
+    );
+
+    // 이미 로딩 중이거나 같은 사용자의 데이터가 이미 로드되고 캐시가 유효한 경우 스킵 (forceReload가 true가 아닌 경우)
+    if (!forceReload &&
+        (_isLoading || (_lastLoadedUserId == userId && isCacheValid))) {
+      debugPrint('캐시에서 스킵됨');
+      return;
+    }
+
     try {
-      _userCategories = await _categoryModel.loadUserCategories(uid);
+      _isLoading = true;
+      _error = null;
       notifyListeners();
+
+      debugPrint('CategoryService.getUserCategories 호출 중...');
+      _userCategories = await _categoryService.getUserCategories(userId);
+      debugPrint('CategoryService에서 반환된 카테고리 수: ${_userCategories.length}');
+
+      _lastLoadedUserId = userId;
+      _lastLoadTime = DateTime.now(); // 로드 시간 업데이트
+
+      _isLoading = false;
+      notifyListeners();
+
+      debugPrint('loadUserCategories 완료: ${_userCategories.length}개 카테고리 로드됨');
     } catch (e) {
       debugPrint('사용자 카테고리 로드 오류: $e');
-      _userCategories = []; // 오류 시 빈 리스트로 초기화
+      _error = '카테고리를 불러오는 중 오류가 발생했습니다.';
+      _userCategories = [];
+      _isLoading = false;
+      notifyListeners();
+
+      // ✅ UI 피드백
+      Fluttertoast.showToast(msg: '카테고리를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  }
+
+  /// 카테고리 데이터를 스트림으로 가져오는 함수
+  Stream<List<CategoryDataModel>> streamUserCategories(String userId) {
+    return _categoryService.getUserCategoriesStream(userId);
+  }
+
+  /// 카테고리 생성
+  Future<void> createCategory({
+    required String name,
+    required List<String> mates,
+  }) async {
+    try {
+      debugPrint('CategoryController: 카테고리 생성 시작... name=$name, mates=$mates');
+
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final result = await _categoryService.createCategory(
+        name: name,
+        mates: mates,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        debugPrint('CategoryController: 카테고리 생성 성공');
+
+        // 캐시 무효화 후 카테고리 목록 새로고침 (첫 번째 mate의 ID 사용)
+        invalidateCache();
+        if (mates.isNotEmpty) {
+          debugPrint(
+            'CategoryController: 카테고리 목록 새로고침... userId=${mates.first}',
+          );
+          await loadUserCategories(mates.first, forceReload: true);
+        }
+      } else {
+        debugPrint('CategoryController: 카테고리 생성 실패 - ${result.error}');
+        // ✅ 실패 시 UI 피드백
+        Fluttertoast.showToast(
+          msg: result.error ?? '카테고리 생성에 실패했습니다. 다시 시도해주세요.',
+        );
+      }
+    } catch (e) {
+      debugPrint('카테고리 생성 오류: $e');
+      _isLoading = false;
+      notifyListeners();
+      Fluttertoast.showToast(msg: '카테고리 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  }
+
+  /// 카테고리 수정
+  Future<void> updateCategory({
+    required String categoryId,
+    String? name,
+    List<String>? mates,
+  }) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final result = await _categoryService.updateCategory(
+        categoryId: categoryId,
+        name: name,
+        mates: mates,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        // ✅ 성공 시 UI 피드백
+        debugPrint('카테고리가 수정되었습니다.');
+        // 현재 사용자의 카테고리 목록 새로고침
+        if (_userCategories.isNotEmpty) {
+          final firstMate = _userCategories.first.mates.first;
+          await loadUserCategories(firstMate);
+        }
+      } else {
+        // ✅ 실패 시 UI 피드백
+        Fluttertoast.showToast(
+          msg: result.error ?? '카테고리 수정에 실패했습니다. 다시 시도해주세요.',
+        );
+      }
+    } catch (e) {
+      debugPrint('카테고리 수정 오류: $e');
+      _isLoading = false;
+      notifyListeners();
+      Fluttertoast.showToast(msg: '카테고리 수정 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  }
+
+  /// 카테고리 삭제
+  Future<void> deleteCategory(String categoryId, String userId) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final result = await _categoryService.deleteCategory(categoryId);
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        // ✅ 성공 시 UI 피드백
+        debugPrint('카테고리가 삭제되었습니다.');
+        // 카테고리 목록 새로고침
+        await loadUserCategories(userId);
+      } else {
+        // ✅ 실패 시 UI 피드백
+        Fluttertoast.showToast(
+          msg: result.error ?? '카테고리 삭제에 실패했습니다. 다시 시도해주세요.',
+        );
+      }
+    } catch (e) {
+      debugPrint('카테고리 삭제 오류: $e');
+      _isLoading = false;
+      notifyListeners();
+      Fluttertoast.showToast(msg: '카테고리 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  }
+
+  /// 특정 카테고리 정보 가져오기
+  Future<CategoryDataModel?> getCategory(String categoryId) async {
+    return await _categoryService.getCategory(categoryId);
+  }
+
+  // ==================== 사진 관리 ====================
+
+  /// 카테고리에 사진 추가
+  Future<void> addPhotoToCategory({
+    required String categoryId,
+    required File imageFile,
+    String? description,
+  }) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final result = await _categoryService.addPhotoToCategory(
+        categoryId: categoryId,
+        imageFile: imageFile,
+        description: description,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        // ✅ 성공 시 UI 피드백
+        debugPrint('사진이 추가되었습니다.');
+      } else {
+        // ✅ 실패 시 UI 피드백
+        Fluttertoast.showToast(
+          msg: result.error ?? '사진 추가에 실패했습니다. 다시 시도해주세요.',
+        );
+      }
+    } catch (e) {
+      debugPrint('사진 추가 오류: $e');
+      _isLoading = false;
+      notifyListeners();
+      Fluttertoast.showToast(msg: '사진 추가 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  }
+
+  /// 카테고리에서 사진 삭제
+  Future<void> removePhotoFromCategory({
+    required String categoryId,
+    required String photoId,
+    required String imageUrl,
+  }) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final result = await _categoryService.removePhotoFromCategory(
+        categoryId: categoryId,
+        photoId: photoId,
+        imageUrl: imageUrl,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        // ✅ 성공 시 UI 피드백
+        debugPrint('사진이 삭제되었습니다.');
+      } else {
+        // ✅ 실패 시 UI 피드백
+        Fluttertoast.showToast(
+          msg: result.error ?? '사진 삭제에 실패했습니다. 다시 시도해주세요.',
+        );
+      }
+    } catch (e) {
+      debugPrint('사진 삭제 오류: $e');
+      _isLoading = false;
+      notifyListeners();
+      Fluttertoast.showToast(msg: '사진 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  }
+
+  /// 카테고리의 사진들 가져오기
+  Future<List<Map<String, dynamic>>> getCategoryPhotos(
+    String categoryId,
+  ) async {
+    return await _categoryService.getCategoryPhotos(categoryId);
+  }
+
+  // ==================== UI 상태 관리 ====================
+
+  /// 선택된 이름들 관리
+  void addSelectedName(String name) {
+    if (!_selectedNames.contains(name)) {
+      _selectedNames.add(name);
       notifyListeners();
     }
   }
 
-  /// 카테고리 데이터를 가져오는 함수
-  Stream<List<Map<String, dynamic>>> streamUserCategories(String id) {
-    return _categoryModel.streamUserCategories(id);
+  void removeSelectedName(String name) {
+    _selectedNames.remove(name);
+    notifyListeners();
   }
 
-  /// 특정 카테고리 내의 photos 서브컬렉션에서
-  /// 가장 이전(오래된) 사진의 URL을 가져오는 함수.
-  Stream<String?> getFirstPhotoUrlStream(String categoryId) {
-    return _categoryModel.getFirstPhotoUrlStream(categoryId);
-  }
-
-  /// 카테고리에 속한 mates들의 프로필 이미지를 가져오는 함수
-  Future<List<String>> getCategoryProfileImages(
-    List<String> mates,
-    AuthController authViewModel,
-  ) async {
-    final completer = Completer<List<String>>();
-    final subscription = _authModel
-        .getprofileImages(mates)
-        .listen(
-          (urls) {
-            completer.complete(urls.cast<String>());
-          },
-          onError: (e) {
-            completer.completeError(e);
-          },
-        );
-
-    return completer.future.whenComplete(() => subscription.cancel());
-  }
-
-  /// 모든 카테고리 데이터를 가져오면서
-  /// 각 카테고리의 첫번째 사진 URL과 프로필 이미지들을 함께 합친 스트림
-  Stream<List<Map<String, dynamic>>> streamUserCategoriesWithDetails(
-    String id,
-    AuthController authViewModel,
-  ) {
-    return _categoryModel.streamUserCategoriesWithDetails(
-      id,
-      _authModel.getprofileImages,
-    );
-  }
-
-  // 이름 선택/해제 토글
-  void toggleName(String name) {
+  void toggleSelectedName(String name) {
     if (_selectedNames.contains(name)) {
       _selectedNames.remove(name);
     } else {
@@ -85,86 +316,208 @@ class CategoryController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // 선택된 이름 모두 지우기
   void clearSelectedNames() {
     _selectedNames.clear();
     notifyListeners();
   }
 
-  /// 이미지 업로드 (Storage)
-  Future<String?> uploadPhotoStorage(File imageFile) async {
-    return await _categoryModel.uploadPhotoStorage(imageFile);
+  /// 에러 상태 초기화
+  void clearError() {
+    _error = null;
+    notifyListeners();
   }
 
-  /// 사진 업로드 (Firestore)
-  Future<void> uploadPhoto(
-    String categoryId,
-    String userId,
-    String filePath,
-    String audioUrl, {
-    String? imageUrl,
-  }) async {
-    await _categoryModel.uploadPhoto(
-      categoryId,
-      userId,
-      filePath,
-      audioUrl,
-      imageUrl: imageUrl,
+  // ==================== 유틸리티 ====================
+
+  /// 카테고리 이름 중복 검사
+  Future<bool> isDuplicateCategoryName(String userId, String name) async {
+    return await _categoryService.isDuplicateCategoryName(userId, name);
+  }
+
+  /// 사용자가 카테고리의 멤버인지 확인
+  bool isUserMemberOfCategory(CategoryDataModel category, String userId) {
+    return _categoryService.isUserMemberOfCategory(category, userId);
+  }
+
+  // ==================== 기존 호환성 메서드 ====================
+
+  /// 사용자 카테고리 스트림 (Map 형태로 반환)
+  Stream<List<Map<String, dynamic>>> streamUserCategoriesAsMap(String userId) {
+    return streamUserCategories(userId).map(
+      (categories) =>
+          categories
+              .map((category) => category.toFirestore()..['id'] = category.id)
+              .toList(),
     );
-    notifyListeners();
   }
 
-  /// 새 카테고리 생성
-  Future<void> createCategory(String name, List mates, String userId) async {
-    await _categoryModel.createCategory(name, mates, userId);
-    notifyListeners();
-  }
-
-  /// 카테고리에 사용자 닉네임 추가
-  Future<void> addUserToCategory(String categoryId, String id) async {
-    await _categoryModel.addUserToCategory(categoryId, id);
-    notifyListeners();
-  }
-
-  /// 카테고리에 사용자 UID 추가
-  Future<void> addUidToCategory(String categoryId, String uid) async {
-    await _categoryModel.addUidToCategory(categoryId, uid);
-    notifyListeners();
-  }
-
-  /// 특정 사진의 오디오 URL 가져오기
-  Future<String?> getPhotoAudioUrl(String categoryId, String photoId) async {
-    return await _categoryModel.getPhotoAudioUrl(categoryId, photoId);
-  }
-
-  /// 모든 카테고리의 사진 통계를 가져오기
-  Future<Map<String, int>> fetchCategoryStatistics() async {
-    return await _categoryModel.fetchCategoryStatistics();
-  }
-
-  /// 저장된 사진이 가장 적은 카테고리의 'name' 가져오기
-  Future<String?> getLeastSavedCategory() async {
-    return await _categoryModel.getLeastSavedCategory();
-  }
-
-  /// 특정 카테고리의 이름 가져오기
+  /// 카테고리 이름 조회 (기존 호환성)
   Future<String> getCategoryName(String categoryId) async {
-    return await _categoryModel.getCategoryName(categoryId);
+    try {
+      final category = await getCategory(categoryId);
+      return category?.name ?? '알 수 없는 카테고리';
+    } catch (e) {
+      debugPrint('카테고리 이름 조회 오류: $e');
+      return '오류 발생';
+    }
   }
 
-  /// 특정 카테고리의 사진 목록(스트림) 가져오기
+  /// 카테고리 사진 스트림 (기존 호환성)
   Stream<List<Map<String, dynamic>>> getPhotosStream(String categoryId) {
-    return _categoryModel.getPhotosStream(categoryId);
+    return _categoryService.getCategoryPhotosStream(categoryId);
   }
 
-  // 카테고리 리스트에 카테고리 추가
-  void addCategory(Map<String, dynamic> category) {
-    _userCategories.add(category);
-    notifyListeners();
-  }
-
-  /// 특정 사진 문서의 ID 가져오기
+  /// 사진 문서 ID 조회 (기존 호환성)
   Future<String?> getPhotoDocumentId(String categoryId, String imageUrl) async {
-    return await _categoryModel.getPhotoDocumentId(categoryId, imageUrl);
+    try {
+      final photos = await getCategoryPhotos(categoryId);
+      for (final photo in photos) {
+        if (photo['imageUrl'] == imageUrl) {
+          return photo['id'];
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('사진 문서 ID 조회 오류: $e');
+      return null;
+    }
+  }
+
+  /// 카테고리 프로필 이미지들 조회 (기존 호환성)
+  Future<List<String>> getCategoryProfileImages(
+    List<String> mates,
+    dynamic authController,
+  ) async {
+    try {
+      List<String> profileImages = [];
+
+      for (String mate in mates) {
+        try {
+          // AuthController를 통해 사용자 프로필 이미지 URL 가져오기
+          final profileUrl = await authController.getUserProfileImageUrl();
+          if (profileUrl != null && profileUrl.isNotEmpty) {
+            profileImages.add(profileUrl);
+          }
+        } catch (e) {
+          debugPrint('프로필 이미지 로딩 오류 ($mate): $e');
+        }
+      }
+
+      return profileImages;
+    } catch (e) {
+      debugPrint('카테고리 프로필 이미지 조회 오류: $e');
+      return [];
+    }
+  }
+
+  /// 첫 번째 사진 URL 스트림 (기존 호환성)
+  Stream<String?> getFirstPhotoUrlStream(String categoryId) {
+    return getPhotosStream(categoryId).map((photos) {
+      if (photos.isNotEmpty) {
+        return photos.first['imageUrl'] as String?;
+      }
+      return null;
+    });
+  }
+
+  /// 사용자 카테고리 스트림 (상세 정보 포함)
+  Stream<List<Map<String, dynamic>>> streamUserCategoriesWithDetails(
+    String userId,
+    dynamic authController,
+  ) {
+    return streamUserCategories(userId).asyncMap((categories) async {
+      List<Map<String, dynamic>> categoriesWithDetails = [];
+
+      for (final category in categories) {
+        final categoryMap = category.toFirestore();
+        categoryMap['id'] = category.id;
+
+        // 추가 상세 정보들을 여기서 로드할 수 있습니다
+        // 예: 첫 번째 사진, 사진 개수 등
+        categoriesWithDetails.add(categoryMap);
+      }
+
+      return categoriesWithDetails;
+    });
+  }
+
+  /// 사진의 오디오 URL 조회 (기존 호환성)
+  Future<String?> getPhotoAudioUrl(String categoryId, String photoId) async {
+    try {
+      final photos = await getCategoryPhotos(categoryId);
+      for (final photo in photos) {
+        if (photo['id'] == photoId) {
+          return photo['audioUrl'] as String?;
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('사진 오디오 URL 조회 오류: $e');
+      return null;
+    }
+  }
+
+  /// 카테고리에 사용자 추가 (닉네임으로)
+  Future<void> addUserToCategory(String categoryId, String nickName) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final result = await _categoryService.addUserToCategory(
+        categoryId: categoryId,
+        nickName: nickName,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        // ✅ 성공 시 UI 피드백 없음 (호출하는 곳에서 처리)
+      } else {
+        _error = result.error;
+        throw Exception(result.error);
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = e.toString();
+      notifyListeners();
+      throw e;
+    }
+  }
+
+  /// 카테고리에 사용자 추가 (UID로)
+  Future<void> addUidToCategory(String categoryId, String uid) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final result = await _categoryService.addUidToCategory(
+        categoryId: categoryId,
+        uid: uid,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        // ✅ 성공 시 UI 피드백 없음 (호출하는 곳에서 처리)
+      } else {
+        _error = result.error;
+        throw Exception(result.error);
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = e.toString();
+      notifyListeners();
+      throw e;
+    }
+  }
+
+  /// 카테고리 캐시를 무효화합니다.
+  void invalidateCache() {
+    _lastLoadTime = null;
+    _lastLoadedUserId = null;
   }
 }

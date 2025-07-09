@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_swift_camera/controllers/category_controller.dart'
-    show CategoryController;
 import 'package:provider/provider.dart';
+import '../../controllers/category_controller.dart';
 import '../../theme/theme.dart';
 import '../../controllers/auth_controller.dart';
 
@@ -20,34 +19,30 @@ class _CategorySelectScreenState extends State<CategorySelectScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final categoryViewModel = Provider.of<CategoryController>(context);
-    final authViewModel = Provider.of<AuthController>(context);
-    TextEditingController categoryController = TextEditingController();
+    final categoryController = Provider.of<CategoryController>(context);
+    final authController = Provider.of<AuthController>(context);
+    TextEditingController categoryNameController = TextEditingController();
 
     return Scaffold(
       appBar: AppBar(title: Text('카테고리 선택')),
       body: Column(
         children: [
           TextField(
-            controller: categoryController,
+            controller: categoryNameController,
             decoration: InputDecoration(
               hintText: '카테고리 추가하기',
               suffixIcon: IconButton(
                 icon: Icon(Icons.add),
                 onPressed: () async {
-                  print("userId: ${authViewModel.getUserId}");
-                  /* categoryViewModel.createCategory(
-                      categoryController.text,
-                      await authViewModel.getNickNameFromFirestore(),
-                      authViewModel.getUserId!,
-                    );*/
+                  debugPrint("userId: ${authController.getUserId}");
+                  /* 카테고리 생성 로직은 나중에 구현 */
                 },
               ),
             ),
           ),
           Expanded(
             child: FutureBuilder<String>(
-              future: authViewModel.getIdFromFirestore(),
+              future: authController.getIdFromFirestore(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return Center(child: CircularProgressIndicator());
@@ -57,7 +52,9 @@ class _CategorySelectScreenState extends State<CategorySelectScreen> {
                 }
                 final nickName = snapshot.data!;
                 return StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: categoryViewModel.streamUserCategories(nickName),
+                  stream: categoryController.streamUserCategoriesAsMap(
+                    nickName,
+                  ),
                   builder: (context, catSnapshot) {
                     if (catSnapshot.connectionState ==
                         ConnectionState.waiting) {

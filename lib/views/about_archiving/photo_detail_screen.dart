@@ -24,15 +24,16 @@
  * - AudioPlayer: 음성 메모 재생을 담당하는 외부 패키지입니다.
  */
 
-import 'package:audioplayers/audioplayers.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../models/photo_model.dart';
 import '../../controllers/category_controller.dart';
+import '../../controllers/audio_controller.dart';
+import '../../models/photo_data_model.dart';
 
 class PhotoDetailScreen extends StatefulWidget {
-  final List<PhotoModel> photos;
+  final List<PhotoDataModel> photos;
   final int initialIndex;
   final String categoryName;
   final String categoryId;
@@ -52,7 +53,11 @@ class PhotoDetailScreen extends StatefulWidget {
 class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   @override
   Widget build(BuildContext context) {
-    CategoryController categoryViewModel = Provider.of<CategoryController>(
+    final categoryController = Provider.of<CategoryController>(
+      context,
+      listen: false,
+    );
+    final audioController = Provider.of<AudioController>(
       context,
       listen: false,
     );
@@ -84,8 +89,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
               child: Stack(
                 alignment: Alignment.topCenter,
                 children: [
-                  Image.network(
-                    photo.imageUrl,
+                  CachedNetworkImage(
+                    imageUrl: photo.imageUrl,
                     width: 343,
                     height: 571,
                     fit: BoxFit.cover,
@@ -95,9 +100,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     child: Container(
                       color: Color.fromRGBO(0, 0, 0, 0.3),
                       child: Text(
-                        DateFormat(
-                          'yyyy.MM.dd',
-                        ).format(photo.createdAt.toDate()),
+                        DateFormat('yyyy.MM.dd').format(photo.createdAt),
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.white),
                       ),
@@ -108,16 +111,37 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     left: 270,
                     child: IconButton(
                       onPressed: () async {
-                        String? photoId = await categoryViewModel
-                            .getPhotoDocumentId(
-                              widget.categoryId,
-                              photo.imageUrl,
+                        try {
+                          // 사진의 오디오 URL이 이미 PhotoModel에 있는 경우
+                          if (photo.audioUrl.isNotEmpty) {
+                            await audioController.playAudioFromUrl(
+                              photo.audioUrl,
                             );
-                        String? audioUrl = await categoryViewModel
-                            .getPhotoAudioUrl(widget.categoryId, photoId!);
-                        if (audioUrl != null) {
-                          final player = AudioPlayer();
-                          await player.play(UrlSource(audioUrl));
+                          } else {
+                            // 사진 ID를 통해 오디오 URL을 조회하는 경우
+                            String? photoId = await categoryController
+                                .getPhotoDocumentId(
+                                  widget.categoryId,
+                                  photo.imageUrl,
+                                );
+                            if (photoId != null) {
+                              String? audioUrl = await categoryController
+                                  .getPhotoAudioUrl(widget.categoryId, photoId);
+                              if (audioUrl != null && audioUrl.isNotEmpty) {
+                                await audioController.playAudioFromUrl(
+                                  audioUrl,
+                                );
+                              }
+                            }
+                          }
+                        } catch (e) {
+                          // 오류 발생 시 사용자에게 알림
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('음성 재생 중 오류가 발생했습니다.'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
                         }
                       },
                       icon: Image.asset(

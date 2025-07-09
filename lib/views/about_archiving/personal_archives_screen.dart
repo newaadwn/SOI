@@ -1,34 +1,8 @@
-/*
- * PersonalArchivesScreen
- * 
- * 이 화면은 사용자의 개인 아카이빙 카테고리를 표시하는 화면입니다.
- * 개인적으로 만든 카테고리(다른 사용자와 공유하지 않은 카테고리)만 표시합니다.
- * 
- * 기능 설명:
- * 1. Firebase에서 사용자의 닉네임을 불러옵니다.
- * 2. 닉네임을 이용하여 이 사용자가 생성한 개인 카테고리 목록을 불러옵니다.
- * 3. 각 카테고리는 그리드 형태로 표시됩니다.
- * 4. 각 카테고리 항목에는 대표 이미지와 카테고리 이름이 표시됩니다.
- * 5. 카테고리를 탭하면 해당 카테고리에 포함된 모든 사진을 볼 수 있는 CategoryPhotosScreen으로 이동합니다.
- * 
- * 데이터 흐름:
- * - AuthController: 사용자의 닉네임을 Firebase에서 가져오는 역할을 합니다.
- * - CategoryController: 사용자의 카테고리 정보를 실시간으로 스트리밍합니다.
- * - 카테고리 필터링: 'mates' 배열에 사용자의 닉네임만 포함된 카테고리를 개인 카테고리로 판단하여 표시합니다.
- * 
- * 주요 컴포넌트:
- * - StreamBuilder: Firebase의 실시간 데이터를 구독하여 UI를 업데이트합니다.
- * - GridView: 카테고리를 2열 그리드 형태로 표시합니다.
- * - _buildProfileRow: 카테고리에 참여한 사용자의 프로필 이미지를 표시합니다(이 화면에서는 자기 자신만 표시됨).
- * 
- * 상태 관리:
- * - nickName: 사용자의 닉네임을 저장하는 상태 변수입니다.
- */
-
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_swift_camera/controllers/category_controller.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
+import '../../controllers/category_controller.dart';
 import '../../theme/theme.dart';
 import 'category_photos_screen.dart';
 
@@ -56,7 +30,7 @@ class _PersonalArchivesScreenState extends State<PersonalArchivesScreen> {
 
   Widget _buildProfileRow(Map<String, dynamic> category) {
     // profileImages 리스트 안의 각 항목을 확인해요.
-    final List images = category['profileImages'] as List;
+    final List images = category['profileImages'] as List? ?? [];
     return Row(
       children:
           images.map<Widget>((imageUrl) {
@@ -73,7 +47,7 @@ class _PersonalArchivesScreenState extends State<PersonalArchivesScreen> {
               width: 20,
               height: 20,
               child: CircleAvatar(
-                backgroundImage: NetworkImage(imageUrl),
+                backgroundImage: CachedNetworkImageProvider(imageUrl),
                 onBackgroundImageError: (exception, stackTrace) {
                   debugPrint('이미지 로딩 오류: $exception');
                 },
@@ -180,7 +154,7 @@ class _PersonalArchivesScreenState extends State<PersonalArchivesScreen> {
                         ),
                         child: InkWell(
                           onTap: () {
-                            print(
+                            debugPrint(
                               "category['profileImages']: ${category['profileImages']}",
                             );
                             Navigator.push(

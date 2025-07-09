@@ -1,75 +1,379 @@
 {
-  "users": {
-    "_userId_ (Firebase Auth UID)": {
-      "uid": "Firebase Auth UID (String)",
-      "createdAt": "Timestamp",
-      "lastLogin": "Timestamp", 
-      "id": "사용자 닉네임/아이디 (String)",
-      "name": "사용자 실명 (String)",
-      "phone": "전화번호 (String, 0 제거된 형태: 예. 1012345678)",
-      "birth_date": "생년월일 (String)",
-      "profile_image": "프로필 이미지 URL (String, Firebase Storage)",
-      "updatedAt": "Timestamp (프로필 업데이트 시)",
-      "friends": {
-        "_contactId_": {
-          "displayName": "연락처 표시 이름 (String)",
-          "phoneNumber": "연락처 주 전화번호 (String)",
-          "email": "연락처 주 이메일 (String, optional)",
-          "phoneNumbers": ["모든 전화번호 목록 (Array<String>)"],
-          "emails": ["모든 이메일 목록 (Array<String>)"],
-          "createdAt": "Timestamp",
-          "thumbnailUrl": "연락처 썸네일 URL (String, optional)"
-        }
+  "project_info": {
+    "project_name": "SOI SNS",
+    "project_id": "soi-sns",
+    "project_number": "1074708164096",
+    "storage_bucket": "soi-sns.firebasestorage.app",
+    "android_package": "com.newdawn.soiapp",
+    "app_name": "flutter_swift_camera",
+    "description": "사진과 음성 메모를 통한 소셜 네트워크 서비스",
+    "architecture": "Clean Architecture (Service-Repository-Model Pattern)",
+    "supported_platforms": ["Android", "iOS"]
+  },
+  "firebase_services": {
+    "authentication": {
+      "provider": "Phone Authentication",
+      "recaptcha": "웹에서 reCAPTCHA 사용",
+      "sms_verification": "SMS 코드 인증",
+      "settings": {
+        "appVerificationDisabledForTesting": false,
+        "forceRecaptchaFlow": false
       }
+    },
+    "firestore": {
+      "database": "기본 데이터베이스",
+      "rules": "firestore.rules",
+      "indexes": "firestore.indexes.json"
+    },
+    "storage": {
+      "bucket": "soi-sns.firebasestorage.app",
+      "rules": "기본 Storage 규칙"
     }
   },
-  "categories": {
-    "_categoryId_": {
-      "name": "카테고리 이름 (String)",
-      "userId": "카테고리 생성자들 UID 배열 (Array<String>)",
-      "mates": "카테고리에 속한 사용자 닉네임들 (Array<String>)",
-      "createdAt": "Timestamp",
-      "photoCount": "사진 개수 (Number)",
-      "imageUrl": "카테고리 대표 이미지 URL (String, optional)",
-      "photos": {
-        "_photoId_": {
-          "userId": "사진 업로더 UID (String)",
-          "imageUrl": "사진 URL (String, Firebase Storage)",
-          "audioUrl": "음성 녹음 URL (String, Firebase Storage)",
-          "createdAt": "Timestamp",
-          "comments": {
-            "_userNickname_ (문서 ID)": {
-              "createdAt": "Timestamp",
-              "userNickname": "댓글 작성자 닉네임 (String)",
-              "audioUrl": "음성 댓글 URL (String, Firebase Storage)",
-              "userId": "댓글 작성자 UID (String)"
-            }
+  "firestore_collections": {
+    "users": {
+      "document_id": "{userId} (Firebase Auth UID)",
+      "fields": {
+        "uid": "Firebase Auth UID (String)",
+        "id": "사용자 닉네임/아이디 (String)",
+        "name": "사용자 실명 (String)",
+        "phone": "전화번호 (String, 0 제거된 형태: 예. 1012345678)",
+        "birth_date": "생년월일 (String)",
+        "profile_image": "프로필 이미지 URL (String, Firebase Storage)",
+        "createdAt": "Timestamp (사용자 생성 시간)",
+        "lastLogin": "Timestamp (최근 로그인 시간)",
+        "updatedAt": "Timestamp (프로필 업데이트 시)"
+      },
+      "subcollections": {
+        "friends": {
+          "document_id": "{contactId}",
+          "fields": {
+            "displayName": "연락처 표시 이름 (String)",
+            "phoneNumber": "연락처 주 전화번호 (String)",
+            "email": "연락처 주 이메일 (String, optional)",
+            "phoneNumbers": "모든 전화번호 목록 (Array<String>)",
+            "emails": "모든 이메일 목록 (Array<String>)",
+            "createdAt": "Timestamp",
+            "thumbnailUrl": "연락처 썸네일 URL (String, optional)",
+            "status": "연락처 상태 (String: active, blocked, deleted)",
+            "type": "연락처 타입 (String: phone, email, manual)",
+            "isFavorite": "즐겨찾기 여부 (Boolean)"
           }
         }
       }
-    }
-  },
-  "storage_structure": {
-    "profiles/": {
-      "_userId_/": {
-        "profile_image_files": "사용자 프로필 이미지들"
+    },
+    "categories": {
+      "document_id": "{categoryId} (자동 생성)",
+      "fields": {
+        "name": "카테고리 이름 (String)",
+        "mates": "카테고리에 속한 사용자 닉네임들 (Array<String>)",
+        "createdAt": "Timestamp (카테고리 생성 시간)",
+        "photoCount": "사진 개수 (Number, 기본값: 0)",
+        "firstPhotoUrl": "대표 이미지 URL (String, optional, 최신 사진으로 자동 업데이트)"
+      },
+      "subcollections": {
+        "photos": {
+          "document_id": "{photoId} (자동 생성)",
+          "fields": {
+            "userID": "사진 업로더 UID (String)",
+            "userIds": "참여자 UID 배열 (Array<String>)",
+            "imageUrl": "사진 URL (String, Firebase Storage)",
+            "audioUrl": "음성 녹음 URL (String, Firebase Storage, optional)",
+            "categoryId": "카테고리 ID (String)",
+            "createdAt": "Timestamp (사진 업로드 시간)",
+            "updatedAt": "Timestamp (사진 정보 업데이트 시간, optional)",
+            "status": "사진 상태 (String: active, deleted, hidden)",
+            "caption": "사진 설명 (String, optional)",
+            "latitude": "위도 (Number, optional)",
+            "longitude": "경도 (Number, optional)",
+            "metadata": "메타데이터 (Map<String, dynamic>, optional)",
+            "likeCount": "좋아요 수 (Number, 기본값: 0)",
+            "likedBy": "좋아요한 사용자 목록 (Array<String>)",
+            "viewCount": "조회수 (Number, 기본값: 0)",
+            "tags": "태그 목록 (Array<String>)"
+          }
+        }
       }
     },
-    "categories/": {
-      "photos/": "카테고리별 사진들"
+    "comments": {
+      "document_id": "{commentId} (자동 생성)",
+      "description": "사진별 음성 댓글 (독립적인 컬렉션으로 관리)",
+      "fields": {
+        "categoryId": "카테고리 ID (String)",
+        "photoId": "사진 ID (String)",
+        "userId": "댓글 작성자 UID (String)",
+        "nickName": "댓글 작성자 닉네임 (String)",
+        "audioUrl": "음성 댓글 URL (String, Firebase Storage)",
+        "durationInSeconds": "음성 길이 (Number, 초 단위)",
+        "fileSizeInMB": "파일 크기 (Number, MB 단위)",
+        "status": "댓글 상태 (String: active, deleted, hidden)",
+        "createdAt": "Timestamp (댓글 생성 시간)",
+        "updatedAt": "Timestamp (댓글 수정 시간, optional)",
+        "description": "댓글 설명 (String, optional)",
+        "likeCount": "좋아요 수 (Number, 기본값: 0)",
+        "likedBy": "좋아요한 사용자 목록 (Array<String>)"
+      }
     },
-    "categories_comments_audio/": "음성 댓글 파일들",
-    "audio/": "일반 음성 파일들"
+    "audios": {
+      "document_id": "{audioId} (자동 생성)",
+      "description": "독립적인 오디오 파일 관리 컬렉션",
+      "fields": {
+        "categoryId": "카테고리 ID (String)",
+        "userId": "오디오 업로더 UID (String)",
+        "fileName": "파일명 (String)",
+        "originalPath": "원본 파일 경로 (String, 로컬)",
+        "convertedPath": "변환된 파일 경로 (String, 로컬, optional)",
+        "firebaseUrl": "Firebase Storage URL (String, optional)",
+        "durationInSeconds": "오디오 길이 (Number, 초 단위)",
+        "fileSizeInMB": "파일 크기 (Number, MB 단위)",
+        "format": "오디오 포맷 (String: aac, mp3, wav, m4a)",
+        "status": "오디오 상태 (String: recorded, converted, uploading, uploaded, failed)",
+        "createdAt": "Timestamp (오디오 생성 시간)",
+        "uploadedAt": "Timestamp (업로드 완료 시간, optional)",
+        "description": "오디오 설명 (String, optional)"
+      }
+    }
   },
-  "authentication": {
-    "provider": "Phone Authentication",
-    "recaptcha": "웹에서 reCAPTCHA 사용",
-    "sms_verification": "SMS 코드 인증"
+  "firebase_storage_structure": {
+    "profiles/": {
+      "description": "사용자 프로필 이미지 저장소",
+      "path_structure": "{userId}/profile_{userId}_{timestamp}.png",
+      "max_size": "5MB",
+      "allowed_formats": ["png", "jpg", "jpeg"]
+    },
+    "photos/": {
+      "description": "카테고리별 사진 저장소",
+      "path_structure": "{categoryId}/{categoryId}_{userId}_{timestamp}.jpg",
+      "max_size": "10MB",
+      "allowed_formats": ["jpg", "jpeg", "png"]
+    },
+    "audio/": {
+      "description": "일반 오디오 파일 저장소",
+      "path_structure": "{categoryId}/{categoryId}_{userId}_{timestamp}.m4a",
+      "max_size": "5MB",
+      "allowed_formats": ["m4a", "aac", "mp3", "wav"]
+    },
+    "audios/": {
+      "description": "독립적인 오디오 파일 저장소",
+      "path_structure": "{audioId}/audio_{audioId}_{timestamp}.aac",
+      "max_size": "5MB",
+      "allowed_formats": ["aac", "mp3", "wav"]
+    },
+    "comments/": {
+      "description": "음성 댓글 저장소",
+      "path_structure": "{nickName}/comment_{nickName}_{timestamp}.aac",
+      "max_size": "5MB",
+      "allowed_formats": ["aac", "mp3", "wav"]
+    },
+    "categories_comments_audio/": {
+      "description": "레거시 음성 댓글 저장소 (구버전 호환)",
+      "path_structure": "{nickName}_comment_{timestamp}.aac",
+      "status": "deprecated"
+    }
   },
-  "permissions_firestore_rules": {
-    "users": "인증된 사용자는 자신의 문서만 읽기/쓰기 가능",
-    "categories": "인증된 사용자는 모든 카테고리 읽기/쓰기 가능",
-    "photos": "인증된 사용자는 모든 사진 읽기/쓰기 가능",
-    "default": "인증된 사용자는 모든 문서 읽기/쓰기 가능 (개발 모드)"
+  "firestore_indexes": {
+    "categories": [
+      {
+        "fields": [
+          {"fieldPath": "userId", "order": "ASCENDING"},
+          {"fieldPath": "createdAt", "order": "DESCENDING"}
+        ]
+      },
+      {
+        "fields": [
+          {"fieldPath": "mates", "arrayConfig": "CONTAINS"},
+          {"fieldPath": "name", "order": "ASCENDING"}
+        ]
+      },
+      {
+        "fields": [
+          {"fieldPath": "mates", "arrayConfig": "CONTAINS"},
+          {"fieldPath": "createdAt", "order": "DESCENDING"}
+        ]
+      }
+    ],
+    "friends": [
+      {
+        "fields": [
+          {"fieldPath": "status", "order": "ASCENDING"},
+          {"fieldPath": "createdAt", "order": "DESCENDING"}
+        ]
+      },
+      {
+        "fields": [
+          {"fieldPath": "status", "order": "ASCENDING"},
+          {"fieldPath": "type", "order": "ASCENDING"},
+          {"fieldPath": "createdAt", "order": "DESCENDING"}
+        ]
+      },
+      {
+        "fields": [
+          {"fieldPath": "status", "order": "ASCENDING"},
+          {"fieldPath": "isFavorite", "order": "ASCENDING"},
+          {"fieldPath": "createdAt", "order": "DESCENDING"}
+        ]
+      }
+    ],
+    "photos": [
+      {
+        "fields": [
+          {"fieldPath": "categoryId", "order": "ASCENDING"},
+          {"fieldPath": "status", "order": "ASCENDING"},
+          {"fieldPath": "createdAt", "order": "DESCENDING"}
+        ]
+      },
+      {
+        "fields": [
+          {"fieldPath": "userID", "order": "ASCENDING"},
+          {"fieldPath": "status", "order": "ASCENDING"},
+          {"fieldPath": "createdAt", "order": "DESCENDING"}
+        ]
+      },
+      {
+        "fields": [
+          {"fieldPath": "tags", "arrayConfig": "CONTAINS"},
+          {"fieldPath": "createdAt", "order": "DESCENDING"}
+        ]
+      }
+    ],
+    "comments": [
+      {
+        "fields": [
+          {"fieldPath": "categoryId", "order": "ASCENDING"},
+          {"fieldPath": "photoId", "order": "ASCENDING"},
+          {"fieldPath": "status", "order": "ASCENDING"},
+          {"fieldPath": "createdAt", "order": "ASCENDING"}
+        ]
+      },
+      {
+        "fields": [
+          {"fieldPath": "userId", "order": "ASCENDING"},
+          {"fieldPath": "status", "order": "ASCENDING"},
+          {"fieldPath": "createdAt", "order": "DESCENDING"}
+        ]
+      }
+    ],
+    "audios": [
+      {
+        "fields": [
+          {"fieldPath": "categoryId", "order": "ASCENDING"},
+          {"fieldPath": "createdAt", "order": "DESCENDING"}
+        ]
+      },
+      {
+        "fields": [
+          {"fieldPath": "userId", "order": "ASCENDING"},
+          {"fieldPath": "createdAt", "order": "DESCENDING"}
+        ]
+      }
+    ]
+  },
+  "firestore_security_rules": {
+    "users": {
+      "read": "인증된 사용자는 자신의 문서만 읽기 가능",
+      "write": "인증된 사용자는 자신의 문서만 쓰기 가능",
+      "create": "인증된 사용자는 새 사용자 문서 생성 가능 (회원가입)",
+      "update": "인증된 사용자는 자신의 문서 업데이트 가능",
+      "get": "인증된 사용자는 다른 사용자 정보 조회 가능 (전화번호 검색용)"
+    },
+    "categories": {
+      "read": "인증된 사용자는 모든 카테고리 읽기 가능",
+      "write": "인증된 사용자는 모든 카테고리 쓰기 가능"
+    },
+    "photos": {
+      "read": "인증된 사용자는 모든 사진 읽기 가능",
+      "write": "인증된 사용자는 모든 사진 쓰기 가능"
+    },
+    "comments": {
+      "read": "인증된 사용자는 모든 댓글 읽기 가능",
+      "write": "인증된 사용자는 모든 댓글 쓰기 가능"
+    },
+    "audios": {
+      "read": "인증된 사용자는 모든 오디오 읽기 가능",
+      "write": "인증된 사용자는 모든 오디오 쓰기 가능"
+    },
+    "default": {
+      "rule": "인증된 사용자는 모든 문서 읽기/쓰기 가능 (개발 모드)",
+      "note": "프로덕션에서는 더 세밀한 권한 제어 필요"
+    }
+  },
+  "data_models": {
+    "AuthModel": {
+      "fields": ["uid", "id", "name", "phone", "birthDate", "profileImage", "createdAt", "lastLogin"],
+      "description": "사용자 인증 및 프로필 데이터"
+    },
+    "CategoryDataModel": {
+      "fields": ["id", "name", "mates", "createdAt", "firstPhotoUrl", "photoCount"],
+      "description": "카테고리 데이터"
+    },
+    "PhotoDataModel": {
+      "fields": ["id", "imageUrl", "audioUrl", "userID", "userIds", "categoryId", "createdAt", "updatedAt", "status", "caption", "latitude", "longitude", "metadata", "likeCount", "likedBy", "viewCount", "tags"],
+      "description": "사진 데이터"
+    },
+    "CommentDataModel": {
+      "fields": ["id", "categoryId", "photoId", "userId", "nickName", "audioUrl", "durationInSeconds", "fileSizeInMB", "status", "createdAt", "updatedAt", "description", "likeCount", "likedBy"],
+      "description": "음성 댓글 데이터"
+    },
+    "AudioDataModel": {
+      "fields": ["id", "categoryId", "userId", "fileName", "originalPath", "convertedPath", "firebaseUrl", "durationInSeconds", "fileSizeInMB", "format", "status", "createdAt", "uploadedAt", "description"],
+      "description": "독립적인 오디오 파일 데이터"
+    },
+    "ContactDataModel": {
+      "fields": ["id", "displayName", "phoneNumber", "email", "phoneNumbers", "emails", "createdAt", "thumbnailUrl", "status", "type", "isFavorite"],
+      "description": "연락처 데이터"
+    }
+  },
+  "app_architecture": {
+    "pattern": "Clean Architecture",
+    "layers": {
+      "presentation": {
+        "views": "UI 컴포넌트 (Screens, Widgets)",
+        "controllers": "상태 관리 (Provider 기반)"
+      },
+      "domain": {
+        "services": "비즈니스 로직 처리",
+        "models": "데이터 모델 (순수 데이터 클래스)"
+      },
+      "data": {
+        "repositories": "Firebase 데이터 액세스 계층"
+      }
+    },
+    "dependencies": {
+      "presentation": "domain",
+      "domain": "data",
+      "data": "Firebase SDK"
+    }
+  },
+  "key_features": {
+    "authentication": {
+      "method": "전화번호 인증",
+      "flow": "SMS 인증 코드 → 자동 로그인",
+      "error_handling": "reCAPTCHA 에러 자동 처리"
+    },
+    "photo_sharing": {
+      "upload": "이미지 + 오디오 메모 동시 업로드",
+      "categories": "공유 카테고리 기반 그룹핑",
+      "comments": "음성 댓글 시스템"
+    },
+    "audio_system": {
+      "recording": "실시간 음성 녹음",
+      "formats": "AAC, MP3, WAV, M4A 지원",
+      "processing": "자동 포맷 변환 및 최적화"
+    },
+    "contact_integration": {
+      "sync": "기기 연락처 동기화",
+      "search": "전화번호 기반 사용자 검색",
+      "management": "친구 관리 시스템"
+    }
+  },
+  "development_status": {
+    "current_version": "1.0.0+1",
+    "platforms": ["Android", "iOS"],
+    "environment": "개발 환경 (Firebase 테스트 모드)",
+    "architecture_migration": {
+      "status": "진행 중",
+      "from": "lib_old/ (레거시 코드)",
+      "to": "lib/ (Clean Architecture)"
+    }
   }
 }

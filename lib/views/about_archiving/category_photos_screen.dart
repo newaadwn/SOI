@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_swift_camera/controllers/category_controller.dart';
+import '../../controllers/category_controller.dart';
 import 'package:provider/provider.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../theme/theme.dart';
-import '../../models/photo_model.dart';
+import '../../models/photo_data_model.dart';
 import 'photo_grid_item.dart'; // 상세 화면 임포트
 
 class CategoryPhotosScreen extends StatelessWidget {
@@ -18,7 +17,7 @@ class CategoryPhotosScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categoryViewModel = Provider.of<CategoryController>(
+    final categoryController = Provider.of<CategoryController>(
       context,
       listen: false,
     );
@@ -38,7 +37,7 @@ class CategoryPhotosScreen extends StatelessWidget {
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: categoryViewModel.getPhotosStream(categoryId),
+        stream: categoryController.getPhotosStream(categoryId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -47,22 +46,10 @@ class CategoryPhotosScreen extends StatelessWidget {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          // Convert Map data to PhotoModel objects
+          // Convert Map data to PhotoModel objects using helper method
           final photos =
               (snapshot.data ?? [])
-                  .map(
-                    (photoMap) => PhotoModel(
-                      id: photoMap['id'] ?? '',
-                      imageUrl: photoMap['imageUrl'] ?? '',
-                      audioUrl: photoMap['audioUrl'] ?? '',
-                      userID: photoMap['userID'] ?? '',
-                      createdAt: photoMap['createdAt'] ?? Timestamp.now(),
-                      userIds:
-                          (photoMap['userIds'] as List<dynamic>?)
-                              ?.cast<String>() ??
-                          [],
-                    ),
-                  )
+                  .map((photoMap) => PhotoDataModel.fromMapData(photoMap))
                   .toList();
 
           if (photos.isEmpty) {
