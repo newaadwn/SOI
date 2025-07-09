@@ -55,6 +55,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
+
     // 앱이 다시 활성화될 때 카테고리 목록을 새로고침
     if (state == AppLifecycleState.resumed) {
       _categoriesLoaded = false; // 플래그 리셋
@@ -74,6 +75,11 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     );
     _authController = Provider.of<AuthController>(context, listen: false);
     _photoController = Provider.of<PhotoController>(context, listen: false);
+
+    // 빌드 완료 후 오디오 초기화 실행
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _audioController.initialize();
+    });
 
     // 현재 로그인한 유저의 카테고리 로드 (빌드 완료 후 실행)
     if (!_categoriesLoaded) {

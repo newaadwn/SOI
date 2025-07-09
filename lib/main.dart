@@ -31,6 +31,7 @@ import 'views/home_screen.dart'; // PlatformDispatcher를 위해 필요
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await CameraService().globalInitialize();
+
   // Firebase 초기화
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 

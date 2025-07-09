@@ -12,16 +12,29 @@ class AudioRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   static const MethodChannel _channel = MethodChannel('native_recorder');
+  static final Permission _microphonePermission = Permission.microphone;
 
   // ==================== 권한 관리 ====================
 
   /// 마이크 권한 요청
   static Future<bool> requestPermission() async {
     try {
-      final bool granted = await _channel.invokeMethod('requestPermission');
-      return granted;
+      _microphonePermission.request().then((status) {
+        if (status.isGranted) {
+          debugPrint('마이크 권한이 허용되었습니다.');
+          return true;
+        } else if (status.isDenied) {
+          debugPrint('마이크 권한이 거부되었습니다.');
+          return false;
+        } else if (status.isPermanentlyDenied) {
+          debugPrint('마이크 권한이 영구적으로 거부되었습니다. 설정에서 변경해주세요.');
+
+          return false;
+        }
+      });
+      return true; // 기본적으로 true 반환
     } catch (e) {
-      print('Error requesting permission: $e');
+      debugPrint('Error requesting permission: $e');
       return false;
     }
   }
