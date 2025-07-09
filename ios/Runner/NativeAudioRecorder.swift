@@ -28,18 +28,18 @@ class NativeAudioRecorder: NSObject, AVAudioRecorderDelegate {
     func startRecording(filePath: String, result: @escaping FlutterResult) {
         let audioURL = URL(fileURLWithPath: filePath)
         
-        // 🎯 고품질 오디오 설정 (현재 Flutter 설정보다 향상)
-        let settings: [String: Any] = [
+        // 🎯 고품질 오디오 설정 
+
+      let settings: [String: Any] = [
             AVFormatIDKey: kAudioFormatMPEG4AAC,
-            AVSampleRateKey: 44100,  // CD 품질 (기존 Flutter: 44100)
-            AVNumberOfChannelsKey: 1,  // 모노 (음성 녹음에 적합)
-            AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue,
-            AVEncoderBitRateKey: 192000,  // 192kbps (기존 Flutter: 128kbps)
-            AVLinearPCMBitDepthKey: 16,
+            AVSampleRateKey: 22050,              // 44100 → 22050
+            AVNumberOfChannelsKey: 1,
+            AVEncoderBitRateKey: 192000,        // 192000 → 64000
+            AVEncoderAudioQualityKey: AVAudioQuality.medium.rawValue,
             AVLinearPCMIsBigEndianKey: false,
             AVLinearPCMIsFloatKey: false
         ]
-        
+
         do {
             audioRecorder = try AVAudioRecorder(url: audioURL, settings: settings)
             audioRecorder?.delegate = self
