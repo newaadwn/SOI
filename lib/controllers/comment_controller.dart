@@ -446,38 +446,6 @@ class CommentController extends ChangeNotifier {
     }
   }
 
-  /// 댓글 좋아요 토글
-  Future<void> toggleLike({
-    required String commentId,
-    required String userId,
-  }) async {
-    try {
-      final result = await _commentService.toggleLike(
-        commentId: commentId,
-        userId: userId,
-      );
-
-      if (result.isSuccess) {
-        // 댓글 목록 새로고침
-        await _refreshComment(commentId);
-
-        final action = result.data['action'] as String;
-        // ✅ UI 피드백
-        if (action == 'added') {
-          debugPrint('좋아요를 추가했습니다.');
-        } else {
-          debugPrint('좋아요를 취소했습니다.');
-        }
-      } else {
-        // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: result.error ?? '다시 시도해주세요.');
-      }
-    } catch (e) {
-      debugPrint('좋아요 토글 오류: $e');
-      Fluttertoast.showToast(msg: ' 다시 시도해주세요.');
-    }
-  }
-
   /// 댓글 신고
   Future<void> reportComment({
     required String commentId,
@@ -617,25 +585,4 @@ class CommentController extends ChangeNotifier {
 
   /// 댓글 수 반환
   int get commentCount => _comments.length;
-
-  /// 사용자가 특정 댓글을 좋아요했는지 확인
-  bool isCommentLikedByUser(String commentId, String userId) {
-    final comment = _comments.firstWhere(
-      (c) => c.id == commentId,
-      orElse:
-          () => CommentDataModel(
-            id: '',
-            categoryId: '',
-            photoId: '',
-            userId: '',
-            nickName: '',
-            audioUrl: '',
-            durationInSeconds: 0,
-            fileSizeInMB: 0,
-            status: CommentStatus.active,
-            createdAt: DateTime.now(),
-          ),
-    );
-    return comment.isLikedBy(userId);
-  }
 }

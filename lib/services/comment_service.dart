@@ -236,11 +236,9 @@ class CommentService {
         userId: userId,
         nickName: _normalizeText(nickName),
         audioUrl: audioUrl,
-        durationInSeconds: duration,
-        fileSizeInMB: fileSize,
+
         status: CommentStatus.active,
         createdAt: DateTime.now(),
-        description: description != null ? _normalizeText(description) : null,
       );
 
       // 7. Firestore에 저장
@@ -335,32 +333,6 @@ class CommentService {
     } catch (e) {
       debugPrint('댓글 삭제 오류: $e');
       return AuthResult.failure('댓글 삭제 중 오류가 발생했습니다.');
-    }
-  }
-
-  /// 댓글 좋아요 토글
-  Future<AuthResult> toggleLike({
-    required String commentId,
-    required String userId,
-  }) async {
-    try {
-      final comment = await _repository.getComment(commentId);
-      if (comment == null) {
-        return AuthResult.failure('댓글을 찾을 수 없습니다.');
-      }
-
-      if (comment.isLikedBy(userId)) {
-        // 좋아요 제거
-        await _repository.removeLike(commentId, userId);
-        return AuthResult.success({'action': 'removed'});
-      } else {
-        // 좋아요 추가
-        await _repository.addLike(commentId, userId);
-        return AuthResult.success({'action': 'added'});
-      }
-    } catch (e) {
-      debugPrint('좋아요 토글 오류: $e');
-      return AuthResult.failure('좋아요 처리 중 오류가 발생했습니다.');
     }
   }
 
