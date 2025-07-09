@@ -82,15 +82,7 @@
             "categoryId": "카테고리 ID (String)",
             "createdAt": "Timestamp (사진 업로드 시간)",
             "updatedAt": "Timestamp (사진 정보 업데이트 시간, optional)",
-            "status": "사진 상태 (String: active, deleted, hidden)",
-            "caption": "사진 설명 (String, optional)",
-            "latitude": "위도 (Number, optional)",
-            "longitude": "경도 (Number, optional)",
-            "metadata": "메타데이터 (Map<String, dynamic>, optional)",
-            "likeCount": "좋아요 수 (Number, 기본값: 0)",
-            "likedBy": "좋아요한 사용자 목록 (Array<String>)",
-            "viewCount": "조회수 (Number, 기본값: 0)",
-            "tags": "태그 목록 (Array<String>)"
+            "status": "사진 상태 (String: active, deleted, hidden)"
           }
         }
       }
