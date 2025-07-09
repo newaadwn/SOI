@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_sound/flutter_sound.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import '../services/comment_service.dart';
 import '../models/comment_data_model.dart';
@@ -23,9 +22,7 @@ class CommentController extends ChangeNotifier {
 
   List<CommentDataModel> _comments = [];
   Timer? _recordingTimer;
-  StreamSubscription<RecordingDisposition>? _recordingSubscription;
-  StreamSubscription<PlaybackDisposition>? _playbackSubscription;
-  StreamSubscription<double>? _uploadSubscription;
+  StreamSubscription<Map<String, dynamic>>? _uploadSubscription;
 
   // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
   final CommentService _commentService = CommentService();
@@ -60,17 +57,11 @@ class CommentController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        // ✅ 성공 시 UI 피드백
-        debugPrint('댓글 기능이 준비되었습니다.');
-
-        // 녹음 진행률 모니터링 시작
-        _startRecordingMonitoring();
+        debugPrint('✅ 댓글 기능이 준비되었습니다.');
       } else {
-        // ✅ 실패 시 UI 피드백
         _error = result.error;
-        Fluttertoast.showToast(
-          msg: result.error ?? '댓글 초기화에 실패했습니다. 다시 시도해주세요.',
-        );
+        debugPrint(result.error ?? '댓글 초기화에 실패했습니다.');
+        Fluttertoast.showToast(msg: result.error ?? '댓글 초기화에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('댓글 컨트롤러 초기화 오류: $e');
@@ -85,22 +76,21 @@ class CommentController extends ChangeNotifier {
   @override
   void dispose() {
     _recordingTimer?.cancel();
-    _recordingSubscription?.cancel();
-    _playbackSubscription?.cancel();
     _uploadSubscription?.cancel();
     _commentService.dispose();
     super.dispose();
   }
 
-  // ==================== 녹음 관리 ====================
+  // ==================== 녹음 관리 (네이티브) ====================
 
-  /// 녹음 시작
+  /// 네이티브 녹음 시작
   Future<void> startRecording() async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
+      debugPrint('🎤 댓글 네이티브 녹음 시작 요청...');
       final result = await _commentService.startRecording();
 
       if (result.isSuccess) {
@@ -113,8 +103,7 @@ class CommentController extends ChangeNotifier {
         _isLoading = false;
         notifyListeners();
 
-        // ✅ 성공 시 UI 피드백
-        debugPrint('녹음이 시작되었습니다.');
+        debugPrint('✅ 댓글 네이티브 녹음이 시작되었습니다.');
       } else {
         _isLoading = false;
         notifyListeners();
@@ -125,14 +114,14 @@ class CommentController extends ChangeNotifier {
         );
       }
     } catch (e) {
-      debugPrint('녹음 시작 오류: $e');
+      debugPrint('댓글 녹음 시작 오류: $e');
       _isLoading = false;
       notifyListeners();
       Fluttertoast.showToast(msg: '녹음 시작 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
-  /// 녹음 중지
+  /// 네이티브 녹음 중지
   Future<void> stopRecording() async {
     try {
       _isLoading = true;
@@ -141,7 +130,8 @@ class CommentController extends ChangeNotifier {
       // 타이머 정리
       _stopRecordingTimer();
 
-      final result = await _commentService.stopRecording();
+      debugPrint('🎤 댓글 네이티브 녹음 중지 요청...');
+      final result = await _commentService.stopRecordingSimple();
 
       _isRecording = false;
       _recordingDuration = 0;
@@ -149,13 +139,11 @@ class CommentController extends ChangeNotifier {
       _isLoading = false;
 
       if (result.isSuccess) {
-        final recordingData = result.data as Map<String, dynamic>;
-        _currentRecordingPath = recordingData['filePath'];
+        _currentRecordingPath = result.data as String?;
 
         notifyListeners();
 
-        // ✅ 성공 시 UI 피드백
-        debugPrint('녹음이 완료되었습니다.');
+        debugPrint('✅ 댓글 네이티브 녹음이 완료되었습니다: ${_currentRecordingPath}');
       } else {
         _currentRecordingPath = null;
         notifyListeners();
@@ -166,7 +154,7 @@ class CommentController extends ChangeNotifier {
         );
       }
     } catch (e) {
-      debugPrint('녹음 중지 오류: $e');
+      debugPrint('댓글 녹음 중지 오류: $e');
       _isRecording = false;
       _currentRecordingPath = null;
       _isLoading = false;
@@ -195,16 +183,6 @@ class CommentController extends ChangeNotifier {
     _recordingTimer = null;
   }
 
-  /// 녹음 진행률 모니터링 시작
-  void _startRecordingMonitoring() {
-    _recordingSubscription = _commentService.recordingStream?.listen((
-      disposition,
-    ) {
-      _recordingLevel = disposition.decibels ?? 0.0;
-      notifyListeners();
-    });
-  }
-
   /// 녹음 시간을 MM:SS 형식으로 포맷팅
   String get formattedRecordingDuration {
     final minutes = _recordingDuration ~/ 60;
@@ -231,13 +209,9 @@ class CommentController extends ChangeNotifier {
         _isPlaying = true;
         _currentPlayingCommentId = comment.id;
 
-        // 재생 진행률 모니터링 시작
-        _startPlaybackMonitoring();
-
         _isLoading = false;
         notifyListeners();
 
-        // ✅ 성공 시 UI 피드백
         debugPrint('댓글 재생을 시작합니다.');
       } else {
         _isLoading = false;
@@ -265,7 +239,6 @@ class CommentController extends ChangeNotifier {
       _currentPlayingCommentId = null;
       _playbackPosition = 0.0;
       _playbackDuration = 0.0;
-      _playbackSubscription?.cancel();
       notifyListeners();
 
       if (!result.isSuccess) {
@@ -280,26 +253,7 @@ class CommentController extends ChangeNotifier {
     }
   }
 
-  /// 재생 진행률 모니터링 시작
-  void _startPlaybackMonitoring() {
-    _playbackSubscription = _commentService.playbackStream?.listen((
-      disposition,
-    ) {
-      _playbackPosition = disposition.position.inSeconds.toDouble();
-      _playbackDuration = disposition.duration.inSeconds.toDouble();
-      notifyListeners();
-
-      // 재생 완료 시 상태 초기화
-      if (_playbackPosition >= _playbackDuration && _playbackDuration > 0) {
-        _isPlaying = false;
-        _currentPlayingCommentId = null;
-        _playbackPosition = 0.0;
-        notifyListeners();
-      }
-    });
-  }
-
-  // ==================== 댓글 관리 ====================
+  // ==================== 댓글 업로드 ====================
 
   /// 댓글 업로드
   Future<void> uploadComment({
@@ -322,8 +276,9 @@ class CommentController extends ChangeNotifier {
       // 업로드 진행률 모니터링
       _uploadSubscription = _commentService
           .getUploadProgressStream(_currentRecordingPath!, nickName)
-          .listen((progress) {
-            _uploadProgress = progress;
+          .listen((progressData) {
+            // Map에서 progress 값 추출
+            _uploadProgress = (progressData['progress'] as double?) ?? 0.0;
             notifyListeners();
           });
 
@@ -344,15 +299,12 @@ class CommentController extends ChangeNotifier {
 
       if (result.isSuccess) {
         final newComment = result.data as CommentDataModel;
-
-        // 댓글 목록에 추가
-        _comments.add(newComment);
+        _comments.insert(0, newComment);
         notifyListeners();
 
-        // ✅ 성공 시 UI 피드백
-        debugPrint('댓글이 업로드되었습니다.');
+        Fluttertoast.showToast(msg: '댓글이 성공적으로 업로드되었습니다.');
+        debugPrint('댓글 업로드가 완료되었습니다.');
       } else {
-        // ✅ 실패 시 UI 피드백
         Fluttertoast.showToast(
           msg: result.error ?? '댓글 업로드에 실패했습니다. 다시 시도해주세요.',
         );
@@ -361,57 +313,38 @@ class CommentController extends ChangeNotifier {
       debugPrint('댓글 업로드 오류: $e');
       _isUploading = false;
       _uploadProgress = 0.0;
+      _currentRecordingPath = null;
       _uploadSubscription?.cancel();
       notifyListeners();
       Fluttertoast.showToast(msg: '댓글 업로드 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
-  /// 댓글 수정
-  Future<void> updateComment({
-    required String commentId,
-    required String currentUserId,
-    String? description,
-  }) async {
+  // ==================== 데이터 관리 ====================
+
+  /// 특정 사진의 댓글 목록 로드
+  Future<void> loadComments(String categoryId, String photoId) async {
     try {
       _isLoading = true;
+      _error = null;
       notifyListeners();
 
-      final result = await _commentService.updateComment(
-        commentId: commentId,
-        currentUserId: currentUserId,
-        description: description,
-      );
+      _comments = await _commentService.getCommentsByPhoto(categoryId, photoId);
 
       _isLoading = false;
       notifyListeners();
-
-      if (result.isSuccess) {
-        // 댓글 목록 새로고침
-        await _refreshComment(commentId);
-
-        // ✅ 성공 시 UI 피드백
-        debugPrint('댓글이 수정되었습니다.');
-      } else {
-        // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(
-          msg: result.error ?? '댓글 수정에 실패했습니다. 다시 시도해주세요.',
-        );
-      }
     } catch (e) {
-      debugPrint('댓글 수정 오류: $e');
+      debugPrint('댓글 목록 로드 오류: $e');
+      _error = '댓글 목록을 불러오는 중 오류가 발생했습니다.';
+      _comments = [];
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '댓글 수정 중 오류가 발생했습니다. 다시 시도해주세요.');
+      Fluttertoast.showToast(msg: '댓글 목록을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
   /// 댓글 삭제
-  Future<void> deleteComment({
-    required String commentId,
-    required String currentUserId,
-    bool hardDelete = false,
-  }) async {
+  Future<void> deleteComment(String commentId, String currentUserId) async {
     try {
       _isLoading = true;
       notifyListeners();
@@ -419,21 +352,17 @@ class CommentController extends ChangeNotifier {
       final result = await _commentService.deleteComment(
         commentId: commentId,
         currentUserId: currentUserId,
-        hardDelete: hardDelete,
       );
 
       _isLoading = false;
       notifyListeners();
 
       if (result.isSuccess) {
-        // 댓글 목록에서 제거
         _comments.removeWhere((comment) => comment.id == commentId);
         notifyListeners();
 
-        // ✅ 성공 시 UI 피드백
-        debugPrint('댓글이 삭제되었습니다.');
+        Fluttertoast.showToast(msg: '댓글이 삭제되었습니다.');
       } else {
-        // ✅ 실패 시 UI 피드백
         Fluttertoast.showToast(
           msg: result.error ?? '댓글 삭제에 실패했습니다. 다시 시도해주세요.',
         );
@@ -446,130 +375,11 @@ class CommentController extends ChangeNotifier {
     }
   }
 
-  /// 댓글 신고
-  Future<void> reportComment({
-    required String commentId,
-    required String reporterId,
-    required String reason,
-  }) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      final result = await _commentService.reportComment(
-        commentId: commentId,
-        reporterId: reporterId,
-        reason: reason,
-      );
-
-      _isLoading = false;
-      notifyListeners();
-
-      if (result.isSuccess) {
-        // ✅ 성공 시 UI 피드백
-        debugPrint('댓글 신고가 접수되었습니다.');
-      } else {
-        // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(
-          msg: result.error ?? '댓글 신고에 실패했습니다. 다시 시도해주세요.',
-        );
-      }
-    } catch (e) {
-      debugPrint('댓글 신고 오류: $e');
-      _isLoading = false;
-      notifyListeners();
-      Fluttertoast.showToast(msg: '댓글 신고 중 오류가 발생했습니다. 다시 시도해주세요.');
-    }
-  }
-
-  // ==================== 데이터 관리 ====================
-
-  /// 사진별 댓글 목록 로드
-  Future<void> loadCommentsByPhoto(String categoryId, String photoId) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      _comments = await _commentService.getCommentsByPhoto(categoryId, photoId);
-
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('댓글 목록 로드 오류: $e');
-      _error = '댓글을 불러오는 중 오류가 발생했습니다.';
-      _comments = [];
-      _isLoading = false;
-      notifyListeners();
-
-      Fluttertoast.showToast(msg: '댓글을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
-    }
-  }
-
-  /// 사용자별 댓글 목록 로드
-  Future<void> loadCommentsByUser(String userId) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      _comments = await _commentService.getCommentsByUser(userId);
-
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      debugPrint('사용자 댓글 목록 로드 오류: $e');
-      _error = '댓글을 불러오는 중 오류가 발생했습니다.';
-      _comments = [];
-      _isLoading = false;
-      notifyListeners();
-
-      Fluttertoast.showToast(msg: '댓글을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
-    }
-  }
-
-  /// 사진별 댓글 스트림
-  Stream<List<CommentDataModel>> getCommentsByPhotoStream(
-    String categoryId,
-    String photoId,
-  ) {
-    return _commentService.getCommentsByPhotoStream(categoryId, photoId);
-  }
-
-  /// 사진의 닉네임 조회 (기존 호환성)
-  Future<String> getNickNameFromPhoto(String categoryId, String photoId) async {
-    return await _commentService.getNickNameFromPhoto(categoryId, photoId);
-  }
-
   // ==================== 유틸리티 ====================
-
-  /// 특정 댓글 데이터 새로고침
-  Future<void> _refreshComment(String commentId) async {
-    try {
-      final updatedComment = await _commentService.getComment(commentId);
-      if (updatedComment != null) {
-        final index = _comments.indexWhere(
-          (comment) => comment.id == commentId,
-        );
-        if (index != -1) {
-          _comments[index] = updatedComment;
-          notifyListeners();
-        }
-      }
-    } catch (e) {
-      debugPrint('댓글 데이터 새로고침 오류: $e');
-    }
-  }
 
   /// 에러 상태 초기화
   void clearError() {
     _error = null;
-    notifyListeners();
-  }
-
-  /// 녹음 파일 초기화
-  void clearRecording() {
-    _currentRecordingPath = null;
     notifyListeners();
   }
 
@@ -582,7 +392,4 @@ class CommentController extends ChangeNotifier {
   String get formattedUploadProgress {
     return '${(_uploadProgress * 100).toStringAsFixed(1)}%';
   }
-
-  /// 댓글 수 반환
-  int get commentCount => _comments.length;
 }

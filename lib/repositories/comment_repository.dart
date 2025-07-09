@@ -1,107 +1,296 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter_sound/flutter_sound.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/comment_data_model.dart';
 
 /// Firebase에서 comment 관련 데이터를 가져오고, 저장하고, 업데이트하고 삭제하는 등의 로직들
 class CommentRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
-  final FlutterSoundPlayer _player = FlutterSoundPlayer();
+  static const MethodChannel _channel = MethodChannel('native_recorder');
 
   // ==================== 권한 관리 ====================
 
   /// 마이크 권한 요청
-  Future<bool> requestMicrophonePermission() async {
-    final status = await Permission.microphone.request();
-    return status == PermissionStatus.granted;
+  static Future<bool> requestMicrophonePermission() async {
+    try {
+      final bool granted = await _channel.invokeMethod('requestPermission');
+      return granted;
+    } catch (e) {
+      print('Error requesting permission: $e');
+      return false;
+    }
   }
 
-  // ==================== 녹음 관리 ====================
+  // ==================== 네이티브 녹음 관리 ====================
 
-  /// 레코더 초기화
+  /// 레코더 초기화 (네이티브만 사용)
   Future<void> initializeRecorder() async {
-    await _recorder.openRecorder();
+    debugPrint('댓글 네이티브 녹음 초기화 완료');
   }
 
   /// 레코더 종료
   Future<void> disposeRecorder() async {
-    await _recorder.closeRecorder();
+    debugPrint('댓글 네이티브 녹음 종료 완료');
   }
 
-  /// 녹음 시작
-  Future<void> startRecording() async {
-    final path = 'comment_audio_${DateTime.now().millisecondsSinceEpoch}.ogg';
-    await _recorder.startRecorder(
-      toFile: path,
-      codec: Codec.opusOGG,
-      bitRate: 192000, // 192kbps - 고품질 음성
-      sampleRate: 48000, // 48kHz - Opus 최적화
-      numChannels: 2, // 스테레오 품질
-    );
+  /// 네이티브 녹음 시작 (메인)
+  static Future<String> startRecording() async {
+    try {
+      final String fileName =
+          'comment_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final Map<String, dynamic> args = {'filePath': fileName};
+
+      final String filePath = await _channel.invokeMethod(
+        'startRecording',
+        args,
+      );
+      print('🎤 댓글 네이티브 녹음 시작: $filePath');
+      return filePath;
+    } catch (e) {
+      print('❌ 댓글 네이티브 녹음 시작 오류: $e');
+      rethrow;
+    }
   }
 
-  /// 녹음 중지
-  Future<String?> stopRecording() async {
-    return await _recorder.stopRecorder();
+  /// 네이티브 녹음 중지
+  static Future<String?> stopRecording() async {
+    try {
+      final String? filePath = await _channel.invokeMethod('stopRecording');
+      print('🎤 댓글 네이티브 녹음 중지: $filePath');
+      return filePath;
+    } catch (e) {
+      print('❌ 댓글 네이티브 녹음 중지 오류: $e');
+      return null;
+    }
   }
 
-  /// 녹음 상태 확인
-  bool get isRecording => _recorder.isRecording;
-
-  /// 녹음 진행률 스트림
-  Stream<RecordingDisposition>? get recordingStream => _recorder.onProgress;
-
-  // ==================== 재생 관리 ====================
-
-  /// 플레이어 초기화
-  Future<void> initializePlayer() async {
-    await _player.openPlayer();
+  /// 네이티브 녹음 상태 확인
+  static Future<bool> isRecording() async {
+    try {
+      final bool recording = await _channel.invokeMethod('isRecording');
+      return recording;
+    } catch (e) {
+      print('❌ 댓글 네이티브 녹음 상태 확인 오류: $e');
+      return false;
+    }
   }
 
-  /// 플레이어 종료
-  Future<void> disposePlayer() async {
-    await _player.closePlayer();
+  /// 네이티브 녹음 레벨 스트림 (UI 표시용)
+  static Future<Stream<double>> getRecordingAmplitudeStream() async {
+    try {
+      return _channel
+          .invokeMethod('getRecordingAmplitudeStream')
+          .then(
+            (value) => Stream.periodic(
+              const Duration(milliseconds: 100),
+              (count) => (value as double?) ?? 0.0,
+            ),
+          );
+    } catch (e) {
+      print('❌ 녹음 레벨 스트림 오류: $e');
+      return Stream.value(0.0);
+    }
   }
 
-  /// 오디오 재생 (URL)
-  Future<void> playFromUrl(String url) async {
-    await _player.startPlayer(fromURI: url);
+  // ==================== 네이티브 재생 관리 ====================
+
+  /// 네이티브 플레이어 초기화
+  static Future<void> initializePlayer() async {
+    try {
+      await _channel.invokeMethod('initializePlayer');
+      print('🎵 네이티브 플레이어 초기화 완료');
+    } catch (e) {
+      print('❌ 네이티브 플레이어 초기화 오류: $e');
+    }
   }
 
-  /// 재생 중지
-  Future<void> stopPlaying() async {
-    await _player.stopPlayer();
+  /// 네이티브 플레이어 종료
+  static Future<void> disposePlayer() async {
+    try {
+      await _channel.invokeMethod('disposePlayer');
+      print('🎵 네이티브 플레이어 종료 완료');
+    } catch (e) {
+      print('❌ 네이티브 플레이어 종료 오류: $e');
+    }
   }
 
-  /// 재생 상태 확인
-  bool get isPlaying => _player.isPlaying;
-
-  /// 재생 진행률 스트림
-  Stream<PlaybackDisposition>? get playbackStream => _player.onProgress;
-
-  // ==================== 파일 관리 ====================
-
-  /// 파일 크기 계산 (MB 단위)
-  Future<double> getFileSize(String filePath) async {
-    final file = File(filePath);
-    if (!await file.exists()) return 0.0;
-
-    final bytes = await file.length();
-    return bytes / (1024 * 1024); // MB로 변환
+  /// 네이티브 오디오 재생 (URL)
+  static Future<void> playFromUrl(String url) async {
+    try {
+      final Map<String, dynamic> args = {'url': url};
+      await _channel.invokeMethod('playFromUrl', args);
+      print('🎵 네이티브 오디오 재생 시작: $url');
+    } catch (e) {
+      print('❌ 네이티브 오디오 재생 오류: $e');
+    }
   }
 
-  /// 오디오 파일 길이 계산 (초 단위)
-  Future<int> getAudioDuration(String filePath) async {
-    final file = File(filePath);
-    if (!await file.exists()) return 0;
+  /// 네이티브 오디오 재생 (로컬 파일)
+  static Future<void> playFromPath(String filePath) async {
+    try {
+      final Map<String, dynamic> args = {'filePath': filePath};
+      await _channel.invokeMethod('playFromPath', args);
+      print('🎵 네이티브 오디오 재생 시작: $filePath');
+    } catch (e) {
+      print('❌ 네이티브 오디오 재생 오류: $e');
+    }
+  }
 
-    // 임시적으로 파일 크기 기반 추정 (실제로는 더 정확한 방법 필요)
-    final sizeInMB = await getFileSize(filePath);
-    return (sizeInMB * 60).round(); // 대략적인 추정
+  /// 네이티브 재생 중지
+  static Future<void> stopPlaying() async {
+    try {
+      await _channel.invokeMethod('stopPlaying');
+      print('🎵 네이티브 오디오 재생 중지');
+    } catch (e) {
+      print('❌ 네이티브 오디오 재생 중지 오류: $e');
+    }
+  }
+
+  /// 네이티브 재생 일시정지
+  static Future<void> pausePlaying() async {
+    try {
+      await _channel.invokeMethod('pausePlaying');
+      print('🎵 네이티브 오디오 재생 일시정지');
+    } catch (e) {
+      print('❌ 네이티브 오디오 재생 일시정지 오류: $e');
+    }
+  }
+
+  /// 네이티브 재생 재개
+  static Future<void> resumePlaying() async {
+    try {
+      await _channel.invokeMethod('resumePlaying');
+      print('🎵 네이티브 오디오 재생 재개');
+    } catch (e) {
+      print('❌ 네이티브 오디오 재생 재개 오류: $e');
+    }
+  }
+
+  /// 네이티브 재생 상태 확인
+  static Future<bool> isPlaying() async {
+    try {
+      final bool playing = await _channel.invokeMethod('isPlaying');
+      return playing;
+    } catch (e) {
+      print('❌ 네이티브 재생 상태 확인 오류: $e');
+      return false;
+    }
+  }
+
+  /// 네이티브 재생 위치 설정 (초 단위)
+  static Future<void> seekTo(double positionInSeconds) async {
+    try {
+      final Map<String, dynamic> args = {'position': positionInSeconds};
+      await _channel.invokeMethod('seekTo', args);
+      print('🎵 네이티브 오디오 위치 설정: ${positionInSeconds}초');
+    } catch (e) {
+      print('❌ 네이티브 오디오 위치 설정 오류: $e');
+    }
+  }
+
+  /// 네이티브 재생 진행률 스트림
+  static Future<Stream<Map<String, dynamic>>>
+  getPlaybackProgressStream() async {
+    try {
+      return _channel
+          .invokeMethod('getPlaybackProgressStream')
+          .then(
+            (value) => Stream.periodic(
+              const Duration(milliseconds: 100),
+              (count) =>
+                  (value as Map<String, dynamic>?) ??
+                  {'position': 0.0, 'duration': 0.0},
+            ),
+          );
+    } catch (e) {
+      print('❌ 재생 진행률 스트림 오류: $e');
+      return Stream.value({'position': 0.0, 'duration': 0.0});
+    }
+  }
+
+  // ==================== 네이티브 파일 관리 ====================
+
+  /// 네이티브로 파일 크기 계산 (MB 단위)
+  static Future<double> getFileSize(String filePath) async {
+    try {
+      final Map<String, dynamic> args = {'filePath': filePath};
+      final double sizeInBytes = await _channel.invokeMethod(
+        'getFileSize',
+        args,
+      );
+      return sizeInBytes / (1024 * 1024); // MB로 변환
+    } catch (e) {
+      print('❌ 네이티브 파일 크기 계산 오류: $e');
+      // 폴백: Dart로 파일 크기 계산
+      final file = File(filePath);
+      if (!await file.exists()) return 0.0;
+      final bytes = await file.length();
+      return bytes / (1024 * 1024);
+    }
+  }
+
+  /// 네이티브로 오디오 파일 길이 계산 (초 단위)
+  static Future<double> getAudioDuration(String filePath) async {
+    try {
+      final Map<String, dynamic> args = {'filePath': filePath};
+      final double duration = await _channel.invokeMethod(
+        'getAudioDuration',
+        args,
+      );
+      return duration;
+    } catch (e) {
+      print('❌ 네이티브 오디오 길이 계산 오류: $e');
+      // 폴백: 파일 크기 기반 추정
+      final sizeInMB = await getFileSize(filePath);
+      return sizeInMB * 60; // 대략적인 추정
+    }
+  }
+
+  /// 네이티브로 오디오 파일 형식 변환
+  static Future<String?> convertAudioFormat(
+    String inputPath,
+    String outputFormat, // 'aac', 'mp3', 'm4a' 등
+  ) async {
+    try {
+      final Map<String, dynamic> args = {
+        'inputPath': inputPath,
+        'outputFormat': outputFormat,
+      };
+      final String? outputPath = await _channel.invokeMethod(
+        'convertAudioFormat',
+        args,
+      );
+      print('🔄 네이티브 오디오 형식 변환 완료: $outputPath');
+      return outputPath;
+    } catch (e) {
+      print('❌ 네이티브 오디오 형식 변환 오류: $e');
+      return null;
+    }
+  }
+
+  /// 네이티브로 오디오 압축
+  static Future<String?> compressAudio(
+    String inputPath,
+    double quality, // 0.0 ~ 1.0
+  ) async {
+    try {
+      final Map<String, dynamic> args = {
+        'inputPath': inputPath,
+        'quality': quality,
+      };
+      final String? outputPath = await _channel.invokeMethod(
+        'compressAudio',
+        args,
+      );
+      print('📦 네이티브 오디오 압축 완료: $outputPath');
+      return outputPath;
+    } catch (e) {
+      print('❌ 네이티브 오디오 압축 오류: $e');
+      return null;
+    }
   }
 
   /// 임시 파일 삭제
@@ -269,49 +458,150 @@ class CommentRepository {
     }
   }
 
-  // ==================== Firebase Storage 관리 ====================
+  // ==================== Firebase Storage 관리 (네이티브 연동) ====================
 
-  /// 오디오 파일 업로드
+  /// 네이티브에서 처리된 오디오 파일 업로드
   Future<String> uploadAudioFile(String filePath, String nickName) async {
-    final file = File(filePath);
-    final fileName =
-        'comment_${nickName}_${DateTime.now().millisecondsSinceEpoch}.aac';
-    final ref = _storage
-        .ref()
-        .child('comments')
-        .child(nickName)
-        .child(fileName);
+    try {
+      // 1. 네이티브로 파일 압축 (품질 0.7로 압축)
+      final compressedPath = await CommentRepository.compressAudio(
+        filePath,
+        0.7,
+      );
+      final uploadFilePath = compressedPath ?? filePath;
 
-    final uploadTask = ref.putFile(file);
-    final snapshot = await uploadTask.whenComplete(() => null);
+      // 2. 네이티브로 오디오 길이 확인
+      final duration = await CommentRepository.getAudioDuration(uploadFilePath);
+      print('📁 업로드할 파일 길이: ${duration}초');
 
-    return await snapshot.ref.getDownloadURL();
+      // 3. Firebase Storage에 업로드
+      final file = File(uploadFilePath);
+      final fileName =
+          'comment_${nickName}_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final ref = _storage
+          .ref()
+          .child('comments')
+          .child(nickName)
+          .child(fileName);
+
+      final uploadTask = ref.putFile(file);
+      final snapshot = await uploadTask.whenComplete(() => null);
+
+      // 4. 압축된 임시 파일 삭제 (원본과 다른 경우에만)
+      if (compressedPath != null && compressedPath != filePath) {
+        await deleteLocalFile(compressedPath);
+      }
+
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+      print('☁️ 오디오 파일 업로드 완료: $downloadUrl');
+      return downloadUrl;
+    } catch (e) {
+      print('❌ 오디오 파일 업로드 실패: $e');
+      rethrow;
+    }
   }
 
-  /// 오디오 파일 삭제
+  /// 네이티브 파일 정보와 함께 업로드 진행률 스트림
+  Stream<Map<String, dynamic>> getUploadProgressStreamWithInfo(
+    String filePath,
+    String nickName,
+  ) async* {
+    try {
+      // 네이티브로 파일 정보 수집
+      final fileSize = await CommentRepository.getFileSize(filePath);
+      final duration = await CommentRepository.getAudioDuration(filePath);
+
+      final file = File(filePath);
+      final fileName =
+          'comment_${nickName}_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final ref = _storage
+          .ref()
+          .child('comments')
+          .child(nickName)
+          .child(fileName);
+
+      await for (final snapshot in ref.putFile(file).snapshotEvents) {
+        final progress = snapshot.bytesTransferred / snapshot.totalBytes;
+        yield {
+          'progress': progress,
+          'bytesTransferred': snapshot.bytesTransferred,
+          'totalBytes': snapshot.totalBytes,
+          'fileSize': fileSize,
+          'duration': duration,
+          'state': snapshot.state.toString(),
+        };
+      }
+    } catch (e) {
+      print('❌ 업로드 진행률 스트림 오류: $e');
+      yield {'progress': 0.0, 'error': e.toString()};
+    }
+  }
+
+  /// 오디오 파일 삭제 (네이티브 연동)
   Future<void> deleteAudioFile(String downloadUrl) async {
     try {
       final ref = _storage.refFromURL(downloadUrl);
       await ref.delete();
+      print('☁️ Firebase Storage 오디오 파일 삭제 완료: $downloadUrl');
     } catch (e) {
-      print('오디오 파일 삭제 실패: $e');
+      print('❌ Firebase Storage 오디오 파일 삭제 실패: $e');
     }
   }
 
-  /// 업로드 진행률 스트림
-  Stream<TaskSnapshot> getUploadProgressStream(
-    String filePath,
-    String nickName,
-  ) {
-    final file = File(filePath);
-    final fileName =
-        'comment_${nickName}_${DateTime.now().millisecondsSinceEpoch}.aac';
-    final ref = _storage
-        .ref()
-        .child('comments')
-        .child(nickName)
-        .child(fileName);
+  // ==================== 네이티브 오디오 품질 관리 ====================
 
-    return ref.putFile(file).snapshotEvents;
+  /// 네이티브로 오디오 품질 분석
+  static Future<Map<String, dynamic>> analyzeAudioQuality(
+    String filePath,
+  ) async {
+    try {
+      final Map<String, dynamic> args = {'filePath': filePath};
+      final Map<String, dynamic> analysis = await _channel.invokeMethod(
+        'analyzeAudioQuality',
+        args,
+      );
+      return analysis;
+    } catch (e) {
+      print('❌ 네이티브 오디오 품질 분석 오류: $e');
+      return {
+        'sampleRate': 44100,
+        'bitRate': 128000,
+        'channels': 1,
+        'format': 'unknown',
+        'quality': 'medium',
+      };
+    }
+  }
+
+  /// 네이티브로 노이즈 제거
+  static Future<String?> removeNoise(String inputPath) async {
+    try {
+      final Map<String, dynamic> args = {'inputPath': inputPath};
+      final String? outputPath = await _channel.invokeMethod(
+        'removeNoise',
+        args,
+      );
+      print('🔇 네이티브 노이즈 제거 완료: $outputPath');
+      return outputPath;
+    } catch (e) {
+      print('❌ 네이티브 노이즈 제거 오류: $e');
+      return null;
+    }
+  }
+
+  /// 네이티브로 오디오 볼륨 정규화
+  static Future<String?> normalizeVolume(String inputPath) async {
+    try {
+      final Map<String, dynamic> args = {'inputPath': inputPath};
+      final String? outputPath = await _channel.invokeMethod(
+        'normalizeVolume',
+        args,
+      );
+      print('🔊 네이티브 볼륨 정규화 완료: $outputPath');
+      return outputPath;
+    } catch (e) {
+      print('❌ 네이티브 볼륨 정규화 오류: $e');
+      return null;
+    }
   }
 }

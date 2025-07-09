@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../models/audio_data_model.dart';
@@ -12,8 +11,6 @@ import '../models/audio_data_model.dart';
 class AudioRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
-  final FlutterSoundPlayer _player = FlutterSoundPlayer();
   static const MethodChannel _channel = MethodChannel('native_recorder');
 
   // ==================== 권한 관리 ====================
@@ -35,32 +32,37 @@ class AudioRepository {
     return status == PermissionStatus.granted;
   }
 
-  // ==================== 녹음 관리 ====================
+  // ==================== 네이티브 녹음 관리 ====================
 
-  /// 레코더 초기화
+  /// 레코더 초기화 (네이티브만 사용)
   Future<void> initializeRecorder() async {
-    await _recorder.openRecorder();
+    // 네이티브 녹음만 사용하므로 초기화 불필요
+    debugPrint('네이티브 녹음 초기화 완료');
   }
 
   /// 레코더 종료
   Future<void> disposeRecorder() async {
-    await _recorder.closeRecorder();
+    // 네이티브 녹음만 사용하므로 종료 작업 불필요
+    debugPrint('네이티브 녹음 종료 완료');
   }
 
-  /// 네이티브 녹음 시작
-  /// [filePath]: 녹음 파일이 저장될 경로 (확장자 .m4a)
+  /// 네이티브 녹음 시작 (메인)
+  /// Returns: 생성된 파일 경로
   static Future<String> startRecording() async {
     try {
       final tempDir = await getTemporaryDirectory();
-      final String fileExtension = '.m4a'; // 녹음 파일 확장자
+      final String fileExtension = '.m4a'; // AAC 코덱 사용
       String filePath =
           '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
-      final String started = await _channel.invokeMethod('startRecording', {
+
+      final String startedPath = await _channel.invokeMethod('startRecording', {
         'filePath': filePath,
       });
-      return started;
+
+      debugPrint('🎤 네이티브 녹음 시작: $startedPath');
+      return startedPath; // 실제 생성된 파일 경로 반환
     } catch (e) {
-      print('Error starting recording: $e');
+      debugPrint('❌ 네이티브 녹음 시작 오류: $e');
       return '';
     }
   }
@@ -70,70 +72,72 @@ class AudioRepository {
   static Future<String?> stopRecording() async {
     try {
       final String? filePath = await _channel.invokeMethod('stopRecording');
-      debugPrint('녹음 파일 경로: $filePath');
+      debugPrint('🎤 네이티브 녹음 중지: $filePath');
       return filePath;
     } catch (e) {
-      print('Error stopping recording: $e');
+      debugPrint('❌ 네이티브 녹음 중지 오류: $e');
       return null;
     }
   }
 
-  /// 녹음 상태 확인
+  /// 네이티브 녹음 상태 확인
   static Future<bool> isRecording() async {
     try {
       final bool recording = await _channel.invokeMethod('isRecording');
       return recording;
     } catch (e) {
-      print('Error checking recording status: $e');
+      debugPrint('❌ 네이티브 녹음 상태 확인 오류: $e');
       return false;
     }
   }
 
-  /// 녹음 레벨 스트림
-  Stream<RecordingDisposition>? get recordingStream => _recorder.onProgress;
+  // 네이티브 녹음에서는 레벨 스트림 제공하지 않음
 
-  // ==================== 재생 관리 ====================
+  // ==================== 재생 관리 (네이티브) ====================
 
-  /// 플레이어 초기화
+  /// 플레이어 초기화 (audioplayers 패키지 사용)
   Future<void> initializePlayer() async {
-    await _player.openPlayer();
+    debugPrint('네이티브 플레이어 초기화 완료');
   }
 
   /// 플레이어 종료
   Future<void> disposePlayer() async {
-    await _player.closePlayer();
+    debugPrint('네이티브 플레이어 종료 완료');
   }
 
-  /// 오디오 재생 (로컬 파일)
+  /// 오디오 재생 (로컬 파일) - audioplayers 사용
   Future<void> playFromFile(String filePath) async {
-    await _player.startPlayer(fromURI: filePath);
+    // audioplayers 패키지를 사용하여 재생
+    // 실제 구현은 AudioController에서 처리
+    debugPrint('로컬 파일 재생: $filePath');
   }
 
-  /// 오디오 재생 (URL)
+  /// 오디오 재생 (URL) - audioplayers 사용
   Future<void> playFromUrl(String url) async {
-    await _player.startPlayer(fromURI: url);
+    // audioplayers 패키지를 사용하여 재생
+    // 실제 구현은 AudioController에서 처리
+    debugPrint('URL 재생: $url');
   }
 
   /// 재생 중지
   Future<void> stopPlaying() async {
-    await _player.stopPlayer();
+    debugPrint('재생 중지');
   }
 
   /// 재생 일시정지
   Future<void> pausePlaying() async {
-    await _player.pausePlayer();
+    debugPrint('재생 일시정지');
   }
 
   /// 재생 재개
   Future<void> resumePlaying() async {
-    await _player.resumePlayer();
+    debugPrint('재생 재개');
   }
 
-  /// 재생 상태 확인
-  bool get isPlaying => _player.isPlaying;
+  /// 재생 상태 확인 (기본값 false)
+  bool get isPlaying => false;
 
-  /// 재생 진행률 스트림
-  Stream<PlaybackDisposition>? get playbackStream => _player.onProgress;
+  // 네이티브에서는 재생 진행률 스트림 제공하지 않음
 
   // ==================== 파일 관리 ====================
 

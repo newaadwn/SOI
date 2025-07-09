@@ -49,7 +49,7 @@ class NativeAudioRecorder: NSObject, AVAudioRecorderDelegate {
             let success = audioRecorder?.record() ?? false
             if success {
                 recordingStartTime = Date()
-                result(true)
+                result(filePath)  // 파일 경로 반환
             } else {
                 result(FlutterError(code: "RECORDING_ERROR", message: "Failed to start recording", details: nil))
             }

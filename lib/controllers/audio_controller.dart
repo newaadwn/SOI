@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_sound/flutter_sound.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../services/audio_service.dart';
 import '../models/audio_data_model.dart';
@@ -23,8 +22,6 @@ class AudioController extends ChangeNotifier {
 
   List<AudioDataModel> _audioList = [];
   Timer? _recordingTimer;
-  StreamSubscription<RecordingDisposition>? _recordingSubscription;
-  StreamSubscription<PlaybackDisposition>? _playbackSubscription;
   StreamSubscription<double>? _uploadSubscription;
 
   // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
@@ -59,13 +56,8 @@ class AudioController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        // ✅ 성공 시 UI 피드백
-        debugPrint('오디오 기능이 준비되었습니다.');
-
-        // 녹음 진행률 모니터링 시작
-        _startRecordingMonitoring();
+        debugPrint('✅ 오디오 기능이 준비되었습니다.');
       } else {
-        // ✅ 실패 시 UI 피드백
         _error = result.error;
         debugPrint(result.error ?? '오디오 초기화에 실패했습니다.');
       }
@@ -74,7 +66,6 @@ class AudioController extends ChangeNotifier {
       _isLoading = false;
       _error = '오디오 초기화 중 오류가 발생했습니다.';
       notifyListeners();
-      debugPrint('오디오 초기화 중 오류가 발생했습니다.');
     }
   }
 
@@ -82,22 +73,21 @@ class AudioController extends ChangeNotifier {
   @override
   void dispose() {
     _recordingTimer?.cancel();
-    _recordingSubscription?.cancel();
-    _playbackSubscription?.cancel();
     _uploadSubscription?.cancel();
     _audioService.dispose();
     super.dispose();
   }
 
-  // ==================== 녹음 관리 ====================
+  // ==================== 네이티브 녹음 관리 ====================
 
-  /// 녹음 시작
+  /// 네이티브 녹음 시작
   Future<void> startRecording() async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
 
+      debugPrint('🎤 네이티브 녹음 시작 요청...');
       final result = await _audioService.startRecording();
 
       if (result.isSuccess) {
@@ -111,24 +101,21 @@ class AudioController extends ChangeNotifier {
         _isLoading = false;
         notifyListeners();
 
-        // ✅ 성공 시 UI 피드백
-        debugPrint('녹음이 시작되었습니다.');
+        debugPrint('✅ 네이티브 녹음이 시작되었습니다: ${_currentRecordingPath}');
       } else {
         _isLoading = false;
         notifyListeners();
 
-        // ✅ 실패 시 UI 피드백
-        debugPrint(result.error ?? '녹음을 시작할 수 없습니다.');
+        debugPrint('❌ 네이티브 녹음 시작 실패: ${result.error}');
       }
     } catch (e) {
-      debugPrint('녹음 시작 오류: $e');
+      debugPrint('❌ 네이티브 녹음 시작 오류: $e');
       _isLoading = false;
       notifyListeners();
-      debugPrint('녹음 시작 중 오류가 발생했습니다.');
     }
   }
 
-  /// 녹음 중지
+  /// 네이티브 녹음 중지 (완전한 처리)
   Future<void> stopRecording({
     required String categoryId,
     required String userId,
@@ -141,6 +128,7 @@ class AudioController extends ChangeNotifier {
       // 타이머 및 구독 정리
       _stopRecordingTimer();
 
+      debugPrint('🎤 네이티브 녹음 중지 요청...');
       final result = await _audioService.stopRecording(
         categoryId: categoryId,
         userId: userId,
@@ -161,22 +149,19 @@ class AudioController extends ChangeNotifier {
         _audioList.insert(0, audioData);
         notifyListeners();
 
-        // ✅ 성공 시 UI 피드백
-        debugPrint('녹음이 완료되었습니다.');
+        debugPrint('✅ 네이티브 녹음이 완료되었습니다: ${audioData.id}');
       } else {
-        // ✅ 실패 시 UI 피드백
-        debugPrint(result.error ?? '녹음 완료에 실패했습니다.');
+        debugPrint('❌ 네이티브 녹음 완료 실패: ${result.error}');
       }
     } catch (e) {
-      debugPrint('녹음 중지 오류: $e');
+      debugPrint('❌ 네이티브 녹음 중지 오류: $e');
       _isRecording = false;
       _isLoading = false;
       notifyListeners();
-      debugPrint('녹음 중지 중 오류가 발생했습니다.');
     }
   }
 
-  /// 간단한 녹음 중지 (업로드 없이)
+  /// 간단한 네이티브 녹음 중지 (UI용)
   Future<void> stopRecordingSimple() async {
     try {
       _isLoading = true;
@@ -185,7 +170,7 @@ class AudioController extends ChangeNotifier {
       // 타이머 및 구독 정리
       _stopRecordingTimer();
 
-      // 간단히 녹음만 중지
+      debugPrint('🎤 네이티브 간단 녹음 중지...');
       final result = await _audioService.stopRecordingSimple();
 
       _isLoading = false;
@@ -193,8 +178,10 @@ class AudioController extends ChangeNotifier {
 
       if (result.isSuccess) {
         _currentRecordingPath = result.data ?? '';
+        debugPrint('✅ 네이티브 간단 녹음 중지 완료: ${_currentRecordingPath}');
       } else {
         _error = result.error;
+        debugPrint('❌ 네이티브 간단 녹음 중지 실패: ${result.error}');
       }
 
       notifyListeners();
@@ -218,16 +205,6 @@ class AudioController extends ChangeNotifier {
   void _stopRecordingTimer() {
     _recordingTimer?.cancel();
     _recordingTimer = null;
-  }
-
-  /// 녹음 진행률 모니터링 시작
-  void _startRecordingMonitoring() {
-    _recordingSubscription = _audioService.recordingStream?.listen((
-      disposition,
-    ) {
-      _recordingLevel = disposition.decibels ?? 0.0;
-      notifyListeners();
-    });
   }
 
   /// 녹음 시간을 MM:SS 형식으로 포맷팅
@@ -256,26 +233,20 @@ class AudioController extends ChangeNotifier {
         _isPlaying = true;
         _currentPlayingAudioId = audio.id;
 
-        // 재생 진행률 모니터링 시작
-        _startPlaybackMonitoring();
-
         _isLoading = false;
         notifyListeners();
 
-        // ✅ 성공 시 UI 피드백
         debugPrint('재생을 시작합니다.');
       } else {
         _isLoading = false;
         notifyListeners();
 
-        // ✅ 실패 시 UI 피드백
         debugPrint(result.error ?? '재생할 수 없습니다.');
       }
     } catch (e) {
       debugPrint('오디오 재생 오류: $e');
       _isLoading = false;
       notifyListeners();
-      debugPrint('재생 중 오류가 발생했습니다.');
     }
   }
 
@@ -296,14 +267,11 @@ class AudioController extends ChangeNotifier {
       _isLoading = false;
       _isPlaying = true;
       notifyListeners();
-
-      // ✅ 성공 시 UI 피드백 (토스트는 생략 - UX 고려)
     } catch (e) {
       debugPrint('URL 오디오 재생 컨트롤러 오류: $e');
       _isLoading = false;
       _error = 'URL 오디오 재생 중 오류가 발생했습니다.';
       notifyListeners();
-      debugPrint('URL 오디오 재생 중 오류가 발생했습니다.');
     }
   }
 
@@ -316,7 +284,6 @@ class AudioController extends ChangeNotifier {
       _currentPlayingAudioId = null;
       _playbackPosition = 0.0;
       _playbackDuration = 0.0;
-      _playbackSubscription?.cancel();
       notifyListeners();
 
       if (!result.isSuccess) {
@@ -361,83 +328,6 @@ class AudioController extends ChangeNotifier {
     }
   }
 
-  /// 재생 진행률 모니터링 시작
-  void _startPlaybackMonitoring() {
-    _playbackSubscription = _audioService.playbackStream?.listen((disposition) {
-      _playbackPosition = disposition.position.inSeconds.toDouble();
-      _playbackDuration = disposition.duration.inSeconds.toDouble();
-      notifyListeners();
-
-      // 재생 완료 시 상태 초기화
-      if (_playbackPosition >= _playbackDuration && _playbackDuration > 0) {
-        _isPlaying = false;
-        _currentPlayingAudioId = null;
-        _playbackPosition = 0.0;
-        notifyListeners();
-      }
-    });
-  }
-
-  // ==================== 오디오 변환 ====================
-
-  /// MP3로 변환
-  /* Future<void> convertToMp3(String audioId) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      final result = await _audioService.convertToMp3(audioId);
-
-      _isLoading = false;
-      notifyListeners();
-
-      if (result.isSuccess) {
-        // 오디오 목록 업데이트
-        await _refreshAudioData(audioId);
-
-        // ✅ 성공 시 UI 피드백
-        debugPrint('MP3 변환이 완료되었습니다.');
-      } else {
-        // ✅ 실패 시 UI 피드백
-        debugPrint(result.error ?? 'MP3 변환에 실패했습니다.');
-      }
-    } catch (e) {
-      debugPrint('MP3 변환 오류: $e');
-      _isLoading = false;
-      notifyListeners();
-      debugPrint('MP3 변환 중 오류가 발생했습니다.');
-    }
-  }*/
-
-  /// AAC로 변환
-  /* Future<void> convertToAAC(String audioId) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      final result = await _audioService.convertToAAC(audioId);
-
-      _isLoading = false;
-      notifyListeners();
-
-      if (result.isSuccess) {
-        // 오디오 목록 업데이트
-        await _refreshAudioData(audioId);
-
-        // ✅ 성공 시 UI 피드백
-        debugPrint('AAC 변환이 완료되었습니다.');
-      } else {
-        // ✅ 실패 시 UI 피드백
-        debugPrint(result.error ?? 'AAC 변환에 실패했습니다.');
-      }
-    } catch (e) {
-      debugPrint('AAC 변환 오류: $e');
-      _isLoading = false;
-      notifyListeners();
-      debugPrint('AAC 변환 중 오류가 발생했습니다.');
-    }
-  }*/
-
   // ==================== 업로드 관리 ====================
 
   /// 오디오 업로드
@@ -474,10 +364,8 @@ class AudioController extends ChangeNotifier {
         // 오디오 목록 업데이트
         await _refreshAudioData(audioId);
 
-        // ✅ 성공 시 UI 피드백
         debugPrint('업로드가 완료되었습니다.');
       } else {
-        // ✅ 실패 시 UI 피드백
         debugPrint(result.error ?? '업로드에 실패했습니다.');
       }
     } catch (e) {
@@ -485,7 +373,6 @@ class AudioController extends ChangeNotifier {
       _isLoading = false;
       _uploadProgress = 0.0;
       notifyListeners();
-      debugPrint('업로드 중 오류가 발생했습니다.');
     }
   }
 
@@ -493,14 +380,8 @@ class AudioController extends ChangeNotifier {
   Future<String> processAudioForUpload() async {
     try {
       if (_currentRecordingPath != null && _currentRecordingPath!.isNotEmpty) {
-        // 현재 녹음된 파일이 있는 경우
-        final audioFile = File(_currentRecordingPath!);
-        if (await audioFile.exists()) {
-          // 파일이 존재하면 업로드 처리
-          await uploadAudio(_currentRecordingPath!);
-
-          // 업로드된 오디오 URL 반환 (실제 구현에서는 업로드 결과를 받아야 함)
-          // 임시로 현재 녹음 경로 반환
+        final file = File(_currentRecordingPath!);
+        if (await file.exists()) {
           return _currentRecordingPath!;
         }
       }
@@ -508,7 +389,7 @@ class AudioController extends ChangeNotifier {
       // 녹음된 파일이 없는 경우 빈 문자열 반환
       return '';
     } catch (e) {
-      debugPrint('오디오 업로드 처리 오류: $e');
+      debugPrint('오디오 처리 오류: $e');
       return '';
     }
   }
@@ -532,8 +413,6 @@ class AudioController extends ChangeNotifier {
       _audioList = [];
       _isLoading = false;
       notifyListeners();
-
-      debugPrint('오디오 목록을 불러오는 중 오류가 발생했습니다.');
     }
   }
 
@@ -554,8 +433,6 @@ class AudioController extends ChangeNotifier {
       _audioList = [];
       _isLoading = false;
       notifyListeners();
-
-      debugPrint('오디오 목록을 불러오는 중 오류가 발생했습니다.');
     }
   }
 
@@ -576,21 +453,14 @@ class AudioController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        // 오디오 목록에서 제거
-        _audioList.removeWhere((audio) => audio.id == audioId);
-        notifyListeners();
-
-        // ✅ 성공 시 UI 피드백
         debugPrint('오디오가 삭제되었습니다.');
       } else {
-        // ✅ 실패 시 UI 피드백
         debugPrint(result.error ?? '오디오 삭제에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('오디오 삭제 오류: $e');
       _isLoading = false;
       notifyListeners();
-      debugPrint('오디오 삭제 중 오류가 발생했습니다.');
     }
   }
 
@@ -617,17 +487,14 @@ class AudioController extends ChangeNotifier {
         // 오디오 목록 업데이트
         await _refreshAudioData(audioId);
 
-        // ✅ 성공 시 UI 피드백
         debugPrint('오디오 정보가 업데이트되었습니다.');
       } else {
-        // ✅ 실패 시 UI 피드백
         debugPrint(result.error ?? '정보 업데이트에 실패했습니다.');
       }
     } catch (e) {
       debugPrint('오디오 정보 업데이트 오류: $e');
       _isLoading = false;
       notifyListeners();
-      debugPrint('정보 업데이트 중 오류가 발생했습니다.');
     }
   }
 

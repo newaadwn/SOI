@@ -1,20 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_sound/flutter_sound.dart';
 import '../repositories/audio_repository.dart';
 import '../models/audio_data_model.dart';
 import '../models/auth_result.dart';
 
 /// 비즈니스 로직을 처리하는 Service
 /// Repository를 사용해서 실제 비즈니스 규칙을 적용
-/// AudioConverterService 기능을 통합
 class AudioService {
   final AudioRepository _repository = AudioRepository();
-
-  // AudioConverter 기능을 위한 MethodChannel
-  /*static const MethodChannel _converterChannel = MethodChannel(
-    'com.app.audio_converter',
-  );*/
 
   // ==================== 비즈니스 로직 ====================
 
@@ -84,9 +77,9 @@ class AudioService {
     }
   }
 
-  // ==================== 녹음 관리 ====================
+  // ==================== 네이티브 녹음 관리 ====================
 
-  /// 녹음 시작
+  /// 네이티브 녹음 시작
   Future<AuthResult> startRecording() async {
     try {
       if (await AudioRepository.isRecording()) {
@@ -94,14 +87,20 @@ class AudioService {
       }
 
       final recordingPath = await AudioRepository.startRecording();
+
+      if (recordingPath.isEmpty) {
+        return AuthResult.failure('네이티브 녹음을 시작할 수 없습니다.');
+      }
+
+      debugPrint('🎤 네이티브 녹음 시작됨: $recordingPath');
       return AuthResult.success(recordingPath);
     } catch (e) {
-      debugPrint('녹음 시작 오류: $e');
-      return AuthResult.failure('녹음을 시작할 수 없습니다.');
+      debugPrint('❌ 네이티브 녹음 시작 오류: $e');
+      return AuthResult.failure('네이티브 녹음을 시작할 수 없습니다.');
     }
   }
 
-  /// 녹음 중지 및 데이터 생성
+  /// 네이티브 녹음 중지 및 데이터 생성
   Future<AuthResult> stopRecording({
     required String categoryId,
     required String userId,
@@ -113,13 +112,23 @@ class AudioService {
       }
 
       final recordingPath = await AudioRepository.stopRecording();
-      if (recordingPath == null) {
-        return AuthResult.failure('녹음 파일을 저장할 수 없습니다.');
+      if (recordingPath == null || recordingPath.isEmpty) {
+        return AuthResult.failure('네이티브 녹음 파일을 저장할 수 없습니다.');
+      }
+
+      debugPrint('🎤 네이티브 녹음 완료: $recordingPath');
+
+      // 파일 존재 여부 확인
+      final file = File(recordingPath);
+      if (!await file.exists()) {
+        return AuthResult.failure('녹음된 파일이 존재하지 않습니다.');
       }
 
       // 파일 정보 수집
       final fileSize = await _repository.getFileSize(recordingPath);
       final duration = await _repository.getAudioDuration(recordingPath);
+
+      debugPrint('📊 녹음 파일 정보: ${fileSize.toStringAsFixed(2)}MB, ${duration}초');
 
       // 비즈니스 규칙 검증
       if (!_isValidFileSize(fileSize)) {
@@ -133,7 +142,8 @@ class AudioService {
       }
 
       // AudioDataModel 생성
-      final fileName = 'recording_${DateTime.now().millisecondsSinceEpoch}';
+      final fileName =
+          'native_recording_${DateTime.now().millisecondsSinceEpoch}';
       final audioData = AudioDataModel(
         id: '', // Repository에서 생성됨
         categoryId: categoryId,
@@ -142,7 +152,7 @@ class AudioService {
         originalPath: recordingPath,
         durationInSeconds: duration,
         fileSizeInMB: fileSize,
-        format: AudioFormat.m4a,
+        format: AudioFormat.m4a, // 네이티브에서 AAC/M4A 생성
         status: AudioStatus.recorded,
         createdAt: DateTime.now(),
         description: description,
@@ -152,34 +162,35 @@ class AudioService {
       final audioId = await _repository.saveAudioData(audioData);
       final savedAudio = audioData.copyWith(id: audioId);
 
+      debugPrint('✅ 네이티브 녹음 데이터 저장 완료: $audioId');
       return AuthResult.success(savedAudio);
     } catch (e) {
-      debugPrint('녹음 중지 오류: $e');
-      return AuthResult.failure('녹음을 완료할 수 없습니다.');
+      debugPrint('❌ 네이티브 녹음 중지 오류: $e');
+      return AuthResult.failure('네이티브 녹음을 완료할 수 없습니다.');
     }
   }
 
-  /// 간단한 녹음 중지 (업로드 없이)
+  /// 간단한 네이티브 녹음 중지 (UI용)
   Future<AuthResult> stopRecordingSimple() async {
     try {
       final filePath = await AudioRepository.stopRecording();
 
-      if (filePath != null) {
+      if (filePath != null && filePath.isNotEmpty) {
+        debugPrint('🎤 간단 녹음 중지: $filePath');
         return AuthResult.success(filePath);
       } else {
-        return AuthResult.failure('녹음 중지 실패');
+        return AuthResult.failure('네이티브 녹음 중지 실패');
       }
     } catch (e) {
-      return AuthResult.failure('녹음 중지 중 오류 발생: $e');
+      debugPrint('❌ 간단 녹음 중지 오류: $e');
+      return AuthResult.failure('네이티브 녹음 중지 중 오류 발생: $e');
     }
   }
 
   /// 녹음 상태 확인
   Future<bool> get isRecording => AudioRepository.isRecording();
 
-  /// 녹음 진행률 스트림
-  Stream<RecordingDisposition>? get recordingStream =>
-      _repository.recordingStream;
+  // 네이티브 녹음에서는 녹음 진행률 스트림이 제한됨
 
   // ==================== 재생 관리 ====================
 
@@ -243,106 +254,7 @@ class AudioService {
   /// 재생 상태 확인
   bool get isPlaying => _repository.isPlaying;
 
-  /// 재생 진행률 스트림
-  Stream<PlaybackDisposition>? get playbackStream => _repository.playbackStream;
-
-  // ==================== 오디오 변환 (AudioConverter 통합) ====================
-
-  /// AAC/M4A 파일을 MP3로 변환
-  /*Future<AuthResult> convertToMp3(String audioId) async {
-    try {
-      final audioData = await _repository.getAudioData(audioId);
-      if (audioData == null) {
-        return AuthResult.failure('오디오 데이터를 찾을 수 없습니다.');
-      }
-
-      if (audioData.originalPath.isEmpty ||
-          !File(audioData.originalPath).existsSync()) {
-        return AuthResult.failure('변환할 파일이 존재하지 않습니다.');
-      }
-
-      // 상태를 변환 중으로 업데이트
-      await _repository.updateAudioData(audioId, {
-        'status': AudioStatus.converting.name,
-      });
-
-      // 네이티브에서 변환 수행
-      final convertedPath =
-          await _converterChannel.invokeMethod('convertAudioToMp3', {
-                'inputPath': audioData.originalPath,
-              })
-              as String;
-
-      // 변환 완료 상태로 업데이트
-      await _repository.updateAudioData(audioId, {
-        'convertedPath': convertedPath,
-        'status': AudioStatus.converted.name,
-        'format': AudioFormat.mp3.name,
-      });
-
-      return AuthResult.success(convertedPath);
-    } on PlatformException catch (e) {
-      debugPrint('MP3 변환 오류: ${e.message}');
-      await _repository.updateAudioData(audioId, {
-        'status': AudioStatus.failed.name,
-      });
-      return AuthResult.failure('MP3 변환에 실패했습니다: ${e.message}');
-    } catch (e) {
-      debugPrint('MP3 변환 오류: $e');
-      await _repository.updateAudioData(audioId, {
-        'status': AudioStatus.failed.name,
-      });
-      return AuthResult.failure('MP3 변환 중 오류가 발생했습니다.');
-    }
-  }*/
-
-  /// 오디오 파일을 AAC 포맷으로 변환
-  /*Future<AuthResult> convertToAAC(String audioId) async {
-    try {
-      final audioData = await _repository.getAudioData(audioId);
-      if (audioData == null) {
-        return AuthResult.failure('오디오 데이터를 찾을 수 없습니다.');
-      }
-
-      if (audioData.originalPath.isEmpty ||
-          !File(audioData.originalPath).existsSync()) {
-        return AuthResult.failure('변환할 파일이 존재하지 않습니다.');
-      }
-
-      // 상태를 변환 중으로 업데이트
-      await _repository.updateAudioData(audioId, {
-        'status': AudioStatus.converting.name,
-      });
-
-      // 네이티브에서 변환 수행
-      final convertedPath =
-          await _converterChannel.invokeMethod('convertAudioToAAC', {
-                'inputPath': audioData.originalPath,
-              })
-              as String;
-
-      // 변환 완료 상태로 업데이트
-      await _repository.updateAudioData(audioId, {
-        'convertedPath': convertedPath,
-        'status': AudioStatus.converted.name,
-        'format': AudioFormat.aac.name,
-      });
-
-      return AuthResult.success(convertedPath);
-    } on PlatformException catch (e) {
-      debugPrint('AAC 변환 오류: ${e.message}');
-      await _repository.updateAudioData(audioId, {
-        'status': AudioStatus.failed.name,
-      });
-      return AuthResult.failure('AAC 변환에 실패했습니다: ${e.message}');
-    } catch (e) {
-      debugPrint('AAC 변환 오류: $e');
-      await _repository.updateAudioData(audioId, {
-        'status': AudioStatus.failed.name,
-      });
-      return AuthResult.failure('AAC 변환 중 오류가 발생했습니다.');
-    }
-  }*/
+  // 네이티브 재생에서는 재생 진행률 스트림이 제한됨
 
   // ==================== 업로드 관리 ====================
 
@@ -385,9 +297,6 @@ class AudioService {
         'status': AudioStatus.uploaded.name,
         'uploadedAt': DateTime.now(),
       });
-
-      // 로컬 파일 정리 (옵션)
-      // await _repository.deleteLocalFile(uploadPath);
 
       return AuthResult.success(downloadUrl);
     } catch (e) {
