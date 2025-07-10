@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/comment_data_model.dart';
 
 /// Firebase에서 comment 관련 데이터를 가져오고, 저장하고, 업데이트하고 삭제하는 등의 로직들
@@ -19,7 +20,7 @@ class CommentRepository {
       final bool granted = await _channel.invokeMethod('requestPermission');
       return granted;
     } catch (e) {
-      print('Error requesting permission: $e');
+      debugPrint('Error requesting permission: $e');
       return false;
     }
   }
@@ -39,16 +40,21 @@ class CommentRepository {
   /// 네이티브 녹음 시작 (메인)
   static Future<String> startRecording() async {
     try {
-      final String fileName =
-          'comment_${DateTime.now().millisecondsSinceEpoch}.m4a';
-      final Map<String, dynamic> args = {'filePath': fileName};
+      // 2. 임시 디렉토리 경로 가져오기 (수정된 부분)
+      final Directory tempDir = await getTemporaryDirectory();
+      final String fileExtension = '.m4a';
+      final String filePath =
+          '${tempDir.path}/comment_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
 
-      final String filePath = await _channel.invokeMethod(
+      // 3. 전체 파일 경로를 인자로 전달 (수정된 부분)
+      final Map<String, dynamic> args = {'filePath': filePath};
+
+      final String resultPath = await _channel.invokeMethod(
         'startRecording',
         args,
       );
-      print('🎤 댓글 네이티브 녹음 시작: $filePath');
-      return filePath;
+      print('🎤 댓글 네이티브 녹음 시작: $resultPath');
+      return resultPath;
     } catch (e) {
       print('❌ 댓글 네이티브 녹음 시작 오류: $e');
       rethrow;
@@ -59,10 +65,10 @@ class CommentRepository {
   static Future<String?> stopRecording() async {
     try {
       final String? filePath = await _channel.invokeMethod('stopRecording');
-      print('🎤 댓글 네이티브 녹음 중지: $filePath');
+      debugPrint('🎤 댓글 네이티브 녹음 중지: $filePath');
       return filePath;
     } catch (e) {
-      print('❌ 댓글 네이티브 녹음 중지 오류: $e');
+      debugPrint('❌ 댓글 네이티브 녹음 중지 오류: $e');
       return null;
     }
   }
@@ -73,7 +79,7 @@ class CommentRepository {
       final bool recording = await _channel.invokeMethod('isRecording');
       return recording;
     } catch (e) {
-      print('❌ 댓글 네이티브 녹음 상태 확인 오류: $e');
+      debugPrint('❌ 댓글 네이티브 녹음 상태 확인 오류: $e');
       return false;
     }
   }
@@ -90,7 +96,7 @@ class CommentRepository {
             ),
           );
     } catch (e) {
-      print('❌ 녹음 레벨 스트림 오류: $e');
+      debugPrint('❌ 녹음 레벨 스트림 오류: $e');
       return Stream.value(0.0);
     }
   }
@@ -101,9 +107,9 @@ class CommentRepository {
   static Future<void> initializePlayer() async {
     try {
       await _channel.invokeMethod('initializePlayer');
-      print('🎵 네이티브 플레이어 초기화 완료');
+      debugPrint('🎵 네이티브 플레이어 초기화 완료');
     } catch (e) {
-      print('❌ 네이티브 플레이어 초기화 오류: $e');
+      debugPrint('❌ 네이티브 플레이어 초기화 오류: $e');
     }
   }
 
@@ -111,9 +117,9 @@ class CommentRepository {
   static Future<void> disposePlayer() async {
     try {
       await _channel.invokeMethod('disposePlayer');
-      print('🎵 네이티브 플레이어 종료 완료');
+      debugPrint('🎵 네이티브 플레이어 종료 완료');
     } catch (e) {
-      print('❌ 네이티브 플레이어 종료 오류: $e');
+      debugPrint('❌ 네이티브 플레이어 종료 오류: $e');
     }
   }
 
@@ -122,9 +128,9 @@ class CommentRepository {
     try {
       final Map<String, dynamic> args = {'url': url};
       await _channel.invokeMethod('playFromUrl', args);
-      print('🎵 네이티브 오디오 재생 시작: $url');
+      debugPrint('🎵 네이티브 오디오 재생 시작: $url');
     } catch (e) {
-      print('❌ 네이티브 오디오 재생 오류: $e');
+      debugPrint('❌ 네이티브 오디오 재생 오류: $e');
     }
   }
 
@@ -133,9 +139,9 @@ class CommentRepository {
     try {
       final Map<String, dynamic> args = {'filePath': filePath};
       await _channel.invokeMethod('playFromPath', args);
-      print('🎵 네이티브 오디오 재생 시작: $filePath');
+      debugPrint('🎵 네이티브 오디오 재생 시작: $filePath');
     } catch (e) {
-      print('❌ 네이티브 오디오 재생 오류: $e');
+      debugPrint('❌ 네이티브 오디오 재생 오류: $e');
     }
   }
 
@@ -143,9 +149,9 @@ class CommentRepository {
   static Future<void> stopPlaying() async {
     try {
       await _channel.invokeMethod('stopPlaying');
-      print('🎵 네이티브 오디오 재생 중지');
+      debugPrint('🎵 네이티브 오디오 재생 중지');
     } catch (e) {
-      print('❌ 네이티브 오디오 재생 중지 오류: $e');
+      debugPrint('❌ 네이티브 오디오 재생 중지 오류: $e');
     }
   }
 
@@ -153,9 +159,9 @@ class CommentRepository {
   static Future<void> pausePlaying() async {
     try {
       await _channel.invokeMethod('pausePlaying');
-      print('🎵 네이티브 오디오 재생 일시정지');
+      debugPrint('🎵 네이티브 오디오 재생 일시정지');
     } catch (e) {
-      print('❌ 네이티브 오디오 재생 일시정지 오류: $e');
+      debugPrint('❌ 네이티브 오디오 재생 일시정지 오류: $e');
     }
   }
 
@@ -163,9 +169,9 @@ class CommentRepository {
   static Future<void> resumePlaying() async {
     try {
       await _channel.invokeMethod('resumePlaying');
-      print('🎵 네이티브 오디오 재생 재개');
+      debugPrint('🎵 네이티브 오디오 재생 재개');
     } catch (e) {
-      print('❌ 네이티브 오디오 재생 재개 오류: $e');
+      debugPrint('❌ 네이티브 오디오 재생 재개 오류: $e');
     }
   }
 
@@ -175,7 +181,7 @@ class CommentRepository {
       final bool playing = await _channel.invokeMethod('isPlaying');
       return playing;
     } catch (e) {
-      print('❌ 네이티브 재생 상태 확인 오류: $e');
+      debugPrint('❌ 네이티브 재생 상태 확인 오류: $e');
       return false;
     }
   }
@@ -185,9 +191,9 @@ class CommentRepository {
     try {
       final Map<String, dynamic> args = {'position': positionInSeconds};
       await _channel.invokeMethod('seekTo', args);
-      print('🎵 네이티브 오디오 위치 설정: ${positionInSeconds}초');
+      debugPrint('🎵 네이티브 오디오 위치 설정: ${positionInSeconds}초');
     } catch (e) {
-      print('❌ 네이티브 오디오 위치 설정 오류: $e');
+      debugPrint('❌ 네이티브 오디오 위치 설정 오류: $e');
     }
   }
 
@@ -206,7 +212,7 @@ class CommentRepository {
             ),
           );
     } catch (e) {
-      print('❌ 재생 진행률 스트림 오류: $e');
+      debugPrint('❌ 재생 진행률 스트림 오류: $e');
       return Stream.value({'position': 0.0, 'duration': 0.0});
     }
   }
@@ -223,7 +229,7 @@ class CommentRepository {
       );
       return sizeInBytes / (1024 * 1024); // MB로 변환
     } catch (e) {
-      print('❌ 네이티브 파일 크기 계산 오류: $e');
+      debugPrint('❌ 네이티브 파일 크기 계산 오류: $e');
       // 폴백: Dart로 파일 크기 계산
       final file = File(filePath);
       if (!await file.exists()) return 0.0;
@@ -242,7 +248,7 @@ class CommentRepository {
       );
       return duration;
     } catch (e) {
-      print('❌ 네이티브 오디오 길이 계산 오류: $e');
+      debugPrint('❌ 네이티브 오디오 길이 계산 오류: $e');
       // 폴백: 파일 크기 기반 추정
       final sizeInMB = await getFileSize(filePath);
       return sizeInMB * 60; // 대략적인 추정
@@ -263,10 +269,10 @@ class CommentRepository {
         'convertAudioFormat',
         args,
       );
-      print('🔄 네이티브 오디오 형식 변환 완료: $outputPath');
+      debugPrint('🔄 네이티브 오디오 형식 변환 완료: $outputPath');
       return outputPath;
     } catch (e) {
-      print('❌ 네이티브 오디오 형식 변환 오류: $e');
+      debugPrint('❌ 네이티브 오디오 형식 변환 오류: $e');
       return null;
     }
   }
@@ -285,10 +291,10 @@ class CommentRepository {
         'compressAudio',
         args,
       );
-      print('📦 네이티브 오디오 압축 완료: $outputPath');
+      debugPrint('📦 네이티브 오디오 압축 완료: $outputPath');
       return outputPath;
     } catch (e) {
-      print('❌ 네이티브 오디오 압축 오류: $e');
+      debugPrint('❌ 네이티브 오디오 압축 오류: $e');
       return null;
     }
   }
@@ -472,7 +478,7 @@ class CommentRepository {
 
       // 2. 네이티브로 오디오 길이 확인
       final duration = await CommentRepository.getAudioDuration(uploadFilePath);
-      print('📁 업로드할 파일 길이: ${duration}초');
+      debugPrint('📁 업로드할 파일 길이: ${duration}초');
 
       // 3. Firebase Storage에 업로드
       final file = File(uploadFilePath);
@@ -493,10 +499,10 @@ class CommentRepository {
       }
 
       final downloadUrl = await snapshot.ref.getDownloadURL();
-      print('☁️ 오디오 파일 업로드 완료: $downloadUrl');
+      debugPrint('☁️ 오디오 파일 업로드 완료: $downloadUrl');
       return downloadUrl;
     } catch (e) {
-      print('❌ 오디오 파일 업로드 실패: $e');
+      debugPrint('❌ 오디오 파일 업로드 실패: $e');
       rethrow;
     }
   }
@@ -532,7 +538,7 @@ class CommentRepository {
         };
       }
     } catch (e) {
-      print('❌ 업로드 진행률 스트림 오류: $e');
+      debugPrint('❌ 업로드 진행률 스트림 오류: $e');
       yield {'progress': 0.0, 'error': e.toString()};
     }
   }
@@ -542,9 +548,9 @@ class CommentRepository {
     try {
       final ref = _storage.refFromURL(downloadUrl);
       await ref.delete();
-      print('☁️ Firebase Storage 오디오 파일 삭제 완료: $downloadUrl');
+      debugPrint('☁️ Firebase Storage 오디오 파일 삭제 완료: $downloadUrl');
     } catch (e) {
-      print('❌ Firebase Storage 오디오 파일 삭제 실패: $e');
+      debugPrint('❌ Firebase Storage 오디오 파일 삭제 실패: $e');
     }
   }
 
@@ -562,7 +568,7 @@ class CommentRepository {
       );
       return analysis;
     } catch (e) {
-      print('❌ 네이티브 오디오 품질 분석 오류: $e');
+      debugPrint('❌ 네이티브 오디오 품질 분석 오류: $e');
       return {
         'sampleRate': 44100,
         'bitRate': 128000,
@@ -581,10 +587,10 @@ class CommentRepository {
         'removeNoise',
         args,
       );
-      print('🔇 네이티브 노이즈 제거 완료: $outputPath');
+      debugPrint('🔇 네이티브 노이즈 제거 완료: $outputPath');
       return outputPath;
     } catch (e) {
-      print('❌ 네이티브 노이즈 제거 오류: $e');
+      debugPrint('❌ 네이티브 노이즈 제거 오류: $e');
       return null;
     }
   }
@@ -597,10 +603,10 @@ class CommentRepository {
         'normalizeVolume',
         args,
       );
-      print('🔊 네이티브 볼륨 정규화 완료: $outputPath');
+      debugPrint('🔊 네이티브 볼륨 정규화 완료: $outputPath');
       return outputPath;
     } catch (e) {
-      print('❌ 네이티브 볼륨 정규화 오류: $e');
+      debugPrint('❌ 네이티브 볼륨 정규화 오류: $e');
       return null;
     }
   }

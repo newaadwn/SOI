@@ -20,12 +20,9 @@ class CameraService {
 
   static const MethodChannel _channel = MethodChannel('com.soi.camera');
 
-  bool _isGloballyInitialized = false;
-  //static Widget? _cameraView;
-  //final GlobalKey _cameraKey = GlobalKey();
-  //static final bool _isViewCreated = false;
-
   final ImagePicker _imagePicker = ImagePicker();
+
+  // ==================== 갤러리 및 파일 관리 ====================
 
   // 갤러리에서 이미지를 선택할 때 사용할 필터 옵션
   // 이 필터는 이미지 크기 제약을 무시하고 모든 이미지를 선택할 수 있도록 설정합니다.
@@ -74,30 +71,6 @@ class CameraService {
     } catch (e) {
       debugPrint("갤러리에서 이미지 선택 오류: $e");
       return null;
-    }
-  }
-
-  Future<void> globalInitialize() async {
-    if (!_isGloballyInitialized) {
-      try {
-        await _channel
-            .invokeMethod('initCamera')
-            .timeout(
-              const Duration(seconds: 1),
-              onTimeout: () {
-                debugPrint('카메라 초기화 타임아웃');
-                throw PlatformException(
-                  code: 'TIMEOUT',
-                  message: '카메라 초기화 시간이 초과되었습니다',
-                );
-              },
-            );
-        _isGloballyInitialized = true;
-        debugPrint('카메라 전역 초기화 완료');
-      } on PlatformException catch (e) {
-        debugPrint("카메라 전역 초기화 오류: ${e.message}");
-        rethrow;
-      }
     }
   }
 
@@ -245,7 +218,7 @@ class CameraService {
     try {
       await _channel.invokeMethod('disposeCamera');
       // _cameraView = null;
-      _isGloballyInitialized = false;
+
       debugPrint('카메라 리소스 정리 완료');
     } on PlatformException catch (e) {
       debugPrint("카메라 리소스 정리 오류: ${e.message}");

@@ -8,9 +8,9 @@ import '../models/audio_data_model.dart';
 /// 오디오 관련 UI와 비즈니스 로직 사이의 중개 역할을 합니다.
 class AudioController extends ChangeNotifier {
   // 상태 변수들
-  bool _isRecording = false;
   bool _isPlaying = false;
   bool _isLoading = false;
+  bool _isRecording = false;
   String? _currentRecordingPath;
   String? _currentPlayingAudioId;
   int _recordingDuration = 0;
@@ -27,7 +27,20 @@ class AudioController extends ChangeNotifier {
   // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
   final AudioService _audioService = AudioService();
 
-  // Getters
+  // ==================== 권한 관리 ====================
+
+  /// 마이크 권한 상태 확인
+  Future<bool> checkMicrophonePermission() async {
+    return await _audioService.checkMicrophonePermission();
+  }
+
+  /// 마이크 권한 요청
+  Future<bool> requestMicrophonePermission() async {
+    return await _audioService.requestMicrophonePermission();
+  }
+
+  // ==================== Getters ====================
+
   bool get isRecording => _isRecording;
   bool get isPlaying => _isPlaying;
   bool get isLoading => _isLoading;
@@ -40,6 +53,13 @@ class AudioController extends ChangeNotifier {
   double get uploadProgress => _uploadProgress;
   String? get error => _error;
   List<AudioDataModel> get audioList => _audioList;
+
+  /// 녹음 시간을 포맷팅하여 반환합니다 (예: "01:23")
+  String get formattedRecordingDuration {
+    final minutes = (_recordingDuration ~/ 60).toString().padLeft(2, '0');
+    final seconds = (_recordingDuration % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
 
   // ==================== 초기화 ====================
 
@@ -87,6 +107,19 @@ class AudioController extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
+      // 1. 먼저 마이크 권한 확인/요청
+      debugPrint('🎤 마이크 권한 확인 중...');
+      final hasPermission = await requestMicrophonePermission();
+
+      if (!hasPermission) {
+        _isLoading = false;
+        _error = '마이크 권한이 필요합니다.';
+        notifyListeners();
+        debugPrint('❌ 마이크 권한이 없어 녹음을 시작할 수 없습니다.');
+        throw Exception('마이크 권한이 필요합니다.');
+      }
+
+      // 2. 권한이 있을 때만 네이티브 녹음 시작
       debugPrint('🎤 네이티브 녹음 시작 요청...');
       final result = await _audioService.startRecording();
 
@@ -205,13 +238,6 @@ class AudioController extends ChangeNotifier {
   void _stopRecordingTimer() {
     _recordingTimer?.cancel();
     _recordingTimer = null;
-  }
-
-  /// 녹음 시간을 MM:SS 형식으로 포맷팅
-  String get formattedRecordingDuration {
-    final minutes = _recordingDuration ~/ 60;
-    final seconds = _recordingDuration % 60;
-    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
   // ==================== 재생 관리 ====================

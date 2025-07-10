@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import '../../controllers/auth_controller.dart';
 
 class CustomDrawer extends StatelessWidget {
@@ -313,7 +312,7 @@ class CustomDrawer extends StatelessWidget {
       onTap: () async {
         // 이미지 업로드 중인 경우 중복 클릭 방지
         if (authViewModel.isUploading) {
-          Fluttertoast.showToast(msg: '이미지 업로드 중입니다...');
+          debugPrint('이미지 업로드 중입니다...');
           return;
         }
 
@@ -321,7 +320,7 @@ class CustomDrawer extends StatelessWidget {
         final bool success = await authViewModel.updateProfileImage();
 
         if (success) {
-          Fluttertoast.showToast(msg: '프로필 이미지가 업데이트되었습니다');
+          debugPrint('프로필 이미지가 업데이트되었습니다');
         }
       },
       child: Container(

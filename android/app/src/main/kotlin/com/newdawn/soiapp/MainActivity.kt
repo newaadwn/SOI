@@ -14,8 +14,6 @@ class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.soi.camera"
     private val AUDIO_CHANNEL = "native_recorder"
     private lateinit var cameraHandler: CameraHandler
-    private val CAMERA_PERMISSION_CODE = 100
-    private val AUDIO_PERMISSION_CODE = 101
     
     // 네이티브 오디오 녹음 관련 변수
     private var mediaRecorder: MediaRecorder? = null
@@ -40,16 +38,6 @@ class MainActivity : FlutterActivity() {
         
         // 메서드 채널 설정 (카메라)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-            // 권한 확인
-            if (!checkCameraPermissions() && 
-                (call.method == "initCamera" || 
-                call.method == "takePicture" || 
-                call.method == "switchCamera")) {
-                requestCameraPermissions()
-                result.error("PERMISSION_DENIED", "카메라 권한이 필요합니다", null)
-                return@setMethodCallHandler
-            }
-            
             when (call.method) {
                 "initCamera" -> {
                     cameraHandler.initCamera { success, error ->
@@ -114,8 +102,11 @@ class MainActivity : FlutterActivity() {
         // 🎯 네이티브 오디오 녹음 메서드 채널 설정
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AUDIO_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
-                "requestPermission" -> {
-                    requestAudioPermission(result)
+                "checkMicrophonePermission" -> {
+                    checkMicrophonePermission(result)
+                }
+                "requestMicrophonePermission" -> {
+                    requestMicrophonePermission(result)
                 }
                 "startRecording" -> {
                     val filePath = call.argument<String>("filePath")
@@ -138,59 +129,58 @@ class MainActivity : FlutterActivity() {
         }
     }
     
-    // 권한 체크
-    private fun checkCameraPermissions(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED &&
-               ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+    // 🎯 마이크 권한 관련 메서드들
+    private fun checkMicrophonePermission(result: MethodChannel.Result) {
+        val hasPermission = ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+        
+        println("🔍 [Native Android] 마이크 권한 상태: $hasPermission")
+        result.success(hasPermission)
     }
     
-    // 권한 요청
-    private fun requestCameraPermissions() {
+    private fun requestMicrophonePermission(result: MethodChannel.Result) {
+        println("🎤 [Native Android] 마이크 권한 요청 시작")
+        
+        // 이미 권한이 있는 경우
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+            println("✅ [Native Android] 마이크 권한이 이미 허용되어 있습니다.")
+            result.success(true)
+            return
+        }
+        
+        // 권한 요청
+        pendingResult = result
         ActivityCompat.requestPermissions(
             this,
-            arrayOf(
-                Manifest.permission.CAMERA,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ),
-            CAMERA_PERMISSION_CODE
+            arrayOf(Manifest.permission.RECORD_AUDIO),
+            MICROPHONE_PERMISSION_REQUEST_CODE
         )
     }
     
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == CAMERA_PERMISSION_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // 권한이 부여됨, 카메라 초기화 시도
-                cameraHandler.initCamera { _, _ -> }
-            }
-        }
-        // 오디오 권한 결과는 별도 처리 (콜백 방식)
-    }
+    // 권한 요청 결과 처리를 위한 변수들
+    private var pendingResult: MethodChannel.Result? = null
+    private val MICROPHONE_PERMISSION_REQUEST_CODE = 1001
     
-    // 🎯 네이티브 오디오 녹음 함수들
-    private fun requestAudioPermission(result: MethodChannel.Result) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
-            != PackageManager.PERMISSION_GRANTED) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        if (requestCode == MICROPHONE_PERMISSION_REQUEST_CODE) {
+            val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            println("🎤 [Native Android] 마이크 권한 요청 결과: $granted")
             
-            ActivityCompat.requestPermissions(
-                this,
-                arrayOf(Manifest.permission.RECORD_AUDIO),
-                AUDIO_PERMISSION_CODE
-            )
-            result.success(false)
-        } else {
-            result.success(true)
+            pendingResult?.success(granted)
+            pendingResult = null
         }
     }
 
+    // 🎯 네이티브 오디오 녹음 함수들
     private fun startRecording(filePath: String, result: MethodChannel.Result) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
-            != PackageManager.PERMISSION_GRANTED) {
-            result.error("PERMISSION_ERROR", "Audio recording permission not granted", null)
-            return
-        }
-
         try {
             mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 MediaRecorder(this)

@@ -78,8 +78,10 @@ import AVFoundation
     
     audioChannel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in
       switch call.method {
-      case "requestPermission":
-        audioRecorder.requestPermission(result: result)
+      case "checkMicrophonePermission":
+        audioRecorder.checkMicrophonePermission(result: result)
+      case "requestMicrophonePermission":
+        audioRecorder.requestMicrophonePermission(result: result)
       case "startRecording":
         if let args = call.arguments as? [String: Any],
            let filePath = args["filePath"] as? String {

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../services/contact_service.dart';
 import '../models/contact_data_model.dart';
@@ -78,7 +77,7 @@ class ContactController extends ChangeNotifier {
       _isLoading = false;
       _error = '연락처 초기화 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '연락처 초기화 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('연락처 초기화 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -97,9 +96,9 @@ class ContactController extends ChangeNotifier {
           notifyListeners();
 
           if (requestResult == PermissionStatus.permanentlyDenied) {
-            Fluttertoast.showToast(msg: '설정에서 연락처 권한을 허용해주세요.');
+            debugPrint('설정에서 연락처 권한을 허용해주세요.');
           } else {
-            Fluttertoast.showToast(msg: '연락처 권한이 필요합니다.');
+            debugPrint('연락처 권한이 필요합니다.');
           }
           return;
         }
@@ -111,7 +110,7 @@ class ContactController extends ChangeNotifier {
       debugPrint('연락처 권한 요청 오류: $e');
       _permissionDenied = true;
       notifyListeners();
-      Fluttertoast.showToast(msg: '연락처 권한 요청 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('연락처 권한 요청 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -120,11 +119,11 @@ class ContactController extends ChangeNotifier {
     try {
       final success = await _contactService.openSettings();
       if (!success) {
-        Fluttertoast.showToast(msg: '설정 앱을 열 수 없습니다. 다시 시도해주세요.');
+        debugPrint('설정 앱을 열 수 없습니다. 다시 시도해주세요.');
       }
     } catch (e) {
       debugPrint('설정 앱 열기 오류: $e');
-      Fluttertoast.showToast(msg: '설정 앱 열기 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('설정 앱 열기 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -145,14 +144,14 @@ class ContactController extends ChangeNotifier {
       notifyListeners();
 
       if (contacts.isEmpty) {
-        Fluttertoast.showToast(msg: '저장된 연락처가 없습니다. 연락처를 추가해주세요.');
+        debugPrint('저장된 연락처가 없습니다. 연락처를 추가해주세요.');
       }
     } catch (e) {
       debugPrint('연락처 로드 오류: $e');
       _isLoading = false;
       _error = '연락처를 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '연락처를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('연락처를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -187,7 +186,7 @@ class ContactController extends ChangeNotifier {
       notifyListeners();
 
       if (deviceContacts.isEmpty) {
-        Fluttertoast.showToast(msg: '디바이스에 연락처가 없습니다. 연락처를 추가해주세요.');
+        debugPrint('디바이스에 연락처가 없습니다. 연락처를 추가해주세요.');
       } else {
         debugPrint('${deviceContacts.length}개의 연락처를 찾았습니다.');
       }
@@ -196,7 +195,7 @@ class ContactController extends ChangeNotifier {
       _isLoading = false;
       _error = '디바이스 연락처를 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '디바이스 연락처를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('디바이스 연락처를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -214,14 +213,14 @@ class ContactController extends ChangeNotifier {
       notifyListeners();
 
       if (contact == null) {
-        Fluttertoast.showToast(msg: '연락처를 찾을 수 없습니다. 다시 시도해주세요.');
+        debugPrint('연락처를 찾을 수 없습니다. 다시 시도해주세요.');
       }
     } catch (e) {
       debugPrint('연락처 상세 로드 오류: $e');
       _isLoading = false;
       _error = '연락처 상세 정보를 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '연락처 상세 정보를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('연락처 상세 정보를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -271,14 +270,14 @@ class ContactController extends ChangeNotifier {
       notifyListeners();
 
       if (searchResults.isEmpty) {
-        Fluttertoast.showToast(msg: '검색 결과가 없습니다.');
+        debugPrint('검색 결과가 없습니다.');
       }
     } catch (e) {
       debugPrint('연락처 검색 오류: $e');
       _isLoading = false;
       _error = '연락처 검색 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '연락처 검색 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('연락처 검색 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -365,9 +364,7 @@ class ContactController extends ChangeNotifier {
       } else {
         // ❌ 실패 시 UI 피드백
         _error = result.error;
-        Fluttertoast.showToast(
-          msg: result.error ?? '연락처 추가에 실패했습니다. 다시 시도해주세요.',
-        );
+        debugPrint(result.error ?? '연락처 추가에 실패했습니다. 다시 시도해주세요.');
         return false;
       }
     } catch (e) {
@@ -375,7 +372,7 @@ class ContactController extends ChangeNotifier {
       _isLoading = false;
       _error = '연락처 추가 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '연락처 추가 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('연락처 추가 중 오류가 발생했습니다. 다시 시도해주세요.');
       return false;
     }
   }
@@ -408,9 +405,7 @@ class ContactController extends ChangeNotifier {
       } else {
         // ❌ 실패 시 UI 피드백
         _error = result.error;
-        Fluttertoast.showToast(
-          msg: result.error ?? '연락처 추가에 실패했습니다. 다시 시도해주세요.',
-        );
+        debugPrint(result.error ?? '연락처 추가에 실패했습니다. 다시 시도해주세요.');
         return false;
       }
     } catch (e) {
@@ -418,7 +413,7 @@ class ContactController extends ChangeNotifier {
       _isLoading = false;
       _error = '연락처 추가 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '연락처 추가 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('연락처 추가 중 오류가 발생했습니다. 다시 시도해주세요.');
       return false;
     }
   }
@@ -451,23 +446,19 @@ class ContactController extends ChangeNotifier {
       } else {
         // ❌ 실패 시 UI 피드백
         _error = result.error;
-        Fluttertoast.showToast(
-          msg: result.error ?? '연락처 동기화에 실패했습니다. 다시 시도해주세요.',
-        );
+        debugPrint(result.error ?? '연락처 동기화에 실패했습니다. 다시 시도해주세요.');
       }
 
       // 오류가 있는 경우에도 부분적으로 성공했을 수 있음
       if (result.errorCount > 0) {
-        Fluttertoast.showToast(
-          msg: '${result.errorCount}개 연락처에서 오류가 발생했습니다. 다시 시도해주세요.',
-        );
+        debugPrint('${result.errorCount}개 연락처에서 오류가 발생했습니다. 다시 시도해주세요.');
       }
     } catch (e) {
       debugPrint('연락처 동기화 오류: $e');
       _isSyncing = false;
       _error = '연락처 동기화 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '연락처 동기화 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('연락처 동기화 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -522,7 +513,7 @@ class ContactController extends ChangeNotifier {
         return true;
       } else {
         // ❌ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: '연락처 업데이트에 실패했습니다. 다시 시도해주세요.');
+        debugPrint('연락처 업데이트에 실패했습니다. 다시 시도해주세요.');
         return false;
       }
     } catch (e) {
@@ -530,7 +521,7 @@ class ContactController extends ChangeNotifier {
       _isLoading = false;
       _error = e.toString();
       notifyListeners();
-      Fluttertoast.showToast(msg: e.toString());
+      debugPrint(e.toString());
       return false;
     }
   }
@@ -559,12 +550,12 @@ class ContactController extends ChangeNotifier {
 
         return true;
       } else {
-        Fluttertoast.showToast(msg: '즐겨찾기 처리에 실패했습니다. 다시 시도해주세요.');
+        debugPrint('즐겨찾기 처리에 실패했습니다. 다시 시도해주세요.');
         return false;
       }
     } catch (e) {
       debugPrint('즐겨찾기 토글 오류: $e');
-      Fluttertoast.showToast(msg: '즐겨찾기 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('즐겨찾기 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
       return false;
     }
   }
@@ -592,7 +583,7 @@ class ContactController extends ChangeNotifier {
       if (success) {
         // ✅ 성공 시 UI 피드백
         final message = permanentDelete ? '연락처가 완전히 삭제되었습니다.' : '연락처가 삭제되었습니다.';
-        Fluttertoast.showToast(msg: message);
+        debugPrint(message);
 
         // 연락처 목록에서 제거
         _contacts.removeWhere((contact) => contact.id == contactId);
@@ -611,7 +602,7 @@ class ContactController extends ChangeNotifier {
         return true;
       } else {
         // ❌ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: '연락처 삭제에 실패했습니다. 다시 시도해주세요.');
+        debugPrint('연락처 삭제에 실패했습니다. 다시 시도해주세요.');
         return false;
       }
     } catch (e) {
@@ -619,7 +610,7 @@ class ContactController extends ChangeNotifier {
       _isLoading = false;
       _error = e.toString();
       notifyListeners();
-      Fluttertoast.showToast(msg: e.toString());
+      debugPrint(e.toString());
       return false;
     }
   }

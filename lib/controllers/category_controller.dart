@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import '../services/category_service.dart';
 import '../models/category_data_model.dart';
 
@@ -80,7 +79,7 @@ class CategoryController extends ChangeNotifier {
       notifyListeners();
 
       // ✅ UI 피드백
-      Fluttertoast.showToast(msg: '카테고리를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('카테고리를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -123,15 +122,13 @@ class CategoryController extends ChangeNotifier {
       } else {
         debugPrint('CategoryController: 카테고리 생성 실패 - ${result.error}');
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(
-          msg: result.error ?? '카테고리 생성에 실패했습니다. 다시 시도해주세요.',
-        );
+        debugPrint(result.error ?? '카테고리 생성에 실패했습니다. 다시 시도해주세요.');
       }
     } catch (e) {
       debugPrint('카테고리 생성 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '카테고리 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('카테고리 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -164,15 +161,13 @@ class CategoryController extends ChangeNotifier {
         }
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(
-          msg: result.error ?? '카테고리 수정에 실패했습니다. 다시 시도해주세요.',
-        );
+        debugPrint(result.error ?? '카테고리 수정에 실패했습니다. 다시 시도해주세요.');
       }
     } catch (e) {
       debugPrint('카테고리 수정 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '카테고리 수정 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('카테고리 수정 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -194,15 +189,13 @@ class CategoryController extends ChangeNotifier {
         await loadUserCategories(userId);
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(
-          msg: result.error ?? '카테고리 삭제에 실패했습니다. 다시 시도해주세요.',
-        );
+        debugPrint(result.error ?? '카테고리 삭제에 실패했습니다. 다시 시도해주세요.');
       }
     } catch (e) {
       debugPrint('카테고리 삭제 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '카테고리 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('카테고리 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -237,15 +230,13 @@ class CategoryController extends ChangeNotifier {
         debugPrint('사진이 추가되었습니다.');
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(
-          msg: result.error ?? '사진 추가에 실패했습니다. 다시 시도해주세요.',
-        );
+        debugPrint(result.error ?? '사진 추가에 실패했습니다. 다시 시도해주세요.');
       }
     } catch (e) {
       debugPrint('사진 추가 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '사진 추가 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('사진 추가 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -273,15 +264,13 @@ class CategoryController extends ChangeNotifier {
         debugPrint('사진이 삭제되었습니다.');
       } else {
         // ✅ 실패 시 UI 피드백
-        Fluttertoast.showToast(
-          msg: result.error ?? '사진 삭제에 실패했습니다. 다시 시도해주세요.',
-        );
+        debugPrint(result.error ?? '사진 삭제에 실패했습니다. 다시 시도해주세요.');
       }
     } catch (e) {
       debugPrint('사진 삭제 오류: $e');
       _isLoading = false;
       notifyListeners();
-      Fluttertoast.showToast(msg: '사진 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('사진 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 

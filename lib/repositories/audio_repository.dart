@@ -4,7 +4,6 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../models/audio_data_model.dart';
 
 /// Firebase에서 오디오 관련 데이터를 가져오고, 저장하고, 업데이트하고 삭제하는 등의 로직들
@@ -12,37 +11,49 @@ class AudioRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
   static const MethodChannel _channel = MethodChannel('native_recorder');
-  static final Permission _microphonePermission = Permission.microphone;
 
-  // ==================== 권한 관리 ====================
+  // ==================== 권한 관리 (네이티브) ====================
 
-  /// 마이크 권한 요청
-  static Future<bool> requestPermission() async {
+  /// 마이크 권한 상태 확인 (네이티브에서 처리)
+  static Future<bool> checkMicrophonePermission() async {
     try {
-      _microphonePermission.request().then((status) {
-        if (status.isGranted) {
-          debugPrint('마이크 권한이 허용되었습니다.');
-          return true;
-        } else if (status.isDenied) {
-          debugPrint('마이크 권한이 거부되었습니다.');
-          return false;
-        } else if (status.isPermanentlyDenied) {
-          debugPrint('마이크 권한이 영구적으로 거부되었습니다. 설정에서 변경해주세요.');
-
-          return false;
-        }
-      });
-      return true; // 기본적으로 true 반환
+      final bool hasPermission = await _channel.invokeMethod(
+        'checkMicrophonePermission',
+      );
+      debugPrint('🔍 네이티브 마이크 권한 상태: $hasPermission');
+      return hasPermission;
     } catch (e) {
-      debugPrint('Error requesting permission: $e');
+      debugPrint('❌ 네이티브 마이크 권한 확인 오류: $e');
       return false;
     }
   }
 
-  /// 저장소 권한 요청
+  /// 마이크 권한 요청 (네이티브에서 처리)
+  static Future<bool> requestMicrophonePermission() async {
+    try {
+      debugPrint('🎤 네이티브에서 마이크 권한을 요청합니다...');
+      final bool granted = await _channel.invokeMethod(
+        'requestMicrophonePermission',
+      );
+
+      if (granted) {
+        debugPrint('✅ 네이티브 마이크 권한이 허용되었습니다.');
+        return true;
+      } else {
+        debugPrint('❌ 네이티브 마이크 권한이 거부되었습니다.');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ 네이티브 마이크 권한 요청 중 오류: $e');
+      return false;
+    }
+  }
+
+  /// 저장소 권한 요청 (네이티브에서 처리하지 않음)
   Future<bool> requestStoragePermission() async {
-    final status = await Permission.storage.request();
-    return status == PermissionStatus.granted;
+    // 저장소 권한은 현재 사용하지 않음 (Firebase Storage 사용)
+    debugPrint('저장소 권한은 Firebase Storage 사용으로 불필요');
+    return true;
   }
 
   // ==================== 네이티브 녹음 관리 ====================
@@ -64,9 +75,9 @@ class AudioRepository {
   static Future<String> startRecording() async {
     try {
       final tempDir = await getTemporaryDirectory();
-      final String fileExtension = '.m4a'; // AAC 코덱 사용
+      //final String fileExtension = '.m4a'; // AAC 코덱 사용
       String filePath =
-          '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+          '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
       final String startedPath = await _channel.invokeMethod('startRecording', {
         'filePath': filePath,

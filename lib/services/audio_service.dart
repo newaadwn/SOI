@@ -9,6 +9,18 @@ import '../models/auth_result.dart';
 class AudioService {
   final AudioRepository _repository = AudioRepository();
 
+  // ==================== 권한 관리 ====================
+
+  /// 마이크 권한 상태 확인
+  Future<bool> checkMicrophonePermission() async {
+    return await AudioRepository.checkMicrophonePermission();
+  }
+
+  /// 마이크 권한 요청
+  Future<bool> requestMicrophonePermission() async {
+    return await AudioRepository.requestMicrophonePermission();
+  }
+
   // ==================== 비즈니스 로직 ====================
 
   /// 오디오 파일 이름 검증
@@ -43,7 +55,7 @@ class AudioService {
   Future<AuthResult> initialize() async {
     try {
       // 1. 권한 확인
-      final micPermission = await AudioRepository.requestPermission();
+      final micPermission = await AudioRepository.requestMicrophonePermission();
       if (!micPermission) {
         return AuthResult.failure('마이크 권한이 필요합니다.');
       }
