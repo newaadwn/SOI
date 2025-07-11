@@ -6,8 +6,6 @@ import '../../controllers/audio_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/photo_controller.dart';
-
-// 분리된 위젯들을 임포트
 import '../home_navigator_screen.dart';
 import 'widgets/photo_display_widget.dart';
 import 'widgets/audio_recorder_widget.dart';
@@ -206,13 +204,19 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       _isLoading = true;
     });
 
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
+      ),
+      (route) => false,
+    );
+
     try {
       // 현재 사용자 닉네임 가져오기
       final userNickName = await _authController.getIdFromFirestore();
       debugPrint('사용자 닉네임: $userNickName');
 
       String imagePath = '';
-      bool uploadSuccess = false;
 
       // 로컬 이미지 경로나 다운로드 URL 중 하나 선택
       if (_useLocalImage && widget.imagePath != null) {
@@ -234,15 +238,13 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         debugPrint('사용자 UID: $userId');
 
         // PhotoController를 사용하여 사진 업로드 (Firebase UID 사용)
-        uploadSuccess = await _photoController.uploadPhoto(
+        await _photoController.uploadPhoto(
           imageFile: File(imagePath),
           categoryId: categoryId,
           userId: userId, // userNickName 대신 Firebase Auth UID 사용
           userIds: [userId], // userNickName 대신 Firebase Auth UID 사용
           audioFile: audioPath.isNotEmpty ? File(audioPath) : null,
         );
-
-        debugPrint('로컬 이미지 업로드 결과: $uploadSuccess');
       } else if (_useDownloadUrl && widget.downloadUrl != null) {
         debugPrint('다운로드 URL 업로드는 현재 지원되지 않습니다: ${widget.downloadUrl}');
         // downloadUrl의 경우 URL에서 이미지를 다운로드한 후 업로드해야 함
@@ -256,23 +258,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
           context,
         ).showSnackBar(SnackBar(content: Text('업로드할 이미지가 없습니다.')));
         return;
-      }
-
-      // 업로드 성공 시 처리
-      if (uploadSuccess) {
-        debugPrint('업로드 성공!');
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
-          ),
-        );
-
-        // 잠시 대기 후 화면 이동
-        Future.delayed(Duration(milliseconds: 500));
-      } else {
-        debugPrint('업로드 실패');
       }
     } catch (e) {
       debugPrint('사진 및 음성 업로드 오류: $e');

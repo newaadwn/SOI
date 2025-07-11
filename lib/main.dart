@@ -10,8 +10,7 @@ import 'views/about_archiving/archive_main_screen.dart';
 import 'views/about_archiving/personal_archives_screen.dart';
 import 'views/about_archiving/shared_archives_screen.dart';
 import 'views/about_camera/camera_screen.dart';
-import 'views/about_category/category_select_screen.dart';
-import 'views/about_contacts/contact_selector_screen.dart';
+import 'views/about_contacts/contact_manager_screen.dart';
 import 'views/about_login/register_screen.dart';
 import 'views/about_login/login_screen.dart';
 import 'views/about_login/start_screen.dart';
@@ -94,15 +93,12 @@ class MyApp extends StatelessWidget {
           '/auth': (context) => const AuthScreen(),
           '/login': (context) => const LoginScreen(),
 
-          // 카테고리 관련 라우트
-          '/category_select': (context) => const CategorySelectScreen(),
-
           // 아카이빙 관련 라우트
           '/share_record': (context) => const SharedArchivesScreen(),
           '/my_record': (context) => const PersonalArchivesScreen(),
           '/all_category': (context) => const AllArchivesScreen(),
           '/privacy_policy': (context) => const PrivacyPolicyScreen(),
-          '/add_contacts': (context) => const ContactSelectorScreen(),
+          '/contact_manager': (context) => const ContactManagerScreen(),
         },
         theme: ThemeData(iconTheme: IconThemeData(color: Colors.white)),
       ),

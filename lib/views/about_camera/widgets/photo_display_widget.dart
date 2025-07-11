@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'dart:io'; // File 클래스를 사용하기 위한 import 추가
 
-/// 이미지를 표시하는 위젯
-///
-/// 로컬 이미지 경로나 Firebase Storage URL을 기반으로 이미지를 표시합니다.
+// 이미지를 표시하는 위젯
+// 로컬 이미지 경로나 Firebase Storage URL을 기반으로 이미지를 표시합니다.
 class PhotoDisplayWidget extends StatelessWidget {
   // 로컬 이미지 경로를 우선적으로 사용해서 이미지를 띄우고 로컬 이미지 경로가 없을 경우 Firebase Storage URL을 사용합니다.
   final String? imagePath; // 로컬 이미지 경로
@@ -15,14 +14,14 @@ class PhotoDisplayWidget extends StatelessWidget {
   final double height;
 
   const PhotoDisplayWidget({
-    Key? key,
+    super.key,
     this.imagePath,
     this.downloadUrl,
     required this.useLocalImage,
     required this.useDownloadUrl,
     this.width = 354,
     this.height = 471,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

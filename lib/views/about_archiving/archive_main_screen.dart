@@ -116,12 +116,6 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         ),
         actions: [
           IconButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/add_contacts');
-            },
-            icon: Image.asset('assets/person_add.png', width: 19, height: 19),
-          ),
-          IconButton(
             onPressed: () {},
             icon: Icon(Icons.add, color: Colors.white),
           ),

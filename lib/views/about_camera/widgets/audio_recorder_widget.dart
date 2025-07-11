@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:provider/provider.dart';
@@ -82,94 +84,74 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    //double screenHeight = MediaQuery.of(context).size.height;
-
     // AudioController 상태 구독
-    return Consumer<AudioController>(
-      builder: (context, controller, child) {
-        final bool isRecording = controller.isRecording;
-
-        return GestureDetector(
-          onLongPressStart: (details) {
-            if (!isRecording) {
-              _startRecording();
-            }
-          },
-          onLongPressEnd: (details) {
-            if (isRecording) {
-              _stopRecording();
-            }
-          },
-
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children:
-                isRecording
-                    ? [
-                      Container(
-                        width: 376 / 393 * screenWidth,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          color: Color(0xff1c1c1c),
-                          borderRadius: BorderRadius.circular(14.6),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            SizedBox(width: 14),
-                            GestureDetector(
-                              onTap: _stopRecording,
-                              child: Container(
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade800,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Image.asset(
-                                  'assets/trash.png',
-                                  width: 32,
-                                  height: 32,
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 19.5),
-                            Expanded(
-                              child: AudioWaveforms(
-                                size: Size(1, 52),
-                                recorderController: recorderController,
-                                waveStyle: const WaveStyle(
-                                  waveColor: Colors.white,
-                                  extendWaveform: true,
-                                  showMiddleLine: false,
-                                ),
-                              ),
-                            ),
-
-                            Text(
-                              controller.formattedRecordingDuration,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                              ),
-                            ),
-                            SizedBox(width: 24),
-                          ],
-                        ),
-                      ),
-                    ]
-                    : [
-                      Image.asset(
-                        width: 64,
-                        height: 64,
-                        'assets/record_icon.png',
-                      ),
-                    ],
+    return Selector<AudioController, ({bool isRecording, String duration})>(
+      selector:
+          (context, controller) => (
+            isRecording: controller.isRecording,
+            duration: controller.formattedRecordingDuration,
           ),
+      builder: (context, data, child) {
+        return GestureDetector(
+          onTap: () => data.isRecording ? null : _startRecording(),
+          onDoubleTap: () => data.isRecording ? _stopRecording() : null,
+          child:
+              data.isRecording
+                  ? _buildRecordingUI(data.duration)
+                  : _buildIdleUI(),
         );
       },
     );
+  }
+
+  Widget _buildRecordingUI(String duration) {
+    double screenWidth = MediaQuery.of(context).size.width;
+
+    return Container(
+      width: 376 / 393 * screenWidth,
+      height: 52,
+      decoration: BoxDecoration(
+        color: Color(0xff1c1c1c),
+        borderRadius: BorderRadius.circular(14.6),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          SizedBox(width: 14),
+          GestureDetector(
+            onTap: _stopRecording,
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade800,
+                shape: BoxShape.circle,
+              ),
+              child: Image.asset('assets/trash.png', width: 32, height: 32),
+            ),
+          ),
+          SizedBox(width: 19.5),
+          Expanded(
+            child: AudioWaveforms(
+              size: Size(1, 52),
+              recorderController: recorderController,
+              waveStyle: const WaveStyle(
+                waveColor: Colors.white,
+                extendWaveform: true,
+                showMiddleLine: false,
+              ),
+            ),
+          ),
+
+          Text(duration, style: TextStyle(color: Colors.white, fontSize: 14)),
+          SizedBox(width: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildIdleUI() {
+    return Image.asset(width: 64, height: 64, 'assets/record_icon.png');
   }
 
   @override

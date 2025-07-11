@@ -1,9 +1,8 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/camera_service.dart';
-import '../../theme/theme.dart';
+//import '../../theme/theme.dart';
 import 'photo_editor_screen.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 
@@ -20,7 +19,6 @@ class _CameraScreenState extends State<CameraScreen>
   final CameraService _cameraService = CameraService();
 
   // ✅ 추가: 카메라 관련 상태 변수
-
   // 촬영된 이미지 경로
   String imagePath = '';
 
@@ -28,7 +26,6 @@ class _CameraScreenState extends State<CameraScreen>
   bool isFlashOn = false;
 
   // ✅ 추가: 줌 레벨 관리
-
   // 기본 줌 레벨
   String currentZoom = '1x';
 
@@ -135,194 +132,193 @@ class _CameraScreenState extends State<CameraScreen>
     double screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
-      backgroundColor: Colors.black, // 배경을 검정색으로 설정
-      extendBodyBehindAppBar: true, // AppBar 뒤로 본문 확장
+      backgroundColor: Color(0xff000000), // 배경을 검정색으로 설정
+
       appBar: AppBar(
-        title: Text(
-          'SOI',
-          style: TextStyle(color: AppTheme.lightTheme.colorScheme.secondary),
-        ),
-        backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        toolbarHeight: 70 / 852 * screenHeight,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        title: Row(
           children: [
-            SizedBox(height: 100 / 852 * screenHeight),
-
-            // 카메라 초기화 상태에 따라 로딩 표시 또는 카메라 뷰 표시
-            FutureBuilder<void>(
-              future: _cameraInitialization,
-              builder: (context, snapshot) {
-                // 카메라 초기화 중이면 로딩 인디케이터 표시
-                if (_isLoading) {
-                  return Container(
-                    width: 355 / 393 * screenWidth,
-                    height: 472 / 852 * screenHeight,
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(color: Colors.white),
-                        ],
-                      ),
-                    ),
-                  );
-                }
-
-                // 초기화 실패 시 오류 메시지 표시
-                if (snapshot.hasError) {
-                  return Container(
-                    width: 355 / 393 * screenWidth,
-                    height: 472 / 852 * screenHeight,
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '카메라를 초기화할 수 없습니다.\n앱을 다시 시작해 주세요.',
-                        style: TextStyle(color: Colors.white),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  );
-                }
-
-                // 카메라 초기화 완료되면 카메라 뷰 표시
-                return Stack(
-                  alignment: Alignment.topCenter,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: SizedBox(
-                        width: 355 / 393 * screenWidth,
-                        height: 472 / 852 * screenHeight,
-                        child: _cameraService.getCameraView(),
-                      ),
-                    ),
-                    // 플래시 버튼
-                    SizedBox(
-                      width: 50,
-                      height: 50,
-                      child: IconButton(
-                        onPressed: _toggleFlash,
-                        icon: Icon(
-                          isFlashOn ? EvaIcons.flash : EvaIcons.flashOff,
-                          color: Colors.white,
-                          size: 28,
-                        ),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ],
-                );
-              },
+            IconButton(
+              onPressed: () => Navigator.pushNamed(context, '/contact_manager'),
+              icon: Image.asset("assets/contacts.png", width: 35, height: 35),
             ),
-            SizedBox(height: 44 / 852 * screenHeight),
 
-            // ✅ 수정: 하단 버튼 레이아웃 변경
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                //image picker로 갤러리에서 사진 선택
-
-                // 갤러리 버튼
-                Expanded(
-                  child: Align(
-                    alignment: Alignment.center,
-                    child: InkWell(
-                      onTap: () {
-                        _cameraService.pickImageFromGallery().then((result) {
-                          if (result != null && result.isNotEmpty) {
-                            // 선택한 이미지 경로를 편집 화면으로 전달
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder:
-                                    (context) =>
-                                        PhotoEditorScreen(imagePath: result),
-                              ),
-                            );
-                          }
-                        });
-                      },
-                      child: FutureBuilder(
-                        future: _cameraService.pickFirstImageFromGallery(),
-                        builder: (context, snapshot) {
-                          debugPrint("snapshot: ${snapshot.data}");
-                          return (snapshot.hasData)
-                              ? Container(
-                                width: 46,
-                                height: 46,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.rectangle,
-                                  borderRadius: BorderRadius.circular(8.76),
-
-                                  image: DecorationImage(
-                                    image: FileImage(File(snapshot.data!)),
-                                    fit: BoxFit.cover,
-                                  ),
-                                ),
-                              )
-                              : Container(
-                                width: 46,
-                                height: 46,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.rectangle,
-                                  borderRadius: BorderRadius.circular(8.76),
-                                  color: Colors.white,
-                                ),
-                              );
-                        },
-                      ),
-                    ),
+            Expanded(
+              child: Center(
+                child: Text(
+                  'SOI',
+                  style: TextStyle(
+                    color: Color(0xfff8f8f8),
+                    fontSize: 20,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                // 촬영 버튼
-                GestureDetector(
-                  onTap: _takePicture,
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 5),
-                    ),
-                    child: Center(
-                      child: Container(
-                        width: 65,
-                        height: 65,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // 카메라 전환 버튼
-                Expanded(
-                  child: SizedBox(
-                    width: 67,
-                    height: 56,
-                    child: IconButton(
-                      onPressed: _switchCamera,
-                      icon: Image.asset("assets/switch.png"),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
+
+            IconButton(onPressed: () {}, icon: Text('')),
           ],
         ),
+
+        backgroundColor: Color(0xff000000),
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          //SizedBox(height: 20 / 852 * screenHeight),
+
+          // 카메라 초기화 상태에 따라 로딩 표시 또는 카메라 뷰 표시
+          FutureBuilder<void>(
+            future: _cameraInitialization,
+            builder: (context, snapshot) {
+              // 카메라 초기화 중이면 로딩 인디케이터 표시
+              if (_isLoading) {
+                return Container(
+                  width: 355,
+                  height: 472,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircularProgressIndicator(color: Colors.white),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              // 초기화 실패 시 오류 메시지 표시
+              if (snapshot.hasError) {
+                return Container(
+                  width: 355,
+                  height: 472,
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '카메라를 초기화할 수 없습니다.\n앱을 다시 시작해 주세요.',
+                      style: TextStyle(color: Colors.white),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                );
+              }
+
+              // 카메라 초기화 완료되면 카메라 뷰 표시
+              return Stack(
+                alignment: Alignment.topCenter,
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: SizedBox(
+                      width: 354 / 393 * screenWidth,
+                      height: 500 / 852 * screenHeight,
+                      child: _cameraService.getCameraView(),
+                    ),
+                  ),
+
+                  // 플래시 버튼
+                  IconButton(
+                    onPressed: _toggleFlash,
+                    icon: Icon(
+                      isFlashOn ? EvaIcons.flash : EvaIcons.flashOff,
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                    padding: EdgeInsets.zero,
+                  ),
+                ],
+              );
+            },
+          ),
+          SizedBox(height: 24 / 852 * screenHeight),
+
+          // ✅ 수정: 하단 버튼 레이아웃 변경
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // 갤러리 버튼
+              Expanded(
+                child: Align(
+                  alignment: Alignment.center,
+                  child: InkWell(
+                    onTap: () {
+                      _cameraService.pickImageFromGallery().then((result) {
+                        if (result != null && result.isNotEmpty) {
+                          // 선택한 이미지 경로를 편집 화면으로 전달
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) =>
+                                      PhotoEditorScreen(imagePath: result),
+                            ),
+                          );
+                        }
+                      });
+                    },
+                    child: FutureBuilder(
+                      future: _cameraService.pickFirstImageFromGallery(),
+                      builder: (context, snapshot) {
+                        debugPrint("snapshot: ${snapshot.data}");
+                        return (snapshot.hasData)
+                            ? Container(
+                              width: 46,
+                              height: 46,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.rectangle,
+                                borderRadius: BorderRadius.circular(8.76),
+
+                                image: DecorationImage(
+                                  image: FileImage(File(snapshot.data!)),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            )
+                            : Container(
+                              width: 46,
+                              height: 46,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.rectangle,
+                                borderRadius: BorderRadius.circular(8.76),
+                                color: Colors.white,
+                              ),
+                            );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+
+              // 촬영 버튼
+              IconButton(
+                onPressed: _takePicture,
+                icon: Image.asset(
+                  "assets/take_picture.png",
+                  width: 65,
+                  height: 65,
+                ),
+              ),
+
+              // 카메라 전환 버튼
+              Expanded(
+                child: SizedBox(
+                  height: 90 / 852 * screenHeight,
+                  child: IconButton(
+                    onPressed: _switchCamera,
+                    color: Color(0xffd9d9d9),
+                    icon: Image.asset("assets/switch.png"),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
