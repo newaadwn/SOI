@@ -381,13 +381,13 @@ class ContactService {
   }
 
   /// 연락처 권한 요청
-  Future<PermissionStatus> requestContactsPermission() async {
+  Future<bool> requestContactsPermission() async {
     return await _contactRepository.requestContactsPermission();
   }
 
   /// 설정 앱 열기
   Future<bool> openSettings() async {
-    return await _contactRepository.openAppSettings();
+    return await _contactRepository.openAppSetting();
   }
 
   // ==================== 디바이스 연락처 조회 ====================

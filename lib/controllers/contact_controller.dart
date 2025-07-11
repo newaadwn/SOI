@@ -714,7 +714,7 @@ class ContactController extends ChangeNotifier {
     return await _contactService.checkContactsPermission();
   }
 
-  Future<PermissionStatus> requestContactsPermission() async {
+  Future<bool> requestContactsPermission() async {
     return await _contactService.requestContactsPermission();
   }
 

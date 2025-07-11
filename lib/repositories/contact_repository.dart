@@ -267,12 +267,12 @@ class ContactRepository {
   }
 
   /// 연락처 권한 요청
-  Future<PermissionStatus> requestContactsPermission() async {
-    return await _contactsPermission.request();
+  Future<bool> requestContactsPermission() async {
+    return await FlutterContacts.requestPermission();
   }
 
   /// 설정 앱으로 이동
-  Future<bool> openAppSettings() async {
+  Future<bool> openAppSetting() async {
     return await openAppSettings();
   }
 
