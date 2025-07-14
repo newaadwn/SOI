@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../services/contact_service.dart';
 import '../models/contact_data_model.dart';
 
@@ -16,8 +14,6 @@ class ContactController extends ChangeNotifier {
 
   List<ContactDataModel> _contacts = [];
   List<ContactDataModel> _favoriteContacts = [];
-  List<Contact> _deviceContacts = [];
-  List<Contact> _filteredDeviceContacts = [];
   ContactDataModel? _selectedContact;
   Map<String, int> _contactStats = {};
   Set<String> _addedContactPhones = {};
@@ -36,14 +32,12 @@ class ContactController extends ChangeNotifier {
   String? get error => _error;
   List<ContactDataModel> get contacts => _contacts;
   List<ContactDataModel> get favoriteContacts => _favoriteContacts;
-  List<Contact> get deviceContacts => _deviceContacts;
-  List<Contact> get filteredDeviceContacts => _filteredDeviceContacts;
   ContactDataModel? get selectedContact => _selectedContact;
   Map<String, int> get contactStats => _contactStats;
   String get searchQuery => _searchQuery;
   bool get hasContacts => _contacts.isNotEmpty;
-  bool get hasDeviceContacts => _deviceContacts.isNotEmpty;
-  bool get hasFilteredContacts => _filteredDeviceContacts.isNotEmpty;
+
+  bool get isContactSyncEnabled => !_permissionDenied;
 
   // ==================== 초기화 ====================
 
@@ -86,31 +80,21 @@ class ContactController extends ChangeNotifier {
   /// 연락처 권한 요청
   Future<void> requestContactPermission() async {
     try {
-      final permissionStatus = await _contactService.checkContactsPermission();
+      // bool 기반으로 단순화
+      final hasPermission = await _contactService.requestContactsPermission();
 
-      if (permissionStatus != PermissionStatus.granted) {
-        final requestResult = await _contactService.requestContactsPermission();
-
-        if (requestResult != PermissionStatus.granted) {
-          _permissionDenied = true;
-          notifyListeners();
-
-          if (requestResult == PermissionStatus.permanentlyDenied) {
-            debugPrint('설정에서 연락처 권한을 허용해주세요.');
-          } else {
-            debugPrint('연락처 권한이 필요합니다.');
-          }
-          return;
-        }
-      }
-
-      _permissionDenied = false;
+      _permissionDenied = !hasPermission;
       notifyListeners();
+
+      if (hasPermission) {
+        debugPrint('연락처 권한이 허용되었습니다.');
+      } else {
+        debugPrint('연락처 권한이 거부되었습니다.');
+      }
     } catch (e) {
       debugPrint('연락처 권한 요청 오류: $e');
       _permissionDenied = true;
       notifyListeners();
-      debugPrint('연락처 권한 요청 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -124,6 +108,22 @@ class ContactController extends ChangeNotifier {
     } catch (e) {
       debugPrint('설정 앱 열기 오류: $e');
       debugPrint('설정 앱 열기 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  }
+
+  /// 연락처 권한 상태 확인
+  Future<void> checkContactPermission() async {
+    try {
+      final hasPermission = await _contactService.checkContactsPermission();
+
+      _permissionDenied = !hasPermission;
+      notifyListeners();
+
+      debugPrint('연락처 권한 상태: ${hasPermission ? "허용됨" : "거부됨"}');
+    } catch (e) {
+      debugPrint('연락처 권한 확인 오류: $e');
+      _permissionDenied = true;
+      notifyListeners();
     }
   }
 
@@ -163,39 +163,6 @@ class ContactController extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       debugPrint('즐겨찾기 연락처 로드 오류: $e');
-    }
-  }
-
-  /// 디바이스 연락처 로드
-  Future<void> loadDeviceContacts() async {
-    try {
-      if (_permissionDenied) {
-        await requestContactPermission();
-        if (_permissionDenied) return;
-      }
-
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      final deviceContacts = await _contactService.getAllDeviceContacts();
-
-      _deviceContacts = deviceContacts;
-      _filteredDeviceContacts = deviceContacts;
-      _isLoading = false;
-      notifyListeners();
-
-      if (deviceContacts.isEmpty) {
-        debugPrint('디바이스에 연락처가 없습니다. 연락처를 추가해주세요.');
-      } else {
-        debugPrint('${deviceContacts.length}개의 연락처를 찾았습니다.');
-      }
-    } catch (e) {
-      debugPrint('디바이스 연락처 로드 오류: $e');
-      _isLoading = false;
-      _error = '디바이스 연락처를 불러오는 중 오류가 발생했습니다.';
-      notifyListeners();
-      debugPrint('디바이스 연락처를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -281,37 +248,6 @@ class ContactController extends ChangeNotifier {
     }
   }
 
-  /// 디바이스 연락처 검색
-  void filterDeviceContacts(String query) {
-    _searchQuery = query;
-
-    if (query.trim().isEmpty) {
-      _filteredDeviceContacts = _deviceContacts;
-    } else {
-      final lowercaseQuery = query.toLowerCase();
-      _filteredDeviceContacts =
-          _deviceContacts.where((contact) {
-            final name = contact.displayName.toLowerCase();
-            final phone =
-                contact.phones.isNotEmpty
-                    ? contact.phones.first.number.toLowerCase()
-                    : '';
-            return name.contains(lowercaseQuery) ||
-                phone.contains(lowercaseQuery);
-          }).toList();
-    }
-
-    notifyListeners();
-  }
-
-  /// 검색 초기화
-  void clearSearch() {
-    _searchQuery = '';
-    _filteredDeviceContacts = _deviceContacts;
-    loadContacts(filter: _currentFilter);
-    notifyListeners();
-  }
-
   // ==================== 연락처 추가 ====================
 
   /// 연락처 추가
@@ -374,91 +310,6 @@ class ContactController extends ChangeNotifier {
       notifyListeners();
       debugPrint('연락처 추가 중 오류가 발생했습니다. 다시 시도해주세요.');
       return false;
-    }
-  }
-
-  /// 디바이스 연락처에서 추가
-  Future<bool> addContactFromDevice(Contact deviceContact) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      final result = await _contactService.addContactFromDevice(deviceContact);
-
-      _isLoading = false;
-      notifyListeners();
-
-      if (result.isSuccess) {
-        // ✅ 성공 시 UI 피드백
-        debugPrint('${deviceContact.displayName}이(가) 추가되었습니다.');
-
-        // 추가된 연락처 전화번호 기록
-        if (deviceContact.phones.isNotEmpty) {
-          _addedContactPhones.add(deviceContact.phones.first.number);
-        }
-
-        // 연락처 목록 새로고침
-        await loadContacts(filter: _currentFilter);
-
-        return true;
-      } else {
-        // ❌ 실패 시 UI 피드백
-        _error = result.error;
-        debugPrint(result.error ?? '연락처 추가에 실패했습니다. 다시 시도해주세요.');
-        return false;
-      }
-    } catch (e) {
-      debugPrint('디바이스 연락처 추가 오류: $e');
-      _isLoading = false;
-      _error = '연락처 추가 중 오류가 발생했습니다.';
-      notifyListeners();
-      debugPrint('연락처 추가 중 오류가 발생했습니다. 다시 시도해주세요.');
-      return false;
-    }
-  }
-
-  /// 디바이스 연락처 일괄 동기화
-  Future<void> syncContactsFromDevice({
-    bool skipDuplicates = true,
-    int? maxCount,
-  }) async {
-    try {
-      _isSyncing = true;
-      _error = null;
-      notifyListeners();
-
-      final result = await _contactService.syncContactsFromDevice(
-        skipDuplicates: skipDuplicates,
-        maxCount: maxCount,
-      );
-
-      _isSyncing = false;
-      notifyListeners();
-
-      if (result.isSuccess) {
-        // ✅ 성공 시 UI 피드백
-        debugPrint('${result.addedCount}개 연락처가 동기화되었습니다.');
-
-        // 연락처 목록 새로고침
-        await loadContacts(filter: _currentFilter);
-        await loadContactStats();
-      } else {
-        // ❌ 실패 시 UI 피드백
-        _error = result.error;
-        debugPrint(result.error ?? '연락처 동기화에 실패했습니다. 다시 시도해주세요.');
-      }
-
-      // 오류가 있는 경우에도 부분적으로 성공했을 수 있음
-      if (result.errorCount > 0) {
-        debugPrint('${result.errorCount}개 연락처에서 오류가 발생했습니다. 다시 시도해주세요.');
-      }
-    } catch (e) {
-      debugPrint('연락처 동기화 오류: $e');
-      _isSyncing = false;
-      _error = '연락처 동기화 중 오류가 발생했습니다.';
-      notifyListeners();
-      debugPrint('연락처 동기화 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -648,21 +499,6 @@ class ContactController extends ChangeNotifier {
     return _addedContactPhones.contains(phoneNumber);
   }
 
-  /// 연락처 이니셜 가져오기
-  String getInitials(String? name) {
-    return _contactService.getInitials(name);
-  }
-
-  /// 전화번호 포맷팅
-  String formatPhoneNumber(String? phone) {
-    return _contactService.formatPhoneNumber(phone);
-  }
-
-  /// 연락처 아바타 위젯 생성
-  Widget buildContactAvatar(Contact contact, {double radius = 20.0}) {
-    return _contactService.buildContactAvatar(contact, radius: radius);
-  }
-
   /// 에러 상태 초기화
   void clearError() {
     _error = null;
@@ -710,7 +546,7 @@ class ContactController extends ChangeNotifier {
     }
   }
 
-  Future<PermissionStatus> checkContactsPermission() async {
+  Future<bool> checkContactsPermission() async {
     return await _contactService.checkContactsPermission();
   }
 
@@ -720,28 +556,6 @@ class ContactController extends ChangeNotifier {
 
   Future<bool> openSettings() async {
     return await _contactService.openSettings();
-  }
-
-  Future<List<Contact>> getAllContacts() async {
-    return await _contactService.getAllDeviceContacts();
-  }
-
-  Future<List<Contact>> searchContactsByName(String query) async {
-    return await _contactService.searchDeviceContacts(query);
-  }
-
-  List<Contact> filterContacts(List<Contact> contacts, String query) {
-    if (query.isEmpty) return contacts;
-
-    final lowercaseQuery = query.toLowerCase();
-    return contacts.where((contact) {
-      final name = contact.displayName.toLowerCase();
-      final phone =
-          contact.phones.isNotEmpty
-              ? contact.phones.first.number.toLowerCase()
-              : '';
-      return name.contains(lowercaseQuery) || phone.contains(lowercaseQuery);
-    }).toList();
   }
 
   // ==================== 리소스 해제 ====================

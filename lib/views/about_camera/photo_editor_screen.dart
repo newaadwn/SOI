@@ -238,13 +238,26 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         debugPrint('사용자 UID: $userId');
 
         // PhotoController를 사용하여 사진 업로드 (Firebase UID 사용)
-        await _photoController.uploadPhoto(
-          imageFile: File(imagePath),
-          categoryId: categoryId,
-          userId: userId, // userNickName 대신 Firebase Auth UID 사용
-          userIds: [userId], // userNickName 대신 Firebase Auth UID 사용
-          audioFile: audioPath.isNotEmpty ? File(audioPath) : null,
-        );
+        // 오디오가 있으면 파형 데이터와 함께 업로드, 없으면 일반 업로드
+        if (audioPath.isNotEmpty) {
+          debugPrint('🎵 오디오 파일이 있어서 파형 데이터와 함께 업로드: $audioPath');
+          await _photoController.uploadPhotoWithAudio(
+            imageFilePath: imagePath,
+            audioFilePath: audioPath,
+            userID: userId,
+            userIds: [userId],
+            categoryId: categoryId,
+          );
+        } else {
+          debugPrint('📷 이미지만 업로드 (오디오 없음)');
+          await _photoController.uploadPhoto(
+            imageFile: File(imagePath),
+            categoryId: categoryId,
+            userId: userId,
+            userIds: [userId],
+            audioFile: null,
+          );
+        }
       } else if (_useDownloadUrl && widget.downloadUrl != null) {
         debugPrint('다운로드 URL 업로드는 현재 지원되지 않습니다: ${widget.downloadUrl}');
         // downloadUrl의 경우 URL에서 이미지를 다운로드한 후 업로드해야 함

@@ -135,6 +135,44 @@ class PhotoController extends ChangeNotifier {
     );
   }
 
+  /// 사진 업로드 (파형 데이터 포함)
+  Future<bool> uploadPhotoWithAudio({
+    required String imageFilePath,
+    required String audioFilePath,
+    required String userID,
+    required List<String> userIds,
+    required String categoryId,
+  }) async {
+    try {
+      _isUploading = true;
+      _uploadProgress = 0.0;
+      _error = null;
+      notifyListeners();
+
+      // Service를 통해 업로드 (파형 데이터 자동 생성)
+      final photoId = await _photoService.savePhotoWithAudio(
+        imageFilePath: imageFilePath,
+        audioFilePath: audioFilePath,
+        userID: userID,
+        userIds: userIds,
+        categoryId: categoryId,
+      );
+
+      _isUploading = false;
+      _uploadProgress = 1.0;
+      notifyListeners();
+
+      debugPrint('사진이 성공적으로 업로드되었습니다. ID: $photoId');
+      return true;
+    } catch (e) {
+      debugPrint('사진 업로드 실패: $e');
+      _isUploading = false;
+      _error = '사진 업로드 중 오류가 발생했습니다.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   // ==================== 사진 조회 ====================
 
   /// 카테고리별 사진 목록 로드

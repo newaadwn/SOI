@@ -34,6 +34,10 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String> getUserProfileImageUrlById(String userId) async {
+    return await _authService.getUserProfileImageUrlById(userId);
+  }
+
   // 사용자 검색
   Future<void> searchNickName(String userNickName) async {
     if (userNickName.isEmpty) return;

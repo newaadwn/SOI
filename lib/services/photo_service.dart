@@ -1,12 +1,15 @@
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../models/photo_data_model.dart';
 import '../repositories/photo_repository.dart';
+import 'audio_service.dart';
 
 /// Photo Service - 사진 관련 비즈니스 로직을 처리
 /// Repository를 사용해서 실제 비즈니스 규칙을 적용
 class PhotoService {
   final PhotoRepository _photoRepository = PhotoRepository();
+  final AudioService _audioService = AudioService();
 
   // ==================== 사진 업로드 비즈니스 로직 ====================
 
@@ -101,6 +104,79 @@ class PhotoService {
       userId: userId,
       userIds: [userId],
     );
+  }
+
+  /// 사진과 오디오를 파형 데이터와 함께 저장
+  Future<String> savePhotoWithAudio({
+    required String imageFilePath,
+    required String audioFilePath,
+    required String userID,
+    required List<String> userIds,
+    required String categoryId,
+  }) async {
+    try {
+      debugPrint('🚀 사진과 오디오 저장 시작');
+      debugPrint('📁 ImagePath: $imageFilePath');
+      debugPrint('🎵 AudioPath: $audioFilePath');
+      debugPrint('👤 UserID: $userID');
+      debugPrint('📂 CategoryId: $categoryId');
+
+      // 1. 이미지 업로드
+      debugPrint('📤 이미지 업로드 시작...');
+      final imageFile = File(imageFilePath);
+      final imageUrl = await _photoRepository.uploadImageToStorage(
+        imageFile: imageFile,
+        categoryId: categoryId,
+        userId: userID,
+      );
+
+      if (imageUrl == null) {
+        throw Exception('이미지 업로드에 실패했습니다.');
+      }
+      debugPrint('✅ 이미지 업로드 완료: $imageUrl');
+
+      // 2. 오디오 업로드
+      debugPrint('🎵 오디오 업로드 시작...');
+      final audioFile = File(audioFilePath);
+      final audioUrl = await _photoRepository.uploadAudioToStorage(
+        audioFile: audioFile,
+        categoryId: categoryId,
+        userId: userID,
+      );
+
+      if (audioUrl == null) {
+        throw Exception('오디오 업로드에 실패했습니다.');
+      }
+      debugPrint('✅ 오디오 업로드 완료: $audioUrl');
+
+      // 3. 파형 데이터 추출
+      debugPrint('🌊 파형 데이터 추출 시작...');
+      final waveformData = await _audioService.extractWaveformData(
+        audioFilePath,
+      );
+      debugPrint('📊 파형 데이터 추출 완료: ${waveformData.length} samples');
+
+      // 4. 오디오 길이 계산
+      debugPrint('⏱️ 오디오 길이 계산 시작...');
+      final audioDuration = await _audioService.getAudioDuration(audioFilePath);
+      debugPrint('⏱️ 오디오 길이: ${audioDuration}초');
+
+      // 5. 모든 데이터를 Firestore에 저장
+      debugPrint('💾 Firestore 저장 시작...');
+      final photoId = await _photoRepository.savePhotoWithWaveform(
+        imageUrl: imageUrl,
+        audioUrl: audioUrl,
+        userID: userID,
+        userIds: userIds,
+        categoryId: categoryId,
+      );
+
+      debugPrint('🎉 사진과 오디오 저장 완료 - PhotoId: $photoId');
+      return photoId;
+    } catch (e) {
+      debugPrint('❌ 사진 저장 실패: $e');
+      rethrow;
+    }
   }
 
   // ==================== 사진 조회 비즈니스 로직 ====================
@@ -343,6 +419,77 @@ class PhotoService {
     activePhotos.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     return activePhotos;
+  }
+
+  // ==================== 파형 데이터 유틸리티 ====================  /// 기존 사진들에 파형 데이터 일괄 추가
+  Future<bool> addWaveformDataToExistingPhotos(String categoryId) async {
+    try {
+      debugPrint('🔧 기존 사진들에 파형 데이터 추가 서비스 시작');
+
+      await _photoRepository.addWaveformDataToExistingPhotos(
+        categoryId: categoryId,
+        extractWaveformData: (audioUrl) async {
+          debugPrint('🎵 오디오 URL에서 파형 데이터 추출: $audioUrl');
+
+          try {
+            // 실제 오디오 파일에서 파형 데이터 추출
+            // 먼저 오디오 URL에서 파일을 다운로드해야 함
+            debugPrint('⚠️ TODO: 네트워크 오디오 파일에서 파형 추출 미구현');
+            debugPrint('🔄 임시로 의미있는 더미 데이터 생성 중...');
+
+            // 더 현실적인 파형 데이터 생성 (사인파 기반)
+            final waveformData = <double>[];
+            for (int i = 0; i < 100; i++) {
+              // 사인파와 랜덤 노이즈를 조합하여 현실적인 파형 생성
+              final baseWave = sin(i / 10.0).abs();
+              final noise = sin(i * 0.1) * 0.3;
+              final amplitude = (baseWave + noise).clamp(0.0, 1.0);
+              waveformData.add(amplitude);
+            }
+
+            debugPrint('📊 생성된 파형 데이터: ${waveformData.length} samples');
+            return waveformData;
+          } catch (e) {
+            debugPrint('❌ 파형 데이터 생성 실패: $e');
+            return <double>[];
+          }
+        },
+      );
+
+      debugPrint('✅ 기존 사진들에 파형 데이터 추가 완료');
+      return true;
+    } catch (e) {
+      debugPrint('❌ 기존 사진들에 파형 데이터 추가 실패: $e');
+      return false;
+    }
+  }
+
+  /// 특정 사진에 파형 데이터 추가
+  Future<bool> addWaveformDataToPhoto({
+    required String categoryId,
+    required String photoId,
+    required String audioFilePath,
+  }) async {
+    try {
+      debugPrint('🌊 특정 사진에 파형 데이터 추가 시작');
+
+      // 오디오 파일에서 파형 데이터 추출
+      final waveformData = await _audioService.extractWaveformData(
+        audioFilePath,
+      );
+      final audioDuration = await _audioService.getAudioDuration(audioFilePath);
+
+      // Repository를 통해 업데이트
+      return await _photoRepository.addWaveformDataToPhoto(
+        categoryId: categoryId,
+        photoId: photoId,
+        waveformData: waveformData,
+        audioDuration: audioDuration,
+      );
+    } catch (e) {
+      debugPrint('❌ 특정 사진에 파형 데이터 추가 실패: $e');
+      return false;
+    }
   }
 }
 

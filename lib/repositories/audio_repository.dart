@@ -4,6 +4,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
 import '../models/audio_data_model.dart';
 
 /// Firebase에서 오디오 관련 데이터를 가져오고, 저장하고, 업데이트하고 삭제하는 등의 로직들
@@ -336,5 +337,75 @@ class AudioRepository {
     final ref = _storage.ref().child('audios').child(audioId).child(fileName);
 
     return ref.putFile(file).snapshotEvents;
+  }
+
+  /// 오디오 파일에서 파형 데이터 추출
+  Future<List<double>> extractWaveformData(String audioFilePath) async {
+    debugPrint('🌊 파형 데이터 추출 시작 - 파일: $audioFilePath');
+
+    final controller = PlayerController();
+
+    try {
+      await controller.preparePlayer(
+        path: audioFilePath,
+        shouldExtractWaveform: true,
+      );
+
+      final rawData = controller.waveformData;
+      debugPrint('📊 원본 파형 데이터 길이: ${rawData.length}');
+
+      if (rawData.isEmpty) {
+        debugPrint('⚠️ 파형 데이터가 비어있음');
+        return [];
+      }
+
+      // 데이터 최적화 (100개 포인트로 압축)
+      final compressedData = _compressWaveformData(rawData, targetLength: 100);
+      debugPrint('🗜️ 압축된 파형 데이터 길이: ${compressedData.length}');
+      debugPrint('📈 파형 샘플: ${compressedData.take(5).toList()}...');
+
+      return compressedData;
+    } catch (e) {
+      debugPrint('❌ 파형 데이터 추출 실패: $e');
+      return [];
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  /// 파형 데이터 압축
+  List<double> _compressWaveformData(
+    List<double> data, {
+    int targetLength = 100,
+  }) {
+    if (data.length <= targetLength) return data;
+
+    final step = data.length / targetLength;
+    final compressed = <double>[];
+
+    for (int i = 0; i < targetLength; i++) {
+      final index = (i * step).round();
+      if (index < data.length) {
+        compressed.add(data[index]);
+      }
+    }
+
+    return compressed;
+  }
+
+  /// 오디오 길이 계산 (더 정확한 방법)
+  Future<double> getAudioDurationAccurate(String audioFilePath) async {
+    final controller = PlayerController();
+
+    try {
+      await controller.preparePlayer(path: audioFilePath);
+      final duration = controller.maxDuration;
+      return duration / 1000.0; // 밀리초를 초로 변환
+    } catch (e) {
+      debugPrint('오디오 길이 계산 실패: $e');
+      return 0.0;
+    } finally {
+      controller.dispose();
+    }
   }
 }

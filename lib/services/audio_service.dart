@@ -413,4 +413,14 @@ class AudioService {
       return AuthResult.failure('오디오 정보 업데이트 중 오류가 발생했습니다.');
     }
   }
+
+  /// 오디오 파일에서 파형 데이터 추출
+  Future<List<double>> extractWaveformData(String audioFilePath) async {
+    return await _repository.extractWaveformData(audioFilePath);
+  }
+
+  /// 오디오 길이 계산
+  Future<double> getAudioDuration(String audioFilePath) async {
+    return await _repository.getAudioDurationAccurate(audioFilePath);
+  }
 }

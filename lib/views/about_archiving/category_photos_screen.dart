@@ -3,17 +3,14 @@ import '../../controllers/category_controller.dart';
 import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
 import '../../models/photo_data_model.dart';
-import 'photo_grid_item.dart'; // 상세 화면 임포트
+import '../../models/category_data_model.dart';
+import '../../services/photo_service.dart';
+import 'photo_grid_item.dart';
 
 class CategoryPhotosScreen extends StatelessWidget {
-  final String categoryId; // 카테고리 ID를 외부에서 전달
-  final String categoryName; // 카테고리 이름을 외부에서 전달
+  final CategoryDataModel category;
 
-  const CategoryPhotosScreen({
-    super.key,
-    required this.categoryId,
-    required this.categoryName,
-  });
+  const CategoryPhotosScreen({super.key, required this.category});
 
   @override
   Widget build(BuildContext context) {
@@ -31,13 +28,36 @@ class CategoryPhotosScreen extends StatelessWidget {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(categoryName, style: const TextStyle(color: Colors.white)),
+            Text(
+              category.name,
+              style: const TextStyle(color: Colors.white, fontSize: 20),
+            ),
+            // 임시 파형 데이터 추가 버튼
+            IconButton(
+              icon: Icon(Icons.graphic_eq, color: Colors.white),
+              onPressed: () async {
+                debugPrint('🔧 파형 데이터 추가 버튼 클릭');
+                final photoService = PhotoService();
+                final success = await photoService
+                    .addWaveformDataToExistingPhotos(category.id);
+
+                if (success) {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('파형 데이터가 추가되었습니다!')));
+                } else {
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text('파형 데이터 추가에 실패했습니다.')));
+                }
+              },
+            ),
           ],
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: categoryController.getPhotosStream(categoryId),
+        stream: categoryController.getPhotosStream(category.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -62,9 +82,9 @@ class CategoryPhotosScreen extends StatelessWidget {
           return GridView.builder(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 0.7,
+              mainAxisSpacing: 13,
+              crossAxisSpacing: 12,
+              childAspectRatio: 0.8,
             ),
             padding: const EdgeInsets.all(8.0),
             itemCount: photos.length,
@@ -76,8 +96,9 @@ class CategoryPhotosScreen extends StatelessWidget {
                 photo: photo,
                 allPhotos: photos,
                 currentIndex: index,
-                categoryName: categoryName,
-                categoryId: categoryId,
+                category: category,
+                categoryName: category.name,
+                categoryId: category.id,
               );
             },
           );

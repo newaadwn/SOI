@@ -26,13 +26,14 @@
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import '../../controllers/category_controller.dart';
 import '../../controllers/audio_controller.dart';
+import '../../models/category_data_model.dart';
 import '../../models/photo_data_model.dart';
+import '../widgets/smart_waveform_widget.dart';
 
 class PhotoDetailScreen extends StatefulWidget {
+  final CategoryDataModel? categoryModel;
   final List<PhotoDataModel> photos;
   final int initialIndex;
   final String categoryName;
@@ -40,6 +41,7 @@ class PhotoDetailScreen extends StatefulWidget {
 
   const PhotoDetailScreen({
     super.key,
+    this.categoryModel,
     required this.photos,
     this.initialIndex = 0,
     required this.categoryName,
@@ -51,111 +53,203 @@ class PhotoDetailScreen extends StatefulWidget {
 }
 
 class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
+  PageController _pageController = PageController();
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final categoryController = Provider.of<CategoryController>(
-      context,
-      listen: false,
-    );
-    final audioController = Provider.of<AudioController>(
-      context,
-      listen: false,
-    );
-
     return Scaffold(
       backgroundColor: Colors.black,
-      appBar: AppBar(
-        iconTheme: IconThemeData(color: Colors.white),
-        backgroundColor: Colors.black,
-        title: Text(
-          widget.categoryName,
-          style: const TextStyle(color: Colors.white),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {},
-            child: Text('수정하기', style: TextStyle(color: Colors.white)),
+      body: Stack(
+        children: [
+          // 사진 페이지뷰
+          PageView.builder(
+            controller: _pageController,
+            itemCount: widget.photos.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              final photo = widget.photos[index];
+              return Center(
+                child: CachedNetworkImage(
+                  imageUrl: photo.imageUrl,
+                  fit: BoxFit.contain,
+                  placeholder:
+                      (context, url) => const CircularProgressIndicator(),
+                  errorWidget: (context, url, error) => const Icon(Icons.error),
+                ),
+              );
+            },
           ),
-        ],
-      ),
-      body: PageView.builder(
-        controller: PageController(initialPage: widget.initialIndex),
-        itemCount: widget.photos.length,
-        itemBuilder: (context, index) {
-          final photo = widget.photos[index];
-          return Center(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Stack(
-                alignment: Alignment.topCenter,
+
+          // 상단 바
+          Positioned(
+            top: MediaQuery.of(context).padding.top,
+            left: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
                 children: [
-                  CachedNetworkImage(
-                    imageUrl: photo.imageUrl,
-                    width: 343,
-                    height: 571,
-                    fit: BoxFit.cover,
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
                   ),
-                  Positioned(
-                    top: 12,
-                    child: Container(
-                      color: Color.fromRGBO(0, 0, 0, 0.3),
-                      child: Text(
-                        DateFormat('yyyy.MM.dd').format(photo.createdAt),
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(color: Colors.white),
+                  Expanded(
+                    child: Text(
+                      widget.categoryName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
+                      textAlign: TextAlign.center,
                     ),
                   ),
-                  Positioned(
-                    top: 500,
-                    left: 270,
-                    child: IconButton(
-                      onPressed: () async {
-                        try {
-                          // 사진의 오디오 URL이 이미 PhotoModel에 있는 경우
-                          if (photo.audioUrl.isNotEmpty) {
-                            await audioController.playAudioFromUrl(
-                              photo.audioUrl,
-                            );
-                          } else {
-                            // 사진 ID를 통해 오디오 URL을 조회하는 경우
-                            String? photoId = await categoryController
-                                .getPhotoDocumentId(
-                                  widget.categoryId,
-                                  photo.imageUrl,
-                                );
-                            if (photoId != null) {
-                              String? audioUrl = await categoryController
-                                  .getPhotoAudioUrl(widget.categoryId, photoId);
-                              if (audioUrl != null && audioUrl.isNotEmpty) {
-                                await audioController.playAudioFromUrl(
-                                  audioUrl,
-                                );
-                              }
-                            }
-                          }
-                        } catch (e) {
-                          // 오류 발생 시 사용자에게 알림
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('음성 재생 중 오류가 발생했습니다.'),
-                              duration: Duration(seconds: 2),
-                            ),
-                          );
-                        }
-                      },
-                      icon: Image.asset(
-                        'assets/voice.png',
-                        width: 52,
-                        height: 52,
+                  const SizedBox(width: 48), // 뒤로가기 버튼과 대칭을 위한 공간
+                ],
+              ),
+            ),
+          ),
+
+          // 음성 파형 UI (하단)
+          if (widget.photos[_currentIndex].audioUrl.isNotEmpty)
+            Positioned(
+              bottom: 100,
+              left: 40,
+              right: 40,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.8),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    // 파형 표시 영역
+                    Container(
+                      height: 80,
+                      width: double.infinity,
+                      child: SmartWaveformWidget(
+                        audioUrl: widget.photos[_currentIndex].audioUrl,
+                        width: MediaQuery.of(context).size.width - 80,
+                        height: 80,
+                        waveColor: Colors.white,
+                        progressColor: Colors.blue,
+                        isPlaying: false, // 나중에 실제 재생 상태로 연결
                       ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // 재생 컨트롤 버튼
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Consumer<AudioController>(
+                          builder: (context, audioController, child) {
+                            return IconButton(
+                              onPressed: () async {
+                                try {
+                                  final photo = widget.photos[_currentIndex];
+
+                                  // 재생/일시정지 토글
+                                  if (audioController.isPlaying) {
+                                    await audioController.pausePlaying();
+                                  } else {
+                                    await audioController.playAudioFromUrl(
+                                      photo.audioUrl,
+                                    );
+                                  }
+                                } catch (e) {
+                                  debugPrint('재생 오류: $e');
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('음성 재생에 실패했습니다.'),
+                                    ),
+                                  );
+                                }
+                              },
+                              icon: Icon(
+                                audioController.isPlaying
+                                    ? Icons.pause
+                                    : Icons.play_arrow,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            );
+                          },
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // 수정 버튼 (우측 하단)
+          Positioned(
+            bottom: 30,
+            right: 30,
+            child: FloatingActionButton(
+              onPressed: () {
+                // 수정 기능 추가 예정
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('수정 기능은 준비중입니다.')));
+              },
+              backgroundColor: Colors.blue,
+              child: const Icon(Icons.edit, color: Colors.white),
+            ),
+          ),
+
+          // 페이지 인디케이터
+          if (widget.photos.length > 1)
+            Positioned(
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_currentIndex + 1} / ${widget.photos.length}',
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ),
                 ],
               ),
             ),
-          );
-        },
+        ],
       ),
     );
   }

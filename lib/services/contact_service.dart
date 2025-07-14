@@ -1,6 +1,3 @@
-import 'package:flutter_contacts/flutter_contacts.dart';
-import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
 import '../models/contact_data_model.dart';
 import '../repositories/contact_repository.dart';
 
@@ -51,82 +48,6 @@ class ContactService {
       }
     } catch (e) {
       return ContactSyncResult.failure('연락처 추가 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  /// 디바이스 연락처에서 가져와서 추가
-  Future<ContactSyncResult> addContactFromDevice(Contact deviceContact) async {
-    try {
-      // 디바이스 연락처를 ContactDataModel로 변환
-      final contactData = ContactDataModel.fromFlutterContact(deviceContact);
-
-      // 비즈니스 로직: 최소 정보 검증
-      if (contactData.displayName.isEmpty && contactData.phoneNumber.isEmpty) {
-        return ContactSyncResult.failure('이름 또는 전화번호가 필요합니다.');
-      }
-
-      return await addContact(contact: contactData);
-    } catch (e) {
-      return ContactSyncResult.failure('디바이스 연락처 추가 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  /// 디바이스 연락처 일괄 동기화
-  Future<ContactSyncResult> syncContactsFromDevice({
-    bool skipDuplicates = true,
-    int? maxCount,
-  }) async {
-    try {
-      // 권한 확인
-      final permissionStatus =
-          await _contactRepository.checkContactsPermission();
-      if (permissionStatus != PermissionStatus.granted) {
-        return ContactSyncResult.failure('연락처 접근 권한이 필요합니다.');
-      }
-
-      // 디바이스 연락처 가져오기
-      final deviceContacts = await _contactRepository.getAllDeviceContacts();
-
-      if (deviceContacts.isEmpty) {
-        return ContactSyncResult.failure('디바이스에 연락처가 없습니다.');
-      }
-
-      // 비즈니스 로직: 최대 개수 제한
-      final contactsToSync =
-          maxCount != null
-              ? deviceContacts.take(maxCount).toList()
-              : deviceContacts;
-
-      int addedCount = 0;
-      int errorCount = 0;
-      List<String> errors = [];
-
-      // 각 연락처 처리
-      for (final deviceContact in contactsToSync) {
-        try {
-          final result = await addContactFromDevice(deviceContact);
-          if (result.isSuccess) {
-            addedCount++;
-          } else {
-            if (!skipDuplicates || !result.error!.contains('이미 등록된')) {
-              errorCount++;
-              errors.add('${deviceContact.displayName}: ${result.error}');
-            }
-          }
-        } catch (e) {
-          errorCount++;
-          errors.add('${deviceContact.displayName}: $e');
-        }
-      }
-
-      return ContactSyncResult(
-        isSuccess: addedCount > 0,
-        addedCount: addedCount,
-        errorCount: errorCount,
-        errors: errors,
-      );
-    } catch (e) {
-      return ContactSyncResult.failure('연락처 동기화 중 오류가 발생했습니다: $e');
     }
   }
 
@@ -376,7 +297,7 @@ class ContactService {
   // ==================== 권한 관리 ====================
 
   /// 연락처 권한 확인
-  Future<PermissionStatus> checkContactsPermission() async {
+  Future<bool> checkContactsPermission() async {
     return await _contactRepository.checkContactsPermission();
   }
 
@@ -388,18 +309,6 @@ class ContactService {
   /// 설정 앱 열기
   Future<bool> openSettings() async {
     return await _contactRepository.openAppSetting();
-  }
-
-  // ==================== 디바이스 연락처 조회 ====================
-
-  /// 디바이스 연락처 전체 조회
-  Future<List<Contact>> getAllDeviceContacts() async {
-    return await _contactRepository.getAllDeviceContacts();
-  }
-
-  /// 디바이스 연락처 검색
-  Future<List<Contact>> searchDeviceContacts(String query) async {
-    return await _contactRepository.searchDeviceContactsByName(query);
   }
 
   // ==================== 기존 호환성 메서드 ====================
@@ -432,53 +341,6 @@ class ContactService {
   /// 연락처 통계 조회
   Future<Map<String, int>> getContactStats() async {
     return await _contactRepository.getContactStats();
-  }
-
-  /// 연락처 이니셜 가져오기
-  String getInitials(String? name) {
-    if (name == null || name.isEmpty) return '?';
-
-    List<String> nameParts = name.split(' ');
-    if (nameParts.length > 1) {
-      return nameParts[0][0] + nameParts[1][0];
-    } else if (name.isNotEmpty) {
-      return name[0];
-    } else {
-      return '?';
-    }
-  }
-
-  /// 전화번호 포맷팅
-  String formatPhoneNumber(String? phone) {
-    if (phone == null || phone.isEmpty) {
-      return '번호 없음';
-    }
-
-    String cleaned = phone.replaceAll(RegExp(r'[^\d]'), '');
-    if (cleaned.length == 11 && cleaned.startsWith('010')) {
-      return '${cleaned.substring(0, 3)}-${cleaned.substring(3, 7)}-${cleaned.substring(7)}';
-    }
-
-    return phone;
-  }
-
-  /// 연락처 아바타 위젯 생성
-  Widget buildContactAvatar(Contact contact, {double radius = 20.0}) {
-    if (contact.photo != null && contact.photo!.isNotEmpty) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundImage: MemoryImage(contact.photo!),
-      );
-    }
-
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: Colors.blue,
-      child: Text(
-        getInitials(contact.displayName),
-        style: const TextStyle(color: Colors.white),
-      ),
-    );
   }
 
   // ==================== 비즈니스 규칙 검증 ====================

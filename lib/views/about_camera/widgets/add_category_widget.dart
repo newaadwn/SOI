@@ -22,44 +22,41 @@ class AddCategoryWidget extends StatelessWidget {
     return Column(
       children: [
         // 헤더 영역
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              IconButton(
-                icon: Icon(Icons.arrow_back_ios, color: Colors.white),
-                onPressed: onBackPressed,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            IconButton(
+              icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+              onPressed: onBackPressed,
+            ),
+            Text(
+              '새 카테고리 만들기',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
-              Text(
-                '새 카테고리 만들기',
+            ),
+            ElevatedButton(
+              onPressed: onSavePressed,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Color(0xff323232),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16.5),
+                ),
+                elevation: 0,
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+              child: Text(
+                '저장',
                 style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
                   color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              ElevatedButton(
-                onPressed: onSavePressed,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xff323232),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16.5),
-                  ),
-                  elevation: 0,
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                ),
-                child: Text(
-                  '저장',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
         Divider(color: Color(0xff3d3d3d)),
         SizedBox(height: 12),

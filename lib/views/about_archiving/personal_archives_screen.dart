@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
+import '../../models/category_data_model.dart';
 import '../../theme/theme.dart';
 import 'category_photos_screen.dart';
 
@@ -162,8 +163,14 @@ class _PersonalArchivesScreenState extends State<PersonalArchivesScreen> {
                               MaterialPageRoute(
                                 builder:
                                     (context) => CategoryPhotosScreen(
-                                      categoryId: category['id'],
-                                      categoryName: category['name'],
+                                      category: CategoryDataModel(
+                                        id: category['id'],
+                                        name: category['name'],
+                                        mates: [],
+                                        createdAt: DateTime.now(),
+                                        firstPhotoUrl:
+                                            category['firstPhotoUrl'],
+                                      ),
                                     ),
                               ),
                             );

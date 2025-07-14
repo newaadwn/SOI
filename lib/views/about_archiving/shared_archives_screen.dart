@@ -24,6 +24,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/category_controller.dart';
+import '../../models/category_data_model.dart';
 import '../../theme/theme.dart';
 import '../../controllers/auth_controller.dart';
 import 'category_photos_screen.dart';
@@ -180,8 +181,14 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
                               MaterialPageRoute(
                                 builder:
                                     (context) => CategoryPhotosScreen(
-                                      categoryId: category['id'],
-                                      categoryName: category['name'],
+                                      category: CategoryDataModel(
+                                        id: category['id'],
+                                        name: category['name'],
+                                        mates: [],
+                                        createdAt: DateTime.now(),
+                                        firstPhotoUrl:
+                                            category['firstPhotoUrl'],
+                                      ),
                                     ),
                               ),
                             );

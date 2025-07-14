@@ -17,6 +17,45 @@ class AuthService {
 
   // ==================== 비즈니스 로직 ====================
 
+  Future<String> getUserProfileImageUrlById(String userId) async {
+    try {
+      debugPrint('👤 프로필 이미지 URL 조회 시작 - UserId: $userId');
+
+      final userDoc =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .doc(userId)
+              .get();
+
+      debugPrint('📄 사용자 문서 존재: ${userDoc.exists}');
+
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+
+        // 각 필드 개별 확인
+        final profileImageUrl = data['profileImageUrl'];
+        final profileImage = data['profile_image'];
+
+        debugPrint('profileImageUrl 필드: $profileImageUrl');
+        debugPrint('profile_image 필드: $profileImage');
+        debugPrint('전체 사용자 데이터: $data');
+
+        // 두 가지 필드명 모두 시도 (기존 호환성)
+        final finalUrl = profileImageUrl ?? profileImage ?? '';
+
+        debugPrint('최종 ProfileImageUrl: "$finalUrl"');
+
+        return finalUrl;
+      }
+
+      debugPrint('⚠️ 사용자 문서가 존재하지 않음');
+      return '';
+    } catch (e) {
+      debugPrint('❌ 사용자 프로필 이미지 가져오기 실패: $e');
+      return '';
+    }
+  }
+
   // 전화번호 형식 정규화
   String _formatPhoneNumber(String phone) {
     String formatted = phone;

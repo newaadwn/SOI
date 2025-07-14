@@ -44,7 +44,7 @@ class CategoryRepository {
             String? firstPhotoUrl;
             if (photosSnapshot.docs.isNotEmpty) {
               firstPhotoUrl =
-                  photosSnapshot.docs.first.data()['url'] as String?;
+                  photosSnapshot.docs.first.data()['imageUrl'] as String?;
             }
 
             final category = CategoryDataModel.fromFirestore(
@@ -132,7 +132,7 @@ class CategoryRepository {
 
       String? firstPhotoUrl;
       if (photosSnapshot.docs.isNotEmpty) {
-        firstPhotoUrl = photosSnapshot.docs.first.data()['url'] as String?;
+        firstPhotoUrl = photosSnapshot.docs.first.data()['imageUrl'] as String?;
       }
 
       final category = CategoryDataModel.fromFirestore(data, doc.id).copyWith(
@@ -211,7 +211,7 @@ class CategoryRepository {
 
     String? firstPhotoUrl;
     if (photosSnapshot.docs.isNotEmpty) {
-      firstPhotoUrl = photosSnapshot.docs.first.data()['url'] as String?;
+      firstPhotoUrl = photosSnapshot.docs.first.data()['imageUrl'] as String?;
     }
 
     return CategoryDataModel.fromFirestore(doc.data()!, doc.id).copyWith(

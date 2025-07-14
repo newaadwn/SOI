@@ -36,6 +36,7 @@ class PhotoDataModel {
         (e) => e.name == data['status'],
         orElse: () => PhotoStatus.active,
       ),
+
     );
   }
 
@@ -62,6 +63,7 @@ class PhotoDataModel {
       'categoryId': categoryId,
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status.name,
+
     };
   }
 
@@ -75,6 +77,7 @@ class PhotoDataModel {
       'categoryId': categoryId,
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status.name,
+
     };
   }
 
@@ -88,6 +91,7 @@ class PhotoDataModel {
     String? categoryId,
     DateTime? createdAt,
     PhotoStatus? status,
+
   }) {
     return PhotoDataModel(
       id: id ?? this.id,
@@ -98,6 +102,7 @@ class PhotoDataModel {
       categoryId: categoryId ?? this.categoryId,
       createdAt: createdAt ?? this.createdAt,
       status: status ?? this.status,
+
     );
   }
 
@@ -141,6 +146,7 @@ class PhotoDataModel {
         (e) => e.name == photoMap['status'],
         orElse: () => PhotoStatus.active,
       ),
+
     );
   }
 }

@@ -2,14 +2,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter/foundation.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:permission_handler/permission_handler.dart'
+    as permission_handler;
 import '../models/contact_data_model.dart';
 
 /// Contact Repository - Firebase와 디바이스 연락처 관련 모든 데이터 액세스 로직을 담당
 class ContactRepository {
   static final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   static final FirebaseAuth _auth = FirebaseAuth.instance;
-  static final Permission _contactsPermission = Permission.contacts;
 
   // ==================== Firebase 연락처 관리 ====================
 
@@ -262,8 +262,8 @@ class ContactRepository {
   // ==================== 디바이스 연락처 관리 ====================
 
   /// 연락처 권한 상태 확인
-  Future<PermissionStatus> checkContactsPermission() async {
-    return await _contactsPermission.status;
+  Future<bool> checkContactsPermission() async {
+    return await FlutterContacts.requestPermission(readonly: true);
   }
 
   /// 연락처 권한 요청
@@ -271,64 +271,13 @@ class ContactRepository {
     return await FlutterContacts.requestPermission();
   }
 
-  /// 설정 앱으로 이동
+  /// 설정 앱으로 이동 (permission_handler 사용)
   Future<bool> openAppSetting() async {
-    return await openAppSettings();
-  }
-
-  /// 디바이스에서 모든 연락처 가져오기
-  Future<List<Contact>> getAllDeviceContacts() async {
     try {
-      // 연락처 권한 확인
-      final permissionStatus = await checkContactsPermission();
-      if (permissionStatus != PermissionStatus.granted) {
-        throw Exception('연락처 권한이 필요합니다');
-      }
-
-      // Flutter Contacts로 직접 권한 재확인
-      if (!await FlutterContacts.requestPermission()) {
-        throw Exception('연락처 권한이 거부되었습니다');
-      }
-
-      final List<Contact> contacts = await FlutterContacts.getContacts(
-        withProperties: true,
-        withPhoto: true,
-      );
-
-      return contacts;
+      return await permission_handler.openAppSettings();
     } catch (e) {
-      debugPrint('디바이스 연락처 가져오기 오류: $e');
-      return [];
-    }
-  }
-
-  /// 이름으로 디바이스 연락처 검색
-  Future<List<Contact>> searchDeviceContactsByName(String query) async {
-    try {
-      final contacts = await getAllDeviceContacts();
-      return _filterDeviceContacts(contacts, query);
-    } catch (e) {
-      debugPrint('디바이스 연락처 검색 오류: $e');
-      return [];
-    }
-  }
-
-  /// 특정 연락처 ID로 디바이스 연락처 조회
-  Future<Contact?> getDeviceContactById(String contactId) async {
-    try {
-      final permissionStatus = await checkContactsPermission();
-      if (permissionStatus != PermissionStatus.granted) {
-        return null;
-      }
-
-      return await FlutterContacts.getContact(
-        contactId,
-        withProperties: true,
-        withPhoto: true,
-      );
-    } catch (e) {
-      debugPrint('디바이스 연락처 조회 오류: $e');
-      return null;
+      debugPrint('설정 앱 열기 오류: $e');
+      return false;
     }
   }
 
@@ -401,25 +350,6 @@ class ContactRepository {
   }
 
   // ==================== 유틸리티 메서드 ====================
-
-  /// 디바이스 연락처 필터링
-  List<Contact> _filterDeviceContacts(List<Contact> contacts, String query) {
-    if (query.isEmpty) {
-      return contacts;
-    }
-
-    final String lowercaseQuery = query.toLowerCase();
-
-    return contacts.where((contact) {
-      final String name = contact.displayName.toLowerCase();
-      final String phone =
-          contact.phones.isNotEmpty
-              ? contact.phones.first.number.toLowerCase()
-              : '';
-
-      return name.contains(lowercaseQuery) || phone.contains(lowercaseQuery);
-    }).toList();
-  }
 
   /// 연락처 통계 조회
   Future<Map<String, int>> getContactStats() async {

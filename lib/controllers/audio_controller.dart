@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
 import '../services/audio_service.dart';
 import '../models/audio_data_model.dart';
 
@@ -26,6 +27,17 @@ class AudioController extends ChangeNotifier {
 
   // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
   final AudioService _audioService = AudioService();
+
+  // ==================== 파형 관련 (audio_waveforms) ====================
+
+  PlayerController? _playerController;
+  bool _isPlayerInitialized = false;
+
+  /// PlayerController getter
+  PlayerController? get playerController => _playerController;
+
+  /// 플레이어 초기화 상태 getter
+  bool get isPlayerInitialized => _isPlayerInitialized;
 
   // ==================== 권한 관리 ====================
 
@@ -94,8 +106,121 @@ class AudioController extends ChangeNotifier {
   void dispose() {
     _recordingTimer?.cancel();
     _uploadSubscription?.cancel();
+    _playerController?.dispose();
     _audioService.dispose();
     super.dispose();
+  }
+
+  // ==================== 파형 플레이어 관리 ====================  /// 파형 표시용 플레이어 초기화
+  Future<void> initializePlayerForWaveform(String audioUrl) async {
+    try {
+      debugPrint('🎵 파형 플레이어 초기화 시작: $audioUrl');
+
+      // 기존 플레이어가 있다면 해제
+      if (_playerController != null) {
+        _playerController!.dispose();
+        _playerController = null;
+      }
+
+      _playerController = PlayerController();
+
+      // iOS 호환성을 위한 설정
+      await _playerController!.preparePlayer(
+        path: audioUrl,
+        shouldExtractWaveform: true,
+        noOfSamples: 200, // 샘플 수 제한으로 성능 향상
+      );
+
+      _isPlayerInitialized = true;
+      notifyListeners();
+
+      debugPrint('✅ 파형 플레이어 초기화 완료');
+    } catch (e) {
+      debugPrint('❌ 파형 플레이어 초기화 오류: $e');
+
+      // 파형 추출 없이 기본 플레이어로 재시도
+      try {
+        debugPrint('🔄 기본 플레이어로 재시도...');
+        _playerController = PlayerController();
+        await _playerController!.preparePlayer(
+          path: audioUrl,
+          shouldExtractWaveform: false, // 파형 추출 비활성화
+        );
+
+        _isPlayerInitialized = true;
+        notifyListeners();
+        debugPrint('✅ 기본 플레이어로 초기화 완료');
+      } catch (fallbackError) {
+        debugPrint('❌ 기본 플레이어 초기화도 실패: $fallbackError');
+        _error = '이 음성 파일은 재생할 수 없습니다.';
+        _isPlayerInitialized = false;
+        notifyListeners();
+
+        // 최후의 수단으로 audioplayers 사용
+        try {
+          debugPrint('🔄 audioplayers로 재시도...');
+          await playAudioFromUrl(audioUrl);
+        } catch (audioplayersError) {
+          debugPrint('❌ audioplayers도 실패: $audioplayersError');
+        }
+      }
+    }
+  }
+
+  /// 파형 플레이어로 재생 시작
+  Future<void> startPlayerWaveform() async {
+    try {
+      if (_playerController != null && _isPlayerInitialized) {
+        await _playerController!.startPlayer();
+        _isPlaying = true;
+        notifyListeners();
+        debugPrint('✅ 파형 플레이어 재생 시작');
+      }
+    } catch (e) {
+      debugPrint('❌ 파형 플레이어 재생 오류: $e');
+      _error = '음성 재생 중 오류가 발생했습니다.';
+      notifyListeners();
+    }
+  }
+
+  /// 파형 플레이어 일시정지
+  Future<void> pausePlayerWaveform() async {
+    try {
+      if (_playerController != null) {
+        await _playerController!.pausePlayer();
+        _isPlaying = false;
+        notifyListeners();
+        debugPrint('⏸️ 파형 플레이어 일시정지');
+      }
+    } catch (e) {
+      debugPrint('❌ 파형 플레이어 일시정지 오류: $e');
+    }
+  }
+
+  /// 파형 플레이어 중지
+  Future<void> stopPlayerWaveform() async {
+    try {
+      if (_playerController != null) {
+        await _playerController!.stopPlayer();
+        _isPlaying = false;
+        notifyListeners();
+        debugPrint('⏹️ 파형 플레이어 중지');
+      }
+    } catch (e) {
+      debugPrint('❌ 파형 플레이어 중지 오류: $e');
+    }
+  }
+
+  /// 파형 플레이어 위치 이동
+  Future<void> seekToPositionWaveform(Duration position) async {
+    try {
+      if (_playerController != null) {
+        await _playerController!.seekTo(position.inMilliseconds);
+        debugPrint('🎯 파형 플레이어 위치 이동: ${position.inSeconds}초');
+      }
+    } catch (e) {
+      debugPrint('❌ 파형 플레이어 위치 이동 오류: $e');
+    }
   }
 
   // ==================== 네이티브 녹음 관리 ====================
@@ -211,7 +336,7 @@ class AudioController extends ChangeNotifier {
 
       if (result.isSuccess) {
         _currentRecordingPath = result.data ?? '';
-        debugPrint('✅ 네이티브 간단 녹음 중지 완료: ${_currentRecordingPath}');
+        debugPrint('✅ 네이티브 간단 녹음 중지 완료: $_currentRecordingPath');
       } else {
         _error = result.error;
         debugPrint('❌ 네이티브 간단 녹음 중지 실패: ${result.error}');
@@ -521,6 +646,50 @@ class AudioController extends ChangeNotifier {
       debugPrint('오디오 정보 업데이트 오류: $e');
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // ==================== 메타데이터 추출 ====================
+
+  /// 오디오 URL에서 duration 추출
+  Future<Duration?> getAudioDuration(String audioUrl) async {
+    try {
+      final player = AudioPlayer();
+
+      // 오디오 소스 설정
+      await player.setSourceUrl(audioUrl);
+
+      // duration이 설정될 때까지 대기
+      Duration? duration;
+      final completer = Completer<Duration?>();
+
+      StreamSubscription? subscription;
+      subscription = player.onDurationChanged.listen((newDuration) {
+        if (newDuration != Duration.zero) {
+          duration = newDuration;
+          subscription?.cancel();
+          completer.complete(duration);
+        }
+      });
+
+      // 타임아웃 설정 (5초)
+      Timer(const Duration(seconds: 5), () {
+        if (!completer.isCompleted) {
+          subscription?.cancel();
+          completer.complete(null);
+        }
+      });
+
+      final result = await completer.future;
+      await player.dispose();
+
+      debugPrint(
+        '📊 Audio duration extracted: ${result?.inSeconds}s for $audioUrl',
+      );
+      return result;
+    } catch (e) {
+      debugPrint('❌ Error getting audio duration: $e');
+      return null;
     }
   }
 
