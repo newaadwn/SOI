@@ -118,7 +118,6 @@ class _PhotoGridItemState extends State<PhotoGridItem>
           MaterialPageRoute(
             builder:
                 (_) => PhotoDetailScreen(
-                  categoryModel: widget.category,
                   photos: widget.allPhotos,
                   initialIndex: widget.currentIndex,
                   categoryName: widget.categoryName,
@@ -266,7 +265,6 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                       MaterialPageRoute(
                         builder:
                             (_) => PhotoDetailScreen(
-                              categoryModel: widget.category,
                               photos: widget.allPhotos,
                               initialIndex: widget.currentIndex,
                               categoryName: widget.categoryName,

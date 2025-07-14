@@ -14,6 +14,7 @@ class AudioController extends ChangeNotifier {
   bool _isRecording = false;
   String? _currentRecordingPath;
   String? _currentPlayingAudioId;
+  String? _currentPlayingAudioUrl; // 현재 재생 중인 오디오 URL 추가
   int _recordingDuration = 0;
   double _recordingLevel = 0.0;
   double _playbackPosition = 0.0;
@@ -58,6 +59,7 @@ class AudioController extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get currentRecordingPath => _currentRecordingPath;
   String? get currentPlayingAudioId => _currentPlayingAudioId;
+  String? get currentPlayingAudioUrl => _currentPlayingAudioUrl; // getter 추가
   int get recordingDuration => _recordingDuration;
   double get recordingLevel => _recordingLevel;
   double get playbackPosition => _playbackPosition;
@@ -426,6 +428,16 @@ class AudioController extends ChangeNotifier {
     }
   }
 
+  /// 간단한 오디오 재생 (UI용)
+  Future<void> play(String audioUrl) async {
+    try {
+      _currentPlayingAudioUrl = audioUrl;
+      await playAudioFromUrl(audioUrl);
+    } catch (e) {
+      debugPrint('재생 오류: $e');
+    }
+  }
+
   /// 재생 중지
   Future<void> stopPlaying() async {
     try {
@@ -460,6 +472,16 @@ class AudioController extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint('재생 일시정지 오류: $e');
+    }
+  }
+
+  /// 간단한 오디오 정지 (UI용)
+  Future<void> pause() async {
+    try {
+      await stopPlaying();
+      _currentPlayingAudioUrl = null;
+    } catch (e) {
+      debugPrint('정지 오류: $e');
     }
   }
 

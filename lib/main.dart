@@ -22,12 +22,15 @@ import 'controllers/comment_controller.dart';
 
 import 'package:flutter/rendering.dart';
 import 'dart:ui';
-
+import 'package:intl/date_symbol_data_local.dart'; // 1. 이 줄을 추가하세요.
 import 'views/home_navigator_screen.dart';
 import 'views/home_screen.dart'; // PlatformDispatcher를 위해 필요
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 날짜 포맷팅 초기화 (한국어 로케일)
+  await initializeDateFormatting('ko_KR', null);
 
   // Firebase 초기화
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
