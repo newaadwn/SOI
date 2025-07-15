@@ -33,6 +33,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   String? _selectedCategoryId;
   bool _categoriesLoaded = false; // 카테고리 로드 상태 추적
 
+  // 추출된 파형 데이터 저장
+  List<double>? _recordedWaveformData;
+
   // 컨트롤러
   final _draggableScrollController = DraggableScrollableController();
   final _categoryNameController = TextEditingController();
@@ -241,13 +244,34 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         // 오디오가 있으면 파형 데이터와 함께 업로드, 없으면 일반 업로드
         if (audioPath.isNotEmpty) {
           debugPrint('🎵 오디오 파일이 있어서 파형 데이터와 함께 업로드: $audioPath');
+          debugPrint('🌊 업로드할 파형 데이터 상태:');
+          debugPrint(
+            '  - _recordedWaveformData null 여부: ${_recordedWaveformData == null}',
+          );
+          debugPrint(
+            '  - _recordedWaveformData 길이: ${_recordedWaveformData?.length ?? 0}',
+          );
+
+          if (_recordedWaveformData != null &&
+              _recordedWaveformData!.isNotEmpty) {
+            debugPrint('✅ 실제 파형 데이터로 업로드 진행');
+            debugPrint(
+              '📊 업로드할 첫 5개 샘플: ${_recordedWaveformData!.take(5).toList()}',
+            );
+          } else {
+            debugPrint('❌ 파형 데이터 없음 - null 또는 빈 리스트로 업로드');
+          }
+
           await _photoController.uploadPhotoWithAudio(
             imageFilePath: imagePath,
             audioFilePath: audioPath,
             userID: userId,
             userIds: [userId],
             categoryId: categoryId,
+            waveformData: _recordedWaveformData, // 파형 데이터 추가
           );
+
+          debugPrint('✅ uploadPhotoWithAudio 호출 완료');
         } else {
           debugPrint('📷 이미지만 업로드 (오디오 없음)');
           await _photoController.uploadPhoto(
@@ -399,7 +423,45 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                           SizedBox(height: 20 / 852 * screenHeight),
                           // 오디오 녹음 위젯
                           AudioRecorderWidget(
-                            onRecordingCompleted: null, // AudioController에서 처리
+                            onRecordingCompleted: (
+                              String? audioPath,
+                              List<double>? waveformData,
+                            ) {
+                              debugPrint('🎤 PhotoEditorScreen - 녹음 완료 콜백 호출됨');
+                              debugPrint('  - audioPath: $audioPath');
+                              debugPrint(
+                                '  - waveformData null 여부: ${waveformData == null}',
+                              );
+                              debugPrint(
+                                '  - waveformData 길이: ${waveformData?.length ?? 0}',
+                              );
+
+                              if (waveformData != null &&
+                                  waveformData.isNotEmpty) {
+                                debugPrint('✅ 실제 파형 데이터 수신');
+                                debugPrint(
+                                  '📊 첫 5개 샘플: ${waveformData.take(5).toList()}',
+                                );
+                                debugPrint(
+                                  '📊 마지막 5개 샘플: ${waveformData.length > 5 ? waveformData.sublist(waveformData.length - 5) : waveformData}',
+                                );
+                                debugPrint(
+                                  '📊 데이터 범위: ${waveformData.reduce((a, b) => a < b ? a : b)} ~ ${waveformData.reduce((a, b) => a > b ? a : b)}',
+                                );
+                              } else {
+                                debugPrint('❌ 파형 데이터 없음 또는 빈 데이터');
+                              }
+
+                              // 파형 데이터를 상태 변수에 저장
+                              setState(() {
+                                _recordedWaveformData = waveformData;
+                              });
+
+                              debugPrint('🔄 PhotoEditorScreen 상태 업데이트 완료');
+                              debugPrint(
+                                '  - _recordedWaveformData 길이: ${_recordedWaveformData?.length ?? 0}',
+                              );
+                            },
                           ),
                         ],
                       ),

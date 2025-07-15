@@ -142,6 +142,7 @@ class PhotoController extends ChangeNotifier {
     required String userID,
     required List<String> userIds,
     required String categoryId,
+    List<double>? waveformData, // 파형 데이터 파라미터 추가
   }) async {
     try {
       _isUploading = true;
@@ -149,13 +150,14 @@ class PhotoController extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      // Service를 통해 업로드 (파형 데이터 자동 생성)
+      // Service를 통해 업로드 (파형 데이터 전달)
       final photoId = await _photoService.savePhotoWithAudio(
         imageFilePath: imageFilePath,
         audioFilePath: audioFilePath,
         userID: userID,
         userIds: userIds,
         categoryId: categoryId,
+        waveformData: waveformData, // 파형 데이터 전달
       );
 
       _isUploading = false;
@@ -491,11 +493,61 @@ class PhotoController extends ChangeNotifier {
     });
   }
 
+  // ==================== 파형 데이터 업데이트 유틸리티 ====================
+
+  /// 기존 사진들에 파형 데이터 추가 (개발/유틸리티용)
+  Future<bool> updateWaveformDataForExistingPhotos(String categoryId) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      debugPrint('PhotoController: 기존 사진들의 파형 데이터 업데이트 시작');
+      await _photoService.updateWaveformDataForExistingPhotos(categoryId);
+
+      _isLoading = false;
+      notifyListeners();
+
+      debugPrint('PhotoController: 파형 데이터 업데이트 완료');
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _error = '파형 데이터 업데이트 실패: $e';
+      notifyListeners();
+      debugPrint('PhotoController: 파형 데이터 업데이트 실패 - $e');
+      return false;
+    }
+  }
+
+  // ==================== 파형 데이터 유틸리티 ====================
+
+  /// UI에서 파형 표시를 위한 데이터 압축
+  List<double> compressWaveformForUI(
+    List<double> waveformData, {
+    int targetLength = 100,
+  }) {
+    try {
+      return _photoService.compressWaveformForDisplay(
+        waveformData,
+        targetLength: targetLength,
+      );
+    } catch (e) {
+      debugPrint('PhotoController: 파형 압축 오류 - $e');
+      return waveformData;
+    }
+  }
+
   // ==================== 리소스 해제 ====================
 
   @override
   void dispose() {
     _photosSubscription?.cancel();
     super.dispose();
+  }
+
+  /// 카테고리별 사진 스트림 직접 반환 (StreamBuilder 용)
+  Stream<List<PhotoDataModel>> getPhotosByCategoryStream(String categoryId) {
+    debugPrint('📺 PhotoController: 사진 스트림 요청 - CategoryId: $categoryId');
+    return _photoService.getPhotosByCategoryStream(categoryId);
   }
 }

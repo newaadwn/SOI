@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
@@ -97,24 +98,44 @@ class PhotoRepository {
     required String userID,
     required List<String> userIds,
     required String categoryId,
+    List<double>? waveformData, // 파형 데이터 파라미터 추가
   }) async {
     try {
       debugPrint('💾 파형 데이터와 함께 사진 저장 시작');
       debugPrint('📂 CategoryId: $categoryId');
+      debugPrint('🌊 파형 데이터 길이: ${waveformData?.length}');
+
+      // 기본 데이터 구성
+      final Map<String, dynamic> photoData = {
+        'imageUrl': imageUrl,
+        'audioUrl': audioUrl,
+        'userID': userID,
+        'userIds': userIds,
+        'categoryId': categoryId,
+        'createdAt': FieldValue.serverTimestamp(),
+        'status': PhotoStatus.active.name,
+      };
+
+      // 파형 데이터 처리 및 상세 로그
+      debugPrint('📊 파형 데이터 저장 상세 정보:');
+      debugPrint('  - waveformData null 여부: ${waveformData == null}');
+      debugPrint('  - waveformData 길이: ${waveformData?.length ?? 0}');
+      debugPrint('  - waveformData 첫 몇 개 값: ${waveformData?.take(5).toList()}');
+
+      if (waveformData != null && waveformData.isNotEmpty) {
+        photoData['waveformData'] = waveformData;
+        debugPrint('✅ 파형 데이터 포함하여 Firestore에 저장');
+        debugPrint('  - 실제 저장될 데이터 타입: ${waveformData.runtimeType}');
+      } else {
+        photoData['waveformData'] = []; // 빈 배열로 명시적 저장
+        debugPrint('⚠️ 파형 데이터 없음 - 빈 배열로 저장');
+      }
 
       final docRef = await _firestore
           .collection('categories')
           .doc(categoryId)
           .collection('photos')
-          .add({
-            'imageUrl': imageUrl,
-            'audioUrl': audioUrl,
-            'userID': userID,
-            'userIds': userIds,
-            'categoryId': categoryId,
-            'createdAt': FieldValue.serverTimestamp(),
-            'status': PhotoStatus.active.name,
-          });
+          .add(photoData);
 
       debugPrint('✅ 사진 저장 완료 - PhotoId: ${docRef.id}');
       return docRef.id;
@@ -157,13 +178,22 @@ class PhotoRepository {
       final photos =
           querySnapshot.docs.map((doc) {
             final data = doc.data();
-            debugPrint('📸 사진 데이터: ${doc.id}');
+            debugPrint('📸 Firestore 원본 데이터 - ID: ${doc.id}');
             debugPrint('  - UserID: ${data['userID']}');
             debugPrint(
-              '  - WaveformData: ${data['waveformData']?.length ?? 0} samples',
+              '  - waveformData 필드 존재: ${data.containsKey('waveformData')}',
             );
+            debugPrint('  - waveformData 값: ${data['waveformData']}');
             debugPrint(
-              '  - AudioUrl: ${data['audioUrl']?.isNotEmpty ?? false}',
+              '  - waveformData 타입: ${data['waveformData'].runtimeType}',
+            );
+            if (data['waveformData'] is List) {
+              debugPrint(
+                '  - waveformData 길이: ${(data['waveformData'] as List).length}',
+              );
+            }
+            debugPrint(
+              '  - AudioUrl 존재: ${data['audioUrl']?.isNotEmpty ?? false}',
             );
 
             return PhotoDataModel.fromFirestore(data, doc.id);
@@ -610,5 +640,30 @@ class PhotoRepository {
       debugPrint('❌ 파형 데이터 추가 실패: $e');
       return false;
     }
+  }
+
+  /// 파형 데이터 압축 (공개 메서드)
+  List<double> compressWaveformData(
+    List<double> data, {
+    int targetLength = 100,
+  }) {
+    if (data.length <= targetLength) return data;
+
+    final step = data.length / targetLength;
+    final compressed = <double>[];
+
+    for (int i = 0; i < targetLength; i++) {
+      final startIndex = (i * step).floor();
+      final endIndex = ((i + 1) * step).floor().clamp(0, data.length);
+
+      // 구간 내 최대값 추출 (피크 보존)
+      double maxValue = 0.0;
+      for (int j = startIndex; j < endIndex; j++) {
+        maxValue = math.max(maxValue, data[j].abs());
+      }
+      compressed.add(maxValue);
+    }
+
+    return compressed;
   }
 }

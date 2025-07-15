@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../controllers/category_controller.dart';
+import '../../controllers/photo_controller.dart';
 import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
 import '../../models/photo_data_model.dart';
@@ -14,7 +14,7 @@ class CategoryPhotosScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categoryController = Provider.of<CategoryController>(
+    final photoController = Provider.of<PhotoController>(
       context,
       listen: false,
     );
@@ -32,32 +32,12 @@ class CategoryPhotosScreen extends StatelessWidget {
               category.name,
               style: const TextStyle(color: Colors.white, fontSize: 20),
             ),
-            // 임시 파형 데이터 추가 버튼
-            IconButton(
-              icon: Icon(Icons.graphic_eq, color: Colors.white),
-              onPressed: () async {
-                debugPrint('🔧 파형 데이터 추가 버튼 클릭');
-                final photoService = PhotoService();
-                final success = await photoService
-                    .addWaveformDataToExistingPhotos(category.id);
-
-                if (success) {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('파형 데이터가 추가되었습니다!')));
-                } else {
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text('파형 데이터 추가에 실패했습니다.')));
-                }
-              },
-            ),
           ],
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       ),
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: categoryController.getPhotosStream(category.id),
+      body: StreamBuilder<List<PhotoDataModel>>(
+        stream: photoController.getPhotosByCategoryStream(category.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
@@ -66,11 +46,7 @@ class CategoryPhotosScreen extends StatelessWidget {
             return Center(child: Text('Error: ${snapshot.error}'));
           }
 
-          // Convert Map data to PhotoModel objects using helper method
-          final photos =
-              (snapshot.data ?? [])
-                  .map((photoMap) => PhotoDataModel.fromMapData(photoMap))
-                  .toList();
+          final photos = snapshot.data ?? [];
 
           if (photos.isEmpty) {
             return const Center(
@@ -96,7 +72,6 @@ class CategoryPhotosScreen extends StatelessWidget {
                 photo: photo,
                 allPhotos: photos,
                 currentIndex: index,
-                category: category,
                 categoryName: category.name,
                 categoryId: category.id,
               );

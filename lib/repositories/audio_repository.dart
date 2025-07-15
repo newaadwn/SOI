@@ -351,11 +351,39 @@ class AudioRepository {
         shouldExtractWaveform: true,
       );
 
-      final rawData = controller.waveformData;
+      // 파형 추출 완료 대기 (PhotoGridItem과 동일한 로직)
+      List<double> rawData = [];
+      int attempts = 0;
+      const maxAttempts = 200; // 20초 대기 (업로드 시에는 더 오래 기다림)
+
+      debugPrint('⏳ 파형 추출 완료 대기 중...');
+      while (attempts < maxAttempts && rawData.isEmpty) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        attempts++;
+
+        try {
+          final currentData = controller.waveformData;
+          if (currentData.isNotEmpty) {
+            rawData = currentData;
+            debugPrint(
+              '✅ 파형 추출 완료: ${rawData.length} samples (${attempts * 100}ms 소요)',
+            );
+            break;
+          }
+        } catch (e) {
+          // 아직 준비되지 않음, 계속 대기
+        }
+
+        // 진행률 로그 (5초마다)
+        if (attempts % 50 == 0) {
+          debugPrint('⏳ 파형 추출 대기 중... ${attempts * 100}ms');
+        }
+      }
+
       debugPrint('📊 원본 파형 데이터 길이: ${rawData.length}');
 
       if (rawData.isEmpty) {
-        debugPrint('⚠️ 파형 데이터가 비어있음');
+        debugPrint('❌ 파형 데이터 추출 시간 초과 또는 실패');
         return [];
       }
 

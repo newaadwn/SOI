@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/photo_data_model.dart';
-import '../../models/category_data_model.dart';
 import '../../controllers/auth_controller.dart';
-import '../widgets/smart_waveform_widget.dart';
+import 'widgets/custom_waveform_widget.dart';
 import 'photo_detail_screen.dart';
 
 class PhotoGridItem extends StatefulWidget {
@@ -13,7 +12,6 @@ class PhotoGridItem extends StatefulWidget {
   final int currentIndex;
   final String categoryName;
   final String categoryId;
-  final CategoryDataModel? category;
 
   const PhotoGridItem({
     super.key,
@@ -22,9 +20,9 @@ class PhotoGridItem extends StatefulWidget {
     required this.currentIndex,
     required this.categoryName,
     required this.categoryId,
-    this.category,
   });
 
+  @override
   _PhotoGridItemState createState() => _PhotoGridItemState();
 }
 
@@ -38,6 +36,10 @@ class _PhotoGridItemState extends State<PhotoGridItem>
   static final Map<String, String> _profileImageCache = {};
   static const int _maxCacheSize = 100;
 
+  // 오디오 관련 상태
+  bool _hasAudio = false;
+  List<double>? _waveformData;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -47,6 +49,40 @@ class _PhotoGridItemState extends State<PhotoGridItem>
     if (!_hasLoadedOnce) {
       _loadUserProfileImage();
       _hasLoadedOnce = true;
+    }
+
+    // 파형 데이터 초기화
+    _initializeWaveformData();
+  }
+
+  void _initializeWaveformData() {
+    // 실제 오디오 URL 확인
+    final audioUrl = widget.photo.audioUrl;
+
+    // 오디오 URL 유효성 검사
+    if (audioUrl.isEmpty) {
+      debugPrint('⚠️ 오디오 URL이 비어있습니다.');
+      setState(() {
+        _hasAudio = false;
+      });
+      return;
+    }
+
+    // Firestore에서 파형 데이터 가져오기
+    final waveformData = widget.photo.waveformData;
+
+    if (waveformData != null && waveformData.isNotEmpty) {
+      debugPrint('🎵 Firestore 파형 데이터 사용: ${waveformData.length} samples');
+      setState(() {
+        _hasAudio = true;
+        _waveformData = waveformData;
+      });
+      debugPrint('✅ 파형 데이터 설정 완료');
+    } else {
+      debugPrint('⚠️ Firestore에 파형 데이터가 없습니다');
+      setState(() {
+        _hasAudio = false;
+      });
     }
   }
 
@@ -155,41 +191,24 @@ class _PhotoGridItemState extends State<PhotoGridItem>
               ),
             ),
           ),
+
           // 하단 왼쪽에 프로필 이미지 표시
-          Positioned(
-            bottom: 8,
-            left: 8,
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              child:
-                  _isLoadingProfile
-                      ? CircleAvatar(
-                        radius: 14,
-                        backgroundColor: Colors.grey,
-                        child: SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        ),
-                      )
-                      : _userProfileImageUrl.isNotEmpty
-                      ? CachedNetworkImage(
-                        imageUrl: _userProfileImageUrl,
-                        imageBuilder:
-                            (context, imageProvider) => CircleAvatar(
-                              radius: 14,
-                              backgroundImage: imageProvider,
-                            ),
-                        placeholder:
-                            (context, url) => CircleAvatar(
+          Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              Row(
+                children: [
+                  SizedBox(width: 7 / 393 * MediaQuery.of(context).size.width),
+                  Container(
+                    width: 32 / 393 * MediaQuery.of(context).size.width,
+                    height: 32 / 852 * MediaQuery.of(context).size.height,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child:
+                        _isLoadingProfile
+                            ? CircleAvatar(
                               radius: 14,
                               backgroundColor: Colors.grey,
                               child: SizedBox(
@@ -200,9 +219,40 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                                   color: Colors.white,
                                 ),
                               ),
-                            ),
-                        errorWidget:
-                            (context, url, error) => CircleAvatar(
+                            )
+                            : _userProfileImageUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                              imageUrl: _userProfileImageUrl,
+                              imageBuilder:
+                                  (context, imageProvider) => CircleAvatar(
+                                    radius: 14,
+                                    backgroundImage: imageProvider,
+                                  ),
+                              placeholder:
+                                  (context, url) => CircleAvatar(
+                                    radius: 14,
+                                    backgroundColor: Colors.grey,
+                                    child: SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                              errorWidget:
+                                  (context, url, error) => CircleAvatar(
+                                    radius: 14,
+                                    backgroundColor: Colors.grey,
+                                    child: Icon(
+                                      Icons.person,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                            )
+                            : CircleAvatar(
                               radius: 14,
                               backgroundColor: Colors.grey,
                               child: Icon(
@@ -211,72 +261,51 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                                 size: 16,
                               ),
                             ),
-                      )
-                      : CircleAvatar(
-                        radius: 14,
-                        backgroundColor: Colors.grey,
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 16,
-                        ),
+                  ),
+                  SizedBox(width: 6 / 393 * MediaQuery.of(context).size.width),
+                  Expanded(
+                    child: Container(
+                      width: 129,
+                      height: 21,
+                      decoration: BoxDecoration(
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(15),
                       ),
-            ),
+                      child: _buildWaveformWidget(),
+                    ),
+                  ),
+                  SizedBox(width: 5 / 393 * MediaQuery.of(context).size.width),
+                ],
+              ),
+              SizedBox(height: 5 / 852 * MediaQuery.of(context).size.height),
+            ],
           ),
-
-          // 음성이 있는 경우 오른쪽 상단에 음성 아이콘 표시
-          if (widget.photo.audioUrl.isNotEmpty)
-            Positioned(
-              top: 8,
-              right: 8,
-              child: Container(
-                padding: EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.7),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.mic, color: Colors.white, size: 16),
-              ),
-            ),
-
-          // 음성이 있는 경우 하단에 미니 파형 표시
-          if (widget.photo.audioUrl.isNotEmpty)
-            Positioned(
-              bottom: 40,
-              left: 8,
-              right: 8,
-              child: Container(
-                height: 30,
-                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.8),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: SmartWaveformWidget(
-                  audioUrl: widget.photo.audioUrl,
-                  width: 159, // 전체 너비에서 패딩 제외
-                  height: 22,
-                  waveColor: Colors.grey.withOpacity(0.5),
-                  progressColor: Colors.white,
-                  onTap: () {
-                    // 그리드 아이템 탭과 동일한 동작
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => PhotoDetailScreen(
-                              photos: widget.allPhotos,
-                              initialIndex: widget.currentIndex,
-                              categoryName: widget.categoryName,
-                              categoryId: widget.categoryId,
-                            ),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ),
         ],
+      ),
+    );
+  }
+
+  /// 커스텀 파형 위젯을 빌드하는 메서드
+  Widget _buildWaveformWidget() {
+    // 오디오가 없는 경우
+    if (!_hasAudio || _waveformData == null || _waveformData!.isEmpty) {
+      return Container(
+        height: 60,
+        alignment: Alignment.center,
+        child: Text(
+          '오디오 없음',
+          style: TextStyle(color: Colors.white70, fontSize: 10),
+        ),
+      );
+    }
+
+    // 커스텀 파형 표시
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8),
+      child: CustomWaveformWidget(
+        waveformData: _waveformData!,
+        color: Colors.white70,
+        activeColor: Colors.blueAccent,
       ),
     );
   }

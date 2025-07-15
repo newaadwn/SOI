@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
 import '../models/photo_data_model.dart';
 import '../repositories/photo_repository.dart';
 import 'audio_service.dart';
@@ -113,6 +114,7 @@ class PhotoService {
     required String userID,
     required List<String> userIds,
     required String categoryId,
+    List<double>? waveformData, // 파형 데이터 파라미터 추가
   }) async {
     try {
       debugPrint('🚀 사진과 오디오 저장 시작');
@@ -120,6 +122,7 @@ class PhotoService {
       debugPrint('🎵 AudioPath: $audioFilePath');
       debugPrint('👤 UserID: $userID');
       debugPrint('📂 CategoryId: $categoryId');
+      debugPrint('🌊 제공된 파형 데이터: ${waveformData?.length} samples');
 
       // 1. 이미지 업로드
       debugPrint('📤 이미지 업로드 시작...');
@@ -149,12 +152,24 @@ class PhotoService {
       }
       debugPrint('✅ 오디오 업로드 완료: $audioUrl');
 
-      // 3. 파형 데이터 추출
-      debugPrint('🌊 파형 데이터 추출 시작...');
-      final waveformData = await _audioService.extractWaveformData(
-        audioFilePath,
-      );
-      debugPrint('📊 파형 데이터 추출 완료: ${waveformData.length} samples');
+      // 3. 파형 데이터 처리 (제공된 데이터 우선 사용)
+      List<double> finalWaveformData;
+      debugPrint('🎵 파형 데이터 처리 시작:');
+      debugPrint('  - 제공된 waveformData null 여부: ${waveformData == null}');
+      debugPrint('  - 제공된 waveformData 길이: ${waveformData?.length ?? 0}');
+
+      if (waveformData != null && waveformData.isNotEmpty) {
+        debugPrint('📊 제공된 파형 데이터 사용: ${waveformData.length} samples');
+        debugPrint('  - 첫 몇 개 샘플: ${waveformData.take(5).toList()}');
+        finalWaveformData = waveformData;
+      } else {
+        debugPrint('🌊 제공된 파형 데이터 없음 - 오디오 파일에서 추출 시작...');
+        finalWaveformData = await _audioService.extractWaveformData(
+          audioFilePath,
+        );
+        debugPrint('📊 파형 데이터 추출 완료: ${finalWaveformData.length} samples');
+        debugPrint('  - 추출된 첫 몇 개 샘플: ${finalWaveformData.take(5).toList()}');
+      }
 
       // 4. 오디오 길이 계산
       debugPrint('⏱️ 오디오 길이 계산 시작...');
@@ -169,6 +184,7 @@ class PhotoService {
         userID: userID,
         userIds: userIds,
         categoryId: categoryId,
+        waveformData: finalWaveformData, // 파형 데이터 전달
       );
 
       debugPrint('🎉 사진과 오디오 저장 완료 - PhotoId: $photoId');
@@ -489,6 +505,130 @@ class PhotoService {
     } catch (e) {
       debugPrint('❌ 특정 사진에 파형 데이터 추가 실패: $e');
       return false;
+    }
+  }
+
+  // ==================== 파형 데이터 업데이트 유틸리티 ====================
+
+  /// 기존 사진들에 파형 데이터를 추가하는 유틸리티 메서드
+  Future<void> updateWaveformDataForExistingPhotos(String categoryId) async {
+    try {
+      debugPrint('🔄 기존 사진들의 파형 데이터 업데이트 시작');
+
+      await _photoRepository.addWaveformDataToExistingPhotos(
+        categoryId: categoryId,
+        extractWaveformData: (audioUrl) async {
+          // 네트워크 URL에서 파형 데이터 추출
+          return await _extractWaveformFromNetworkUrl(audioUrl);
+        },
+      );
+
+      debugPrint('✅ 기존 사진들의 파형 데이터 업데이트 완료');
+    } catch (e) {
+      debugPrint('❌ 파형 데이터 업데이트 실패: $e');
+      rethrow;
+    }
+  }
+
+  /// 네트워크 URL에서 파형 데이터 추출하는 헬퍼 메서드
+  Future<List<double>> _extractWaveformFromNetworkUrl(String audioUrl) async {
+    try {
+      debugPrint('🌐 네트워크 URL에서 파형 추출: $audioUrl');
+
+      // AudioService의 repository를 통해 파형 추출
+      // 하지만 이는 로컬 파일용이므로, PlayerController를 직접 사용
+      final controller = PlayerController();
+
+      await controller.preparePlayer(
+        path: audioUrl,
+        shouldExtractWaveform: true,
+      );
+
+      // 파형 추출 완료 대기
+      List<double> rawData = [];
+      int attempts = 0;
+      const maxAttempts = 200; // 20초 대기
+
+      while (attempts < maxAttempts && rawData.isEmpty) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        attempts++;
+
+        try {
+          final currentData = controller.waveformData;
+          if (currentData.isNotEmpty) {
+            rawData = currentData;
+            debugPrint('✅ 네트워크 파형 추출 완료: ${rawData.length} samples');
+            break;
+          }
+        } catch (e) {
+          // 아직 준비되지 않음, 계속 대기
+        }
+
+        if (attempts % 50 == 0) {
+          debugPrint('⏳ 네트워크 파형 추출 대기... ${attempts * 100}ms');
+        }
+      }
+
+      controller.dispose();
+
+      if (rawData.isNotEmpty) {
+        // 100개 포인트로 압축
+        final compressed = _compressWaveformData(rawData, targetLength: 100);
+        return compressed;
+      } else {
+        debugPrint('❌ 네트워크 파형 추출 시간 초과');
+        return [];
+      }
+    } catch (e) {
+      debugPrint('❌ 네트워크 파형 추출 오류: $e');
+      return [];
+    }
+  }
+
+  /// 파형 데이터 압축 헬퍼 메서드
+  List<double> _compressWaveformData(
+    List<double> data, {
+    int targetLength = 100,
+  }) {
+    if (data.length <= targetLength) return data;
+
+    final step = data.length / targetLength;
+    final compressed = <double>[];
+
+    for (int i = 0; i < targetLength; i++) {
+      final startIndex = (i * step).floor();
+      final endIndex = ((i + 1) * step).floor().clamp(0, data.length);
+
+      double maxValue = 0.0;
+      for (int j = startIndex; j < endIndex; j++) {
+        maxValue = max(maxValue, data[j].abs());
+      }
+      compressed.add(maxValue);
+    }
+
+    return compressed;
+  }
+
+  // ==================== 파형 데이터 유틸리티 ====================
+
+  /// 파형 데이터 압축 (UI에서 사용할 수 있도록 래핑)
+  List<double> compressWaveformForDisplay(
+    List<double> waveformData, {
+    int targetLength = 100,
+  }) {
+    try {
+      debugPrint('🔧 파형 데이터 압축 시작: ${waveformData.length} → $targetLength');
+
+      final compressed = _photoRepository.compressWaveformData(
+        waveformData,
+        targetLength: targetLength,
+      );
+
+      debugPrint('✅ 파형 데이터 압축 완료: ${compressed.length} samples');
+      return compressed;
+    } catch (e) {
+      debugPrint('❌ 파형 데이터 압축 실패: $e');
+      return waveformData; // 실패 시 원본 데이터 반환
     }
   }
 }
