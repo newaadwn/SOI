@@ -56,7 +56,7 @@ class CommentController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        debugPrint('✅ 댓글 기능이 준비되었습니다.');
+        debugPrint('댓글 기능이 준비되었습니다.');
       } else {
         _error = result.error;
         debugPrint(result.error ?? '댓글 초기화에 실패했습니다.');
@@ -89,7 +89,7 @@ class CommentController extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      debugPrint('🎤 댓글 네이티브 녹음 시작 요청...');
+      debugPrint('댓글 네이티브 녹음 시작 요청...');
       final result = await _commentService.startRecording();
 
       if (result.isSuccess) {
@@ -102,7 +102,7 @@ class CommentController extends ChangeNotifier {
         _isLoading = false;
         notifyListeners();
 
-        debugPrint('✅ 댓글 네이티브 녹음이 시작되었습니다.');
+        debugPrint('댓글 네이티브 녹음이 시작되었습니다.');
       } else {
         _isLoading = false;
         notifyListeners();
@@ -127,7 +127,7 @@ class CommentController extends ChangeNotifier {
       // 타이머 정리
       _stopRecordingTimer();
 
-      debugPrint('🎤 댓글 네이티브 녹음 중지 요청...');
+      debugPrint('댓글 네이티브 녹음 중지 요청...');
       final result = await _commentService.stopRecordingSimple();
 
       _isRecording = false;
@@ -140,7 +140,7 @@ class CommentController extends ChangeNotifier {
 
         notifyListeners();
 
-        debugPrint('✅ 댓글 네이티브 녹음이 완료되었습니다: ${_currentRecordingPath}');
+        debugPrint('댓글 네이티브 녹음이 완료되었습니다: ${_currentRecordingPath}');
       } else {
         _currentRecordingPath = null;
         notifyListeners();

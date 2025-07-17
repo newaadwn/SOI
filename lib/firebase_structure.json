@@ -45,7 +45,7 @@
         "updatedAt": "Timestamp (프로필 업데이트 시)"
       },
       "subcollections": {
-        "friends": {
+        "contacts": {
           "document_id": "{contactId}",
           "fields": {
             "displayName": "연락처 표시 이름 (String)",
@@ -58,6 +58,19 @@
             "status": "연락처 상태 (String: active, blocked, deleted)",
             "type": "연락처 타입 (String: phone, email, manual)",
             "isFavorite": "즐겨찾기 여부 (Boolean)"
+          }
+        },
+        "friends": {
+          "document_id": "{friendUserId}",
+          "description": "실제 친구 관계 목록 (친구 요청 수락 후)",
+          "fields": {
+            "userId": "친구의 사용자 ID (String)",
+            "nickname": "친구의 닉네임 (String)",
+            "profileImageUrl": "친구의 프로필 이미지 URL (String, optional)",
+            "becameFriendsAt": "친구가 된 시간 (Timestamp)",
+            "isActive": "활성 상태 (Boolean, 기본값: true)",
+            "lastInteraction": "마지막 상호작용 시간 (Timestamp, optional)",
+            "metadata": "추가 정보 (Map, optional)"
           }
         }
       }
@@ -123,6 +136,59 @@
         "createdAt": "Timestamp (오디오 생성 시간)",
         "uploadedAt": "Timestamp (업로드 완료 시간, optional)",
         "description": "오디오 설명 (String, optional)"
+      }
+    },
+    "friend_requests": {
+      "document_id": "{requestId} (자동 생성)",
+      "description": "친구 요청 관리 컬렉션",
+      "fields": {
+        "fromUserId": "요청 보낸 사용자 ID (String)",
+        "fromUserNickname": "요청 보낸 사용자 닉네임 (String)",
+        "toUserId": "요청 받을 사용자 ID (String)", 
+        "toUserNickname": "요청 받을 사용자 닉네임 (String)",
+        "status": "요청 상태 (String: pending, accepted, rejected, cancelled)",
+        "type": "요청 타입 (String: phone, search, suggestion, invite)",
+        "createdAt": "요청 생성 시간 (Timestamp)",
+        "respondedAt": "응답 시간 (Timestamp, optional)",
+        "message": "요청 메시지 (String, optional)",
+        "metadata": "추가 정보 (Map, optional - 전화번호, 추천 이유 등)"
+      },
+      "indexes": [
+        "fromUserId",
+        "toUserId", 
+        "status",
+        "createdAt",
+        "fromUserId + status",
+        "toUserId + status"
+      ],
+      "security_rules": {
+        "read": "resource.data.fromUserId == request.auth.uid || resource.data.toUserId == request.auth.uid",
+        "create": "request.auth.uid == request.resource.data.fromUserId && request.resource.data.status == 'pending'",
+        "update": "request.auth.uid == resource.data.toUserId && resource.data.status == 'pending'"
+      }
+    },
+    "friend_suggestions": {
+      "document_id": "{userId}",
+      "description": "친구 추천 캐시 컬렉션 (사용자별 추천 목록 임시 저장)",
+      "fields": {
+        "userId": "추천 대상 사용자 ID (String)",
+        "suggestions": "추천 친구 목록 (Array<Map>)",
+        "lastUpdated": "마지막 업데이트 시간 (Timestamp)",
+        "contactSyncEnabled": "연락처 동기화 여부 (Boolean)",
+        "suggestionCount": "추천 개수 (Number)"
+      },
+      "suggestion_item_structure": {
+        "userId": "추천될 사용자 ID (String)",
+        "nickname": "추천될 사용자 닉네임 (String)", 
+        "profileImageUrl": "프로필 이미지 URL (String, optional)",
+        "phoneNumber": "전화번호 (String, 연락처 기반 추천시)",
+        "score": "추천 점수 (Number, 0.0 ~ 1.0)",
+        "reasons": "추천 이유들 (Array<String>)",
+        "metadata": "추가 정보 (Map, optional)"
+      },
+      "security_rules": {
+        "read": "request.auth.uid == resource.id",
+        "write": "request.auth.uid == resource.id"
       }
     }
   },
@@ -366,6 +432,12 @@
       "status": "진행 중",
       "from": "lib_old/ (레거시 코드)",
       "to": "lib/ (Clean Architecture)"
+    },
+    "friend_system_status": {
+      "status": "새로 구현 중",
+      "completed": ["데이터 모델", "Firebase 구조 설계"],
+      "in_progress": ["Repository", "Service", "Controller"],
+      "pending": ["UI 컴포넌트", "연락처 연동", "실시간 알림"]
     }
   }
 }

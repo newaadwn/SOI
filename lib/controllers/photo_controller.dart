@@ -15,10 +15,8 @@ class PhotoController extends ChangeNotifier {
 
   List<PhotoDataModel> _photos = [];
   List<PhotoDataModel> _userPhotos = [];
-  List<PhotoDataModel> _searchResults = [];
   PhotoDataModel? _selectedPhoto;
   Map<String, int> _photoStats = {};
-  List<String> _popularTags = [];
 
   StreamSubscription<List<PhotoDataModel>>? _photosSubscription;
 
@@ -32,10 +30,8 @@ class PhotoController extends ChangeNotifier {
   String? get error => _error;
   List<PhotoDataModel> get photos => _photos;
   List<PhotoDataModel> get userPhotos => _userPhotos;
-  List<PhotoDataModel> get searchResults => _searchResults;
   PhotoDataModel? get selectedPhoto => _selectedPhoto;
   Map<String, int> get photoStats => _photoStats;
-  List<String> get popularTags => _popularTags;
 
   // ==================== 사진 업로드 ====================
 
@@ -71,9 +67,6 @@ class PhotoController extends ChangeNotifier {
         // 오디오 파일은 선택사항이므로 null로 설정
         audioFile = null;
       }
-
-      // 업로드 진행률 시뮬레이션
-      _simulateUploadProgress();
 
       debugPrint('PhotoController: PhotoService.uploadPhoto 호출');
       final result = await _photoService.uploadPhoto(
@@ -329,49 +322,6 @@ class PhotoController extends ChangeNotifier {
     }
   }
 
-  /// 사진 좋아요 토글
-  Future<bool> togglePhotoLike({
-    required String categoryId,
-    required String photoId,
-    required String userId,
-  }) async {
-    try {
-      final success = await _photoService.togglePhotoLike(
-        categoryId: categoryId,
-        photoId: photoId,
-        userId: userId,
-      );
-
-      if (success) {
-        // ✅ 성공 시 UI 피드백 (토스트는 표시하지 않음 - UX 고려)
-
-        // 현재 선택된 사진 업데이트
-        if (_selectedPhoto?.id == photoId) {
-          await loadPhotoDetails(
-            categoryId: categoryId,
-            photoId: photoId,
-            viewerUserId: userId,
-          );
-        }
-
-        // 사진 목록에서 해당 사진 업데이트
-        final photoIndex = _photos.indexWhere((p) => p.id == photoId);
-        if (photoIndex != -1) {
-          await loadPhotosByCategory(categoryId);
-        }
-
-        return true;
-      } else {
-        debugPrint('좋아요 처리에 실패했습니다. 다시 시도해주세요.');
-        return false;
-      }
-    } catch (e) {
-      debugPrint('사진 좋아요 토글 오류: $e');
-      debugPrint('좋아요 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
-      return false;
-    }
-  }
-
   // ==================== 사진 삭제 ====================
 
   /// 사진 삭제
@@ -404,7 +354,6 @@ class PhotoController extends ChangeNotifier {
         // 사진 목록에서 제거
         _photos.removeWhere((photo) => photo.id == photoId);
         _userPhotos.removeWhere((photo) => photo.id == photoId);
-        _searchResults.removeWhere((photo) => photo.id == photoId);
 
         // 선택된 사진이 삭제된 경우 초기화
         if (_selectedPhoto?.id == photoId) {
@@ -463,78 +412,10 @@ class PhotoController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 검색 결과 초기화
-  void clearSearchResults() {
-    _searchResults.clear();
-    notifyListeners();
-  }
-
   /// 선택된 사진 초기화
   void clearSelectedPhoto() {
     _selectedPhoto = null;
     notifyListeners();
-  }
-
-  // ==================== 내부 유틸리티 메서드 ====================
-
-  /// 업로드 진행률 시뮬레이션
-  void _simulateUploadProgress() {
-    Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      if (!_isUploading) {
-        timer.cancel();
-        return;
-      }
-
-      _uploadProgress += 0.05;
-      if (_uploadProgress >= 0.9) {
-        timer.cancel();
-      }
-      notifyListeners();
-    });
-  }
-
-  // ==================== 파형 데이터 업데이트 유틸리티 ====================
-
-  /// 기존 사진들에 파형 데이터 추가 (개발/유틸리티용)
-  Future<bool> updateWaveformDataForExistingPhotos(String categoryId) async {
-    try {
-      _isLoading = true;
-      _error = null;
-      notifyListeners();
-
-      debugPrint('PhotoController: 기존 사진들의 파형 데이터 업데이트 시작');
-      await _photoService.updateWaveformDataForExistingPhotos(categoryId);
-
-      _isLoading = false;
-      notifyListeners();
-
-      debugPrint('PhotoController: 파형 데이터 업데이트 완료');
-      return true;
-    } catch (e) {
-      _isLoading = false;
-      _error = '파형 데이터 업데이트 실패: $e';
-      notifyListeners();
-      debugPrint('PhotoController: 파형 데이터 업데이트 실패 - $e');
-      return false;
-    }
-  }
-
-  // ==================== 파형 데이터 유틸리티 ====================
-
-  /// UI에서 파형 표시를 위한 데이터 압축
-  List<double> compressWaveformForUI(
-    List<double> waveformData, {
-    int targetLength = 100,
-  }) {
-    try {
-      return _photoService.compressWaveformForDisplay(
-        waveformData,
-        targetLength: targetLength,
-      );
-    } catch (e) {
-      debugPrint('PhotoController: 파형 압축 오류 - $e');
-      return waveformData;
-    }
   }
 
   // ==================== 리소스 해제 ====================

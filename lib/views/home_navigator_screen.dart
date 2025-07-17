@@ -92,8 +92,8 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
         index: _currentPageIndex,
         children: [
           const HomeScreen(),
-          // 매번 새로운 카메라 스크린 인스턴스 생성
-          _currentPageIndex == 1 ? const CameraScreen() : Container(),
+          // ✅ 개선: 카메라 스크린을 항상 유지하되 visibility로 제어
+          const CameraScreen(),
           const ArchiveMainScreen(),
         ],
       ),

@@ -1,42 +1,23 @@
-/*
- * SharedArchivesScreen
- * 
- * 이 화면은 사용자가 다른 사용자와 공유한 카테고리(아카이빙)를 보여주는 화면입니다.
- * 
- * 기능:
- * 1. 사용자의 닉네임을 Firebase에서 가져옵니다.
- * 2. 현재 사용자가 다른 사용자들과 공유하고 있는 카테고리만 필터링하여 표시합니다.
- * 3. 각 카테고리는 그리드 형태로 표시되며, 각 항목에는 대표 이미지와 카테고리 이름이 표시됩니다.
- * 4. 카테고리 참여자들의 프로필 이미지가 작은 원형 아이콘으로 표시됩니다.
- * 5. 카테고리를 탭하면 해당 카테고리의 사진을 모두 볼 수 있는 CategoryPhotosScreen으로 이동합니다.
- * 
- * 데이터 흐름:
- * - AuthController을 통해 사용자의 닉네임을 가져옵니다.
- * - CategoryController을 통해 사용자가 속한 카테고리 정보를 실시간으로 스트리밍합니다.
- * - 카테고리 중 현재 사용자와 다른 사용자가 함께 있는 카테고리만 필터링합니다.
- * 
- * 주요 위젯:
- * - GridView: 공유 카테고리를 그리드 형태로 표시합니다.
- * - StreamBuilder: Firebase에서 실시간으로 카테고리 데이터를 가져옵니다.
- */
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../models/category_data_model.dart';
 import '../../theme/theme.dart';
-import '../../controllers/auth_controller.dart';
 import 'category_photos_screen.dart';
 
-class SharedArchivesScreen extends StatefulWidget {
-  const SharedArchivesScreen({super.key});
+// 나의 아카이브 화면
+// 현재 사용자의 아카이브 목록을 표시
+// 아카이브를 클릭하면 아카이브 상세 화면으로 이동
+class MyArchivesScreen extends StatefulWidget {
+  const MyArchivesScreen({super.key});
 
   @override
-  State<SharedArchivesScreen> createState() => _SharedArchivesScreenState();
+  State<MyArchivesScreen> createState() => _MyArchivesScreenState();
 }
 
-class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
+class _MyArchivesScreenState extends State<MyArchivesScreen> {
   String? nickName;
 
   @override
@@ -124,7 +105,7 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
     final profileSize = _getProfileImageSize(context);
 
     // profileImages 리스트 안의 각 항목을 확인해요.
-    final List images = category['profileImages'] as List;
+    final List images = category['profileImages'] as List? ?? [];
     return Row(
       children:
           images.map<Widget>((imageUrl) {
@@ -145,7 +126,7 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
               child: CircleAvatar(
                 backgroundImage: CachedNetworkImageProvider(imageUrl),
                 onBackgroundImageError: (exception, stackTrace) {
-                  debugPrint('프로필 이미지 로딩 오류: $exception');
+                  debugPrint('이미지 로딩 오류: $exception');
                 },
                 child:
                     imageUrl.isEmpty ? Image.asset('assets/profile.png') : null,
@@ -208,9 +189,9 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
           final userCategories =
               categories
                   .where(
-                    (category) =>
-                        ((category['mates'] as List).contains(nickName) &&
-                            category['mates'].length != 1),
+                    (category) => category['mates'].every(
+                      (element) => element == nickName,
+                    ),
                   )
                   .toList();
 
@@ -251,6 +232,9 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
                         ),
                         child: InkWell(
                           onTap: () {
+                            debugPrint(
+                              "category['profileImages']: ${category['profileImages']}",
+                            );
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -269,66 +253,87 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
                             );
                           },
                           child: Padding(
-                            padding: const EdgeInsets.all(8.0),
+                            padding: EdgeInsets.all(screenWidth * 0.02),
                             child: Column(
                               children: [
                                 category['firstPhotoUrl'] != null
                                     ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: Image.network(
-                                        category['firstPhotoUrl'],
-                                        width: 175,
-                                        height: 145,
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: CachedNetworkImage(
+                                        imageUrl: category['firstPhotoUrl'],
+                                        width: imageSize.width,
+                                        height: imageSize.height,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (
-                                          context,
-                                          error,
-                                          stackTrace,
-                                        ) {
-                                          debugPrint('카테고리 이미지 로드 오류: $error');
-                                          return Container(
-                                            width: 175,
-                                            height: 145,
-                                            color: const Color(0xFF383838),
-                                            child: const Icon(
-                                              Icons.image_not_supported,
-                                              color: Colors.white54,
+                                        placeholder:
+                                            (context, url) => Container(
+                                              width: imageSize.width,
+                                              height: imageSize.height,
+                                              color: Colors.grey[300],
+                                              child: const Center(
+                                                child:
+                                                    CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      color: Colors.grey,
+                                                    ),
+                                              ),
                                             ),
-                                          );
-                                        },
+                                        errorWidget:
+                                            (context, url, error) => Container(
+                                              width: imageSize.width,
+                                              height: imageSize.height,
+                                              color: Colors.grey[300],
+                                              child: const Icon(
+                                                Icons.error,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
                                       ),
                                     )
-                                    : SizedBox(
-                                      width: 175,
-                                      height: 145,
+                                    : Container(
+                                      width: imageSize.width,
+                                      height: imageSize.height,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(4),
+                                        color: Colors.grey[300],
+                                      ),
                                       child: const Icon(
                                         Icons.photo,
                                         color: Colors.white54,
                                       ),
                                     ),
-                                SizedBox(
-                                  height:
-                                      8 /
-                                      852 *
-                                      MediaQuery.of(context).size.height,
-                                ),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      category['name'],
-                                      style: TextStyle(
-                                        color:
-                                            AppTheme
-                                                .lightTheme
-                                                .colorScheme
-                                                .secondary,
-                                        fontSize: 16 / 852 * screenHeight,
+                                SizedBox(height: screenHeight * 0.01),
+
+                                // 카테고리 이름과 프로필 영역
+                                Expanded(
+                                  child: Column(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              category['name'],
+                                              style: TextStyle(
+                                                color:
+                                                    AppTheme
+                                                        .lightTheme
+                                                        .colorScheme
+                                                        .secondary,
+                                                fontSize: categoryNameFontSize,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          _buildProfileRow(category, context),
+                                        ],
                                       ),
-                                    ),
-                                    _buildProfileRow(category, context),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ],
                             ),

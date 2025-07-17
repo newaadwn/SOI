@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
@@ -6,9 +7,14 @@ import '../../theme/theme.dart';
 import '../widgets/custom_drawer.dart';
 import '../about_camera/widgets/add_category_widget.dart';
 import 'all_archives_screen.dart';
-import 'personal_archives_screen.dart';
+import 'my_archives_screen.dart';
 import 'shared_archives_screen.dart';
 
+// 아카이브 메인 화면
+// 전체 아카이브, 나의 아카이브, 공유 아카이브 화면으로 구성
+// 전체 아카이브: 모든 사용자의 아카이브 목록 표시
+// 나의 아카이브: 현재 사용자의 아카이브 목록 표시
+// 공유 아카이브: 다른 사용자와 공유된 아카이브 목록 표시
 class ArchiveMainScreen extends StatefulWidget {
   const ArchiveMainScreen({super.key});
 
@@ -25,7 +31,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   // 탭 화면 목록
   final List<Widget> _screens = const [
     AllArchivesScreen(),
-    PersonalArchivesScreen(),
+    MyArchivesScreen(),
     SharedArchivesScreen(),
   ];
 
@@ -77,9 +83,11 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                       width: 34,
                                       height: 34,
                                       child: CircleAvatar(
-                                        backgroundImage: NetworkImage(
-                                          profileImageUrl,
-                                        ),
+                                        backgroundImage:
+                                            CachedNetworkImageProvider(
+                                              profileImageUrl,
+                                            ),
+
                                         onBackgroundImageError: (
                                           exception,
                                           stackTrace,

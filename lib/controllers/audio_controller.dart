@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:audioplayers/audioplayers.dart' as ap;
 import 'package:audio_waveforms/audio_waveforms.dart';
 import '../services/audio_service.dart';
 import '../models/audio_data_model.dart';
@@ -25,6 +25,12 @@ class AudioController extends ChangeNotifier {
   List<AudioDataModel> _audioList = [];
   Timer? _recordingTimer;
   StreamSubscription<double>? _uploadSubscription;
+
+  // 실시간 오디오 추적을 위한 AudioPlayer 관리
+  ap.AudioPlayer? _realtimeAudioPlayer;
+  StreamSubscription<Duration>? _positionSubscription;
+  StreamSubscription<Duration>? _durationSubscription;
+  StreamSubscription<ap.PlayerState>? _stateSubscription;
 
   // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
   final AudioService _audioService = AudioService();
@@ -68,6 +74,14 @@ class AudioController extends ChangeNotifier {
   String? get error => _error;
   List<AudioDataModel> get audioList => _audioList;
 
+  /// 실시간 재생 위치 (Duration 타입)
+  Duration get currentPosition =>
+      Duration(milliseconds: (_playbackPosition * 1000).round());
+
+  /// 실시간 재생 길이 (Duration 타입)
+  Duration get currentDuration =>
+      Duration(milliseconds: (_playbackDuration * 1000).round());
+
   /// 녹음 시간을 포맷팅하여 반환합니다 (예: "01:23")
   String get formattedRecordingDuration {
     final minutes = (_recordingDuration ~/ 60).toString().padLeft(2, '0');
@@ -90,7 +104,7 @@ class AudioController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        debugPrint('✅ 오디오 기능이 준비되었습니다.');
+        debugPrint('오디오 기능이 준비되었습니다.');
       } else {
         _error = result.error;
         debugPrint(result.error ?? '오디오 초기화에 실패했습니다.');
@@ -109,6 +123,11 @@ class AudioController extends ChangeNotifier {
     _recordingTimer?.cancel();
     _uploadSubscription?.cancel();
     _playerController?.dispose();
+
+    // 실시간 오디오 관련 정리
+    _disposeRealtimeListeners();
+    _realtimeAudioPlayer?.dispose();
+
     _audioService.dispose();
     super.dispose();
   }
@@ -116,7 +135,7 @@ class AudioController extends ChangeNotifier {
   // ==================== 파형 플레이어 관리 ====================  /// 파형 표시용 플레이어 초기화
   Future<void> initializePlayerForWaveform(String audioUrl) async {
     try {
-      debugPrint('🎵 파형 플레이어 초기화 시작: $audioUrl');
+      debugPrint('파형 플레이어 초기화 시작: $audioUrl');
 
       // 기존 플레이어가 있다면 해제
       if (_playerController != null) {
@@ -136,13 +155,13 @@ class AudioController extends ChangeNotifier {
       _isPlayerInitialized = true;
       notifyListeners();
 
-      debugPrint('✅ 파형 플레이어 초기화 완료');
+      debugPrint('파형 플레이어 초기화 완료');
     } catch (e) {
-      debugPrint('❌ 파형 플레이어 초기화 오류: $e');
+      debugPrint('파형 플레이어 초기화 오류: $e');
 
       // 파형 추출 없이 기본 플레이어로 재시도
       try {
-        debugPrint('🔄 기본 플레이어로 재시도...');
+        debugPrint('기본 플레이어로 재시도...');
         _playerController = PlayerController();
         await _playerController!.preparePlayer(
           path: audioUrl,
@@ -151,19 +170,19 @@ class AudioController extends ChangeNotifier {
 
         _isPlayerInitialized = true;
         notifyListeners();
-        debugPrint('✅ 기본 플레이어로 초기화 완료');
+        debugPrint('기본 플레이어로 초기화 완료');
       } catch (fallbackError) {
-        debugPrint('❌ 기본 플레이어 초기화도 실패: $fallbackError');
+        debugPrint('기본 플레이어 초기화도 실패: $fallbackError');
         _error = '이 음성 파일은 재생할 수 없습니다.';
         _isPlayerInitialized = false;
         notifyListeners();
 
         // 최후의 수단으로 audioplayers 사용
         try {
-          debugPrint('🔄 audioplayers로 재시도...');
+          debugPrint('audioplayers로 재시도...');
           await playAudioFromUrl(audioUrl);
         } catch (audioplayersError) {
-          debugPrint('❌ audioplayers도 실패: $audioplayersError');
+          debugPrint('audioplayers도 실패: $audioplayersError');
         }
       }
     }
@@ -176,10 +195,10 @@ class AudioController extends ChangeNotifier {
         await _playerController!.startPlayer();
         _isPlaying = true;
         notifyListeners();
-        debugPrint('✅ 파형 플레이어 재생 시작');
+        debugPrint('파형 플레이어 재생 시작');
       }
     } catch (e) {
-      debugPrint('❌ 파형 플레이어 재생 오류: $e');
+      debugPrint('파형 플레이어 재생 오류: $e');
       _error = '음성 재생 중 오류가 발생했습니다.';
       notifyListeners();
     }
@@ -192,10 +211,10 @@ class AudioController extends ChangeNotifier {
         await _playerController!.pausePlayer();
         _isPlaying = false;
         notifyListeners();
-        debugPrint('⏸️ 파형 플레이어 일시정지');
+        debugPrint('파형 플레이어 일시정지');
       }
     } catch (e) {
-      debugPrint('❌ 파형 플레이어 일시정지 오류: $e');
+      debugPrint('파형 플레이어 일시정지 오류: $e');
     }
   }
 
@@ -206,10 +225,10 @@ class AudioController extends ChangeNotifier {
         await _playerController!.stopPlayer();
         _isPlaying = false;
         notifyListeners();
-        debugPrint('⏹️ 파형 플레이어 중지');
+        debugPrint('파형 플레이어 중지');
       }
     } catch (e) {
-      debugPrint('❌ 파형 플레이어 중지 오류: $e');
+      debugPrint('파형 플레이어 중지 오류: $e');
     }
   }
 
@@ -218,10 +237,10 @@ class AudioController extends ChangeNotifier {
     try {
       if (_playerController != null) {
         await _playerController!.seekTo(position.inMilliseconds);
-        debugPrint('🎯 파형 플레이어 위치 이동: ${position.inSeconds}초');
+        debugPrint('파형 플레이어 위치 이동: ${position.inSeconds}초');
       }
     } catch (e) {
-      debugPrint('❌ 파형 플레이어 위치 이동 오류: $e');
+      debugPrint('파형 플레이어 위치 이동 오류: $e');
     }
   }
 
@@ -235,19 +254,19 @@ class AudioController extends ChangeNotifier {
       notifyListeners();
 
       // 1. 먼저 마이크 권한 확인/요청
-      debugPrint('🎤 마이크 권한 확인 중...');
+      debugPrint('마이크 권한 확인 중...');
       final hasPermission = await requestMicrophonePermission();
 
       if (!hasPermission) {
         _isLoading = false;
         _error = '마이크 권한이 필요합니다.';
         notifyListeners();
-        debugPrint('❌ 마이크 권한이 없어 녹음을 시작할 수 없습니다.');
+        debugPrint('마이크 권한이 없어 녹음을 시작할 수 없습니다.');
         throw Exception('마이크 권한이 필요합니다.');
       }
 
       // 2. 권한이 있을 때만 네이티브 녹음 시작
-      debugPrint('🎤 네이티브 녹음 시작 요청...');
+      debugPrint('네이티브 녹음 시작 요청...');
       final result = await _audioService.startRecording();
 
       if (result.isSuccess) {
@@ -261,15 +280,15 @@ class AudioController extends ChangeNotifier {
         _isLoading = false;
         notifyListeners();
 
-        debugPrint('✅ 네이티브 녹음이 시작되었습니다: ${_currentRecordingPath}');
+        debugPrint('네이티브 녹음이 시작되었습니다: ${_currentRecordingPath}');
       } else {
         _isLoading = false;
         notifyListeners();
 
-        debugPrint('❌ 네이티브 녹음 시작 실패: ${result.error}');
+        debugPrint('네이티브 녹음 시작 실패: ${result.error}');
       }
     } catch (e) {
-      debugPrint('❌ 네이티브 녹음 시작 오류: $e');
+      debugPrint('네이티브 녹음 시작 오류: $e');
       _isLoading = false;
       notifyListeners();
     }
@@ -288,7 +307,7 @@ class AudioController extends ChangeNotifier {
       // 타이머 및 구독 정리
       _stopRecordingTimer();
 
-      debugPrint('🎤 네이티브 녹음 중지 요청...');
+      debugPrint('네이티브 녹음 중지 요청...');
       final result = await _audioService.stopRecording(
         categoryId: categoryId,
         userId: userId,
@@ -309,12 +328,12 @@ class AudioController extends ChangeNotifier {
         _audioList.insert(0, audioData);
         notifyListeners();
 
-        debugPrint('✅ 네이티브 녹음이 완료되었습니다: ${audioData.id}');
+        debugPrint('네이티브 녹음이 완료되었습니다: ${audioData.id}');
       } else {
-        debugPrint('❌ 네이티브 녹음 완료 실패: ${result.error}');
+        debugPrint('네이티브 녹음 완료 실패: ${result.error}');
       }
     } catch (e) {
-      debugPrint('❌ 네이티브 녹음 중지 오류: $e');
+      debugPrint('네이티브 녹음 중지 오류: $e');
       _isRecording = false;
       _isLoading = false;
       notifyListeners();
@@ -330,7 +349,7 @@ class AudioController extends ChangeNotifier {
       // 타이머 및 구독 정리
       _stopRecordingTimer();
 
-      debugPrint('🎤 네이티브 간단 녹음 중지...');
+      debugPrint('네이티브 간단 녹음 중지...');
       final result = await _audioService.stopRecordingSimple();
 
       _isLoading = false;
@@ -338,16 +357,60 @@ class AudioController extends ChangeNotifier {
 
       if (result.isSuccess) {
         _currentRecordingPath = result.data ?? '';
-        debugPrint('✅ 네이티브 간단 녹음 중지 완료: $_currentRecordingPath');
+        debugPrint('네이티브 간단 녹음 중지 완료: $_currentRecordingPath');
       } else {
         _error = result.error;
-        debugPrint('❌ 네이티브 간단 녹음 중지 실패: ${result.error}');
+        debugPrint('네이티브 간단 녹음 중지 실패: ${result.error}');
       }
 
       notifyListeners();
     } catch (e) {
       _isLoading = false;
       _isRecording = false;
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+  
+  /// 녹음 일시정지
+  Future<void> pauseRecording() async {
+    try {
+      // 타이머만 일시정지
+      _stopRecordingTimer();
+      debugPrint('녹음 일시정지됨');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('녹음 일시정지 오류: $e');
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+  
+  /// 녹음 재개
+  Future<void> resumeRecording() async {
+    try {
+      // 타이머 재시작
+      _startRecordingTimer();
+      debugPrint('녹음 재개됨');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('녹음 재개 오류: $e');
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+  
+  /// 녹음 취소
+  Future<void> cancelRecording() async {
+    try {
+      _stopRecordingTimer();
+      _isRecording = false;
+      _currentRecordingPath = null;
+      _recordingDuration = 0;
+      debugPrint('녹음 취소됨');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('녹음 취소 오류: $e');
       _error = e.toString();
       notifyListeners();
     }
@@ -414,8 +477,8 @@ class AudioController extends ChangeNotifier {
       await stopPlaying();
 
       // 새로운 오디오 재생 (간단한 AudioPlayer 사용)
-      final player = AudioPlayer();
-      await player.play(UrlSource(audioUrl));
+      final player = ap.AudioPlayer();
+      await player.play(ap.UrlSource(audioUrl));
 
       _isLoading = false;
       _isPlaying = true;
@@ -676,7 +739,7 @@ class AudioController extends ChangeNotifier {
   /// 오디오 URL에서 duration 추출
   Future<Duration?> getAudioDuration(String audioUrl) async {
     try {
-      final player = AudioPlayer();
+      final player = ap.AudioPlayer();
 
       // 오디오 소스 설정
       await player.setSourceUrl(audioUrl);
@@ -710,7 +773,7 @@ class AudioController extends ChangeNotifier {
       );
       return result;
     } catch (e) {
-      debugPrint('❌ Error getting audio duration: $e');
+      debugPrint('Error getting audio duration: $e');
       return null;
     }
   }
@@ -747,5 +810,133 @@ class AudioController extends ChangeNotifier {
   /// 업로드 진행률 포맷팅
   String get formattedUploadProgress {
     return '${(_uploadProgress * 100).toStringAsFixed(1)}%';
+  }
+
+  // ==================== 실시간 오디오 추적 ====================
+
+  /// 실시간 AudioPlayer 초기화
+  void _initializeRealtimePlayer() {
+    if (_realtimeAudioPlayer != null) return;
+
+    _realtimeAudioPlayer = ap.AudioPlayer();
+    _setupRealtimeListeners();
+    debugPrint('실시간 AudioPlayer 초기화 완료');
+  }
+
+  /// 실시간 리스너 설정
+  void _setupRealtimeListeners() {
+    if (_realtimeAudioPlayer == null) return;
+
+    // 재생 위치 변화 감지
+    _positionSubscription = _realtimeAudioPlayer!.onPositionChanged.listen((
+      Duration position,
+    ) {
+      _playbackPosition = position.inMilliseconds / 1000.0; // 초 단위로 변환
+      notifyListeners();
+    });
+
+    // 재생 시간 변화 감지
+    _durationSubscription = _realtimeAudioPlayer!.onDurationChanged.listen((
+      Duration duration,
+    ) {
+      _playbackDuration = duration.inMilliseconds / 1000.0; // 초 단위로 변환
+      notifyListeners();
+    });
+
+    // 재생 상태 변화 감지
+    _stateSubscription = _realtimeAudioPlayer!.onPlayerStateChanged.listen((
+      ap.PlayerState state,
+    ) {
+      _isPlaying = state == ap.PlayerState.playing;
+      if (state == ap.PlayerState.completed) {
+        _playbackPosition = 0.0;
+        _currentPlayingAudioUrl = null;
+      }
+      notifyListeners();
+    });
+
+    debugPrint('🎧 실시간 리스너 설정 완료');
+  }
+
+  /// 실시간 오디오 재생 (중복 방지)
+  Future<void> playRealtimeAudio(String audioUrl) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      _initializeRealtimePlayer();
+
+      // 이미 같은 오디오가 재생 중이면 일시정지/재생 토글
+      if (_currentPlayingAudioUrl == audioUrl && _isPlaying) {
+        await _realtimeAudioPlayer!.pause();
+        debugPrint('오디오 일시정지: $audioUrl');
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      // 다른 오디오가 재생 중이면 정지
+      if (_isPlaying) {
+        await _realtimeAudioPlayer!.stop();
+        debugPrint('🛑 이전 오디오 정지');
+      }
+
+      // 새 오디오 재생
+      await _realtimeAudioPlayer!.play(ap.UrlSource(audioUrl));
+      _currentPlayingAudioUrl = audioUrl;
+
+      _isLoading = false;
+      debugPrint('새 오디오 재생: $audioUrl');
+      notifyListeners();
+    } catch (e) {
+      debugPrint('실시간 오디오 재생 오류: $e');
+      _isLoading = false;
+      _error = '음성 파일을 재생할 수 없습니다.';
+      notifyListeners();
+    }
+  }
+
+  /// 실시간 오디오 일시정지
+  Future<void> pauseRealtimeAudio() async {
+    if (_realtimeAudioPlayer != null && _isPlaying) {
+      await _realtimeAudioPlayer!.pause();
+      debugPrint('실시간 오디오 일시정지');
+    }
+  }
+
+  /// 실시간 오디오 정지
+  Future<void> stopRealtimeAudio() async {
+    if (_realtimeAudioPlayer != null) {
+      await _realtimeAudioPlayer!.stop();
+      _playbackPosition = 0.0;
+      _currentPlayingAudioUrl = null;
+      debugPrint('🛑 실시간 오디오 정지');
+      notifyListeners();
+    }
+  }
+
+  /// 오디오 토글 (재생/일시정지) - UI용 간편 메서드
+  Future<void> toggleAudio(String audioUrl) async {
+    if (_currentPlayingAudioUrl == audioUrl && _isPlaying) {
+      await pauseRealtimeAudio();
+    } else {
+      await playRealtimeAudio(audioUrl);
+    }
+  }
+
+  /// 오디오 정지 - UI용 간편 메서드
+  Future<void> stopAudio() async {
+    await stopRealtimeAudio();
+  }
+
+  /// 실시간 리스너 정리
+  void _disposeRealtimeListeners() {
+    _positionSubscription?.cancel();
+    _durationSubscription?.cancel();
+    _stateSubscription?.cancel();
+    _positionSubscription = null;
+    _durationSubscription = null;
+    _stateSubscription = null;
   }
 }

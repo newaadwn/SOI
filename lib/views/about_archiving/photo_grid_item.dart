@@ -61,7 +61,7 @@ class _PhotoGridItemState extends State<PhotoGridItem>
 
     // 오디오 URL 유효성 검사
     if (audioUrl.isEmpty) {
-      debugPrint('⚠️ 오디오 URL이 비어있습니다.');
+      debugPrint('오디오 URL이 비어있습니다.');
       setState(() {
         _hasAudio = false;
       });
@@ -72,14 +72,14 @@ class _PhotoGridItemState extends State<PhotoGridItem>
     final waveformData = widget.photo.waveformData;
 
     if (waveformData != null && waveformData.isNotEmpty) {
-      debugPrint('🎵 Firestore 파형 데이터 사용: ${waveformData.length} samples');
+      debugPrint('Firestore 파형 데이터 사용: ${waveformData.length} samples');
       setState(() {
         _hasAudio = true;
         _waveformData = waveformData;
       });
-      debugPrint('✅ 파형 데이터 설정 완료');
+      debugPrint('파형 데이터 설정 완료');
     } else {
-      debugPrint('⚠️ Firestore에 파형 데이터가 없습니다');
+      debugPrint('Firestore에 파형 데이터가 없습니다');
       setState(() {
         _hasAudio = false;
       });
@@ -268,7 +268,7 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                       width: 129,
                       height: 21,
                       decoration: BoxDecoration(
-                        color: Colors.black,
+                        color: Color(0xff171717).withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(15),
                       ),
                       child: _buildWaveformWidget(),
@@ -301,10 +301,11 @@ class _PhotoGridItemState extends State<PhotoGridItem>
 
     // 커스텀 파형 표시
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8),
+      height: 21,
+      padding: EdgeInsets.symmetric(horizontal: 10),
       child: CustomWaveformWidget(
         waveformData: _waveformData!,
-        color: Colors.white70,
+        color: Colors.white,
         activeColor: Colors.blueAccent,
       ),
     );

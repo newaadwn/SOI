@@ -101,7 +101,7 @@ class PhotoRepository {
     List<double>? waveformData, // 파형 데이터 파라미터 추가
   }) async {
     try {
-      debugPrint('💾 파형 데이터와 함께 사진 저장 시작');
+      debugPrint('파형 데이터와 함께 사진 저장 시작');
       debugPrint('📂 CategoryId: $categoryId');
       debugPrint('🌊 파형 데이터 길이: ${waveformData?.length}');
 
@@ -124,11 +124,11 @@ class PhotoRepository {
 
       if (waveformData != null && waveformData.isNotEmpty) {
         photoData['waveformData'] = waveformData;
-        debugPrint('✅ 파형 데이터 포함하여 Firestore에 저장');
+        debugPrint('파형 데이터 포함하여 Firestore에 저장');
         debugPrint('  - 실제 저장될 데이터 타입: ${waveformData.runtimeType}');
       } else {
         photoData['waveformData'] = []; // 빈 배열로 명시적 저장
-        debugPrint('⚠️ 파형 데이터 없음 - 빈 배열로 저장');
+        debugPrint('파형 데이터 없음 - 빈 배열로 저장');
       }
 
       final docRef = await _firestore
@@ -137,24 +137,12 @@ class PhotoRepository {
           .collection('photos')
           .add(photoData);
 
-      debugPrint('✅ 사진 저장 완료 - PhotoId: ${docRef.id}');
+      debugPrint('사진 저장 완료 - PhotoId: ${docRef.id}');
       return docRef.id;
     } catch (e) {
-      debugPrint('❌ 사진 저장 실패: $e');
+      debugPrint('사진 저장 실패: $e');
       rethrow;
     }
-  }
-
-  /// 기존 사진에 파형 데이터 업데이트
-  Future<void> updatePhotoWaveform({
-    required String photoId,
-    required List<double> waveformData,
-    required double audioDuration,
-  }) async {
-    await _firestore.collection('photos').doc(photoId).update({
-      'waveformData': waveformData,
-      'audioDuration': audioDuration,
-    });
   }
 
   // ==================== 사진 조회 ====================
@@ -178,7 +166,7 @@ class PhotoRepository {
       final photos =
           querySnapshot.docs.map((doc) {
             final data = doc.data();
-            debugPrint('📸 Firestore 원본 데이터 - ID: ${doc.id}');
+            debugPrint('Firestore 원본 데이터 - ID: ${doc.id}');
             debugPrint('  - UserID: ${data['userID']}');
             debugPrint(
               '  - waveformData 필드 존재: ${data.containsKey('waveformData')}',
@@ -199,7 +187,7 @@ class PhotoRepository {
             return PhotoDataModel.fromFirestore(data, doc.id);
           }).toList();
 
-      debugPrint('✅ 사진 조회 완료');
+      debugPrint('사진 조회 완료');
       return photos;
     } catch (e) {
       debugPrint('❌ 카테고리별 사진 조회 오류: $e');
@@ -278,101 +266,6 @@ class PhotoRepository {
     } catch (e) {
       debugPrint('사진 조회 오류: $e');
       return null;
-    }
-  }
-
-  // ==================== 사진 업데이트 ====================
-
-  /// 사진 정보 업데이트
-  Future<bool> updatePhoto({
-    required String categoryId,
-    required String photoId,
-    required Map<String, dynamic> updates,
-  }) async {
-    try {
-      updates['updatedAt'] = Timestamp.now();
-
-      await _firestore
-          .collection('categories')
-          .doc(categoryId)
-          .collection('photos')
-          .doc(photoId)
-          .update(updates);
-
-      return true;
-    } catch (e) {
-      debugPrint('사진 업데이트 오류: $e');
-      return false;
-    }
-  }
-
-  /// 사진 좋아요 토글
-  Future<bool> togglePhotoLike({
-    required String categoryId,
-    required String photoId,
-    required String userId,
-  }) async {
-    try {
-      final docRef = _firestore
-          .collection('categories')
-          .doc(categoryId)
-          .collection('photos')
-          .doc(photoId);
-
-      return await _firestore.runTransaction((transaction) async {
-        final doc = await transaction.get(docRef);
-        if (!doc.exists) return false;
-
-        final data = doc.data()!;
-        final likedBy = List<String>.from(data['likedBy'] ?? []);
-        final currentLikeCount = data['likeCount'] ?? 0;
-
-        if (likedBy.contains(userId)) {
-          // 좋아요 취소
-          likedBy.remove(userId);
-          transaction.update(docRef, {
-            'likedBy': likedBy,
-            'likeCount': currentLikeCount - 1,
-            'updatedAt': Timestamp.now(),
-          });
-        } else {
-          // 좋아요 추가
-          likedBy.add(userId);
-          transaction.update(docRef, {
-            'likedBy': likedBy,
-            'likeCount': currentLikeCount + 1,
-            'updatedAt': Timestamp.now(),
-          });
-        }
-
-        return true;
-      });
-    } catch (e) {
-      debugPrint('사진 좋아요 토글 오류: $e');
-      return false;
-    }
-  }
-
-  /// 사진 조회수 증가
-  Future<bool> incrementPhotoViewCount({
-    required String categoryId,
-    required String photoId,
-  }) async {
-    try {
-      await _firestore
-          .collection('categories')
-          .doc(categoryId)
-          .collection('photos')
-          .doc(photoId)
-          .update({
-            'viewCount': FieldValue.increment(1),
-            'updatedAt': Timestamp.now(),
-          });
-
-      return true;
-    } catch (e) {
-      debugPrint('사진 조회수 증가 오류: $e');
-      return false;
     }
   }
 

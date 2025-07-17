@@ -96,10 +96,10 @@ class CommentService {
         return AuthResult.failure('네이티브 녹음을 시작할 수 없습니다.');
       }
 
-      debugPrint('🎤 댓글 네이티브 녹음 시작됨: $recordingPath');
+      debugPrint('댓글 네이티브 녹음 시작됨: $recordingPath');
       return AuthResult.success(recordingPath);
     } catch (e) {
-      debugPrint('❌ 댓글 네이티브 녹음 시작 오류: $e');
+      debugPrint('댓글 네이티브 녹음 시작 오류: $e');
       return AuthResult.failure('네이티브 녹음을 시작할 수 없습니다.');
     }
   }
@@ -122,7 +122,7 @@ class CommentService {
         return AuthResult.failure('네이티브 녹음 파일을 저장할 수 없습니다.');
       }
 
-      debugPrint('🎤 댓글 네이티브 녹음 완료: $recordingPath');
+      debugPrint('댓글 네이티브 녹음 완료: $recordingPath');
 
       // 파일 존재 여부 확인
       final file = File(recordingPath);
@@ -174,7 +174,7 @@ class CommentService {
         'description': description != null ? _normalizeText(description) : null,
       });
     } catch (e) {
-      debugPrint('❌ 댓글 네이티브 녹음 중지 오류: $e');
+      debugPrint('댓글 네이티브 녹음 중지 오류: $e');
       return AuthResult.failure('네이티브 녹음을 완료할 수 없습니다.');
     }
   }
@@ -185,13 +185,13 @@ class CommentService {
       final filePath = await CommentRepository.stopRecording();
 
       if (filePath != null && filePath.isNotEmpty) {
-        debugPrint('🎤 댓글 간단 녹음 중지: $filePath');
+        debugPrint('댓글 간단 녹음 중지: $filePath');
         return AuthResult.success(filePath);
       } else {
         return AuthResult.failure('네이티브 녹음 중지 실패');
       }
     } catch (e) {
-      debugPrint('❌ 댓글 간단 녹음 중지 오류: $e');
+      debugPrint('댓글 간단 녹음 중지 오류: $e');
       return AuthResult.failure('네이티브 녹음 중지 중 오류 발생: $e');
     }
   }
@@ -218,10 +218,10 @@ class CommentService {
       }
 
       await CommentRepository.playFromUrl(comment.audioUrl);
-      debugPrint('🎵 댓글 오디오 재생 시작: ${comment.audioUrl}');
+      debugPrint('댓글 오디오 재생 시작: ${comment.audioUrl}');
       return AuthResult.success();
     } catch (e) {
-      debugPrint('❌ 댓글 재생 오류: $e');
+      debugPrint('댓글 재생 오류: $e');
       return AuthResult.failure('댓글을 재생할 수 없습니다.');
     }
   }
@@ -230,10 +230,10 @@ class CommentService {
   Future<AuthResult> stopPlaying() async {
     try {
       await CommentRepository.stopPlaying();
-      debugPrint('🎵 댓글 재생 중지');
+      debugPrint('댓글 재생 중지');
       return AuthResult.success();
     } catch (e) {
-      debugPrint('❌ 재생 중지 오류: $e');
+      debugPrint('재생 중지 오류: $e');
       return AuthResult.failure('재생을 중지할 수 없습니다.');
     }
   }
@@ -242,10 +242,10 @@ class CommentService {
   Future<AuthResult> pausePlaying() async {
     try {
       await CommentRepository.pausePlaying();
-      debugPrint('🎵 댓글 재생 일시정지');
+      debugPrint('댓글 재생 일시정지');
       return AuthResult.success();
     } catch (e) {
-      debugPrint('❌ 재생 일시정지 오류: $e');
+      debugPrint('재생 일시정지 오류: $e');
       return AuthResult.failure('재생을 일시정지할 수 없습니다.');
     }
   }
@@ -254,10 +254,10 @@ class CommentService {
   Future<AuthResult> resumePlaying() async {
     try {
       await CommentRepository.resumePlaying();
-      debugPrint('🎵 댓글 재생 재개');
+      debugPrint('댓글 재생 재개');
       return AuthResult.success();
     } catch (e) {
-      debugPrint('❌ 재생 재개 오류: $e');
+      debugPrint('재생 재개 오류: $e');
       return AuthResult.failure('재생을 재개할 수 없습니다.');
     }
   }
@@ -269,10 +269,10 @@ class CommentService {
   Future<AuthResult> seekTo(double positionInSeconds) async {
     try {
       await CommentRepository.seekTo(positionInSeconds);
-      debugPrint('🎵 댓글 재생 위치 설정: ${positionInSeconds}초');
+      debugPrint('댓글 재생 위치 설정: ${positionInSeconds}초');
       return AuthResult.success();
     } catch (e) {
-      debugPrint('❌ 재생 위치 설정 오류: $e');
+      debugPrint('재생 위치 설정 오류: $e');
       return AuthResult.failure('재생 위치를 설정할 수 없습니다.');
     }
   }
@@ -339,14 +339,14 @@ class CommentService {
           );
           if (normalized != null) {
             uploadFilePath = normalized;
-            debugPrint('🔧 오디오 품질 개선 완료: $uploadFilePath');
+            debugPrint('오디오 품질 개선 완료: $uploadFilePath');
           } else {
             uploadFilePath = noiseCleaned;
-            debugPrint('🔧 노이즈 제거 완료: $uploadFilePath');
+            debugPrint('노이즈 제거 완료: $uploadFilePath');
           }
         }
       } catch (e) {
-        debugPrint('⚠️ 오디오 품질 개선 실패, 원본 사용: $e');
+        debugPrint('오디오 품질 개선 실패, 원본 사용: $e');
       }
 
       // 6. 오디오 파일 업로드
@@ -377,10 +377,10 @@ class CommentService {
         await _repository.deleteLocalFile(uploadFilePath);
       }
 
-      debugPrint('✅ 댓글 생성 완료: $commentId');
+      debugPrint('댓글 생성 완료: $commentId');
       return AuthResult.success(savedComment);
     } catch (e) {
-      debugPrint('❌ 댓글 생성 오류: $e');
+      debugPrint('댓글 생성 오류: $e');
       // 실패 시 로컬 파일 정리
       try {
         await _repository.deleteLocalFile(audioFilePath);

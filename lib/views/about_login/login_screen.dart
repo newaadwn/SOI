@@ -356,34 +356,36 @@ class _LoginScreenState extends State<LoginScreen> {
                           // SMS 코드 저장
                           smsCode = controller.text;
 
-                          // SMS 코드로 인증 시도
-                          _authController.signInWithSmsCode(smsCode, () async {
-                            // 인증 성공 후, 사용자가 이미 존재하는지 확인
-                            // Model에서는 findUserByPhone 메소드가 없으므로
-                            // 사용자 ID를 가져와서 null인지 확인하는 방식으로 처리
-                            final userId = _authController.getUserId;
-                            final userExists = userId != null;
+                          // ✅ 개선된 SMS 코드로 인증 및 상태 저장
+                          _authController.signInWithSmsCodeAndSave(
+                            smsCode,
+                            phoneNumber, // 전화번호도 함께 전달
+                            () async {
+                              // 인증 성공 후, 사용자가 이미 존재하는지 확인
+                              final userId = _authController.getUserId;
+                              final userExists = userId != null;
 
-                            setState(() {
-                              isCheckingUser = false;
-                              isVerified = true;
-                              this.userExists = userExists;
-                            });
-
-                            if (userExists) {
-                              // 사용자가 존재하면 홈 화면으로 이동
-                              Navigator.pushNamedAndRemoveUntil(
-                                context,
-                                '/home_navigation_screen',
-                                (route) => false, // 모든 이전 페이지 삭제
-                              );
-                            } else {
-                              // 사용자가 존재하지 않을 때 UI 업데이트를 위해 setState 호출
                               setState(() {
-                                // 상태는 이미 위에서 설정했으므로 여기서는 그냥 UI 업데이트를 위해 setState 호출
+                                isCheckingUser = false;
+                                isVerified = true;
+                                this.userExists = userExists;
                               });
-                            }
-                          });
+
+                              if (userExists) {
+                                // 사용자가 존재하면 홈 화면으로 이동
+                                Navigator.pushNamedAndRemoveUntil(
+                                  context,
+                                  '/home_navigation_screen',
+                                  (route) => false, // 모든 이전 페이지 삭제
+                                );
+                              } else {
+                                // 사용자가 존재하지 않을 때 UI 업데이트를 위해 setState 호출
+                                setState(() {
+                                  // 상태는 이미 위에서 설정했으므로 여기서는 그냥 UI 업데이트를 위해 setState 호출
+                                });
+                              }
+                            },
+                          );
                         },
                         child: Text(
                           '인증하기',

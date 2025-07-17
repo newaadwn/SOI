@@ -5,17 +5,17 @@ import '../../theme/theme.dart';
 import '../../controllers/auth_controller.dart';
 
 class AuthFinalScreen extends StatelessWidget {
-  final String id;
-  final String name;
-  final String phone;
-  final String birthDate;
+  final String? id;
+  final String? name;
+  final String? phone;
+  final String? birthDate;
 
   const AuthFinalScreen({
     super.key,
-    required this.id,
-    required this.name,
-    required this.phone,
-    required this.birthDate,
+    this.id,
+    this.name,
+    this.phone,
+    this.birthDate,
   });
 
   @override
@@ -26,6 +26,16 @@ class AuthFinalScreen extends StatelessWidget {
       context,
       listen: false,
     );
+
+    // ✅ Navigator arguments에서 사용자 정보 가져오기
+    final arguments =
+        ModalRoute.of(context)?.settings.arguments as Map<String, String>?;
+
+    // 생성자 파라미터 또는 arguments에서 사용자 정보 결정
+    final String finalId = id ?? arguments?['id'] ?? '';
+    final String finalName = name ?? arguments?['name'] ?? '';
+    final String finalPhone = phone ?? arguments?['phone'] ?? '';
+    final String finalBirthDate = birthDate ?? arguments?['birthDate'] ?? '';
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       body: Center(
@@ -43,11 +53,22 @@ class AuthFinalScreen extends StatelessWidget {
                 try {
                   await authViewModel.createUserInFirestore(
                     authViewModel.currentUser!,
-                    id,
-                    name,
-                    phone,
-                    birthDate,
+                    finalId,
+                    finalName,
+                    finalPhone,
+                    finalBirthDate,
                   );
+
+                  // ✅ 회원가입 완료 후 로그인 상태 저장 확인
+                  final currentUser = authViewModel.currentUser;
+                  if (currentUser != null) {
+                    await authViewModel.saveLoginState(
+                      userId: currentUser.uid,
+                      phoneNumber: finalPhone,
+                    );
+                    debugPrint('✅ 회원가입 완료 후 로그인 상태 저장 완료');
+                  }
+
                   Navigator.pushNamedAndRemoveUntil(
                     context,
                     '/home_navigation_screen',

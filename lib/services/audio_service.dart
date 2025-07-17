@@ -104,10 +104,10 @@ class AudioService {
         return AuthResult.failure('네이티브 녹음을 시작할 수 없습니다.');
       }
 
-      debugPrint('🎤 네이티브 녹음 시작됨: $recordingPath');
+      debugPrint('네이티브 녹음 시작됨: $recordingPath');
       return AuthResult.success(recordingPath);
     } catch (e) {
-      debugPrint('❌ 네이티브 녹음 시작 오류: $e');
+      debugPrint('네이티브 녹음 시작 오류: $e');
       return AuthResult.failure('네이티브 녹음을 시작할 수 없습니다.');
     }
   }
@@ -128,7 +128,7 @@ class AudioService {
         return AuthResult.failure('네이티브 녹음 파일을 저장할 수 없습니다.');
       }
 
-      debugPrint('🎤 네이티브 녹음 완료: $recordingPath');
+      debugPrint('네이티브 녹음 완료: $recordingPath');
 
       // 파일 존재 여부 확인
       final file = File(recordingPath);
@@ -174,10 +174,10 @@ class AudioService {
       final audioId = await _repository.saveAudioData(audioData);
       final savedAudio = audioData.copyWith(id: audioId);
 
-      debugPrint('✅ 네이티브 녹음 데이터 저장 완료: $audioId');
+      debugPrint('네이티브 녹음 데이터 저장 완료: $audioId');
       return AuthResult.success(savedAudio);
     } catch (e) {
-      debugPrint('❌ 네이티브 녹음 중지 오류: $e');
+      debugPrint('네이티브 녹음 중지 오류: $e');
       return AuthResult.failure('네이티브 녹음을 완료할 수 없습니다.');
     }
   }
@@ -188,14 +188,40 @@ class AudioService {
       final filePath = await AudioRepository.stopRecording();
 
       if (filePath != null && filePath.isNotEmpty) {
-        debugPrint('🎤 간단 녹음 중지: $filePath');
+        debugPrint('간단 녹음 중지: $filePath');
         return AuthResult.success(filePath);
       } else {
         return AuthResult.failure('네이티브 녹음 중지 실패');
       }
     } catch (e) {
-      debugPrint('❌ 간단 녹음 중지 오류: $e');
+      debugPrint('간단 녹음 중지 오류: $e');
       return AuthResult.failure('네이티브 녹음 중지 중 오류 발생: $e');
+    }
+  }
+
+  /// 네이티브 녹음 일시정지 (UI용)
+  Future<AuthResult> pauseRecording() async {
+    try {
+      debugPrint('네이티브 녹음 일시정지 요청...');
+      // 네이티브 녹음의 일시정지는 플랫폼별로 제한적일 수 있음
+      // 현재는 성공으로 반환하여 UI 상태만 관리
+      return AuthResult.success();
+    } catch (e) {
+      debugPrint('네이티브 녹음 일시정지 오류: $e');
+      return AuthResult.failure('네이티브 녹음 일시정지 중 오류 발생: $e');
+    }
+  }
+
+  /// 네이티브 녹음 재개 (UI용)
+  Future<AuthResult> resumeRecording() async {
+    try {
+      debugPrint('네이티브 녹음 재개 요청...');
+      // 네이티브 녹음의 재개는 플랫폼별로 제한적일 수 있음
+      // 현재는 성공으로 반환하여 UI 상태만 관리
+      return AuthResult.success();
+    } catch (e) {
+      debugPrint('네이티브 녹음 재개 오류: $e');
+      return AuthResult.failure('네이티브 녹음 재개 중 오류 발생: $e');
     }
   }
 

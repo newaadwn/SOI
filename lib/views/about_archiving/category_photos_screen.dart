@@ -12,6 +12,48 @@ class CategoryPhotosScreen extends StatelessWidget {
 
   const CategoryPhotosScreen({super.key, required this.category});
 
+  /// 그리드 열 개수 계산 (화면 크기에 따라)
+  int _getGridCrossAxisCount(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    if (screenWidth < 360) {
+      return 1;
+    } else if (screenWidth < 500) {
+      return 2;
+    } else if (screenWidth < 800) {
+      return 3;
+    } else {
+      return 4;
+    }
+  }
+
+  /// 그리드 아이템의 가로 세로 비율 계산
+  double _getGridAspectRatio(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    final screenRatio = screenHeight / screenWidth;
+    if (screenRatio > 2.0) {
+      return 0.75;
+    } else if (screenRatio > 1.8) {
+      return 0.8;
+    } else {
+      return 0.85;
+    }
+  }
+
+  /// 반응형 간격 계산
+  double _getGridSpacing(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return screenWidth * 0.03; // 화면 너비의 3%
+  }
+
+  /// 반응형 패딩 계산
+  double _getGridPadding(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return screenWidth * 0.02; // 화면 너비의 2%
+  }
+
   @override
   Widget build(BuildContext context) {
     final photoController = Provider.of<PhotoController>(
@@ -54,15 +96,20 @@ class CategoryPhotosScreen extends StatelessWidget {
             );
           }
 
-          // MasonryGridView를 사용하여 사진들을 다양한 높이로 배치
+          // 반응형 그리드로 사진들을 배치
+          final crossAxisCount = _getGridCrossAxisCount(context);
+          final aspectRatio = _getGridAspectRatio(context);
+          final spacing = _getGridSpacing(context);
+          final padding = _getGridPadding(context);
+
           return GridView.builder(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 13,
-              crossAxisSpacing: 12,
-              childAspectRatio: 0.8,
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: spacing,
+              crossAxisSpacing: spacing,
+              childAspectRatio: aspectRatio,
             ),
-            padding: const EdgeInsets.all(8.0),
+            padding: EdgeInsets.all(padding),
             itemCount: photos.length,
             itemBuilder: (context, index) {
               final photo = photos[index];

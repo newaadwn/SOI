@@ -7,7 +7,7 @@ import 'firebase_options.dart';
 import 'package:provider/provider.dart';
 import 'views/about_archiving/all_archives_screen.dart';
 import 'views/about_archiving/archive_main_screen.dart';
-import 'views/about_archiving/personal_archives_screen.dart';
+import 'views/about_archiving/my_archives_screen.dart';
 import 'views/about_archiving/shared_archives_screen.dart';
 import 'views/about_camera/camera_screen.dart';
 import 'views/about_contacts/contact_manager_screen.dart';
@@ -19,6 +19,7 @@ import 'controllers/auth_controller.dart';
 import 'controllers/category_controller.dart';
 import 'controllers/audio_controller.dart';
 import 'controllers/comment_controller.dart';
+import 'controllers/friend_request_controller.dart';
 
 import 'package:flutter/rendering.dart';
 import 'dart:ui';
@@ -81,6 +82,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CommentController()),
         ChangeNotifierProvider(create: (_) => ContactController()),
         ChangeNotifierProvider(create: (_) => PhotoController()),
+        ChangeNotifierProvider(create: (_) => FriendRequestController()),
       ],
       child: MaterialApp(
         initialRoute: '/',
@@ -98,7 +100,7 @@ class MyApp extends StatelessWidget {
 
           // 아카이빙 관련 라우트
           '/share_record': (context) => const SharedArchivesScreen(),
-          '/my_record': (context) => const PersonalArchivesScreen(),
+          '/my_record': (context) => const MyArchivesScreen(),
           '/all_category': (context) => const AllArchivesScreen(),
           '/privacy_policy': (context) => const PrivacyPolicyScreen(),
           '/contact_manager': (context) => const ContactManagerScreen(),
