@@ -10,7 +10,7 @@ import 'views/about_archiving/archive_main_screen.dart';
 import 'views/about_archiving/my_archives_screen.dart';
 import 'views/about_archiving/shared_archives_screen.dart';
 import 'views/about_camera/camera_screen.dart';
-import 'views/about_contacts/contact_manager_screen.dart';
+import 'views/about_friends/friend_management_screen.dart';
 import 'views/about_login/register_screen.dart';
 import 'views/about_login/login_screen.dart';
 import 'views/about_login/start_screen.dart';
@@ -103,7 +103,7 @@ class MyApp extends StatelessWidget {
           '/my_record': (context) => const MyArchivesScreen(),
           '/all_category': (context) => const AllArchivesScreen(),
           '/privacy_policy': (context) => const PrivacyPolicyScreen(),
-          '/contact_manager': (context) => const ContactManagerScreen(),
+          '/contact_manager': (context) => const FriendManagementScreen(),
         },
         theme: ThemeData(iconTheme: IconThemeData(color: Colors.white)),
       ),

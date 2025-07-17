@@ -1,73 +1,227 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import '../models/friend_request_model.dart';
 import '../services/friend_request_service.dart';
-import '../controllers/contact_controller.dart';
+import '../repositories/auth_repository.dart';
 
 /// 친구 요청 관련 UI와 비즈니스 로직 사이의 중개 역할을 합니다.
 /// Provider + ChangeNotifier 패턴을 사용하여 상태 관리
-/// ContactController와 연동하여 연락처 기반 친구 추천 제공
+/// 단순한 연락처 목록 표시 및 친구 추가 기능 제공
 class FriendRequestController extends ChangeNotifier {
   // 상태 변수들
   bool _isLoading = false;
-  bool _isSyncing = false;
-  bool _isGeneratingSuggestions = false;
+  bool _isLoadingContacts = false;
   String? _error;
+  String? _successMessage;
+  bool _hasContactPermission = false;
 
   // 친구 요청 관련 상태
   List<FriendRequestModel> _receivedRequests = [];
   List<FriendRequestModel> _sentRequests = [];
-  List<FriendSuggestionModel> _friendSuggestions = [];
   List<FriendModel> _friends = [];
+
+  // 연락처 목록 (새로운 단순한 방식)
+  List<ContactItem> _contactList = [];
 
   // 검색 및 필터 상태
   String _searchQuery = '';
-  bool _contactSyncEnabled = false;
 
   // 스트림 구독 관리
   StreamSubscription<List<FriendRequestModel>>? _receivedRequestsSubscription;
   StreamSubscription<List<FriendRequestModel>>? _sentRequestsSubscription;
   StreamSubscription<List<FriendModel>>? _friendsSubscription;
 
-  // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
+  // Service 인스턴스
   final FriendRequestService _friendRequestService = FriendRequestService();
-
-  // 기존 ContactController와의 연동을 위한 참조
-  ContactController? _contactController;
+  final AuthRepository _authRepository = AuthRepository();
 
   // Getters
   bool get isLoading => _isLoading;
-  bool get isSyncing => _isSyncing;
-  bool get isGeneratingSuggestions => _isGeneratingSuggestions;
+  bool get isLoadingContacts => _isLoadingContacts;
   String? get error => _error;
+  String? get successMessage => _successMessage;
   List<FriendRequestModel> get receivedRequests => _receivedRequests;
   List<FriendRequestModel> get sentRequests => _sentRequests;
-  List<FriendSuggestionModel> get friendSuggestions => _friendSuggestions;
   List<FriendModel> get friends => _friends;
+  List<ContactItem> get contactList => _contactList; // 새로운 연락처 목록
   String get searchQuery => _searchQuery;
-  bool get contactSyncEnabled => _contactSyncEnabled;
+  bool get hasContactPermission => _hasContactPermission;
 
   // 추가 상태 확인 getters
   bool get hasReceivedRequests => _receivedRequests.isNotEmpty;
   bool get hasSentRequests => _sentRequests.isNotEmpty;
-  bool get hasFriendSuggestions => _friendSuggestions.isNotEmpty;
+  bool get hasContacts => _contactList.isNotEmpty;
   bool get hasFriends => _friends.isNotEmpty;
   int get totalReceivedRequests => _receivedRequests.length;
   int get totalSentRequests => _sentRequests.length;
+  int get totalContacts => _contactList.length;
 
-  // ContactController 연동 getters
-  bool get hasContactPermission =>
-      _contactController?.isContactSyncEnabled ?? false;
-  bool get isContactPermissionDenied =>
-      _contactController?.permissionDenied ?? true;
+  // ==================== 권한 관리 ====================
+
+  /// 연락처 권한 상태를 확인하고 업데이트
+  Future<bool> checkContactPermission() async {
+    try {
+      final status = await Permission.contacts.status;
+      final hasPermission = status.isGranted || status.isLimited;
+
+      if (_hasContactPermission != hasPermission) {
+        _hasContactPermission = hasPermission;
+        debugPrint('📱 연락처 권한 상태 변경: $_hasContactPermission');
+        notifyListeners();
+      }
+
+      return _hasContactPermission;
+    } catch (e) {
+      debugPrint('❌ 연락처 권한 확인 실패: $e');
+      _hasContactPermission = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// 연락처 권한 요청
+  Future<bool> requestContactPermission() async {
+    try {
+      debugPrint('📱 연락처 권한 요청 시작');
+
+      // 먼저 현재 권한 상태를 확인
+      final currentStatus = await Permission.contacts.status;
+      debugPrint('📱 현재 권한 상태: $currentStatus');
+
+      if (currentStatus.isPermanentlyDenied) {
+        // 영구적으로 거부된 경우, 설정 앱으로 이동해야 함
+        debugPrint('❌ 권한이 영구적으로 거부됨 - 설정 앱으로 이동 필요');
+        _hasContactPermission = false;
+        _error = '연락처 권한이 거부되었습니다. 설정에서 권한을 허용해주세요.';
+        notifyListeners();
+        return false;
+      }
+
+      final status = await Permission.contacts.request();
+      _hasContactPermission = status.isGranted || status.isLimited;
+
+      debugPrint('📱 권한 요청 결과: $_hasContactPermission (status: $status)');
+
+      if (status.isPermanentlyDenied) {
+        _error = '연락처 권한이 거부되었습니다. 설정에서 권한을 허용해주세요.';
+      } else if (!_hasContactPermission) {
+        _error = '연락처 권한이 필요합니다.';
+      } else {
+        _error = null;
+      }
+
+      notifyListeners();
+      return _hasContactPermission;
+    } catch (e) {
+      debugPrint('❌ 연락처 권한 요청 실패: $e');
+      _hasContactPermission = false;
+      _error = '연락처 권한 요청 중 오류가 발생했습니다.';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// 설정 앱으로 이동하여 권한 설정 변경
+  Future<bool> openAppSettings() async {
+    try {
+      debugPrint('📱 설정 앱 열기 시도');
+
+      // permission_handler의 openAppSettings 사용
+      final success = await Permission.contacts.request();
+
+      if (success.isGranted || success.isLimited) {
+        debugPrint('✅ 설정 앱 열기 성공');
+        // 설정 앱에서 돌아온 후 권한 상태 재확인
+        await Future.delayed(const Duration(milliseconds: 500));
+        await checkContactPermission();
+        return true;
+      } else {
+        debugPrint('❌ 설정 앱 열기 실패');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ 설정 앱 열기 오류: $e');
+      return false;
+    }
+  }
+
+  /// 권한 상태가 영구적으로 거부되었는지 확인
+  Future<bool> get isPermissionPermanentlyDenied async {
+    try {
+      final status = await Permission.contacts.status;
+      return status.isPermanentlyDenied;
+    } catch (e) {
+      debugPrint('❌ 권한 상태 확인 실패: $e');
+      return false;
+    }
+  }
+
+  // ==================== 연락처 관리 ====================
+
+  /// 연락처 목록 로드 (단순한 방식)
+  Future<void> loadContactList() async {
+    try {
+      _isLoadingContacts = true;
+      _error = null;
+      notifyListeners();
+
+      debugPrint('📱 연락처 목록 로드 시작');
+
+      // 권한 확인
+      if (!await checkContactPermission()) {
+        debugPrint('❌ 연락처 권한이 없습니다');
+        _isLoadingContacts = false;
+        _error = '연락처 권한이 필요합니다.';
+        notifyListeners();
+        return;
+      }
+
+      // 연락처 가져오기
+      final contacts = await FlutterContacts.getContacts(withProperties: true);
+      debugPrint('📱 기기에서 ${contacts.length}개 연락처 가져옴');
+
+      // ContactItem으로 변환
+      final contactItems = <ContactItem>[];
+      for (final contact in contacts) {
+        try {
+          final contactItem = ContactItem.fromFlutterContact(contact);
+
+          // 전화번호가 있는 연락처만 추가
+          if (contactItem.phoneNumber.isNotEmpty) {
+            contactItems.add(contactItem);
+          }
+        } catch (e) {
+          debugPrint('⚠️ 연락처 변환 중 오류: ${contact.displayName} - $e');
+        }
+      }
+
+      // 이름순으로 정렬
+      contactItems.sort((a, b) => a.displayName.compareTo(b.displayName));
+
+      _contactList = contactItems;
+      _isLoadingContacts = false;
+      notifyListeners();
+
+      debugPrint('✅ 연락처 목록 로드 완료: ${_contactList.length}개');
+    } catch (e) {
+      debugPrint('❌ 연락처 목록 로드 실패: $e');
+      _isLoadingContacts = false;
+      _error = '연락처를 불러오는 중 오류가 발생했습니다.';
+      notifyListeners();
+    }
+  }
+
+  /// 연락처 새로고침
+  Future<void> refreshContactList() async {
+    await loadContactList();
+  }
 
   // ==================== 초기화 ====================
 
-  /// Controller 초기화 (ContactController와 연동)
-  Future<void> initialize(
-    String userId, {
-    ContactController? contactController,
-  }) async {
+  /// Controller 초기화 (단순화된 버전)
+  Future<void> initialize(String userId) async {
     try {
       _isLoading = true;
       _error = null;
@@ -75,26 +229,19 @@ class FriendRequestController extends ChangeNotifier {
 
       debugPrint('🚀 FriendRequestController 초기화 시작: $userId');
 
-      // ContactController 연동 설정
-      if (contactController != null) {
-        _contactController = contactController;
-        _contactSyncEnabled = contactController.isContactSyncEnabled;
-        debugPrint(
-          '📱 연락처 컨트롤러 연동 완료: 동기화 ${_contactSyncEnabled ? "활성화" : "비활성화"}',
-        );
-      }
-
       // 1. 기본 데이터 로드
       await loadAllData(userId);
 
       // 2. 실시간 스트림 시작
       startRealTimeStreams(userId);
 
-      // 3. 연락처 권한이 있으면 친구 추천 생성 (백그라운드)
-      if (_contactSyncEnabled) {
-        generateFriendSuggestions(userId);
+      // 3. 연락처 권한 확인 후 연락처 목록 로드
+      await checkContactPermission();
+      if (_hasContactPermission) {
+        debugPrint('📱 연락처 권한 확인됨 - 연락처 목록 로드 시작');
+        await loadContactList();
       } else {
-        debugPrint('📱 연락처 권한이 없어 친구 추천을 생성하지 않습니다.');
+        debugPrint('📱 연락처 권한이 없습니다.');
       }
 
       _isLoading = false;
@@ -109,37 +256,26 @@ class FriendRequestController extends ChangeNotifier {
     }
   }
 
-  /// ContactController 연동 설정
-  void setContactController(ContactController contactController) {
-    _contactController = contactController;
-    _contactSyncEnabled = contactController.isContactSyncEnabled;
-    notifyListeners();
-    debugPrint('📱 연락처 컨트롤러 연동 설정 완료');
-  }
-
   /// 모든 데이터 로드
   Future<void> loadAllData(String userId) async {
     try {
-      debugPrint('📊 모든 친구 데이터 로드 시작');
+      debugPrint('📊 친구 데이터 로드 시작');
 
       // 병렬 로드로 성능 최적화
       final futures = await Future.wait([
         _friendRequestService.getReceivedRequests(userId),
         _friendRequestService.getSentRequests(userId),
         _friendRequestService.getFriends(userId),
-        _friendRequestService.getFriendSuggestions(userId),
       ]);
 
       _receivedRequests = futures[0] as List<FriendRequestModel>;
       _sentRequests = futures[1] as List<FriendRequestModel>;
       _friends = futures[2] as List<FriendModel>;
-      _friendSuggestions = futures[3] as List<FriendSuggestionModel>;
 
       debugPrint('📈 데이터 로드 완료:');
       debugPrint('  - 받은 요청: ${_receivedRequests.length}개');
       debugPrint('  - 보낸 요청: ${_sentRequests.length}개');
       debugPrint('  - 친구: ${_friends.length}명');
-      debugPrint('  - 추천: ${_friendSuggestions.length}개');
 
       notifyListeners();
     } catch (e) {
@@ -211,77 +347,6 @@ class FriendRequestController extends ChangeNotifier {
     debugPrint('🛑 실시간 스트림 중지 완료');
   }
 
-  // ==================== 연락처 동기화 관련 ====================
-
-  /// 연락처 권한 요청 및 동기화
-  Future<bool> requestContactPermissionAndSync(String userId) async {
-    try {
-      _isSyncing = true;
-      _error = null;
-      notifyListeners();
-
-      debugPrint('📱 연락처 권한 요청 시작');
-
-      // ContactController가 연결되어 있으면 연락처 권한 요청
-      if (_contactController != null) {
-        await _contactController!.requestContactPermission();
-
-        // 권한 상태 업데이트
-        _contactSyncEnabled = _contactController!.isContactSyncEnabled;
-
-        if (_contactSyncEnabled) {
-          debugPrint('✅ 연락처 권한 허용됨 - 친구 추천 생성 시작');
-
-          // 연락처 동기화 후 친구 추천 생성
-          await generateFriendSuggestions(userId, forceRefresh: true);
-
-          _isSyncing = false;
-          notifyListeners();
-          return true;
-        } else {
-          debugPrint('❌ 연락처 권한 거부됨');
-          _error = '연락처 권한이 필요합니다. 설정에서 허용해주세요.';
-          _isSyncing = false;
-          notifyListeners();
-          return false;
-        }
-      } else {
-        debugPrint('❌ ContactController가 연결되지 않음');
-        _error = '연락처 시스템이 초기화되지 않았습니다.';
-        _isSyncing = false;
-        notifyListeners();
-        return false;
-      }
-    } catch (e) {
-      debugPrint('❌ 연락처 권한 요청 실패: $e');
-      _error = '연락처 권한 요청 중 오류가 발생했습니다.';
-      _isSyncing = false;
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// 연락처 동기화 토글
-  Future<void> toggleContactSync(String userId) async {
-    if (_contactSyncEnabled) {
-      // 동기화 비활성화
-      _contactSyncEnabled = false;
-      _friendSuggestions.clear();
-      notifyListeners();
-      debugPrint('📱 연락처 동기화 비활성화');
-    } else {
-      // 동기화 활성화 시도
-      await requestContactPermissionAndSync(userId);
-    }
-  }
-
-  /// 설정 앱 열기 (연락처 권한 설정)
-  Future<void> openContactSettings() async {
-    if (_contactController != null) {
-      await _contactController!.openAppSettings();
-    }
-  }
-
   // ==================== 친구 요청 보내기 ====================
 
   /// 전화번호로 친구 요청 보내기
@@ -294,9 +359,10 @@ class FriendRequestController extends ChangeNotifier {
     try {
       _isLoading = true;
       _error = null;
+      _successMessage = null; // 성공 메시지 초기화
       notifyListeners();
 
-      debugPrint('📞 전화번호로 친구 요청: $phoneNumber');
+      debugPrint('📞 전화번호로 친구 요청/초대: $phoneNumber');
 
       final result = await _friendRequestService.sendFriendRequestByPhone(
         fromUserId: fromUserId,
@@ -309,17 +375,26 @@ class FriendRequestController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        debugPrint('✅ 친구 요청 전송 성공');
+        if (result.isSmsInvitation) {
+          // SMS 초대인 경우
+          _successMessage = result.actionMessage ?? '앱 설치 링크를 문자로 보냈습니다.';
+          debugPrint('✅ SMS 초대 발송 성공');
+        } else {
+          // 일반 친구 요청인 경우
+          _successMessage = result.actionMessage ?? '친구 요청을 보냈습니다.';
+          debugPrint('✅ 친구 요청 전송 성공');
+        }
         return true;
       } else {
         _error = result.error;
-        debugPrint('❌ 친구 요청 전송 실패: ${result.error}');
+        debugPrint('❌ 요청 처리 실패: ${result.error}');
         return false;
       }
     } catch (e) {
-      debugPrint('❌ 친구 요청 전송 중 오류: $e');
+      debugPrint('❌ 친구 요청/초대 처리 중 오류: $e');
       _isLoading = false;
-      _error = '친구 요청 전송 중 오류가 발생했습니다.';
+      _error = '요청 처리 중 오류가 발생했습니다.';
+      _successMessage = null;
       notifyListeners();
       return false;
     }
@@ -366,47 +441,54 @@ class FriendRequestController extends ChangeNotifier {
     }
   }
 
-  /// 추천을 통한 친구 요청 보내기
-  Future<bool> sendFriendRequestFromSuggestion({
+  /// 연락처 아이템으로 친구 요청 보내기 (새로운 단순한 방식)
+  Future<bool> sendFriendRequestToContact({
     required String fromUserId,
     required String fromUserNickname,
-    required FriendSuggestionModel suggestion,
+    required ContactItem contact,
     String? message,
   }) async {
     try {
       _isLoading = true;
       _error = null;
+      _successMessage = null;
       notifyListeners();
 
-      debugPrint('💡 추천을 통한 친구 요청: ${suggestion.nickname}');
+      debugPrint(
+        '📞 연락처로 친구 요청/초대: ${contact.displayName} (${contact.phoneNumber})',
+      );
 
-      final result = await _friendRequestService
-          .sendFriendRequestFromSuggestion(
-            fromUserId: fromUserId,
-            fromUserNickname: fromUserNickname,
-            suggestion: suggestion,
-            message: message,
-          );
+      final result = await _friendRequestService.sendFriendRequestByPhone(
+        fromUserId: fromUserId,
+        fromUserNickname: fromUserNickname,
+        phoneNumber: contact.phoneNumber,
+        message: message,
+      );
 
       _isLoading = false;
       notifyListeners();
 
       if (result.isSuccess) {
-        // 성공 시 추천 목록에서 제거
-        _friendSuggestions.removeWhere((s) => s.userId == suggestion.userId);
-        notifyListeners();
-
-        debugPrint('✅ 친구 요청 전송 성공');
+        if (result.isSmsInvitation) {
+          // SMS 초대인 경우
+          _successMessage = '${contact.displayName}님에게 앱 설치 링크를 문자로 보냈습니다.';
+          debugPrint('✅ SMS 초대 발송 성공');
+        } else {
+          // 일반 친구 요청인 경우
+          _successMessage = '${contact.displayName}님에게 친구 요청을 보냈습니다.';
+          debugPrint('✅ 친구 요청 전송 성공');
+        }
         return true;
       } else {
         _error = result.error;
-        debugPrint('❌ 친구 요청 전송 실패: ${result.error}');
+        debugPrint('❌ 요청 처리 실패: ${result.error}');
         return false;
       }
     } catch (e) {
-      debugPrint('❌ 친구 요청 전송 중 오류: $e');
+      debugPrint('❌ 친구 요청/초대 처리 중 오류: $e');
       _isLoading = false;
-      _error = '친구 요청 전송 중 오류가 발생했습니다.';
+      _error = '요청 처리 중 오류가 발생했습니다.';
+      _successMessage = null;
       notifyListeners();
       return false;
     }
@@ -439,9 +521,7 @@ class FriendRequestController extends ChangeNotifier {
         debugPrint('✅ 친구 요청 수락 완료');
 
         // 친구 추천 목록 새로고침 (새 친구가 추가되었으므로)
-        if (_contactSyncEnabled) {
-          generateFriendSuggestions(respondingUserId, forceRefresh: true);
-        }
+        // generateFriendSuggestions(respondingUserId, forceRefresh: true); // 추천 목록 새로고침 로직 제거
 
         return true;
       } else {
@@ -533,79 +613,6 @@ class FriendRequestController extends ChangeNotifier {
     }
   }
 
-  // ==================== 친구 추천 관리 ====================
-
-  /// 친구 추천 생성 (연락처 기반)
-  Future<void> generateFriendSuggestions(
-    String userId, {
-    bool forceRefresh = false,
-  }) async {
-    try {
-      // 연락처 권한이 없으면 실행하지 않음
-      if (!_contactSyncEnabled) {
-        debugPrint('📱 연락처 동기화가 비활성화되어 친구 추천을 생성하지 않습니다.');
-        return;
-      }
-
-      _isGeneratingSuggestions = true;
-      if (forceRefresh) {
-        _error = null;
-      }
-      notifyListeners();
-
-      debugPrint('🔮 친구 추천 생성 시작 (forceRefresh: $forceRefresh)');
-
-      final suggestions = await _friendRequestService.generateFriendSuggestions(
-        userId,
-        forceRefresh: forceRefresh,
-      );
-
-      _friendSuggestions = suggestions;
-      _isGeneratingSuggestions = false;
-      notifyListeners();
-
-      debugPrint('✅ 친구 추천 생성 완료: ${suggestions.length}개');
-    } catch (e) {
-      debugPrint('❌ 친구 추천 생성 실패: $e');
-      _isGeneratingSuggestions = false;
-      if (forceRefresh) {
-        _error = '친구 추천을 불러오는 중 오류가 발생했습니다.';
-      }
-      notifyListeners();
-    }
-  }
-
-  /// 친구 추천 새로고침
-  Future<void> refreshFriendSuggestions(String userId) async {
-    if (!_contactSyncEnabled) {
-      debugPrint('📱 연락처 동기화가 비활성화되어 친구 추천을 새로고침하지 않습니다.');
-      return;
-    }
-    await generateFriendSuggestions(userId, forceRefresh: true);
-  }
-
-  /// 특정 추천 제거
-  Future<bool> removeSuggestion(String userId, String targetUserId) async {
-    try {
-      final success = await _friendRequestService.removeSuggestion(
-        userId,
-        targetUserId,
-      );
-
-      if (success) {
-        _friendSuggestions.removeWhere((s) => s.userId == targetUserId);
-        notifyListeners();
-        debugPrint('✅ 추천 제거 완료: $targetUserId');
-        return true;
-      }
-
-      return false;
-    } catch (e) {
-      debugPrint('❌ 추천 제거 실패: $e');
-      return false;
-    }
-  }
-
   // ==================== 친구 관리 ====================
 
   /// 친구 삭제
@@ -629,9 +636,9 @@ class FriendRequestController extends ChangeNotifier {
         debugPrint('✅ 친구 삭제 완료');
 
         // 친구 추천 목록 새로고침 (친구가 삭제되었으므로 다시 추천될 수 있음)
-        if (_contactSyncEnabled) {
-          generateFriendSuggestions(userId, forceRefresh: true);
-        }
+        // if (_hasContactPermission) { // 추천 목록 새로고침 로직 제거
+        //   generateFriendSuggestions(userId, forceRefresh: true);
+        // }
 
         return true;
       } else {
@@ -680,8 +687,7 @@ class FriendRequestController extends ChangeNotifier {
 
   /// 연락처 동기화 설정
   void setContactSyncEnabled(bool enabled) {
-    _contactSyncEnabled = enabled;
-    notifyListeners();
+    // 이 함수는 더 이상 사용되지 않으므로 제거
   }
 
   // ==================== 필터링된 데이터 제공 ====================
@@ -725,25 +731,18 @@ class FriendRequestController extends ChangeNotifier {
         .toList();
   }
 
-  /// 검색어로 필터링된 친구 추천
-  List<FriendSuggestionModel> get filteredFriendSuggestions {
-    if (_searchQuery.isEmpty) return _friendSuggestions;
-
-    return _friendSuggestions
-        .where(
-          (suggestion) => suggestion.nickname.toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          ),
-        )
-        .toList();
-  }
-
   // ==================== 유틸리티 메서드 ====================
 
-  /// 에러 상태 초기화
-  void clearError() {
+  /// 에러 및 성공 메시지 상태 초기화
+  void clearMessages() {
     _error = null;
+    _successMessage = null;
     notifyListeners();
+  }
+
+  /// 에러 상태 초기화 (하위 호환성)
+  void clearError() {
+    clearMessages();
   }
 
   /// 특정 사용자의 요청 찾기
@@ -773,11 +772,6 @@ class FriendRequestController extends ChangeNotifier {
     return _friends.any((friend) => friend.userId == userId);
   }
 
-  /// 특정 사용자가 추천 목록에 있는지 확인
-  bool isInSuggestions(String userId) {
-    return _friendSuggestions.any((suggestion) => suggestion.userId == userId);
-  }
-
   /// 강제 새로고침 (모든 데이터)
   Future<void> forceRefresh(String userId) async {
     try {
@@ -790,7 +784,7 @@ class FriendRequestController extends ChangeNotifier {
       // 병렬로 모든 데이터 새로고침
       await Future.wait([
         loadAllData(userId),
-        if (_contactSyncEnabled) refreshFriendSuggestions(userId),
+        refreshContactList(), // 연락처 목록 새로고침
       ]);
 
       _isLoading = false;
@@ -805,22 +799,6 @@ class FriendRequestController extends ChangeNotifier {
     }
   }
 
-  /// 연락처 기반 친구 추천 통계
-  Map<String, dynamic> get friendSuggestionStats {
-    final totalSuggestions = _friendSuggestions.length;
-    final contactBasedCount =
-        _friendSuggestions
-            .where((s) => s.reasons.contains('연락처에 저장된 친구'))
-            .length;
-
-    return {
-      'total': totalSuggestions,
-      'contactBased': contactBasedCount,
-      'otherBased': totalSuggestions - contactBasedCount,
-      'hasContactSync': _contactSyncEnabled,
-    };
-  }
-
   // ==================== 리소스 해제 ====================
 
   @override
@@ -829,9 +807,6 @@ class FriendRequestController extends ChangeNotifier {
 
     // 스트림 구독 해제
     stopRealTimeStreams();
-
-    // ContactController 참조 해제
-    _contactController = null;
 
     super.dispose();
 

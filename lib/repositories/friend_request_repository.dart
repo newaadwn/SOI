@@ -13,10 +13,6 @@ class FriendRequestRepository {
   CollectionReference get _friendRequestsCollection =>
       _firestore.collection('friend_requests');
 
-  /// friend_suggestions 컬렉션 참조
-  CollectionReference get _friendSuggestionsCollection =>
-      _firestore.collection('friend_suggestions');
-
   /// 특정 사용자의 friends 서브컬렉션 참조
   CollectionReference _userFriendsCollection(String userId) =>
       _firestore.collection('users').doc(userId).collection('friends');
@@ -307,68 +303,6 @@ class FriendRequestRepository {
       return true;
     } catch (e) {
       debugPrint('❌ 친구 삭제 실패: $e');
-      return false;
-    }
-  }
-
-  // ==================== 친구 추천 관리 ====================
-
-  /// 친구 추천 목록 저장
-  Future<bool> saveFriendSuggestions({
-    required String userId,
-    required List<FriendSuggestionModel> suggestions,
-    required bool contactSyncEnabled,
-  }) async {
-    try {
-      debugPrint('💾 친구 추천 저장: $userId → ${suggestions.length}개');
-
-      await _friendSuggestionsCollection.doc(userId).set({
-        'userId': userId,
-        'suggestions': suggestions.map((s) => s.toJson()).toList(),
-        'lastUpdated': FieldValue.serverTimestamp(),
-        'contactSyncEnabled': contactSyncEnabled,
-        'suggestionCount': suggestions.length,
-      });
-
-      debugPrint('✅ 친구 추천 저장 완료');
-      return true;
-    } catch (e) {
-      debugPrint('❌ 친구 추천 저장 실패: $e');
-      return false;
-    }
-  }
-
-  /// 친구 추천 목록 조회
-  Future<List<FriendSuggestionModel>> getFriendSuggestions(
-    String userId,
-  ) async {
-    try {
-      final doc = await _friendSuggestionsCollection.doc(userId).get();
-
-      if (!doc.exists) return [];
-
-      final data = doc.data() as Map<String, dynamic>;
-      final suggestionsData = data['suggestions'] as List<dynamic>? ?? [];
-
-      return suggestionsData
-          .map(
-            (item) =>
-                FriendSuggestionModel.fromJson(item as Map<String, dynamic>),
-          )
-          .toList();
-    } catch (e) {
-      debugPrint('❌ 친구 추천 조회 실패: $e');
-      return [];
-    }
-  }
-
-  /// 친구 추천 삭제
-  Future<bool> clearFriendSuggestions(String userId) async {
-    try {
-      await _friendSuggestionsCollection.doc(userId).delete();
-      return true;
-    } catch (e) {
-      debugPrint('❌ 친구 추천 삭제 실패: $e');
       return false;
     }
   }

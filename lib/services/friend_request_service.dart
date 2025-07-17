@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/friend_request_model.dart';
-import '../models/contact_data_model.dart';
 import '../repositories/friend_request_repository.dart';
 import '../repositories/auth_repository.dart';
-import '../repositories/contact_repository.dart';
 
 /// 친구 요청 관련 비즈니스 로직을 처리하는 Service
 /// Repository를 사용해서 실제 비즈니스 규칙을 적용
@@ -12,11 +11,14 @@ class FriendRequestService {
   final FriendRequestRepository _friendRequestRepository =
       FriendRequestRepository();
   final AuthRepository _authRepository = AuthRepository();
-  final ContactRepository _contactRepository = ContactRepository();
+
+  // 앱 다운로드 링크 (데모용)
+  static const String _appDownloadLink = 'https://soi-app-demo.com/download';
+  static const String _appName = 'SOI';
 
   // ==================== 친구 요청 비즈니스 로직 ====================
 
-  /// 전화번호로 친구 요청 보내기
+  /// 전화번호로 친구 요청 보내기 또는 앱 초대하기
   Future<FriendRequestResult> sendFriendRequestByPhone({
     required String fromUserId,
     required String fromUserNickname,
@@ -24,7 +26,7 @@ class FriendRequestService {
     String? message,
   }) async {
     try {
-      debugPrint('📞 전화번호로 친구 요청: $phoneNumber');
+      debugPrint('📞 전화번호로 친구 요청/초대: $phoneNumber');
 
       // 1. 전화번호 정규화
       final normalizedPhone = _normalizePhoneNumber(phoneNumber);
@@ -34,20 +36,40 @@ class FriendRequestService {
 
       // 2. 전화번호로 사용자 검색
       final targetUser = await _authRepository.findUserByPhone(normalizedPhone);
+
       if (targetUser == null) {
-        return FriendRequestResult.failure('해당 전화번호로 가입한 사용자를 찾을 수 없습니다.');
+        // 🎯 사용자가 앱을 설치하지 않았거나 삭제한 경우 -> SMS로 초대 링크 보내기
+        debugPrint('📱 앱 미설치 사용자 - SMS 초대 링크 발송: $phoneNumber');
+        return await _sendAppInvitationSMS(
+          phoneNumber: normalizedPhone,
+          inviterName: fromUserNickname,
+          message: message,
+        );
       }
 
       final targetUserData = targetUser.data() as Map<String, dynamic>;
       final toUserId = targetUser.id;
       final toUserNickname = targetUserData['id'] ?? '';
 
-      // 3. 자기 자신에게 요청 방지
+      // 3. 사용자가 활성 상태인지 확인 (선택적)
+      final isUserActive = await _checkUserActiveStatus(targetUserData);
+      if (!isUserActive) {
+        // 사용자가 앱을 삭제했거나 비활성 상태인 경우 SMS 보내기
+        debugPrint('📱 비활성 사용자 - SMS 초대 링크 발송: $phoneNumber');
+        return await _sendAppInvitationSMS(
+          phoneNumber: normalizedPhone,
+          inviterName: fromUserNickname,
+          message: message,
+        );
+      }
+
+      // 4. 자기 자신에게 요청 방지
       if (fromUserId == toUserId) {
         return FriendRequestResult.failure('자기 자신에게는 친구 요청을 보낼 수 없습니다.');
       }
 
-      // 4. 친구 요청 생성
+      // 5. 🎯 활성 사용자인 경우 -> 친구 요청 생성
+      debugPrint('✅ 활성 사용자 - 친구 요청 발송: $toUserNickname');
       return await _createFriendRequest(
         fromUserId: fromUserId,
         fromUserNickname: fromUserNickname,
@@ -58,8 +80,8 @@ class FriendRequestService {
         metadata: {'phoneNumber': normalizedPhone},
       );
     } catch (e) {
-      debugPrint('❌ 전화번호 친구 요청 실패: $e');
-      return FriendRequestResult.failure('친구 요청 전송 중 오류가 발생했습니다.');
+      debugPrint('❌ 전화번호 친구 요청/초대 실패: $e');
+      return FriendRequestResult.failure('요청 처리 중 오류가 발생했습니다.');
     }
   }
 
@@ -122,35 +144,6 @@ class FriendRequestService {
     }
   }
 
-  /// 추천을 통한 친구 요청 보내기
-  Future<FriendRequestResult> sendFriendRequestFromSuggestion({
-    required String fromUserId,
-    required String fromUserNickname,
-    required FriendSuggestionModel suggestion,
-    String? message,
-  }) async {
-    try {
-      debugPrint('💡 추천을 통한 친구 요청: ${suggestion.nickname}');
-
-      return await _createFriendRequest(
-        fromUserId: fromUserId,
-        fromUserNickname: fromUserNickname,
-        toUserId: suggestion.userId,
-        toUserNickname: suggestion.nickname,
-        type: FriendRequestType.suggestion,
-        message: message,
-        metadata: {
-          'suggestion': suggestion.toJson(),
-          'suggestionReasons': suggestion.reasons,
-          'suggestionScore': suggestion.score,
-        },
-      );
-    } catch (e) {
-      debugPrint('❌ 추천 친구 요청 실패: $e');
-      return FriendRequestResult.failure('친구 요청 전송 중 오류가 발생했습니다.');
-    }
-  }
-
   /// 친구 요청 응답 (수락/거절)
   Future<FriendRequestResult> respondToFriendRequest({
     required String requestId,
@@ -176,8 +169,8 @@ class FriendRequestService {
       if (success) {
         // 3. 수락인 경우 추가 비즈니스 로직
         if (status == FriendRequestStatus.accepted) {
-          // 친구 추천 목록에서 해당 사용자 제거
-          await _removeFriendFromSuggestions(respondingUserId, requestId);
+          // 친구 목록 업데이트 등의 작업이 여기에 추가될 수 있음
+          debugPrint('친구 요청 수락 - 추가 비즈니스 로직 실행');
         }
 
         final statusText = status == FriendRequestStatus.accepted ? '수락' : '거절';
@@ -212,141 +205,6 @@ class FriendRequestService {
     } catch (e) {
       debugPrint('❌ 친구 요청 취소 실패: $e');
       return FriendRequestResult.failure(e.toString());
-    }
-  }
-
-  // ==================== 친구 추천 비즈니스 로직 ====================
-
-  /// 연락처 기반 친구 추천 생성
-  Future<List<FriendSuggestionModel>> generateFriendSuggestions(
-    String userId, {
-    bool forceRefresh = false,
-  }) async {
-    try {
-      debugPrint('🔮 친구 추천 생성 시작: $userId');
-
-      // 1. 캐시된 추천 확인 (force refresh가 아닌 경우)
-      if (!forceRefresh) {
-        final cachedSuggestions = await _friendRequestRepository
-            .getFriendSuggestions(userId);
-        if (cachedSuggestions.isNotEmpty) {
-          debugPrint('💾 캐시된 친구 추천 반환: ${cachedSuggestions.length}개');
-          return cachedSuggestions;
-        }
-      }
-
-      // 2. 사용자의 연락처 목록 조회
-      final contacts = await _contactRepository.getContactsFromFirestore();
-
-      // 3. 이미 친구인 사용자들 조회
-      final friends = await _friendRequestRepository.getFriends(userId);
-      final friendUserIds = friends.map((f) => f.userId).toSet();
-
-      // 4. 보낸/받은 친구 요청 조회
-      final sentRequests = await _friendRequestRepository.getSentRequests(
-        userId,
-      );
-      final receivedRequests = await _friendRequestRepository
-          .getReceivedRequests(userId);
-      final requestedUserIds = {
-        ...sentRequests.map((r) => r.toUserId),
-        ...receivedRequests.map((r) => r.fromUserId),
-      };
-
-      // 5. 연락처 기반 사용자 검색 및 추천 점수 계산
-      final suggestions = <FriendSuggestionModel>[];
-
-      for (final contact in contacts) {
-        if (contact.phoneNumber.isEmpty) continue;
-
-        try {
-          // 연락처의 전화번호로 사용자 검색
-          final userDoc = await _authRepository.findUserByPhone(
-            contact.phoneNumber,
-          );
-          if (userDoc == null) continue;
-
-          final userData = userDoc.data() as Map<String, dynamic>;
-          final targetUserId = userDoc.id;
-          final targetNickname = userData['id'] ?? '';
-
-          // 제외 조건 확인
-          if (targetUserId == userId || // 자기 자신
-              friendUserIds.contains(targetUserId) || // 이미 친구
-              requestedUserIds.contains(targetUserId)) {
-            // 이미 요청 보냄/받음
-            continue;
-          }
-
-          // 간단한 추천 이유 생성
-          final reasons = ['연락처에 저장된 친구'];
-          if (contact.displayName.isNotEmpty) {
-            reasons.add('연락처 이름: ${contact.displayName}');
-          }
-
-          final suggestion = FriendSuggestionModel(
-            userId: targetUserId,
-            nickname: targetNickname,
-            profileImageUrl: userData['profile_image'],
-            phoneNumber: contact.phoneNumber,
-            score: 1.0, // 모든 추천에 동일한 점수
-            reasons: reasons,
-            metadata: {
-              'contactName': contact.displayName,
-              'foundVia': 'contacts',
-            },
-          );
-
-          suggestions.add(suggestion);
-        } catch (e) {
-          debugPrint('⚠️ 연락처 처리 중 오류: ${contact.phoneNumber} - $e');
-          continue;
-        }
-      }
-
-      // 6. 가나다순으로 정렬 후 상위 20개만 선택
-      suggestions.sort((a, b) => a.nickname.compareTo(b.nickname));
-      final topSuggestions = suggestions.take(20).toList();
-
-      // 7. 캐시에 저장
-      await _friendRequestRepository.saveFriendSuggestions(
-        userId: userId,
-        suggestions: topSuggestions,
-        contactSyncEnabled: true,
-      );
-
-      debugPrint('✅ 친구 추천 생성 완료: ${topSuggestions.length}개 (가나다순 정렬)');
-      return topSuggestions;
-    } catch (e) {
-      debugPrint('❌ 친구 추천 생성 실패: $e');
-      return [];
-    }
-  }
-
-  /// 친구 추천 새로고침
-  Future<List<FriendSuggestionModel>> refreshFriendSuggestions(
-    String userId,
-  ) async {
-    return await generateFriendSuggestions(userId, forceRefresh: true);
-  }
-
-  /// 특정 사용자를 추천에서 제거
-  Future<bool> removeSuggestion(String userId, String targetUserId) async {
-    try {
-      final suggestions = await _friendRequestRepository.getFriendSuggestions(
-        userId,
-      );
-      final updatedSuggestions =
-          suggestions.where((s) => s.userId != targetUserId).toList();
-
-      return await _friendRequestRepository.saveFriendSuggestions(
-        userId: userId,
-        suggestions: updatedSuggestions,
-        contactSyncEnabled: true,
-      );
-    } catch (e) {
-      debugPrint('❌ 추천 제거 실패: $e');
-      return false;
     }
   }
 
@@ -403,13 +261,6 @@ class FriendRequestService {
   /// 보낸 친구 요청 목록 조회
   Future<List<FriendRequestModel>> getSentRequests(String userId) async {
     return await _friendRequestRepository.getSentRequests(userId);
-  }
-
-  /// 친구 추천 목록 조회
-  Future<List<FriendSuggestionModel>> getFriendSuggestions(
-    String userId,
-  ) async {
-    return await _friendRequestRepository.getFriendSuggestions(userId);
   }
 
   // ==================== 스트림 메서드 ====================
@@ -525,28 +376,72 @@ class FriendRequestService {
     return cleaned;
   }
 
-  /// 친구 추천에서 특정 사용자 제거 (친구 요청 수락 시)
-  Future<void> _removeFriendFromSuggestions(
-    String userId,
-    String requestId,
-  ) async {
-    try {
-      // 요청 정보 조회
-      final request = await _friendRequestRepository.getFriendRequest(
-        requestId,
-      );
-      if (request == null) return;
-
-      // 양방향 추천에서 제거
-      await removeSuggestion(request.fromUserId, request.toUserId);
-      await removeSuggestion(request.toUserId, request.fromUserId);
-    } catch (e) {
-      debugPrint('⚠️ 추천에서 친구 제거 실패: $e');
-    }
-  }
-
   /// 만료된 요청 정리 (관리자용)
   Future<int> cleanupExpiredRequests() async {
     return await _friendRequestRepository.cleanupExpiredRequests();
+  }
+
+  /// 앱 초대 링크를 SMS로 보내기
+  Future<FriendRequestResult> _sendAppInvitationSMS({
+    required String phoneNumber,
+    required String inviterName,
+    String? message,
+  }) async {
+    try {
+      // SMS 초대 메시지 구성
+      final inviteMessage =
+          '$inviterName님이 $_appName 앱에 초대했습니다! 다운로드: $_appDownloadLink';
+
+      // SMS URI 생성 (URL 인코딩)
+      final encodedMessage = Uri.encodeComponent(inviteMessage);
+      final smsUri = Uri.parse('sms:$phoneNumber?body=$encodedMessage');
+
+      debugPrint('📱 SMS 초대 링크 발송 시도: $phoneNumber');
+      debugPrint('💬 메시지: $inviteMessage');
+
+      if (await canLaunchUrl(smsUri)) {
+        await launchUrl(smsUri, mode: LaunchMode.externalApplication);
+        debugPrint('✅ SMS 초대 링크 발송 성공');
+        return FriendRequestResult.smsInvitationSuccess(phoneNumber);
+      } else {
+        debugPrint('❌ SMS 앱을 열 수 없습니다');
+        return FriendRequestResult.smsInvitationFailure(
+          '문자 메시지를 보낼 수 없습니다. SMS 앱을 확인해주세요.',
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ SMS 초대 발송 중 오류: $e');
+      return FriendRequestResult.smsInvitationFailure(
+        '초대 메시지 발송 중 오류가 발생했습니다.',
+      );
+    }
+  }
+
+  /// 사용자 활성 상태 확인 (간단 버전)
+  Future<bool> _checkUserActiveStatus(Map<String, dynamic> userData) async {
+    try {
+      // 기본적으로 Firestore에서 조회되면 활성 상태로 간주
+      // 추후 더 정교한 로직으로 개선 가능 (예: 최근 로그인 시간 확인)
+
+      final lastLogin = userData['lastLogin'];
+      if (lastLogin == null) {
+        // 로그인 기록이 없으면 비활성으로 간주
+        debugPrint('🕒 마지막 로그인 기록이 없음 - 비활성 처리');
+        return false;
+      }
+
+      // 30일 이내 로그인한 사용자만 활성으로 간주
+      final lastLoginDate = (lastLogin as Timestamp).toDate();
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
+
+      final isActive = lastLoginDate.isAfter(thirtyDaysAgo);
+      debugPrint('🕒 마지막 로그인: $lastLoginDate, 활성 상태: $isActive');
+
+      return isActive;
+    } catch (e) {
+      debugPrint('❌ 사용자 활성 상태 확인 실패: $e');
+      // 오류 시 안전을 위해 활성 상태로 간주 (친구 요청 보내기)
+      return true;
+    }
   }
 }

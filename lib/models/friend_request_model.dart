@@ -136,53 +136,6 @@ class FriendRequestModel {
   }
 }
 
-/// 친구 추천 데이터 모델
-class FriendSuggestionModel {
-  final String userId; // 추천될 사용자 ID
-  final String nickname; // 추천될 사용자 닉네임
-  final String? profileImageUrl; // 프로필 이미지 URL
-  final String? phoneNumber; // 전화번호 (연락처 기반 추천시)
-  final double score; // 추천 점수 (0.0 ~ 1.0)
-  final List<String> reasons; // 추천 이유들
-  final Map<String, dynamic>? metadata; // 추가 정보
-
-  FriendSuggestionModel({
-    required this.userId,
-    required this.nickname,
-    this.profileImageUrl,
-    this.phoneNumber,
-    required this.score,
-    required this.reasons,
-    this.metadata,
-  });
-
-  /// JSON에서 모델 생성
-  factory FriendSuggestionModel.fromJson(Map<String, dynamic> json) {
-    return FriendSuggestionModel(
-      userId: json['userId'] ?? '',
-      nickname: json['nickname'] ?? '',
-      profileImageUrl: json['profileImageUrl'],
-      phoneNumber: json['phoneNumber'],
-      score: (json['score'] ?? 0.0).toDouble(),
-      reasons: List<String>.from(json['reasons'] ?? []),
-      metadata: json['metadata'],
-    );
-  }
-
-  /// JSON 변환
-  Map<String, dynamic> toJson() {
-    return {
-      'userId': userId,
-      'nickname': nickname,
-      'profileImageUrl': profileImageUrl,
-      'phoneNumber': phoneNumber,
-      'score': score,
-      'reasons': reasons,
-      'metadata': metadata,
-    };
-  }
-}
-
 /// 친구 데이터 모델
 class FriendModel {
   final String id;
@@ -242,14 +195,120 @@ class FriendRequestResult {
   final bool isSuccess;
   final String? error;
   final FriendRequestModel? request;
+  final bool isSmsInvitation; // SMS 초대 여부
+  final String? actionMessage; // 사용자에게 표시할 액션 메시지
 
-  FriendRequestResult._({required this.isSuccess, this.error, this.request});
+  FriendRequestResult._({
+    required this.isSuccess,
+    this.error,
+    this.request,
+    this.isSmsInvitation = false,
+    this.actionMessage,
+  });
 
   factory FriendRequestResult.success([FriendRequestModel? request]) {
-    return FriendRequestResult._(isSuccess: true, request: request);
+    return FriendRequestResult._(
+      isSuccess: true,
+      request: request,
+      actionMessage: request != null ? '친구 요청을 보냈습니다.' : null,
+    );
   }
 
   factory FriendRequestResult.failure(String error) {
     return FriendRequestResult._(isSuccess: false, error: error);
+  }
+
+  /// SMS 초대 성공 결과
+  factory FriendRequestResult.smsInvitationSuccess(String phoneNumber) {
+    return FriendRequestResult._(
+      isSuccess: true,
+      isSmsInvitation: true,
+      actionMessage: '앱 설치 링크를 문자로 보냈습니다.',
+    );
+  }
+
+  /// SMS 초대 실패 결과
+  factory FriendRequestResult.smsInvitationFailure(String error) {
+    return FriendRequestResult._(
+      isSuccess: false,
+      error: error,
+      isSmsInvitation: true,
+    );
+  }
+}
+
+/// 연락처 아이템 모델 (단순한 연락처 목록 표시용)
+class ContactItem {
+  final String id;
+  final String displayName;
+  final String phoneNumber;
+  final String? profileImageUrl;
+  final bool hasApp; // 앱을 설치했는지 여부
+  final String? appUserId; // 앱 사용자인 경우 userId
+
+  ContactItem({
+    required this.id,
+    required this.displayName,
+    required this.phoneNumber,
+    this.profileImageUrl,
+    this.hasApp = false,
+    this.appUserId,
+  });
+
+  /// Flutter Contacts에서 ContactItem으로 변환
+  factory ContactItem.fromFlutterContact(dynamic contact) {
+    final String displayName =
+        contact.displayName ?? contact.name?.formattedName ?? '알 수 없음';
+    final String phoneNumber =
+        contact.phones.isNotEmpty ? contact.phones.first.number ?? '' : '';
+
+    return ContactItem(
+      id: contact.id ?? '',
+      displayName: displayName,
+      phoneNumber: phoneNumber,
+      profileImageUrl: contact.thumbnail != null ? 'thumbnail' : null,
+    );
+  }
+
+  /// JSON 변환
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'displayName': displayName,
+      'phoneNumber': phoneNumber,
+      'profileImageUrl': profileImageUrl,
+      'hasApp': hasApp,
+      'appUserId': appUserId,
+    };
+  }
+
+  factory ContactItem.fromJson(Map<String, dynamic> json) {
+    return ContactItem(
+      id: json['id'] ?? '',
+      displayName: json['displayName'] ?? '',
+      phoneNumber: json['phoneNumber'] ?? '',
+      profileImageUrl: json['profileImageUrl'],
+      hasApp: json['hasApp'] ?? false,
+      appUserId: json['appUserId'],
+    );
+  }
+
+  /// 복사본 생성
+  ContactItem copyWith({
+    String? id,
+    String? displayName,
+    String? phoneNumber,
+    String? profileImageUrl,
+    bool? hasApp,
+    String? appUserId,
+  }) {
+    return ContactItem(
+      id: id ?? this.id,
+      displayName: displayName ?? this.displayName,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      hasApp: hasApp ?? this.hasApp,
+      appUserId: appUserId ?? this.appUserId,
+    );
   }
 }

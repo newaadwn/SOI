@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/friend_request_controller.dart';
-import '../../controllers/contact_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/friend_request_model.dart';
 import '../../theme/theme.dart';
@@ -17,7 +16,6 @@ class FriendManagementScreen extends StatefulWidget {
 
 class _FriendManagementScreenState extends State<FriendManagementScreen> {
   late FriendRequestController friendController;
-  late ContactController contactController;
   late AuthController authController;
 
   final TextEditingController _idController = TextEditingController();
@@ -36,19 +34,50 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
       context,
       listen: false,
     );
-    contactController = Provider.of<ContactController>(context, listen: false);
     authController = Provider.of<AuthController>(context, listen: false);
 
-    // ContactController 먼저 초기화
-    await contactController.initialize();
-
-    // FriendRequestController 초기화 (ContactController 연동)
+    // FriendRequestController 초기화
     final userId = authController.getUserId;
     if (userId != null) {
-      await friendController.initialize(
-        userId,
-        contactController: contactController,
-      );
+      await friendController.initialize(userId);
+
+      // 📱 자동으로 연락처 권한 확인 및 요청
+      debugPrint('🔄 자동 연락처 권한 확인 시작');
+
+      // 1. 먼저 권한 상태 확인
+      final hasPermission = await friendController.checkContactPermission();
+      debugPrint('📋 현재 연락처 권한 상태: $hasPermission');
+
+      if (!hasPermission) {
+        // 2. 권한이 없으면 영구적으로 거부되었는지 확인
+        final isPermanentlyDenied = await friendController.isPermissionPermanentlyDenied;
+        debugPrint('🔒 권한 영구 거부 상태: $isPermanentlyDenied');
+
+        if (!isPermanentlyDenied) {
+          // 3. 영구적으로 거부되지 않았으면 자동으로 요청
+          debugPrint('🔓 연락처 권한 자동 요청 시작');
+          final granted = await friendController.requestContactPermission();
+          debugPrint('📱 연락처 권한 요청 결과: $granted');
+
+          if (granted) {
+            // 4. 권한이 허용되면 연락처 목록 로드
+            debugPrint('✅ 연락처 권한 허용됨 - 연락처 목록 로드 시작');
+            await friendController.loadContactList();
+            debugPrint(
+              '📇 연락처 목록 로드 완료: ${friendController.contactList.length}개',
+            );
+          } else {
+            debugPrint('❌ 연락처 권한 거부됨');
+          }
+        } else {
+          debugPrint('⚠️ 연락처 권한이 영구적으로 거부됨 - 사용자에게 설정 안내');
+        }
+      } else {
+        // 권한이 이미 있으면 바로 연락처 목록 로드
+        debugPrint('✅ 연락처 권한 이미 있음 - 연락처 목록 로드 시작');
+        await friendController.loadContactList();
+        debugPrint('📇 연락처 목록 로드 완료: ${friendController.contactList.length}개');
+      }
     }
   }
 
@@ -58,10 +87,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
       backgroundColor: const Color(0xFF000000),
       appBar: AppBar(
         backgroundColor: const Color(0xFF000000),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
+
         title: const Text(
           '친구 추가',
           style: TextStyle(
@@ -73,18 +99,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
         centerTitle: false,
         elevation: 0,
       ),
-      body: Consumer3<
-        FriendRequestController,
-        ContactController,
-        AuthController
-      >(
-        builder: (
-          context,
-          friendController,
-          contactController,
-          authController,
-          child,
-        ) {
+      body: Consumer2<FriendRequestController, AuthController>(
+        builder: (context, friendController, authController, child) {
           if (friendController.isLoading) {
             return const Center(
               child: CircularProgressIndicator(color: Colors.white),
@@ -116,11 +132,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
 
                 const SizedBox(height: 24),
 
-                // 친구 추천 섹션
-                _buildFriendSuggestionsSection(
-                  friendController,
-                  authController,
-                ),
+                // 연락처 목록 섹션 (새로운 단순한 방식)
+                _buildContactListSection(friendController, authController),
               ],
             ),
           );
@@ -145,39 +158,6 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
             fontWeight: FontWeight.w600,
           ),
         ),
-        const SizedBox(height: 12),
-
-        // 연락처 동기화 토글
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1C1C1C),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.contacts, color: Colors.white, size: 20),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  '연락처 동기화',
-                  style: TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ),
-              Switch(
-                value: friendController.contactSyncEnabled,
-                activeColor: Colors.yellow,
-                onChanged: (value) async {
-                  final userId = authController.getUserId;
-                  if (userId != null) {
-                    await friendController.toggleContactSync(userId);
-                  }
-                },
-              ),
-            ],
-          ),
-        ),
-
         const SizedBox(height: 12),
 
         // ID로 추가하기
@@ -210,6 +190,46 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
                 onPressed:
                     () => _sendFriendRequestByNickname(
                       _idController.text,
+                      authController,
+                    ),
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        // 📞 전화번호로 추가하기
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1C1C1C),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.phone, color: Colors.white, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _phoneController,
+                  style: const TextStyle(color: Colors.white),
+                  keyboardType: TextInputType.phone,
+                  decoration: const InputDecoration(
+                    hintText: '전화번호로 추가하기 (예: 01012345678)',
+                    hintStyle: TextStyle(color: Colors.grey),
+                    border: InputBorder.none,
+                  ),
+                  onSubmitted:
+                      (value) =>
+                          _sendFriendRequestByPhone(value, authController),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.send, color: Colors.white, size: 20),
+                onPressed:
+                    () => _sendFriendRequestByPhone(
+                      _phoneController.text,
                       authController,
                     ),
               ),
@@ -497,64 +517,91 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
     );
   }
 
-  /// 친구 추천 섹션
-  Widget _buildFriendSuggestionsSection(
+  /// 연락처 목록 섹션 (새로운 단순한 방식)
+  Widget _buildContactListSection(
     FriendRequestController friendController,
     AuthController authController,
   ) {
-    final suggestions = friendController.friendSuggestions;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
+            const Icon(Icons.contacts, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
             const Text(
-              '친구 추천',
+              '연락처 목록',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
             ),
-            if (friendController.contactSyncEnabled)
-              const Expanded(
-                child: Text(
-                  ' (연락처 기반)',
-                  style: TextStyle(color: Colors.grey, fontSize: 12),
-                ),
+            const Spacer(),
+            // 연락처 권한 상태 표시
+            if (friendController.hasContactPermission)
+              Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.green, size: 16),
+                  const SizedBox(width: 4),
+                  const Text(
+                    '동기화됨',
+                    style: TextStyle(color: Colors.green, fontSize: 12),
+                  ),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    onPressed: () async {
+                      await friendController.refreshContactList();
+                    },
+                    icon: const Icon(
+                      Icons.refresh,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    tooltip: '새로고침',
+                  ),
+                ],
               ),
-            IconButton(
-              icon:
-                  friendController.isGeneratingSuggestions
-                      ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
-                        ),
-                      )
-                      : const Icon(
-                        Icons.refresh,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-              onPressed: () async {
-                final userId = authController.getUserId;
-                if (userId != null) {
-                  await friendController.refreshFriendSuggestions(userId);
-                }
-              },
-            ),
           ],
         ),
         const SizedBox(height: 12),
 
-        if (!friendController.contactSyncEnabled)
+        // 🔄 초기 로딩 중인 경우 (권한 요청 + 연락처 로딩)
+        if (friendController.isLoading)
           Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1C1C1C),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Column(
+              children: [
+                CircularProgressIndicator(color: Colors.white),
+                SizedBox(height: 16),
+                Text(
+                  '연락처 정보를 불러오는 중...',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '연락처 권한을 확인하고 목록을 로드하고 있습니다',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+
+        // 📱 연락처 권한이 거부된 경우만 권한 요청 UI 표시
+        if (!friendController.isLoading &&
+            !friendController.hasContactPermission)
+          Container(
+            width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: const Color(0xFF1C1C1C),
@@ -562,62 +609,155 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
             ),
             child: Column(
               children: [
-                const Text(
-                  '연락처를 동기화하면\n친구를 더 쉽게 찾을 수 있어요',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                const Icon(
+                  Icons.contacts_outlined,
+                  color: Colors.orange,
+                  size: 48,
                 ),
                 const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () async {
-                    final userId = authController.getUserId;
-                    if (userId != null) {
-                      await friendController.requestContactPermissionAndSync(
-                        userId,
-                      );
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                const Text(
+                  '연락처 접근 권한 필요',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  '연락처에 저장된 친구들을 찾기 위해\n연락처 접근 권한이 필요합니다',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+                if (friendController.error != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    friendController.error!,
+                    style: const TextStyle(color: Colors.red, fontSize: 12),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () async {
+                        final granted =
+                            await friendController.requestContactPermission();
+                        if (granted) {
+                          await friendController.loadContactList();
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                      child: const Text(
+                        '권한 요청',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    '연락처 동기화하기',
-                    style: TextStyle(color: Colors.white),
-                  ),
+                    ElevatedButton(
+                      onPressed: () async {
+                        await friendController.openAppSettings();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                      ),
+                      child: const Text(
+                        '설정으로 이동',
+                        style: TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          )
-        else if (suggestions.isEmpty)
+          ),
+
+        // 📇 연락처 목록 로딩 중인 경우 (권한은 있지만 연락처 로딩 중)
+        if (friendController.hasContactPermission &&
+            friendController.isLoadingContacts)
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: Column(
+                children: [
+                  CircularProgressIndicator(color: Colors.white),
+                  SizedBox(height: 16),
+                  Text(
+                    '연락처 목록을 불러오는 중...',
+                    style: TextStyle(color: Colors.white, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+        // 📭 연락처 목록이 비어있는 경우
+        if (friendController.hasContactPermission &&
+            !friendController.isLoadingContacts &&
+            friendController.contactList.isEmpty)
           Container(
-            padding: const EdgeInsets.all(16),
+            width: double.infinity,
+            padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
               color: const Color(0xFF1C1C1C),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text(
-              '추천할 친구가 없습니다.',
-              style: TextStyle(color: Colors.grey, fontSize: 14),
+            child: const Column(
+              children: [
+                Icon(Icons.contacts_outlined, color: Colors.grey, size: 48),
+                SizedBox(height: 12),
+                Text(
+                  '연락처가 없습니다',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '기기에 저장된 연락처가 없거나\n전화번호가 없는 연락처입니다',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
-          )
-        else
-          ...suggestions
-              .map(
-                (suggestion) =>
-                    _buildSuggestionItem(suggestion, authController),
-              )
+          ),
+
+        // 📋 연락처 목록 표시
+        if (friendController.hasContactPermission &&
+            !friendController.isLoadingContacts &&
+            friendController.contactList.isNotEmpty) ...[
+          // 연락처 개수 표시
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              '총 ${friendController.contactList.length}명의 연락처',
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ),
+          // 연락처 목록
+          ...friendController.contactList
+              .map((contact) => _buildContactItem(contact, authController))
               .toList(),
+        ],
       ],
     );
   }
 
-  Widget _buildSuggestionItem(
-    FriendSuggestionModel suggestion,
-    AuthController authController,
-  ) {
+  Widget _buildContactItem(ContactItem contact, AuthController authController) {
+    // ContactModel → ContactItem으로 변경
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
@@ -631,16 +771,18 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
             radius: 20,
             backgroundColor: Colors.grey,
             backgroundImage:
-                suggestion.profileImageUrl != null &&
-                        suggestion.profileImageUrl!.isNotEmpty
-                    ? NetworkImage(suggestion.profileImageUrl!)
+                contact.profileImageUrl != null &&
+                        contact.profileImageUrl!.isNotEmpty
+                    ? NetworkImage(contact.profileImageUrl!)
                     : null,
             child:
-                suggestion.profileImageUrl == null ||
-                        suggestion.profileImageUrl!.isEmpty
+                contact.profileImageUrl == null ||
+                        contact.profileImageUrl!.isEmpty
                     ? Text(
-                      suggestion.nickname.isNotEmpty
-                          ? suggestion.nickname[0].toUpperCase()
+                      contact
+                              .displayName
+                              .isNotEmpty // nickname → displayName으로 변경
+                          ? contact.displayName[0].toUpperCase()
                           : '?',
                       style: const TextStyle(color: Colors.white),
                     )
@@ -654,26 +796,29 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  suggestion.nickname,
+                  contact.displayName, // nickname → displayName으로 변경
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (suggestion.reasons.isNotEmpty)
-                  Text(
-                    suggestion.reasons.first,
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),
-                  ),
+                Text(
+                  '전화번호: ${contact.phoneNumber}',
+                  style: const TextStyle(color: Colors.grey, fontSize: 12),
+                ),
               ],
             ),
           ),
 
-          _buildActionButton(
-            '친구 추가',
-            Colors.blue,
-            () => _sendFriendRequestFromSuggestion(suggestion, authController),
+          IconButton(
+            icon: const Icon(Icons.add_circle, color: Colors.blue),
+            onPressed: () {
+              _sendFriendRequestToContact(
+                contact,
+                authController,
+              ); // 새로운 메서드 호출
+            },
           ),
         ],
       ),
@@ -707,8 +852,37 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
     }
   }
 
-  Future<void> _sendFriendRequestFromSuggestion(
-    FriendSuggestionModel suggestion,
+  /// 📞 전화번호로 친구 요청/초대 보내기 (추가 메서드)
+  Future<void> _sendFriendRequestByPhone(
+    String phoneNumber,
+    AuthController authController,
+  ) async {
+    if (phoneNumber.trim().isEmpty) return;
+
+    final userId = authController.getUserId;
+    final userNickname = await authController.getUserID();
+
+    if (userId == null) return;
+
+    final success = await friendController.sendFriendRequestByPhone(
+      fromUserId: userId,
+      fromUserNickname: userNickname,
+      phoneNumber: phoneNumber.trim(),
+    );
+
+    if (success) {
+      _phoneController.clear();
+      // 성공 메시지 사용 (SMS 초대 또는 친구 요청)
+      final message = friendController.successMessage ?? '요청을 처리했습니다.';
+      _showSnackBar(message);
+    } else {
+      _showSnackBar(friendController.error ?? '요청 처리에 실패했습니다.');
+    }
+  }
+
+  /// 연락처로 친구 요청/초대 보내기 (새로운 메서드)
+  Future<void> _sendFriendRequestToContact(
+    ContactItem contact,
     AuthController authController,
   ) async {
     final userId = authController.getUserId;
@@ -716,16 +890,20 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
 
     if (userId == null) return;
 
-    final success = await friendController.sendFriendRequestFromSuggestion(
+    final success = await friendController.sendFriendRequestToContact(
       fromUserId: userId,
       fromUserNickname: userNickname,
-      suggestion: suggestion,
+      contact: contact,
     );
 
     if (success) {
-      _showSnackBar('${suggestion.nickname}님에게 친구 요청을 보냈습니다.');
+      // 성공 메시지 사용 (SMS 초대 또는 친구 요청)
+      final message =
+          friendController.successMessage ??
+          '${contact.displayName}님에게 요청을 보냈습니다.';
+      _showSnackBar(message);
     } else {
-      _showSnackBar(friendController.error ?? '친구 요청 전송에 실패했습니다.');
+      _showSnackBar(friendController.error ?? '요청 처리에 실패했습니다.');
     }
   }
 
