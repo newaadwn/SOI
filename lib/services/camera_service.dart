@@ -18,9 +18,7 @@ class CameraService {
   }
   CameraService._internal();
 
-  static const MethodChannel _channel = MethodChannel(
-    'com.soi.camera/native_camera_view',
-  );
+  static const MethodChannel _channel = MethodChannel('com.soi.camera');
 
   final ImagePicker _imagePicker = ImagePicker();
 

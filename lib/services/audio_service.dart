@@ -199,32 +199,6 @@ class AudioService {
     }
   }
 
-  /// 네이티브 녹음 일시정지 (UI용)
-  Future<AuthResult> pauseRecording() async {
-    try {
-      debugPrint('네이티브 녹음 일시정지 요청...');
-      // 네이티브 녹음의 일시정지는 플랫폼별로 제한적일 수 있음
-      // 현재는 성공으로 반환하여 UI 상태만 관리
-      return AuthResult.success();
-    } catch (e) {
-      debugPrint('네이티브 녹음 일시정지 오류: $e');
-      return AuthResult.failure('네이티브 녹음 일시정지 중 오류 발생: $e');
-    }
-  }
-
-  /// 네이티브 녹음 재개 (UI용)
-  Future<AuthResult> resumeRecording() async {
-    try {
-      debugPrint('네이티브 녹음 재개 요청...');
-      // 네이티브 녹음의 재개는 플랫폼별로 제한적일 수 있음
-      // 현재는 성공으로 반환하여 UI 상태만 관리
-      return AuthResult.success();
-    } catch (e) {
-      debugPrint('네이티브 녹음 재개 오류: $e');
-      return AuthResult.failure('네이티브 녹음 재개 중 오류 발생: $e');
-    }
-  }
-
   /// 녹음 상태 확인
   Future<bool> get isRecording => AudioRepository.isRecording();
 

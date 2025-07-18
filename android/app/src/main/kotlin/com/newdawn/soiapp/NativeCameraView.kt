@@ -80,6 +80,9 @@ class NativeCameraView(
                     refreshPreview()
                     result.success(true)
                 }
+                "takePicture" -> {
+                    takePicture(result)
+                }
                 else -> {
                     result.notImplemented()
                 }
@@ -159,6 +162,32 @@ class NativeCameraView(
             Log.d(TAG, "프리뷰 강제 갱신 완료")
         } catch (e: Exception) {
             Log.e(TAG, "프리뷰 갱신 중 오류: ${e.message}")
+        }
+    }
+
+    // 사진 촬영 메서드
+    private fun takePicture(result: MethodChannel.Result) {
+        try {
+            Log.d(TAG, "takePicture 호출됨")
+            
+            if (!cameraHandler.isSessionActive()) {
+                Log.e(TAG, "카메라 세션이 활성화되지 않았습니다")
+                result.error("CAMERA_NOT_ACTIVE", "카메라 세션이 활성화되지 않았습니다", null)
+                return
+            }
+            
+            cameraHandler.takePicture { filePath, error ->
+                if (filePath != null) {
+                    Log.d(TAG, "사진 촬영 성공: $filePath")
+                    result.success(filePath)
+                } else {
+                    Log.e(TAG, "사진 촬영 실패: $error")
+                    result.error("TAKE_PICTURE_ERROR", error ?: "알 수 없는 오류", null)
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "takePicture 중 예외 발생: ${e.message}")
+            result.error("TAKE_PICTURE_EXCEPTION", e.message, null)
         }
     }
 

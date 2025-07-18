@@ -299,10 +299,23 @@ class PreviewView: UIView {
 // 카메라 미리보기 플랫폼 뷰
 class CameraPreviewView: NSObject, FlutterPlatformView {
     private var _view: PreviewView
+    private var methodChannel: FlutterMethodChannel?
+    private var captureSession: AVCaptureSession
+    private var photoOutput: AVCapturePhotoOutput?
+    private var photoCaptureResult: FlutterResult?
     
     init(frame: CGRect, viewIdentifier: Int64, arguments args: Any?, captureSession: AVCaptureSession) {
+        self.captureSession = captureSession
         _view = PreviewView(frame: frame)
         super.init()
+        
+        // 메서드 채널 설정
+        if let messenger = FlutterEngine().binaryMessenger {
+            methodChannel = FlutterMethodChannel(name: "com.soi.camera/preview_\(viewIdentifier)", binaryMessenger: messenger)
+            methodChannel?.setMethodCallHandler { [weak self] call, result in
+                self?.handleMethodCall(call, result: result)
+            }
+        }
         
         // 뷰 레이어 설정
         if let previewLayer = _view.layer as? AVCaptureVideoPreviewLayer {
@@ -322,7 +335,72 @@ class CameraPreviewView: NSObject, FlutterPlatformView {
         }
     }
     
+    // 메서드 호출 처리
+    private func handleMethodCall(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        switch call.method {
+        case "initCamera":
+            result(true)
+        case "isSessionActive":
+            result(captureSession.isRunning)
+        case "refreshPreview":
+            result(true)
+        case "takePicture":
+            takePicture(result: result)
+        default:
+            result(FlutterMethodNotImplemented)
+        }
+    }
+    
+    // 사진 촬영
+    private func takePicture(result: @escaping FlutterResult) {
+        guard let photoOutput = self.photoOutput else {
+            // PhotoOutput이 없으면 생성
+            photoOutput = AVCapturePhotoOutput()
+            if let photoOutput = photoOutput, captureSession.canAddOutput(photoOutput) {
+                captureSession.addOutput(photoOutput)
+            }
+        }
+        
+        guard let photoOutput = self.photoOutput else {
+            result(FlutterError(code: "NO_PHOTO_OUTPUT", message: "Photo output not available", details: nil))
+            return
+        }
+        
+        // 기본 설정으로 사진 촬영
+        let settings = AVCapturePhotoSettings()
+        photoCaptureResult = result
+        photoOutput.capturePhoto(with: settings, delegate: self)
+    }
+    
     func view() -> UIView {
         return _view
+    }
+}
+
+// AVCapturePhotoCaptureDelegate 확장
+extension CameraPreviewView: AVCapturePhotoCaptureDelegate {
+    func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        if let error = error {
+            photoCaptureResult?(FlutterError(code: "CAPTURE_ERROR", message: error.localizedDescription, details: nil))
+            return
+        }
+        
+        // 이미지 데이터 얻기
+        guard let imageData = photo.fileDataRepresentation() else {
+            photoCaptureResult?(FlutterError(code: "NO_IMAGE_DATA", message: "Could not get image data", details: nil))
+            return
+        }
+        
+        // 임시 파일로 저장
+        let tempDir = NSTemporaryDirectory()
+        let filePath = tempDir + "/\(UUID().uuidString).jpg"
+        let fileURL = URL(fileURLWithPath: filePath)
+        
+        do {
+            try imageData.write(to: fileURL)
+            photoCaptureResult?(filePath)
+        } catch {
+            photoCaptureResult?(FlutterError(code: "FILE_SAVE_ERROR", message: error.localizedDescription, details: nil))
+        }
     }
 }
