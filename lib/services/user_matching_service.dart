@@ -142,7 +142,7 @@ class UserMatchingService {
             phone.number,
           );
           if (user != null) {
-            debugPrint('사용자 발견: ${user.nickname}');
+            debugPrint('사용자 발견: ${user.id}');
             return user;
           }
         }

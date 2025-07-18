@@ -153,7 +153,7 @@ class FriendService {
 
       // 2. 친구 정보 업데이트
       await _friendRepository.updateFriend(friendUid, {
-        'nickname': userInfo.nickname,
+        'nickname': userInfo.id,
         'name': userInfo.name,
         'profileImageUrl': userInfo.profileImageUrl,
       });
@@ -175,7 +175,7 @@ class FriendService {
           await Future.delayed(const Duration(milliseconds: 100));
         } catch (e) {
           // 개별 친구 동기화 실패는 무시하고 계속 진행
-          print('친구 ${friend.nickname} 정보 동기화 실패: $e');
+          print('친구 ${friend.id} 정보 동기화 실패: $e');
         }
       }
     } catch (e) {

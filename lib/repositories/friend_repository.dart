@@ -62,17 +62,17 @@ class FriendRepository {
   /// 양방향 친구 관계 생성
   ///
   /// [friendUid] 친구로 추가할 사용자 UID
-  /// [friendNickname] 친구의 닉네임
+  /// [friendid] 친구의 닉네임
   /// [friendName] 친구의 실명
-  /// [currentUserNickname] 현재 사용자의 닉네임
+  /// [currentUserid] 현재 사용자의 닉네임
   /// [currentUserName] 현재 사용자의 실명
   /// [friendProfileImageUrl] 친구의 프로필 이미지 URL
   /// [currentUserProfileImageUrl] 현재 사용자의 프로필 이미지 URL
   Future<void> addFriend({
     required String friendUid,
-    required String friendNickname,
+    required String friendid,
     required String friendName,
-    required String currentUserNickname,
+    required String currentUserid,
     required String currentUserName,
     String? friendProfileImageUrl,
     String? currentUserProfileImageUrl,
@@ -98,7 +98,7 @@ class FriendRepository {
 
         final currentUserFriend = FriendModel(
           userId: friendUid,
-          nickname: friendNickname,
+          id: friendid,
           name: friendName,
           profileImageUrl: friendProfileImageUrl,
           status: FriendStatus.active,
@@ -116,7 +116,7 @@ class FriendRepository {
 
         final friendUserFriend = FriendModel(
           userId: currentUid,
-          nickname: currentUserNickname,
+          id: currentUserid,
           name: currentUserName,
           profileImageUrl: currentUserProfileImageUrl,
           status: FriendStatus.active,
@@ -337,7 +337,7 @@ class FriendRepository {
       // 클라이언트 측 검색 필터링
       final queryLower = query.toLowerCase();
       return friends.where((friend) {
-        return friend.nickname.toLowerCase().contains(queryLower) ||
+        return friend.id.toLowerCase().contains(queryLower) ||
             friend.name.toLowerCase().contains(queryLower);
       }).toList();
     } catch (e) {

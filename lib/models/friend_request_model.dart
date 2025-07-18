@@ -60,10 +60,10 @@ class FriendRequestModel {
   final String receiverUid;
 
   /// 요청을 보낸 사용자 닉네임
-  final String senderNickname;
+  final String senderid;
 
   /// 요청을 받은 사용자 닉네임
-  final String receiverNickname;
+  final String receiverid;
 
   /// 요청 상태
   final FriendRequestStatus status;
@@ -81,8 +81,8 @@ class FriendRequestModel {
     required this.id,
     required this.senderUid,
     required this.receiverUid,
-    required this.senderNickname,
-    required this.receiverNickname,
+    required this.senderid,
+    required this.receiverid,
     required this.status,
     this.message,
     required this.createdAt,
@@ -107,8 +107,8 @@ class FriendRequestModel {
       id: id,
       senderUid: json['senderUid'] as String,
       receiverUid: json['receiverUid'] as String,
-      senderNickname: json['senderNickname'] as String,
-      receiverNickname: json['receiverNickname'] as String,
+      senderid: json['senderid'] as String,
+      receiverid: json['receiverid'] as String,
       status: FriendRequestStatusExtension.fromString(json['status'] as String),
       message: json['message'] as String?,
       createdAt: (json['createdAt'] as Timestamp).toDate(),
@@ -124,8 +124,8 @@ class FriendRequestModel {
     return {
       'senderUid': senderUid,
       'receiverUid': receiverUid,
-      'senderNickname': senderNickname,
-      'receiverNickname': receiverNickname,
+      'senderid': senderid,
+      'receiverid': receiverid,
       'status': status.value,
       'message': message,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -138,8 +138,8 @@ class FriendRequestModel {
     String? id,
     String? senderUid,
     String? receiverUid,
-    String? senderNickname,
-    String? receiverNickname,
+    String? senderid,
+    String? receiverid,
     FriendRequestStatus? status,
     String? message,
     DateTime? createdAt,
@@ -149,8 +149,8 @@ class FriendRequestModel {
       id: id ?? this.id,
       senderUid: senderUid ?? this.senderUid,
       receiverUid: receiverUid ?? this.receiverUid,
-      senderNickname: senderNickname ?? this.senderNickname,
-      receiverNickname: receiverNickname ?? this.receiverNickname,
+      senderid: senderid ?? this.senderid,
+      receiverid: receiverid ?? this.receiverid,
       status: status ?? this.status,
       message: message ?? this.message,
       createdAt: createdAt ?? this.createdAt,
@@ -167,8 +167,8 @@ class FriendRequestModel {
         other.id == id &&
         other.senderUid == senderUid &&
         other.receiverUid == receiverUid &&
-        other.senderNickname == senderNickname &&
-        other.receiverNickname == receiverNickname &&
+        other.senderid == senderid &&
+        other.receiverid == receiverid &&
         other.status == status &&
         other.message == message &&
         other.createdAt == createdAt &&
@@ -181,8 +181,8 @@ class FriendRequestModel {
     return id.hashCode ^
         senderUid.hashCode ^
         receiverUid.hashCode ^
-        senderNickname.hashCode ^
-        receiverNickname.hashCode ^
+        senderid.hashCode ^
+        receiverid.hashCode ^
         status.hashCode ^
         message.hashCode ^
         createdAt.hashCode ^
@@ -192,6 +192,6 @@ class FriendRequestModel {
   /// 디버그용 문자열 표현
   @override
   String toString() {
-    return 'FriendRequestModel(id: $id, senderUid: $senderUid, receiverUid: $receiverUid, senderNickname: $senderNickname, receiverNickname: $receiverNickname, status: $status, message: $message, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'FriendRequestModel(id: $id, senderUid: $senderUid, receiverUid: $receiverUid, senderid: $senderid, receiverid: $receiverid, status: $status, message: $message, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }

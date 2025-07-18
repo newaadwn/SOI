@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_contacts/contact.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:flutter_swift_camera/controllers/auth_controller.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -671,8 +672,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
             radius: 22 * scale,
             backgroundColor: const Color(0xff323232),
             child: Text(
-              request.senderNickname.isNotEmpty
-                  ? request.senderNickname[0].toUpperCase()
+              request.senderid.isNotEmpty
+                  ? request.senderid[0].toUpperCase()
                   : '?',
               style: TextStyle(
                 color: const Color(0xfff9f9f9),
@@ -689,9 +690,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  request.senderNickname.isNotEmpty
-                      ? request.senderNickname
-                      : '알 수 없는 사용자',
+                  request.senderid.isNotEmpty ? request.senderid : '알 수 없는 사용자',
                   style: TextStyle(
                     color: const Color(0xffd9d9d9),
                     fontSize: 16 * scale,
@@ -1040,9 +1039,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
           );
 
           if (matchedUser != null) {
-            debugPrint(
-              '매칭된 사용자 찾음: ${matchedUser.uid}, ${matchedUser.nickname}',
-            );
+            debugPrint('매칭된 사용자 찾음: ${matchedUser.uid}, ${matchedUser.id}');
             final success = await friendRequestController.sendFriendRequest(
               receiverUid: matchedUser.uid,
               message: '${contact.displayName}님과 친구가 되고 싶어요!',
@@ -1164,6 +1161,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
       final phone = contact.phones.first;
       final phoneNumber = phone.number;
 
+      AuthController authController = AuthController();
+
       debugPrint('전화번호: $phoneNumber');
 
       if (phoneNumber.isEmpty) {
@@ -1178,10 +1177,19 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
         }
         return;
       }
-      final appDownloadLink =
-          'https://play.google.com/store/apps/details?id=com.soi.app'; // 실제 앱 스토어 링크로 변경
+      // 스마트 초대 링크 생성 (현재 사용자 정보 포함)
+      // TODO: 실제 Firebase Auth에서 현재 사용자 정보 가져오기
+      final currentUserName = authController.currentUser?.displayName ?? '사용자';
+      final currentUserId = authController.currentUser?.uid;
+
+      final inviteLink =
+          'https://soi-sns.web.app/invite.html?'
+          'inviter=${Uri.encodeComponent(currentUserName)}'
+          '&inviterId=${Uri.encodeComponent(currentUserId!)}'
+          '&invitee=${Uri.encodeComponent(contact.displayName)}';
+
       final message =
-          '안녕하세요! SOI 앱에서 친구 요청을 보내고 싶어요. 앱을 다운로드해보세요: $appDownloadLink';
+          '안녕하세요! $currentUserName님이 SOI 앱에서 친구가 되고 싶어해요! 아래 링크로 SOI를 시작해보세요: $inviteLink';
 
       final uri = Uri(
         scheme: 'sms',

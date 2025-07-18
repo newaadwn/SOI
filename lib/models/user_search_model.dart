@@ -5,8 +5,8 @@ class UserSearchModel {
   /// 사용자 UID
   final String uid;
 
-  /// 사용자 닉네임
-  final String nickname;
+  /// 사용자 id
+  final String id;
 
   /// 사용자 실명
   final String name;
@@ -25,7 +25,7 @@ class UserSearchModel {
 
   const UserSearchModel({
     required this.uid,
-    required this.nickname,
+    required this.id,
     required this.name,
     this.profileImageUrl,
     this.phoneNumber,
@@ -49,9 +49,14 @@ class UserSearchModel {
   factory UserSearchModel.fromJson(Map<String, dynamic> json, String uid) {
     return UserSearchModel(
       uid: uid,
-      nickname: json['nickname'] as String? ?? json['name'] as String? ?? '', // nickname이 없으면 name 사용
+      id:
+          json['id'] as String? ??
+          json['name'] as String? ??
+          '', // id이 없으면 name 사용
       name: json['name'] as String? ?? '',
-      profileImageUrl: json['profileImageUrl'] as String? ?? json['profile_image'] as String?, // profile_image 필드도 확인
+      profileImageUrl:
+          json['profileImageUrl'] as String? ??
+          json['profile_image'] as String?, // profile_image 필드도 확인
       phoneNumber: json['phone'] as String?, // 'phoneNumber' → 'phone'으로 변경
       allowPhoneSearch: json['allowPhoneSearch'] as bool? ?? true,
       createdAt:
@@ -64,7 +69,7 @@ class UserSearchModel {
   /// 모델을 JSON으로 변환
   Map<String, dynamic> toJson() {
     return {
-      'nickname': nickname,
+      'id': id,
       'name': name,
       'profileImageUrl': profileImageUrl,
       'phone': phoneNumber, // 'phoneNumber' → 'phone'으로 변경
@@ -76,7 +81,7 @@ class UserSearchModel {
   /// 모델 복사 (일부 필드 변경)
   UserSearchModel copyWith({
     String? uid,
-    String? nickname,
+    String? id,
     String? name,
     String? profileImageUrl,
     String? phoneNumber,
@@ -85,7 +90,7 @@ class UserSearchModel {
   }) {
     return UserSearchModel(
       uid: uid ?? this.uid,
-      nickname: nickname ?? this.nickname,
+      id: id ?? this.id,
       name: name ?? this.name,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       phoneNumber: phoneNumber ?? this.phoneNumber,
@@ -101,7 +106,7 @@ class UserSearchModel {
 
     return other is UserSearchModel &&
         other.uid == uid &&
-        other.nickname == nickname &&
+        other.id == id &&
         other.name == name &&
         other.profileImageUrl == profileImageUrl &&
         other.phoneNumber == phoneNumber &&
@@ -113,7 +118,7 @@ class UserSearchModel {
   @override
   int get hashCode {
     return uid.hashCode ^
-        nickname.hashCode ^
+        id.hashCode ^
         name.hashCode ^
         profileImageUrl.hashCode ^
         phoneNumber.hashCode ^
@@ -124,6 +129,6 @@ class UserSearchModel {
   /// 디버그용 문자열 표현
   @override
   String toString() {
-    return 'UserSearchModel(uid: $uid, nickname: $nickname, name: $name, profileImageUrl: $profileImageUrl, phoneNumber: $phoneNumber, allowPhoneSearch: $allowPhoneSearch, createdAt: $createdAt)';
+    return 'UserSearchModel(uid: $uid, id: $id, name: $name, profileImageUrl: $profileImageUrl, phoneNumber: $phoneNumber, allowPhoneSearch: $allowPhoneSearch, createdAt: $createdAt)';
   }
 }

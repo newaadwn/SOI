@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme.dart';
 import '../controllers/auth_controller.dart';
+import '../services/deep_link_service.dart';
 import 'about_archiving/archive_main_screen.dart';
 import 'about_camera/camera_screen.dart';
 import 'home_screen.dart';
@@ -27,6 +28,8 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
     // 앱이 실행될 때 잘못된 프로필 이미지 URL을 확인하고 정리
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cleanInvalidProfileImages();
+      // Deep Link 서비스 초기화
+      DeepLinkService.initialize(context);
     });
   }
 

@@ -47,7 +47,7 @@ class FriendModel {
   final String userId;
 
   /// 친구의 닉네임
-  final String nickname;
+  final String id;
 
   /// 친구의 실명
   final String name;
@@ -69,7 +69,7 @@ class FriendModel {
 
   const FriendModel({
     required this.userId,
-    required this.nickname,
+    required this.id,
     required this.name,
     this.profileImageUrl,
     required this.status,
@@ -94,7 +94,7 @@ class FriendModel {
   factory FriendModel.fromJson(Map<String, dynamic> json) {
     return FriendModel(
       userId: json['userId'] as String,
-      nickname: json['nickname'] as String,
+      id: json['id'] as String,
       name: json['name'] as String,
       profileImageUrl: json['profileImageUrl'] as String?,
       status: FriendStatusExtension.fromString(json['status'] as String),
@@ -111,7 +111,7 @@ class FriendModel {
   Map<String, dynamic> toJson() {
     return {
       'userId': userId,
-      'nickname': nickname,
+      'id': id,
       'name': name,
       'profileImageUrl': profileImageUrl,
       'status': status.value,
@@ -125,7 +125,7 @@ class FriendModel {
   /// 모델 복사 (일부 필드 변경)
   FriendModel copyWith({
     String? userId,
-    String? nickname,
+    String? id,
     String? name,
     String? profileImageUrl,
     FriendStatus? status,
@@ -135,7 +135,7 @@ class FriendModel {
   }) {
     return FriendModel(
       userId: userId ?? this.userId,
-      nickname: nickname ?? this.nickname,
+      id: id ?? this.id,
       name: name ?? this.name,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       status: status ?? this.status,
@@ -152,7 +152,7 @@ class FriendModel {
 
     return other is FriendModel &&
         other.userId == userId &&
-        other.nickname == nickname &&
+        other.id == id &&
         other.name == name &&
         other.profileImageUrl == profileImageUrl &&
         other.status == status &&
@@ -165,7 +165,7 @@ class FriendModel {
   @override
   int get hashCode {
     return userId.hashCode ^
-        nickname.hashCode ^
+        id.hashCode ^
         name.hashCode ^
         profileImageUrl.hashCode ^
         status.hashCode ^
@@ -177,6 +177,6 @@ class FriendModel {
   /// 디버그용 문자열 표현
   @override
   String toString() {
-    return 'FriendModel(userId: $userId, nickname: $nickname, name: $name, profileImageUrl: $profileImageUrl, status: $status, isFavorite: $isFavorite, addedAt: $addedAt, lastInteraction: $lastInteraction)';
+    return 'FriendModel(userId: $userId, id: $id, name: $name, profileImageUrl: $profileImageUrl, status: $status, isFavorite: $isFavorite, addedAt: $addedAt, lastInteraction: $lastInteraction)';
   }
 }

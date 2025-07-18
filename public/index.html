@@ -1,0 +1,58 @@
+<!-- public/invite.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SOI 초대</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
+        .soi-logo { width: 120px; margin-bottom: 30px; }
+        .invite-message { font-size: 18px; margin-bottom: 30px; }
+        .download-btn { 
+            background: #1976d2; color: white; padding: 15px 30px; 
+            border: none; border-radius: 8px; font-size: 16px; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <img src="/assets/SOI_logo.png" alt="SOI" class="soi-logo">
+    <div id="inviteMessage" class="invite-message">
+        SOI 앱에서 친구 요청이 왔어요!
+    </div>
+    <button id="downloadBtn" class="download-btn">앱 다운로드</button>
+    
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const inviterName = urlParams.get('inviter') || '친구';
+        const inviterId = urlParams.get('inviterId');
+        const inviteeName = urlParams.get('invitee');
+        
+        // 메시지 개인화
+        document.getElementById('inviteMessage').textContent = 
+            `${inviterName}님이 SOI에서 친구 요청을 보냈어요!`;
+        
+        // 플랫폼별 다운로드
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        document.getElementById('downloadBtn').onclick = function() {
+            const deepLinkData = `?inviter=${inviterName}&inviterId=${inviterId}&invitee=${inviteeName}`;
+            
+            if (isAndroid) {
+                // Android: 앱이 있으면 딥링크, 없으면 플레이스토어
+                window.location.href = `intent://invite${deepLinkData}#Intent;scheme=soi;package=com.soi.app;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.soi.app;end`;
+            } else if (isIOS) {
+                // iOS: Universal Link 시도 후 앱스토어
+                window.location.href = `soi://invite${deepLinkData}`;
+                setTimeout(() => {
+                    window.location.href = 'https://apps.apple.com/app/soi/id여기에앱ID';
+                }, 1000);
+            } else {
+                // 웹: 플레이스토어로
+                window.location.href = 'https://play.google.com/store/apps/details?id=com.soi.app';
+            }
+        };
+    </script>
+</body>
+</html>

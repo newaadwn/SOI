@@ -1,3 +1,6 @@
+import 'package:flutter_swift_camera/controllers/auth_controller.dart';
+
+import '../controllers/auth_controller.dart';
 import '../repositories/friend_request_repository.dart';
 import '../repositories/friend_repository.dart';
 import '../repositories/user_search_repository.dart';
@@ -10,6 +13,7 @@ class FriendRequestService {
   final FriendRequestRepository _friendRequestRepository;
   final FriendRepository _friendRepository;
   final UserSearchRepository _userSearchRepository;
+  AuthController _authController = AuthController();
 
   FriendRequestService({
     required FriendRequestRepository friendRequestRepository,
@@ -53,21 +57,32 @@ class FriendRequestService {
       }
 
       // 4. 현재 사용자 정보 조회 (닉네임 가져오기 위해)
-      // 실제로는 AuthService나 UserService에서 현재 사용자 정보를 가져와야 함
-      // 임시로 receiverInfo와 동일한 구조로 가정
+      // AuthController에서 현재 사용자 정보 가져오기
+
+      // 현재 사용자가 로그인되어 있는지 확인
+      if (_authController.currentUser == null) {
+        throw Exception('로그인이 필요합니다. 다시 로그인해주세요.');
+      }
+
+      final currentUser = _authController.currentUser!;
+      final currentUserId = await _authController.getUserID();
+
+      // displayName이 null인 경우 기본값 사용
+      final displayName = currentUser.displayName ?? '사용자';
+
       final currentUserInfo = UserSearchModel(
-        uid: 'current_user_uid', // 실제로는 Firebase Auth에서 가져옴
-        nickname: 'current_user_nickname', // 실제로는 사용자 문서에서 가져옴
-        name: 'current_user_name',
-        allowPhoneSearch: true,
-        createdAt: DateTime.now(),
+        uid: currentUser.uid,
+        id: currentUserId,
+        name: displayName,
+        allowPhoneSearch: true, // 기본값 설정
+        createdAt: DateTime.now(), // 현재 시간으로 설정
       );
 
       // 5. 친구 요청 전송
       final requestId = await _friendRequestRepository.sendFriendRequest(
         receiverUid: receiverUid,
-        receiverNickname: receiverInfo.nickname,
-        senderNickname: currentUserInfo.nickname,
+        receiverId: receiverInfo.id,
+        senderid: currentUserInfo.id,
         message: message,
       );
 
@@ -96,10 +111,10 @@ class FriendRequestService {
       // 3. 양방향 친구 관계 생성
       await _friendRepository.addFriend(
         friendUid: request.senderUid,
-        friendNickname: request.senderNickname,
-        friendName: request.senderNickname, // 임시로 닉네임 사용
-        currentUserNickname: request.receiverNickname,
-        currentUserName: request.receiverNickname, // 임시로 닉네임 사용
+        friendid: request.senderid,
+        friendName: request.senderid, // 임시로 닉네임 사용
+        currentUserid: request.receiverid,
+        currentUserName: request.receiverid, // 임시로 닉네임 사용
       );
 
       // 4. 처리 완료된 친구 요청 삭제 (선택적)

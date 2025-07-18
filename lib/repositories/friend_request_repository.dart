@@ -23,8 +23,8 @@ class FriendRequestRepository {
   /// [message] 선택적 메시지
   Future<String> sendFriendRequest({
     required String receiverUid,
-    required String receiverNickname,
-    required String senderNickname,
+    required String receiverId,
+    required String senderid,
     String? message,
   }) async {
     final currentUid = _currentUserUid;
@@ -54,8 +54,8 @@ class FriendRequestRepository {
         id: '', // Firestore에서 자동 생성
         senderUid: currentUid,
         receiverUid: receiverUid,
-        senderNickname: senderNickname,
-        receiverNickname: receiverNickname,
+        senderid: senderid,
+        receiverid: receiverId,
         status: FriendRequestStatus.pending,
         message: message,
         createdAt: DateTime.now(),
