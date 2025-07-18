@@ -9,11 +9,15 @@ import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import android.util.Log
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.soi.camera"
     private val AUDIO_CHANNEL = "native_recorder"
     private lateinit var cameraHandler: CameraHandler
+    
+    private val CAMERA_PERMISSION_REQUEST_CODE = 1002
+    private val TAG = "MainActivity"
     
     // 네이티브 오디오 녹음 관련 변수
     private var mediaRecorder: MediaRecorder? = null
@@ -24,96 +28,52 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
-        // AudioConverter 플러그인 등록
-        flutterEngine.plugins.add(AudioConverter())
+        // 카메라 권한 확인 및 요청
+        checkAndRequestCameraPermission()
         
         // 카메라 핸들러 초기화
         cameraHandler = CameraHandler(this)
         
-        // 네이티브 카메라 뷰 등록
+        // 카메라 네이티브 뷰 등록
         flutterEngine.platformViewsController.registry.registerViewFactory(
-            "com.soi.camera/preview",
+            "com.soi.camera/native_camera_view",
             NativeCameraViewFactory(flutterEngine.dartExecutor.binaryMessenger)
         )
         
-        // 메서드 채널 설정 (카메라)
+        // 카메라 메서드 채널 설정
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
-                "initCamera" -> {
-                    cameraHandler.initCamera { success, error ->
-                        if (success) {
-                            result.success("카메라 초기화 성공")
-                        } else {
-                            result.error("INIT_FAILED", error ?: "카메라 초기화 실패", null)
-                        }
+                "isSessionActive" -> {
+                    // 카메라 세션 상태 확인
+                    try {
+                        val isActive = cameraHandler.isSessionActive()
+                        Log.d(TAG, "isSessionActive 호출: $isActive")
+                        result.success(isActive)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "isSessionActive 오류: ${e.message}", e)
+                        result.error("CAMERA_ERROR", "카메라 세션 상태 확인 실패: ${e.message}", null)
                     }
                 }
-                "takePicture" -> {
-                    cameraHandler.takePicture { path, error ->
-                        if (path != null) {
-                            result.success(path)
-                        } else {
-                            result.error("CAPTURE_FAILED", error ?: "사진 촬영 실패", null)
-                        }
-                    }
+                "checkCameraPermission" -> {
+                    // 카메라 권한 확인
+                    val hasPermission = hasCameraPermission()
+                    result.success(hasPermission)
                 }
-                "switchCamera" -> {
-                    cameraHandler.switchCamera { success, error ->
-                        if (success) {
-                            result.success(true)
-                        } else {
-                            result.error("SWITCH_FAILED", error ?: "카메라 전환 실패", null)
-                        }
-                    }
+                else -> {
+                    result.notImplemented()
                 }
-                "setFlash" -> {
-                    val isOn = call.argument<Boolean>("isOn") ?: false
-                    cameraHandler.setFlash(isOn) { success, error ->
-                        if (success) {
-                            result.success(true)
-                        } else {
-                            result.error("FLASH_FAILED", error ?: "플래시 설정 실패", null)
-                        }
-                    }
-                }
-                "pauseCamera" -> {
-                    cameraHandler.pauseCamera()
-                    result.success(true)
-                }
-                "resumeCamera" -> {
-                    cameraHandler.resumeCamera()
-                    result.success(true)
-                }
-                "disposeCamera" -> {
-                    cameraHandler.disposeCamera()
-                    result.success(true)
-                }
-                "optimizeCamera" -> {
-                    val autoFocus = call.argument<Boolean>("autoFocus") ?: true
-                    val highQuality = call.argument<Boolean>("highQuality") ?: true
-                    val stabilization = call.argument<Boolean>("stabilization") ?: true
-                    cameraHandler.optimizeCamera(autoFocus, highQuality, stabilization)
-                    result.success(true)
-                }
-                else -> result.notImplemented()
             }
         }
         
-        // 🎯 네이티브 오디오 녹음 메서드 채널 설정
+        // 오디오 메서드 채널 설정
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AUDIO_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
-                "checkMicrophonePermission" -> {
-                    checkMicrophonePermission(result)
-                }
-                "requestMicrophonePermission" -> {
-                    requestMicrophonePermission(result)
-                }
                 "startRecording" -> {
                     val filePath = call.argument<String>("filePath")
                     if (filePath != null) {
                         startRecording(filePath, result)
                     } else {
-                        result.error("INVALID_ARGUMENTS", "Invalid file path", null)
+                        result.error("INVALID_ARGUMENT", "파일 경로가 제공되지 않았습니다.", null)
                     }
                 }
                 "stopRecording" -> {
@@ -129,40 +89,29 @@ class MainActivity : FlutterActivity() {
         }
     }
     
-    // 🎯 마이크 권한 관련 메서드들
-    private fun checkMicrophonePermission(result: MethodChannel.Result) {
-        val hasPermission = ContextCompat.checkSelfPermission(
+    // 카메라 권한 확인 메서드
+    private fun hasCameraPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
             this,
-            Manifest.permission.RECORD_AUDIO
+            Manifest.permission.CAMERA
         ) == PackageManager.PERMISSION_GRANTED
-        
-        println("🔍 [Native Android] 마이크 권한 상태: $hasPermission")
-        result.success(hasPermission)
     }
     
-    private fun requestMicrophonePermission(result: MethodChannel.Result) {
-        println("🎤 [Native Android] 마이크 권한 요청 시작")
-        
-        // 이미 권한이 있는 경우
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
-            println("✅ [Native Android] 마이크 권한이 이미 허용되어 있습니다.")
-            result.success(true)
-            return
+    // 카메라 권한 요청 메서드
+    private fun checkAndRequestCameraPermission() {
+        if (!hasCameraPermission()) {
+            Log.d(TAG, "카메라 권한 요청 중...")
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.CAMERA),
+                CAMERA_PERMISSION_REQUEST_CODE
+            )
+        } else {
+            Log.d(TAG, "카메라 권한이 이미 부여되어 있습니다.")
         }
-        
-        // 권한 요청
-        pendingResult = result
-        ActivityCompat.requestPermissions(
-            this,
-            arrayOf(Manifest.permission.RECORD_AUDIO),
-            MICROPHONE_PERMISSION_REQUEST_CODE
-        )
     }
     
-    // 권한 요청 결과 처리를 위한 변수들
-    private var pendingResult: MethodChannel.Result? = null
-    private val MICROPHONE_PERMISSION_REQUEST_CODE = 1001
-    
+    // 권한 요청 결과 처리
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -170,63 +119,88 @@ class MainActivity : FlutterActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         
-        if (requestCode == MICROPHONE_PERMISSION_REQUEST_CODE) {
-            val granted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
-            println("🎤 [Native Android] 마이크 권한 요청 결과: $granted")
-            
-            pendingResult?.success(granted)
-            pendingResult = null
+        if (requestCode == CAMERA_PERMISSION_REQUEST_CODE) {
+            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                Log.d(TAG, "카메라 권한이 부여되었습니다.")
+            } else {
+                Log.e(TAG, "카메라 권한이 거부되었습니다.")
+            }
         }
     }
-
-    // 🎯 네이티브 오디오 녹음 함수들
+    
+    // 녹음 시작 메서드
     private fun startRecording(filePath: String, result: MethodChannel.Result) {
         try {
+            // 이미 녹음 중이면 중지
+            if (isRecording) {
+                stopRecording(null)
+            }
+            
+            // MediaRecorder 초기화
             mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 MediaRecorder(this)
             } else {
                 @Suppress("DEPRECATION")
                 MediaRecorder()
             }
-
+            
             mediaRecorder?.apply {
                 setAudioSource(MediaRecorder.AudioSource.MIC)
                 setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                setOutputFile(filePath)
                 setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                
-                // 🎯 고품질 오디오 설정 (현재 Flutter 설정보다 향상)
-                setAudioSamplingRate(44100)  // CD 품질
-                setAudioChannels(1)  // 모노 (음성 녹음에 적합)
-                setAudioEncodingBitRate(192000)  // 192kbps (기존 Flutter Android: 160kbps)
-                
+                setAudioEncodingBitRate(128000)
+                setAudioSamplingRate(44100)
+                setOutputFile(filePath)
                 prepare()
                 start()
-                
-                recordingStartTime = System.currentTimeMillis()
-                isRecording = true
-                currentFilePath = filePath
-                
-                result.success(true)
             }
+            
+            recordingStartTime = System.currentTimeMillis()
+            isRecording = true
+            currentFilePath = filePath
+            
+            result.success(true)
         } catch (e: Exception) {
-            result.error("RECORDING_ERROR", "Failed to start recording: ${e.message}", null)
+            Log.e(TAG, "녹음 시작 실패: ${e.message}", e)
+            result.error("RECORDING_ERROR", "녹음을 시작할 수 없습니다: ${e.message}", null)
         }
     }
-
-    private fun stopRecording(result: MethodChannel.Result) {
-        try {
-            mediaRecorder?.apply {
-                stop()
-                release()
+    
+    // 녹음 중지 메서드
+    private fun stopRecording(result: MethodChannel.Result?) {
+        if (isRecording) {
+            try {
+                mediaRecorder?.apply {
+                    stop()
+                    reset()
+                    release()
+                }
+                
+                mediaRecorder = null
+                isRecording = false
+                
+                val duration = System.currentTimeMillis() - recordingStartTime
+                
+                val resultMap = mapOf(
+                    "duration" to duration,
+                    "filePath" to currentFilePath
+                )
+                
+                result?.success(resultMap)
+            } catch (e: Exception) {
+                Log.e(TAG, "녹음 중지 실패: ${e.message}", e)
+                result?.error("RECORDING_ERROR", "녹음을 중지할 수 없습니다: ${e.message}", null)
             }
-            mediaRecorder = null
-            isRecording = false
-            
-            result.success(currentFilePath)
-            currentFilePath = null
-        } catch (e: Exception) {
-            result.error("RECORDING_ERROR", "Failed to stop recording: ${e.message}", null)
+        } else {
+            result?.error("NOT_RECORDING", "녹음 중이 아닙니다.", null)
+        }
+    }
+    
+    // 액티비티 일시 중지 시 녹음 중지
+    override fun onPause() {
+        super.onPause()
+        if (isRecording) {
+            stopRecording(null)
         }
     }
 }

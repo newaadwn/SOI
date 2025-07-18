@@ -48,20 +48,67 @@ class PhotoRepository {
     String? customFileName,
   }) async {
     try {
+      debugPrint('🎵 오디오 파일 업로드 시작');
+      debugPrint('  - 파일 경로: ${audioFile.path}');
+      debugPrint('  - 카테고리 ID: $categoryId');
+      debugPrint('  - 사용자 ID: $userId');
+
+      // 파일 존재 확인
+      if (!await audioFile.exists()) {
+        debugPrint('❌ 오디오 파일이 존재하지 않습니다: ${audioFile.path}');
+        return null;
+      }
+
+      // 파일 크기 확인
+      final fileSize = await audioFile.length();
+      debugPrint(
+        '📊 오디오 파일 크기: ${fileSize} bytes (${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB)',
+      );
+
+      if (fileSize == 0) {
+        debugPrint('❌ 오디오 파일 크기가 0입니다');
+        return null;
+      }
+
+      // 파일명 생성
       final fileName =
           customFileName ??
           '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
+      debugPrint('📁 Storage 경로: audio/$categoryId/$fileName');
+
+      // Storage 참조 생성
       final storageRef = _storage
           .ref()
           .child('audio')
           .child(categoryId)
           .child(fileName);
 
-      final uploadTask = await storageRef.putFile(audioFile);
-      return await uploadTask.ref.getDownloadURL();
-    } catch (e) {
-      debugPrint('오디오 업로드 오류: $e');
+      debugPrint('☁️ Firebase Storage에 업로드 시작...');
+
+      // 파일 업로드
+      final uploadTask = storageRef.putFile(audioFile);
+
+      // 업로드 진행률 모니터링
+      uploadTask.snapshotEvents.listen((snapshot) {
+        final progress =
+            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        debugPrint(
+          '📤 업로드 진행률: ${progress.toStringAsFixed(1)}% (${snapshot.bytesTransferred}/${snapshot.totalBytes} bytes)',
+        );
+      });
+
+      final taskSnapshot = await uploadTask;
+      debugPrint('✅ Firebase Storage 업로드 완료');
+
+      // 다운로드 URL 가져오기
+      final downloadUrl = await taskSnapshot.ref.getDownloadURL();
+      debugPrint('🔗 다운로드 URL: $downloadUrl');
+
+      return downloadUrl;
+    } catch (e, stackTrace) {
+      debugPrint('❌ 오디오 업로드 오류: $e');
+      debugPrint('📍 스택 트레이스: $stackTrace');
       return null;
     }
   }
@@ -101,9 +148,22 @@ class PhotoRepository {
     List<double>? waveformData, // 파형 데이터 파라미터 추가
   }) async {
     try {
-      debugPrint('파형 데이터와 함께 사진 저장 시작');
+      debugPrint('🔄 파형 데이터와 함께 사진 저장 시작');
       debugPrint('📂 CategoryId: $categoryId');
-      debugPrint('🌊 파형 데이터 길이: ${waveformData?.length}');
+      debugPrint('👤 UserID: $userID');
+      debugPrint('🖼️ ImageUrl: $imageUrl');
+      debugPrint('🎵 AudioUrl: $audioUrl');
+      debugPrint('🌊 파형 데이터 상세 정보:');
+      debugPrint('  - null 여부: ${waveformData == null}');
+      debugPrint('  - 길이: ${waveformData?.length ?? 0}');
+      if (waveformData != null && waveformData.isNotEmpty) {
+        debugPrint('  - 첫 5개 값: ${waveformData.take(5).toList()}');
+        debugPrint(
+          '  - 마지막 5개 값: ${waveformData.length > 5 ? waveformData.sublist(waveformData.length - 5) : waveformData}',
+        );
+        debugPrint('  - 최대값: ${waveformData.reduce((a, b) => a > b ? a : b)}');
+        debugPrint('  - 최소값: ${waveformData.reduce((a, b) => a < b ? a : b)}');
+      }
 
       // 기본 데이터 구성
       final Map<String, dynamic> photoData = {
@@ -117,19 +177,20 @@ class PhotoRepository {
       };
 
       // 파형 데이터 처리 및 상세 로그
-      debugPrint('📊 파형 데이터 저장 상세 정보:');
-      debugPrint('  - waveformData null 여부: ${waveformData == null}');
-      debugPrint('  - waveformData 길이: ${waveformData?.length ?? 0}');
-      debugPrint('  - waveformData 첫 몇 개 값: ${waveformData?.take(5).toList()}');
-
       if (waveformData != null && waveformData.isNotEmpty) {
+        // 유효한 파형 데이터가 있는 경우
         photoData['waveformData'] = waveformData;
-        debugPrint('파형 데이터 포함하여 Firestore에 저장');
-        debugPrint('  - 실제 저장될 데이터 타입: ${waveformData.runtimeType}');
+        debugPrint('✅ 유효한 파형 데이터를 Firestore에 저장');
+        debugPrint('  - 저장할 데이터 타입: ${waveformData.runtimeType}');
+        debugPrint('  - 저장할 데이터 길이: ${waveformData.length}');
       } else {
-        photoData['waveformData'] = []; // 빈 배열로 명시적 저장
-        debugPrint('파형 데이터 없음 - 빈 배열로 저장');
+        // 파형 데이터가 없는 경우 빈 배열로 저장
+        photoData['waveformData'] = [];
+        debugPrint('⚠️ 파형 데이터가 없어서 빈 배열로 저장');
       }
+
+      debugPrint('💾 Firestore에 사진 데이터 저장 시작...');
+      debugPrint('  - 저장할 필드들: ${photoData.keys.toList()}');
 
       final docRef = await _firestore
           .collection('categories')
@@ -137,10 +198,22 @@ class PhotoRepository {
           .collection('photos')
           .add(photoData);
 
-      debugPrint('사진 저장 완료 - PhotoId: ${docRef.id}');
+      debugPrint('✅ 사진 저장 완료 - PhotoId: ${docRef.id}');
+
+      // 카테고리의 firstPhotoUrl 업데이트
+      try {
+        await _firestore.collection('categories').doc(categoryId).update({
+          'firstPhotoUrl': imageUrl,
+        });
+        debugPrint('✅ 카테고리 firstPhotoUrl 업데이트 완료');
+      } catch (e) {
+        debugPrint('⚠️ 카테고리 firstPhotoUrl 업데이트 실패: $e');
+      }
+
       return docRef.id;
-    } catch (e) {
-      debugPrint('사진 저장 실패: $e');
+    } catch (e, stackTrace) {
+      debugPrint('❌ 사진 저장 실패: $e');
+      debugPrint('📍 스택 트레이스: $stackTrace');
       rethrow;
     }
   }
@@ -326,31 +399,6 @@ class PhotoRepository {
   }
 
   // ==================== 기존 호환성 메서드 ====================
-
-  /// 기존 PhotoModel과의 호환성을 위한 메서드
-  Future<List<Map<String, dynamic>>> getCategoryPhotosAsMap(
-    String categoryId,
-  ) async {
-    try {
-      final querySnapshot =
-          await _firestore
-              .collection('categories')
-              .doc(categoryId)
-              .collection('photos')
-              .where('status', isEqualTo: PhotoStatus.active.name)
-              .orderBy('createdAt', descending: true)
-              .get();
-
-      return querySnapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-    } catch (e) {
-      debugPrint('카테고리 사진 맵 조회 오류: $e');
-      return [];
-    }
-  }
 
   /// 기존 PhotoModel과의 호환성을 위한 스트림
   Stream<List<Map<String, dynamic>>> getCategoryPhotosStreamAsMap(

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'controllers/contact_controller.dart';
 import 'controllers/photo_controller.dart';
 import 'firebase_options.dart';
 import 'package:provider/provider.dart';
@@ -10,16 +9,15 @@ import 'views/about_archiving/archive_main_screen.dart';
 import 'views/about_archiving/my_archives_screen.dart';
 import 'views/about_archiving/shared_archives_screen.dart';
 import 'views/about_camera/camera_screen.dart';
-import 'views/about_friends/friend_management_screen.dart';
 import 'views/about_login/register_screen.dart';
 import 'views/about_login/login_screen.dart';
 import 'views/about_login/start_screen.dart';
 import 'views/about_setting/privacy.dart';
+import 'views/about_friends/friend_management_screen.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/category_controller.dart';
 import 'controllers/audio_controller.dart';
 import 'controllers/comment_controller.dart';
-import 'controllers/friend_request_controller.dart';
 
 import 'package:flutter/rendering.dart';
 import 'dart:ui';
@@ -80,9 +78,8 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => CategoryController()),
         ChangeNotifierProvider(create: (_) => AudioController()),
         ChangeNotifierProvider(create: (_) => CommentController()),
-        ChangeNotifierProvider(create: (_) => ContactController()),
+
         ChangeNotifierProvider(create: (_) => PhotoController()),
-        ChangeNotifierProvider(create: (_) => FriendRequestController()),
       ],
       child: MaterialApp(
         initialRoute: '/',
@@ -103,6 +100,8 @@ class MyApp extends StatelessWidget {
           '/my_record': (context) => const MyArchivesScreen(),
           '/all_category': (context) => const AllArchivesScreen(),
           '/privacy_policy': (context) => const PrivacyPolicyScreen(),
+
+          // 친구 관리 라우트
           '/contact_manager': (context) => const FriendManagementScreen(),
         },
         theme: ThemeData(iconTheme: IconThemeData(color: Colors.white)),

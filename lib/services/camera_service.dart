@@ -18,7 +18,9 @@ class CameraService {
   }
   CameraService._internal();
 
-  static const MethodChannel _channel = MethodChannel('com.soi.camera');
+  static const MethodChannel _channel = MethodChannel(
+    'com.soi.camera/native_camera_view',
+  );
 
   final ImagePicker _imagePicker = ImagePicker();
 
@@ -205,18 +207,25 @@ class CameraService {
   Widget _buildCameraView() {
     // 플랫폼에 따라 다른 카메라 프리뷰 위젯 생성
     if (Platform.isAndroid) {
-      return AndroidView(
-        viewType: 'com.soi.camera/preview',
-        onPlatformViewCreated: (int id) {
-          debugPrint('안드로이드 카메라 뷰 생성됨: $id');
-          optimizeCamera();
-        },
-        creationParams: <String, dynamic>{
-          'useSRGBColorSpace': true,
-          'useHighQuality': true,
-          'resumeExistingSession': true,
-        },
-        creationParamsCodec: const StandardMessageCodec(),
+      return SizedBox(
+        width: double.infinity,
+        height: double.infinity,
+        child: AndroidView(
+          viewType: 'com.soi.camera',
+          onPlatformViewCreated: (int id) {
+            debugPrint('안드로이드 카메라 뷰 생성됨: $id');
+            // 카메라 초기화 후 최적화 실행
+            Future.delayed(Duration(milliseconds: 500), () {
+              optimizeCamera();
+            });
+          },
+          creationParams: <String, dynamic>{
+            'useSRGBColorSpace': true,
+            'useHighQuality': true,
+            'resumeExistingSession': true,
+          },
+          creationParamsCodec: const StandardMessageCodec(),
+        ),
       );
     } else if (Platform.isIOS) {
       return UiKitView(

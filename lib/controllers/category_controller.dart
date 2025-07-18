@@ -206,74 +206,6 @@ class CategoryController extends ChangeNotifier {
 
   // ==================== 사진 관리 ====================
 
-  /// 카테고리에 사진 추가
-  Future<void> addPhotoToCategory({
-    required String categoryId,
-    required File imageFile,
-    String? description,
-  }) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      final result = await _categoryService.addPhotoToCategory(
-        categoryId: categoryId,
-        imageFile: imageFile,
-        description: description,
-      );
-
-      _isLoading = false;
-      notifyListeners();
-
-      if (result.isSuccess) {
-        // ✅ 성공 시 UI 피드백
-        debugPrint('사진이 추가되었습니다.');
-      } else {
-        // ✅ 실패 시 UI 피드백
-        debugPrint(result.error ?? '사진 추가에 실패했습니다. 다시 시도해주세요.');
-      }
-    } catch (e) {
-      debugPrint('사진 추가 오류: $e');
-      _isLoading = false;
-      notifyListeners();
-      debugPrint('사진 추가 중 오류가 발생했습니다. 다시 시도해주세요.');
-    }
-  }
-
-  /// 카테고리에서 사진 삭제
-  Future<void> removePhotoFromCategory({
-    required String categoryId,
-    required String photoId,
-    required String imageUrl,
-  }) async {
-    try {
-      _isLoading = true;
-      notifyListeners();
-
-      final result = await _categoryService.removePhotoFromCategory(
-        categoryId: categoryId,
-        photoId: photoId,
-        imageUrl: imageUrl,
-      );
-
-      _isLoading = false;
-      notifyListeners();
-
-      if (result.isSuccess) {
-        // ✅ 성공 시 UI 피드백
-        debugPrint('사진이 삭제되었습니다.');
-      } else {
-        // ✅ 실패 시 UI 피드백
-        debugPrint(result.error ?? '사진 삭제에 실패했습니다. 다시 시도해주세요.');
-      }
-    } catch (e) {
-      debugPrint('사진 삭제 오류: $e');
-      _isLoading = false;
-      notifyListeners();
-      debugPrint('사진 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
-    }
-  }
-
   /// 카테고리의 사진들 가져오기
   Future<List<Map<String, dynamic>>> getCategoryPhotos(
     String categoryId,
@@ -314,18 +246,6 @@ class CategoryController extends ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
-  }
-
-  // ==================== 유틸리티 ====================
-
-  /// 카테고리 이름 중복 검사
-  Future<bool> isDuplicateCategoryName(String userId, String name) async {
-    return await _categoryService.isDuplicateCategoryName(userId, name);
-  }
-
-  /// 사용자가 카테고리의 멤버인지 확인
-  bool isUserMemberOfCategory(CategoryDataModel category, String userId) {
-    return _categoryService.isUserMemberOfCategory(category, userId);
   }
 
   // ==================== 기존 호환성 메서드 ====================
@@ -428,22 +348,6 @@ class CategoryController extends ChangeNotifier {
 
       return categoriesWithDetails;
     });
-  }
-
-  /// 사진의 오디오 URL 조회 (기존 호환성)
-  Future<String?> getPhotoAudioUrl(String categoryId, String photoId) async {
-    try {
-      final photos = await getCategoryPhotos(categoryId);
-      for (final photo in photos) {
-        if (photo['id'] == photoId) {
-          return photo['audioUrl'] as String?;
-        }
-      }
-      return null;
-    } catch (e) {
-      debugPrint('사진 오디오 URL 조회 오류: $e');
-      return null;
-    }
   }
 
   /// 카테고리에 사용자 추가 (닉네임으로)

@@ -11,6 +11,10 @@
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <!-- 연락처 접근 권한 추가 -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    
+    <!-- 카메라 하드웨어 특성 정의 -->
+    <uses-feature android:name="android.hardware.camera.any" android:required="true" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application
         android:label="flutter_swift_camera"

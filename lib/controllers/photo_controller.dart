@@ -113,21 +113,6 @@ class PhotoController extends ChangeNotifier {
     }
   }
 
-  /// 단순 사진 업로드 (기존 호환성)
-  Future<bool> uploadSimplePhoto({
-    required File imageFile,
-    required String categoryId,
-    required String userId,
-    String? audioUrl,
-  }) async {
-    return await uploadPhoto(
-      imageFile: imageFile,
-      categoryId: categoryId,
-      userId: userId,
-      userIds: [userId],
-    );
-  }
-
   /// 사진 업로드 (파형 데이터 포함)
   Future<bool> uploadPhotoWithAudio({
     required String imageFilePath,
@@ -378,20 +363,6 @@ class PhotoController extends ChangeNotifier {
   }
 
   // ==================== 기존 호환성 메서드 ====================
-
-  /// 기존 Map 형태로 사진 목록 조회 (호환성)
-  Future<List<Map<String, dynamic>>> getCategoryPhotosAsMap(
-    String categoryId,
-  ) async {
-    return await _photoService.getCategoryPhotosAsMap(categoryId);
-  }
-
-  /// 기존 Map 형태로 사진 스트림 (호환성)
-  Stream<List<Map<String, dynamic>>> getCategoryPhotosStreamAsMap(
-    String categoryId,
-  ) {
-    return _photoService.getCategoryPhotosStreamAsMap(categoryId);
-  }
 
   // ==================== 통계 및 유틸리티 ====================
 

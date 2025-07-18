@@ -66,7 +66,7 @@ import AVFoundation
     application.registerForRemoteNotifications()
     
     // 1️⃣ SwiftCameraPlugin 먼저 등록
-    SwiftCameraPlugin.register(with: self.registrar(forPlugin: "SwiftCameraPlugin")!)
+    SwiftCameraPlugin.register(with: self.registrar(forPlugin: "com.soi.camera")!)
     
     // SwiftAudioConverter 등록
     SwiftAudioConverter.register(with: self.registrar(forPlugin: "SwiftAudioConverter")!)

@@ -237,7 +237,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       // 로컬 이미지 경로나 다운로드 URL 중 하나 선택
       if (_useLocalImage && widget.imagePath != null) {
         final String imagePath = widget.imagePath!;
-        debugPrint('로컬 이미지 업로드: $imagePath');
+        debugPrint('📁 로컬 이미지 업로드: $imagePath');
 
         // Firebase Auth에서 UID 먼저 확인 (가장 빠른 작업)
         final String? userId = _authController.getUserId;
@@ -245,31 +245,140 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
           throw Exception('사용자 ID가 없습니다. 로그인이 필요합니다.');
         }
 
+        debugPrint('👤 사용자 ID: $userId');
+
+        // 이미지 파일 존재 확인
+        final imageFile = File(imagePath);
+        if (!await imageFile.exists()) {
+          throw Exception('이미지 파일이 존재하지 않습니다: $imagePath');
+        }
+        debugPrint('📷 이미지 파일 확인 완료');
+
         // ✅ 오디오 처리를 더 최적화 - 조건부 처리
         String audioPath = '';
+        bool hasValidAudio = false;
+
+        debugPrint('🎵 오디오 파일 확인 시작...');
+        debugPrint(
+          '  - currentRecordingPath: ${_audioController.currentRecordingPath}',
+        );
+        debugPrint('  - 파형 데이터 길이: ${_recordedWaveformData?.length ?? 0}');
+
         if (_audioController.currentRecordingPath != null &&
             _audioController.currentRecordingPath!.isNotEmpty) {
-          debugPrint('🎵 오디오 파일 처리 중...');
-          audioPath = await _audioController.processAudioForUpload();
+          // 오디오 파일 존재 확인 - 개선된 로직
+          final audioFile = File(_audioController.currentRecordingPath!);
+          debugPrint('📂 파일 경로 확인: ${audioFile.path}');
+
+          final fileExists = await audioFile.exists();
+          debugPrint('📂 파일 존재 여부: $fileExists');
+
+          if (fileExists) {
+            final fileSize = await audioFile.length();
+            debugPrint('✅ 오디오 파일 존재: 크기 ${fileSize} bytes');
+
+            if (fileSize > 0) {
+              try {
+                audioPath = await _audioController.processAudioForUpload();
+                debugPrint('🔄 processAudioForUpload 결과: "$audioPath"');
+
+                if (audioPath.isNotEmpty) {
+                  hasValidAudio = true;
+                  debugPrint('✅ 오디오 파일 처리 완료');
+                } else {
+                  debugPrint('❌ processAudioForUpload가 빈 문자열 반환');
+
+                  // processAudioForUpload가 실패해도 원본 파일 경로 사용 시도
+                  debugPrint('🔄 원본 파일 경로로 대체 시도');
+                  audioPath = _audioController.currentRecordingPath!;
+
+                  // 원본 파일이 여전히 존재하는지 확인
+                  if (await File(audioPath).exists()) {
+                    hasValidAudio = true;
+                    debugPrint('✅ 원본 파일 경로 사용: $audioPath');
+                  } else {
+                    debugPrint('❌ 원본 파일도 접근 불가');
+                  }
+                }
+              } catch (e) {
+                debugPrint('❌ 오디오 처리 실패: $e');
+
+                // 예외 발생해도 원본 파일 사용 시도
+                debugPrint('🔄 예외 발생, 원본 파일 경로로 대체 시도');
+                audioPath = _audioController.currentRecordingPath!;
+
+                if (await File(audioPath).exists()) {
+                  hasValidAudio = true;
+                  debugPrint('✅ 예외 상황에서 원본 파일 경로 사용: $audioPath');
+                } else {
+                  debugPrint('❌ 원본 파일도 접근 불가 (예외 상황)');
+                }
+              }
+            } else {
+              debugPrint('❌ 오디오 파일 크기가 0 bytes');
+            }
+          } else {
+            debugPrint('❌ 오디오 파일이 존재하지 않음');
+            debugPrint('📂 존재하지 않는 파일 경로: ${audioFile.path}');
+
+            // 파일이 존재하지 않아도 경로가 있다면 혹시 다른 위치에 있을 수 있음
+            debugPrint('🔍 디렉토리 및 파일명 분석 시도');
+            try {
+              final directory = audioFile.parent;
+              final fileName = audioFile.uri.pathSegments.last;
+              debugPrint('📁 디렉토리: ${directory.path}');
+              debugPrint('📄 파일명: $fileName');
+
+              if (await directory.exists()) {
+                debugPrint('📁 디렉토리는 존재함');
+                final files = await directory.list().toList();
+                debugPrint('📄 디렉토리 내 파일 개수: ${files.length}');
+
+                // 같은 이름으로 시작하는 파일이 있는지 확인
+                for (final file in files) {
+                  if (file.path.contains('audio_') &&
+                      file.path.endsWith('.m4a')) {
+                    debugPrint('🔍 발견된 오디오 파일: ${file.path}');
+                  }
+                }
+              } else {
+                debugPrint('❌ 디렉토리도 존재하지 않음');
+              }
+            } catch (e) {
+              debugPrint('❌ 디렉토리 분석 실패: $e');
+            }
+          }
         } else {
-          debugPrint('🔇 오디오 파일 없음 - 오디오 처리 건너뛰기');
+          debugPrint('❌ currentRecordingPath가 null이거나 비어있음');
         }
+
+        debugPrint('🔍 최종 조건 확인:');
+        debugPrint('  - hasValidAudio: $hasValidAudio');
+        debugPrint('  - 파형 데이터: ${_recordedWaveformData?.length ?? 0} samples');
 
         // ✅ 사용자 닉네임은 마지막에 처리 (필수가 아닌 경우)
         try {
           final String userNickName =
               await _authController.getIdFromFirestore();
-          debugPrint('사용자: $userNickName');
+          debugPrint('👤 사용자 닉네임: $userNickName');
         } catch (e) {
-          debugPrint('사용자 닉네임 가져오기 실패 (무시): $e');
+          debugPrint('⚠️ 사용자 닉네임 가져오기 실패 (무시): $e');
         }
 
-        debugPrint('오디오: ${audioPath.isNotEmpty ? '있음' : '없음'}');
+        debugPrint('🔄 업로드 실행 준비:');
+        debugPrint('  - 이미지: $imagePath');
+        debugPrint('  - 오디오: ${hasValidAudio ? audioPath : '없음'}');
+        debugPrint('  - 파형 데이터: ${_recordedWaveformData?.length ?? 0} samples');
 
-        // ✅ 업로드 실행 (더 간소화된 로직)
-        if (audioPath.isNotEmpty && _recordedWaveformData != null) {
-          // 오디오 파일이 있는 경우
-          debugPrint('🎵 오디오와 함께 업로드');
+        // ✅ 업로드 조건 복원 - 실제 파형 데이터가 있을 때만 오디오와 함께 업로드
+        if (hasValidAudio &&
+            audioPath.isNotEmpty &&
+            _recordedWaveformData != null &&
+            _recordedWaveformData!.isNotEmpty) {
+          // 오디오 파일과 실제 파형 데이터가 모두 있는 경우
+          debugPrint(
+            '🎵 오디오와 함께 업로드 (실제 파형 데이터: ${_recordedWaveformData!.length} samples)',
+          );
           await _photoController.uploadPhotoWithAudio(
             imageFilePath: imagePath,
             audioFilePath: audioPath,
@@ -280,7 +389,16 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
           );
         } else {
           // 이미지만 업로드
-          debugPrint('📷 이미지만 업로드');
+          debugPrint('📷 이미지만 업로드 (오디오 없음 또는 파형 데이터 없음)');
+          debugPrint('  - hasValidAudio: $hasValidAudio');
+          debugPrint('  - audioPath.isNotEmpty: ${audioPath.isNotEmpty}');
+          debugPrint(
+            '  - _recordedWaveformData != null: ${_recordedWaveformData != null}',
+          );
+          debugPrint(
+            '  - _recordedWaveformData!.isNotEmpty: ${_recordedWaveformData?.isNotEmpty ?? false}',
+          );
+
           await _photoController.uploadPhoto(
             imageFile: File(imagePath),
             categoryId: categoryId,
@@ -290,10 +408,14 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
           );
         }
       } else if (_useDownloadUrl && widget.downloadUrl != null) {
-        debugPrint('다운로드 URL 업로드는 현재 지원되지 않습니다: ${widget.downloadUrl}');
+        debugPrint('❌ 다운로드 URL 업로드는 현재 지원되지 않습니다: ${widget.downloadUrl}');
+        throw Exception('다운로드 URL 업로드는 지원되지 않습니다.');
       } else {
-        debugPrint('업로드할 이미지가 없습니다.');
+        debugPrint('❌ 업로드할 이미지가 없습니다.');
+        throw Exception('업로드할 이미지가 없습니다.');
       }
+
+      debugPrint('🎉 백그라운드 업로드 완료');
     } catch (e) {
       debugPrint('❌ 백그라운드 업로드 실행 오류: $e');
       rethrow; // 에러를 다시 던져서 catchError에서 처리

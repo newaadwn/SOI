@@ -371,7 +371,7 @@ class AudioController extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// 녹음 일시정지
   Future<void> pauseRecording() async {
     try {
@@ -385,7 +385,7 @@ class AudioController extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// 녹음 재개
   Future<void> resumeRecording() async {
     try {
@@ -399,7 +399,7 @@ class AudioController extends ChangeNotifier {
       notifyListeners();
     }
   }
-  
+
   /// 녹음 취소
   Future<void> cancelRecording() async {
     try {
@@ -431,40 +431,6 @@ class AudioController extends ChangeNotifier {
   }
 
   // ==================== 재생 관리 ====================
-
-  /// 오디오 재생
-  Future<void> playAudio(AudioDataModel audio) async {
-    try {
-      // 이미 재생 중인 오디오가 있으면 중지
-      if (_isPlaying) {
-        await stopPlaying();
-      }
-
-      _isLoading = true;
-      notifyListeners();
-
-      final result = await _audioService.playAudio(audio);
-
-      if (result.isSuccess) {
-        _isPlaying = true;
-        _currentPlayingAudioId = audio.id;
-
-        _isLoading = false;
-        notifyListeners();
-
-        debugPrint('재생을 시작합니다.');
-      } else {
-        _isLoading = false;
-        notifyListeners();
-
-        debugPrint(result.error ?? '재생할 수 없습니다.');
-      }
-    } catch (e) {
-      debugPrint('오디오 재생 오류: $e');
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
 
   /// URL로 직접 오디오 재생 (기존 호환성)
   Future<void> playAudioFromUrl(String audioUrl) async {

@@ -249,22 +249,6 @@ class CategoryService {
 
   // ==================== 유틸리티 ====================
 
-  /// 카테고리 이름 중복 검사 (같은 사용자의 카테고리 중에서)
-  Future<bool> isDuplicateCategoryName(String userId, String name) async {
-    try {
-      final categories = await getUserCategories(userId);
-      final normalizedName = _normalizeCategoryName(name);
-
-      return categories.any(
-        (category) =>
-            category.name.toLowerCase() == normalizedName.toLowerCase(),
-      );
-    } catch (e) {
-      debugPrint('카테고리 이름 중복 검사 오류: $e');
-      return false;
-    }
-  }
-
   /// 사용자가 카테고리의 멤버인지 확인
   bool isUserMemberOfCategory(CategoryDataModel category, String userId) {
     return category.mates.contains(userId);

@@ -91,21 +91,6 @@ class PhotoService {
     }
   }
 
-  /// 단순 이미지 업로드 (기존 호환성)
-  Future<PhotoUploadResult> uploadSimplePhoto({
-    required File imageFile,
-    required String categoryId,
-    required String userId,
-    String? audioUrl,
-  }) async {
-    return await uploadPhoto(
-      imageFile: imageFile,
-      categoryId: categoryId,
-      userId: userId,
-      userIds: [userId],
-    );
-  }
-
   /// 사진과 오디오를 파형 데이터와 함께 저장
   Future<String> savePhotoWithAudio({
     required String imageFilePath,
@@ -339,22 +324,6 @@ class PhotoService {
     }
   }
 
-  // ==================== 기존 호환성 메서드 ====================
-
-  /// 기존 Map 형태로 사진 목록 조회 (호환성)
-  Future<List<Map<String, dynamic>>> getCategoryPhotosAsMap(
-    String categoryId,
-  ) async {
-    return await _photoRepository.getCategoryPhotosAsMap(categoryId);
-  }
-
-  /// 기존 Map 형태로 사진 스트림 (호환성)
-  Stream<List<Map<String, dynamic>>> getCategoryPhotosStreamAsMap(
-    String categoryId,
-  ) {
-    return _photoRepository.getCategoryPhotosStreamAsMap(categoryId);
-  }
-
   // ==================== 통계 및 유틸리티 ====================
 
   /// 사진 통계 조회
@@ -404,48 +373,7 @@ class PhotoService {
     return activePhotos;
   }
 
-  // ==================== 파형 데이터 유틸리티 ====================  /// 기존 사진들에 파형 데이터 일괄 추가
-  Future<bool> addWaveformDataToExistingPhotos(String categoryId) async {
-    try {
-      debugPrint('기존 사진들에 파형 데이터 추가 서비스 시작');
-
-      await _photoRepository.addWaveformDataToExistingPhotos(
-        categoryId: categoryId,
-        extractWaveformData: (audioUrl) async {
-          debugPrint('오디오 URL에서 파형 데이터 추출: $audioUrl');
-
-          try {
-            // 실제 오디오 파일에서 파형 데이터 추출
-            // 먼저 오디오 URL에서 파일을 다운로드해야 함
-            debugPrint('TODO: 네트워크 오디오 파일에서 파형 추출 미구현');
-            debugPrint('임시로 의미있는 더미 데이터 생성 중...');
-
-            // 더 현실적인 파형 데이터 생성 (사인파 기반)
-            final waveformData = <double>[];
-            for (int i = 0; i < 100; i++) {
-              // 사인파와 랜덤 노이즈를 조합하여 현실적인 파형 생성
-              final baseWave = sin(i / 10.0).abs();
-              final noise = sin(i * 0.1) * 0.3;
-              final amplitude = (baseWave + noise).clamp(0.0, 1.0);
-              waveformData.add(amplitude);
-            }
-
-            debugPrint('📊 생성된 파형 데이터: ${waveformData.length} samples');
-            return waveformData;
-          } catch (e) {
-            debugPrint('파형 데이터 생성 실패: $e');
-            return <double>[];
-          }
-        },
-      );
-
-      debugPrint('기존 사진들에 파형 데이터 추가 완료');
-      return true;
-    } catch (e) {
-      debugPrint('기존 사진들에 파형 데이터 추가 실패: $e');
-      return false;
-    }
-  }
+  // ==================== 파형 데이터 유틸리티 ====================
 
   /// 특정 사진에 파형 데이터 추가
   Future<bool> addWaveformDataToPhoto({

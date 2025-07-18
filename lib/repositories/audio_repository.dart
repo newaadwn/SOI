@@ -130,18 +130,18 @@ class AudioRepository {
     debugPrint('네이티브 플레이어 종료 완료');
   }
 
-  /// 오디오 재생 (로컬 파일) - audioplayers 사용
-  Future<void> playFromFile(String filePath) async {
-    // audioplayers 패키지를 사용하여 재생
-    // 실제 구현은 AudioController에서 처리
-    debugPrint('로컬 파일 재생: $filePath');
-  }
-
   /// 오디오 재생 (URL) - audioplayers 사용
   Future<void> playFromUrl(String url) async {
     // audioplayers 패키지를 사용하여 재생
     // 실제 구현은 AudioController에서 처리
     debugPrint('URL 재생: $url');
+  }
+
+  /// 오디오 재생 (로컬 파일) - audioplayers 사용
+  Future<void> playFromFile(String filePath) async {
+    // audioplayers 패키지를 사용하여 로컬 파일 재생
+    // 실제 구현은 AudioController에서 처리
+    debugPrint('로컬 파일 재생: $filePath');
   }
 
   /// 재생 중지

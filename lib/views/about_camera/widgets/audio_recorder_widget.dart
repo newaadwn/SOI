@@ -79,17 +79,30 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
   Future<void> _startRecording() async {
     // 파형 표시를 위한 녹음 컨트롤러 시작
     try {
+      debugPrint('🎤 녹음 시작 준비...');
+
       // 파형을 그리는 패키지의 녹음 컨트롤러 시작
+      debugPrint('📊 RecorderController 시작...');
       await recorderController.record();
+      debugPrint('✅ RecorderController 시작 완료');
+
       // AudioController의 녹음 시작 함수 호출
+      debugPrint('🔄 AudioController 녹음 시작...');
       await _audioController.startRecording();
+      debugPrint('✅ AudioController 녹음 시작 완료');
+      debugPrint('📁 현재 녹음 경로: ${_audioController.currentRecordingPath}');
 
       // ✅ 녹음 상태로 변경
       setState(() {
         _currentState = RecordingState.recording;
       });
+
+      debugPrint('🎉 녹음 시작 완료 - 상태: ${_currentState}');
     } catch (e) {
-      debugPrint('녹음 시작 오류: $e');
+      debugPrint('❌ 녹음 시작 오류: $e');
+      setState(() {
+        _currentState = RecordingState.idle;
+      });
     }
   }
 
@@ -98,27 +111,21 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     try {
       debugPrint('녹음 정지 및 재생 준비 시작...');
 
-      // 파형 데이터 추출 (녹음 중지 전에 추출)
+      // 파형 데이터 추출 (녹음 중지 전에 추출) - 원래 잘 작동하는 방식
       List<double> waveformData = List<double>.from(
         recorderController.waveData,
       );
       debugPrint('🌊 녹음 중 수집된 파형 데이터: ${waveformData.length} samples');
 
-      // 파형 데이터 실제 레벨 유지 (정규화 없이)
+      // 파형 데이터 실제 레벨 유지 (정규화 없이) - 절댓값만 적용
       if (waveformData.isNotEmpty) {
         // 절댓값만 적용, 정규화는 하지 않음
-        for (int i = 0; i < waveformData.length; i++) {
-          waveformData[i] = waveformData[i].abs();
-        }
-        
+        waveformData = waveformData.map((value) => value.abs()).toList();
+
         // 실제 최대값 확인용 로그
-        double maxValue = 0;
-        for (var value in waveformData) {
-          if (value > maxValue) {
-            maxValue = value;
-          }
-        }
+        double maxValue = waveformData.reduce((a, b) => a > b ? a : b);
         debugPrint('📊 파형 실제 최대값: $maxValue (정규화 없이)');
+        debugPrint('📈 파형 샘플 (처음 5개): ${waveformData.take(5).toList()}');
       }
 
       // 녹음 중지
@@ -165,6 +172,21 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         _waveformData = waveformData;
       });
 
+      // ✅ 콜백 호출 추가 - 실제로 잘 작동하는 파형 데이터를 전달
+      if (widget.onRecordingCompleted != null) {
+        debugPrint('🎯 _stopAndPreparePlayback에서 콜백 함수 호출 중...');
+        debugPrint('  - audioPath: ${_audioController.currentRecordingPath}');
+        debugPrint('  - waveformData 길이: ${waveformData.length}');
+        debugPrint('  - waveformData 샘플: ${waveformData.take(5).toList()}');
+
+        widget.onRecordingCompleted!(
+          _audioController.currentRecordingPath,
+          waveformData,
+        );
+
+        debugPrint('✅ _stopAndPreparePlayback 콜백 함수 호출 완료');
+      }
+
       debugPrint(
         '녹음 정지 및 재생 준비 완료, 최종 파형 데이터: ${_waveformData?.length ?? 0} samples',
       );
@@ -178,66 +200,40 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     try {
       debugPrint('녹음 중지 시작...');
 
-      // 파형 표시를 위한 녹음 컨트롤러 중지
+      // 파형 데이터 추출 (원래 잘 작동하는 방식과 동일)
+      List<double> waveformData = List<double>.from(
+        recorderController.waveData,
+      );
+      debugPrint(
+        '🌊 _stopRecording - 수집된 파형 데이터: ${waveformData.length} samples',
+      );
+
+      // 파형 데이터 처리 - 절댓값만 적용
+      if (waveformData.isNotEmpty) {
+        waveformData = waveformData.map((value) => value.abs()).toList();
+        double maxValue = waveformData.reduce((a, b) => a > b ? a : b);
+        debugPrint('📊 _stopRecording - 파형 최대값: $maxValue');
+        debugPrint(
+          '📈 _stopRecording - 파형 샘플 (처음 5개): ${waveformData.take(5).toList()}',
+        );
+      }
+
+      // 녹음 중지
       final path = await recorderController.stop();
       debugPrint('📁 RecorderController 중지 완료, 경로: $path');
 
       // AudioController의 간단한 녹음 중지 함수 호출
       await _audioController.stopRecordingSimple();
-      debugPrint('AudioController 중지 완료');
+      debugPrint('✅ AudioController 중지 완료');
 
-      // 파형 데이터 추출 (더 안정적인 방법)
-      List<double>? waveformData;
-
-      // 1차: 즉시 파형 데이터 확인
-      try {
-        waveformData = recorderController.waveData;
-        debugPrint('🌊 1차 파형 데이터 추출: ${waveformData.length} samples');
-
-        if (waveformData.isNotEmpty) {
-          debugPrint('실시간 파형 데이터 추출 성공');
-          debugPrint('📊 첫 5개 샘플: ${waveformData.take(5).toList()}');
-          debugPrint(
-            '📊 마지막 5개 샘플: ${waveformData.length > 5 ? waveformData.sublist(waveformData.length - 5) : waveformData}',
-          );
-        } else {
-          debugPrint('1차 파형 데이터 추출 실패 - 재시도 시작');
-
-          // 2차: 짧은 지연 후 재시도 (RecorderController 안정화 대기)
-          await Future.delayed(const Duration(milliseconds: 100));
-          waveformData = recorderController.waveData;
-          debugPrint('🌊 2차 파형 데이터 추출: ${waveformData.length} samples');
-
-          if (waveformData.isEmpty) {
-            debugPrint('2차 파형 데이터 추출도 실패');
-          } else {
-            debugPrint('2차 파형 데이터 추출 성공');
-            debugPrint('📊 첫 5개 샘플: ${waveformData.take(5).toList()}');
-          }
-        }
-      } catch (e) {
-        debugPrint('파형 데이터 추출 오류: $e');
-        waveformData = null;
-      }
-
-      // 최종 결과 출력
-      if (waveformData != null && waveformData.isNotEmpty) {
-        debugPrint('최종 파형 데이터: ${waveformData.length} samples 추출 완료');
-        debugPrint(
-          '📊 데이터 범위: ${waveformData.reduce((a, b) => a < b ? a : b)} ~ ${waveformData.reduce((a, b) => a > b ? a : b)}',
-        );
-      } else {
-        debugPrint('💀 최종 파형 데이터 추출 실패 - null 전달');
-      }
-
-      // ✅ 녹음 완료 상태로 변경 및 데이터 저장
+      // 상태 업데이트
       setState(() {
         _currentState = RecordingState.recorded;
         _recordedFilePath = _audioController.currentRecordingPath;
         _waveformData = waveformData;
       });
 
-      // ✅ 재생 컨트롤러에 파일 설정
+      // 재생 컨트롤러 준비
       if (_recordedFilePath != null &&
           _recordedFilePath!.isNotEmpty &&
           playerController != null) {
@@ -254,28 +250,25 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
       // 콜백이 있는 경우 녹음 파일 경로와 파형 데이터 함께 전달
       if (widget.onRecordingCompleted != null) {
-        debugPrint('콜백 함수 호출 중...');
+        debugPrint('🎯 _stopRecording - 콜백 함수 호출 중...');
         debugPrint('  - audioPath: ${_audioController.currentRecordingPath}');
-        debugPrint('  - waveformData 길이: ${waveformData?.length}');
+        debugPrint('  - waveformData 길이: ${waveformData.length}');
+        debugPrint('  - waveformData 샘플: ${waveformData.take(5).toList()}');
 
         widget.onRecordingCompleted!(
           _audioController.currentRecordingPath,
           waveformData,
         );
 
-        debugPrint('콜백 함수 호출 완료');
+        debugPrint('✅ _stopRecording - 콜백 함수 호출 완료');
       }
-    } catch (e) {
-      debugPrint('녹음 중지 전체 오류: $e');
 
-      // 에러 발생 시에도 콜백 호출 (파형 데이터는 null)
-      if (widget.onRecordingCompleted != null) {
-        debugPrint('에러 상황 콜백 호출');
-        widget.onRecordingCompleted!(
-          _audioController.currentRecordingPath,
-          null,
-        );
-      }
+      debugPrint('🎉 _stopRecording - 녹음 중지 및 처리 완료');
+    } catch (e) {
+      debugPrint('❌ 녹음 중지 오류: $e');
+      setState(() {
+        _currentState = RecordingState.idle;
+      });
     }
   }
 
