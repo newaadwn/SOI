@@ -63,7 +63,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: true, // 키보드에 대응하도록 변경
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         automaticallyImplyLeading: false,

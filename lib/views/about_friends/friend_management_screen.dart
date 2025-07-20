@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_boxicons/flutter_boxicons.dart';
 import 'package:flutter_contacts/contact.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter_swift_camera/controllers/auth_controller.dart';
@@ -405,7 +406,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    Icons.contacts_outlined,
+                    Boxicons.bxs_contact,
                     color: const Color(0xfff9f9f9),
                     size: 24 * scale,
                   ),

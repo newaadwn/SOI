@@ -146,6 +146,8 @@ class _PhotoGridItemState extends State<PhotoGridItem>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final screenHeight = MediaQuery.sizeOf(context).height;
 
     return GestureDetector(
       onTap: () {
@@ -166,10 +168,12 @@ class _PhotoGridItemState extends State<PhotoGridItem>
         alignment: Alignment.bottomCenter,
         children: [
           SizedBox(
-            width: 175,
-            height: 232,
+            width: (screenWidth * 0.445).clamp(150.0, 200.0), // 반응형 너비
+            height: (screenHeight * 0.272).clamp(200.0, 260.0), // 반응형 높이
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(
+                (screenWidth * 0.016).clamp(4.0, 8.0),
+              ), // 반응형 반지름
               child: CachedNetworkImage(
                 imageUrl: widget.photo.imageUrl,
                 fit: BoxFit.cover,
@@ -178,7 +182,10 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                       color: Colors.grey[300],
                       child: Center(
                         child: CircularProgressIndicator(
-                          strokeWidth: 2,
+                          strokeWidth: (screenWidth * 0.0054).clamp(
+                            1.5,
+                            2.5,
+                          ), // 반응형 선 두께
                           color: Colors.grey,
                         ),
                       ),
@@ -198,24 +205,41 @@ class _PhotoGridItemState extends State<PhotoGridItem>
             children: [
               Row(
                 children: [
-                  SizedBox(width: 7 / 393 * MediaQuery.of(context).size.width),
+                  SizedBox(
+                    width: (screenWidth * 0.018).clamp(6.0, 8.0),
+                  ), // 반응형 간격
                   Container(
-                    width: 32 / 393 * MediaQuery.of(context).size.width,
-                    height: 32 / 852 * MediaQuery.of(context).size.height,
+                    width: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 너비
+                    height: (screenHeight * 0.038).clamp(28.0, 36.0), // 반응형 높이
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
+                      border: Border.all(
+                        color: Colors.white,
+                        width: (screenWidth * 0.0054).clamp(1.5, 2.5),
+                      ), // 반응형 테두리
                     ),
                     child:
                         _isLoadingProfile
                             ? CircleAvatar(
-                              radius: 14,
+                              radius: (screenWidth * 0.038).clamp(
+                                12.0,
+                                16.0,
+                              ), // 반응형 반지름
                               backgroundColor: Colors.grey,
                               child: SizedBox(
-                                width: 16,
-                                height: 16,
+                                width: (screenWidth * 0.043).clamp(
+                                  14.0,
+                                  18.0,
+                                ), // 반응형 너비
+                                height: (screenWidth * 0.043).clamp(
+                                  14.0,
+                                  18.0,
+                                ), // 반응형 높이
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                                  strokeWidth: (screenWidth * 0.0054).clamp(
+                                    1.5,
+                                    2.5,
+                                  ), // 반응형 선 두께
                                   color: Colors.white,
                                 ),
                               ),
@@ -225,47 +249,77 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                               imageUrl: _userProfileImageUrl,
                               imageBuilder:
                                   (context, imageProvider) => CircleAvatar(
-                                    radius: 14,
+                                    radius: (screenWidth * 0.038).clamp(
+                                      12.0,
+                                      16.0,
+                                    ), // 반응형 반지름
                                     backgroundImage: imageProvider,
                                   ),
                               placeholder:
                                   (context, url) => CircleAvatar(
-                                    radius: 14,
+                                    radius: (screenWidth * 0.038).clamp(
+                                      12.0,
+                                      16.0,
+                                    ), // 반응형 반지름
                                     backgroundColor: Colors.grey,
                                     child: SizedBox(
-                                      width: 16,
-                                      height: 16,
+                                      width: (screenWidth * 0.043).clamp(
+                                        14.0,
+                                        18.0,
+                                      ), // 반응형 너비
+                                      height: (screenWidth * 0.043).clamp(
+                                        14.0,
+                                        18.0,
+                                      ), // 반응형 높이
                                       child: CircularProgressIndicator(
-                                        strokeWidth: 2,
+                                        strokeWidth: (screenWidth * 0.0054)
+                                            .clamp(1.5, 2.5), // 반응형 선 두께
                                         color: Colors.white,
                                       ),
                                     ),
                                   ),
                               errorWidget:
                                   (context, url, error) => CircleAvatar(
-                                    radius: 14,
+                                    radius: (screenWidth * 0.038).clamp(
+                                      12.0,
+                                      16.0,
+                                    ), // 반응형 반지름
                                     backgroundColor: Colors.grey,
                                     child: Icon(
                                       Icons.person,
                                       color: Colors.white,
-                                      size: 16,
+                                      size: (screenWidth * 0.043).clamp(
+                                        14.0,
+                                        18.0,
+                                      ), // 반응형 아이콘 크기
                                     ),
                                   ),
                             )
                             : CircleAvatar(
-                              radius: 14,
+                              radius: (screenWidth * 0.038).clamp(
+                                12.0,
+                                16.0,
+                              ), // 반응형 반지름
                               backgroundColor: Colors.grey,
                               child: Icon(
                                 Icons.person,
                                 color: Colors.white,
-                                size: 16,
+                                size: (screenWidth * 0.043).clamp(
+                                  14.0,
+                                  18.0,
+                                ), // 반응형 아이콘 크기
                               ),
                             ),
                   ),
-                  SizedBox(width: 6 / 393 * MediaQuery.of(context).size.width),
+                  SizedBox(
+                    width: (screenWidth * 0.016).clamp(5.0, 7.0),
+                  ), // 반응형 간격
                   Expanded(
                     child: Container(
-                      width: 129,
+                      width: (screenWidth * 0.328).clamp(
+                        120.0,
+                        140.0,
+                      ), // 반응형 너비
                       height: 21,
                       decoration: BoxDecoration(
                         color: Color(0xff171717).withValues(alpha: 0.5),

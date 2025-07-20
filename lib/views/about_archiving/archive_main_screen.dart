@@ -42,8 +42,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    double screenHeight = MediaQuery.of(context).size.height;
-    //double screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
@@ -56,16 +56,20 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
           style: TextStyle(color: AppTheme.lightTheme.colorScheme.secondary),
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        toolbarHeight: 70 / 852 * screenHeight,
+        toolbarHeight: screenHeight * 0.082, // 70/852 비율을 반응형으로
         leading: Consumer<AuthController>(
           builder: (context, authController, _) {
             return FutureBuilder(
               future: authController.getUserProfileImageUrl(),
               builder: (context, imageSnapshot) {
                 String profileImageUrl = imageSnapshot.data ?? '';
+                final profileSize = (screenWidth * 0.087).clamp(
+                  30.0,
+                  40.0,
+                ); // 반응형 프로필 크기
 
                 return Padding(
-                  padding: const EdgeInsets.all(8.0),
+                  padding: EdgeInsets.all(screenWidth * 0.02), // 반응형 패딩
                   child: Container(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
@@ -80,8 +84,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                       Scaffold.of(context).openDrawer();
                                     },
                                     child: SizedBox(
-                                      width: 34,
-                                      height: 34,
+                                      width: profileSize,
+                                      height: profileSize,
                                       child: CircleAvatar(
                                         backgroundImage:
                                             CachedNetworkImageProvider(
@@ -104,10 +108,12 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                         },
                                         child:
                                             profileImageUrl.isEmpty
-                                                ? const Icon(
+                                                ? Icon(
                                                   Icons.person,
                                                   color: Colors.white,
-                                                  size: 24,
+                                                  size:
+                                                      profileSize *
+                                                      0.7, // 반응형 아이콘 크기
                                                 )
                                                 : null,
                                       ),
@@ -117,12 +123,13 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                     onTap: () {
                                       Scaffold.of(context).openDrawer();
                                     },
-                                    child: const CircleAvatar(
+                                    child: CircleAvatar(
                                       backgroundColor: Colors.grey,
+                                      radius: profileSize / 2,
                                       child: Icon(
                                         Icons.person,
                                         color: Colors.white,
-                                        size: 34,
+                                        size: profileSize * 0.7, // 반응형 아이콘 크기
                                       ),
                                     ),
                                   ),
@@ -136,23 +143,29 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         actions: [
           IconButton(
             onPressed: _showCategoryBottomSheet,
-            icon: Icon(Icons.add, color: Colors.white),
+            icon: Icon(
+              Icons.add,
+              color: Colors.white,
+              size: (screenWidth * 0.064).clamp(20.0, 28.0), // 반응형 아이콘 크기
+            ),
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
+          preferredSize: Size.fromHeight(
+            (screenHeight * 0.074).clamp(50.0, 70.0),
+          ), // 반응형 높이
           child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.043, // 반응형 패딩
+              vertical: screenHeight * 0.01, // 반응형 패딩
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 _buildChip('전체', 0),
-                const SizedBox(width: 8),
+                SizedBox(width: screenWidth * 0.021), // 반응형 간격
                 _buildChip('나의 기록', 1),
-                const SizedBox(width: 8),
+                SizedBox(width: screenWidth * 0.021), // 반응형 간격
                 _buildChip('공유 기록', 2),
               ],
             ),
@@ -165,7 +178,9 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   // 선택 가능한 Chip 위젯 생성
   Widget _buildChip(String label, int index) {
-    final isSelected = _selectedIndex == index;
+    bool isSelected = _selectedIndex == index;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final screenHeight = MediaQuery.sizeOf(context).height;
 
     return GestureDetector(
       onTap: () {
@@ -174,16 +189,20 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: screenWidth * 0.043, // 반응형 패딩
+          vertical: screenHeight * 0.01, // 반응형 패딩
+        ),
         decoration: BoxDecoration(
           color: isSelected ? Color(0xff292929) : Colors.transparent,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(screenWidth * 0.053), // 반응형 반지름
         ),
         child: Text(
           label,
           style: TextStyle(
             color: Colors.white,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: (screenWidth * 0.037).clamp(12.0, 16.0), // 반응형 폰트 크기
           ),
         ),
       ),
@@ -192,6 +211,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   // 카테고리 추가 bottom sheet 표시
   void _showCategoryBottomSheet() {
+    final screenHeight = MediaQuery.sizeOf(context).height;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -202,10 +223,14 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               bottom: MediaQuery.of(context).viewInsets.bottom,
             ),
             child: Container(
-              height: MediaQuery.of(context).size.height * 0.5,
+              height: screenHeight * 0.5, // 반응형 높이
               decoration: BoxDecoration(
                 color: Color(0xff171717),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(
+                    (screenHeight * 0.02).clamp(12.0, 20.0),
+                  ), // 반응형 반지름
+                ),
               ),
               child: AddCategoryWidget(
                 textController: _categoryNameController,

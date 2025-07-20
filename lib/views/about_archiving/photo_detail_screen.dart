@@ -130,11 +130,20 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         photo.waveformData == null ||
         photo.waveformData!.isEmpty) {
       return Container(
-        height: 32,
+        height: (MediaQuery.sizeOf(context).height * 0.038).clamp(
+          24.0,
+          40.0,
+        ), // 반응형 높이
         alignment: Alignment.center,
         child: Text(
           '오디오 없음',
-          style: TextStyle(color: Colors.white70, fontSize: 10),
+          style: TextStyle(
+            color: Colors.white70,
+            fontSize: (MediaQuery.sizeOf(context).width * 0.027).clamp(
+              8.0,
+              12.0,
+            ), // 반응형 폰트
+          ),
         ),
       );
     }
@@ -175,6 +184,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -197,13 +209,18 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
               Expanded(
                 child: Center(
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(
+                      (screenWidth * 0.043).clamp(12.0, 20.0),
+                    ), // 반응형 반지름
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
                         // 사진 이미지
                         SizedBox(
-                          width: 343,
+                          width: (screenWidth * 0.921).clamp(
+                            300.0,
+                            400.0,
+                          ), // 반응형 너비
                           height: double.infinity,
                           child: CachedNetworkImage(
                             imageUrl: photo.imageUrl,
@@ -222,42 +239,67 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                         // 오디오 컨트롤 오버레이 (하단에 배치)
                         if (photo.audioUrl.isNotEmpty)
                           Positioned(
-                            bottom: 20,
-                            left: 20,
-                            right: 20,
+                            bottom: screenWidth * 0.054, // 반응형 하단 여백
+                            left: screenWidth * 0.054, // 반응형 좌측 여백
+                            right: screenWidth * 0.054, // 반응형 우측 여백
                             child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 8,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: screenWidth * 0.032, // 반응형 패딩
+                                vertical: screenWidth * 0.021, // 반응형 패딩
                               ),
                               decoration: BoxDecoration(
                                 color: Color(0xff000000).withValues(alpha: 0.4),
-                                borderRadius: BorderRadius.circular(25),
+                                borderRadius: BorderRadius.circular(
+                                  (screenWidth * 0.067).clamp(20.0, 30.0),
+                                ), // 반응형 반지름
                               ),
                               child: Row(
                                 children: [
                                   // 왼쪽 프로필 이미지
                                   Container(
-                                    width: 32,
-                                    height: 32,
+                                    width: (screenWidth * 0.086).clamp(
+                                      28.0,
+                                      38.0,
+                                    ), // 반응형 너비
+                                    height: (screenWidth * 0.086).clamp(
+                                      28.0,
+                                      38.0,
+                                    ), // 반응형 높이
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
                                       border: Border.all(
                                         color: Colors.white,
-                                        width: 1.5,
+                                        width: (screenWidth * 0.004).clamp(
+                                          1.0,
+                                          2.0,
+                                        ), // 반응형 테두리
                                       ),
                                     ),
                                     child:
                                         _isLoadingProfile
                                             ? CircleAvatar(
-                                              radius: 14,
+                                              radius: (screenWidth * 0.038)
+                                                  .clamp(12.0, 16.0), // 반응형 반지름
                                               backgroundColor: Colors.grey,
                                               child: SizedBox(
-                                                width: 16,
-                                                height: 16,
+                                                width: (screenWidth * 0.043)
+                                                    .clamp(
+                                                      14.0,
+                                                      18.0,
+                                                    ), // 반응형 너비
+                                                height: (screenWidth * 0.043)
+                                                    .clamp(
+                                                      14.0,
+                                                      18.0,
+                                                    ), // 반응형 높이
                                                 child:
                                                     CircularProgressIndicator(
-                                                      strokeWidth: 2,
+                                                      strokeWidth:
+                                                          (screenWidth * 0.0054)
+                                                              .clamp(
+                                                                1.5,
+                                                                2.5,
+                                                              ), // 반응형 선 두께
                                                       color: Colors.white,
                                                     ),
                                               ),
@@ -268,7 +310,12 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                               imageBuilder:
                                                   (context, imageProvider) =>
                                                       CircleAvatar(
-                                                        radius: 14,
+                                                        radius: (screenWidth *
+                                                                0.038)
+                                                            .clamp(
+                                                              12.0,
+                                                              16.0,
+                                                            ), // 반응형 반지름
                                                         backgroundImage:
                                                             imageProvider,
                                                       ),
@@ -277,15 +324,36 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                     context,
                                                     url,
                                                   ) => CircleAvatar(
-                                                    radius: 14,
+                                                    radius: (screenWidth *
+                                                            0.038)
+                                                        .clamp(
+                                                          12.0,
+                                                          16.0,
+                                                        ), // 반응형 반지름
                                                     backgroundColor:
                                                         Colors.grey,
                                                     child: SizedBox(
-                                                      width: 16,
-                                                      height: 16,
+                                                      width: (screenWidth *
+                                                              0.043)
+                                                          .clamp(
+                                                            14.0,
+                                                            18.0,
+                                                          ), // 반응형 너비
+                                                      height: (screenWidth *
+                                                              0.043)
+                                                          .clamp(
+                                                            14.0,
+                                                            18.0,
+                                                          ), // 반응형 높이
                                                       child:
                                                           CircularProgressIndicator(
-                                                            strokeWidth: 2,
+                                                            strokeWidth:
+                                                                (screenWidth *
+                                                                        0.0054)
+                                                                    .clamp(
+                                                                      1.5,
+                                                                      2.5,
+                                                                    ), // 반응형 선 두께
                                                             color: Colors.white,
                                                           ),
                                                     ),
@@ -293,40 +361,60 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                               errorWidget:
                                                   (context, url, error) =>
                                                       CircleAvatar(
-                                                        radius: 14,
+                                                        radius: (screenWidth *
+                                                                0.038)
+                                                            .clamp(
+                                                              12.0,
+                                                              16.0,
+                                                            ), // 반응형 반지름
                                                         backgroundColor:
                                                             Colors.grey,
                                                         child: Icon(
                                                           Icons.person,
                                                           color: Colors.white,
-                                                          size: 16,
+                                                          size: (screenWidth *
+                                                                  0.043)
+                                                              .clamp(
+                                                                14.0,
+                                                                18.0,
+                                                              ), // 반응형 아이콘 크기
                                                         ),
                                                       ),
                                             )
                                             : CircleAvatar(
-                                              radius: 14,
+                                              radius: (screenWidth * 0.038)
+                                                  .clamp(12.0, 16.0), // 반응형 반지름
                                               backgroundColor: Colors.grey,
                                               child: Icon(
                                                 Icons.person,
                                                 color: Colors.white,
-                                                size: 16,
+                                                size: (screenWidth * 0.043)
+                                                    .clamp(
+                                                      14.0,
+                                                      18.0,
+                                                    ), // 반응형 아이콘 크기
                                               ),
                                             ),
                                   ),
-                                  const SizedBox(width: 12),
-
+                                  SizedBox(
+                                    width: screenWidth * 0.032,
+                                  ), // 반응형 간격
                                   // 가운데 파형 (progress 포함)
                                   Expanded(
                                     child: SizedBox(
-                                      height: 32,
+                                      height: (screenWidth * 0.086).clamp(
+                                        28.0,
+                                        38.0,
+                                      ), // 반응형 높이
                                       child: _buildWaveformWidgetWithProgress(
                                         photo,
                                       ),
                                     ),
                                   ),
 
-                                  const SizedBox(width: 12),
-
+                                  SizedBox(
+                                    width: screenWidth * 0.032,
+                                  ), // 반응형 간격
                                   // 오른쪽 재생 시간 (실시간 업데이트)
                                   Consumer<AudioController>(
                                     builder: (context, audioController, child) {
@@ -350,7 +438,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                         ),
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 12,
+                                          fontSize: (screenWidth * 0.032).clamp(
+                                            10.0,
+                                            14.0,
+                                          ), // 반응형 폰트 크기
                                           fontWeight: FontWeight.w500,
                                         ),
                                       );
@@ -369,27 +460,32 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
               // 사진 아래 정보 섹션 (닉네임과 날짜만)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(screenWidth * 0.054), // 반응형 패딩
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 사용자 닉네임
                     Text(
                       '@${_userName.isNotEmpty ? _userName : photo.userID}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
+                        fontSize: (screenWidth * 0.043).clamp(
+                          14.0,
+                          18.0,
+                        ), // 반응형 폰트 크기
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 4),
-
+                    SizedBox(height: screenWidth * 0.011), // 반응형 간격
                     // 날짜
                     Text(
                       FormatUtils.formatDate(photo.createdAt),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.7),
-                        fontSize: 13,
+                        fontSize: (screenWidth * 0.035).clamp(
+                          11.0,
+                          15.0,
+                        ), // 반응형 폰트 크기
                       ),
                     ),
                   ],

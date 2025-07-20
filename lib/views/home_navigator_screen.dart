@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_swift_camera/views/about_feed/feed_home.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme.dart';
 import '../controllers/auth_controller.dart';
@@ -94,8 +95,8 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
       body: IndexedStack(
         index: _currentPageIndex,
         children: [
-          const HomeScreen(),
-          // ✅ 개선: 카메라 스크린을 항상 유지하되 visibility로 제어
+          const FeedHomeScreen(),
+
           const CameraScreen(),
           const ArchiveMainScreen(),
         ],

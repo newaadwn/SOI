@@ -35,6 +35,14 @@ class _HomeScreenState extends State<HomeScreen> {
         toolbarHeight: 70 / 852 * screenHeight,
 
         actions: [
+          // 테스트 버튼 (개발용)
+          IconButton(
+            onPressed: () {
+              Navigator.pushNamed(context, '/invite_test');
+            },
+            icon: const Icon(Icons.share, size: 30, color: Colors.blue),
+            tooltip: '초대 링크 테스트',
+          ),
           IconButton(
             onPressed: () {
               Navigator.pushNamed(context, '/category_add_screen');

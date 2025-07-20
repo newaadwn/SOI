@@ -103,6 +103,7 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
 
   Widget _buildProfileRow(Map<String, dynamic> category, BuildContext context) {
     final profileSize = _getProfileImageSize(context);
+    final screenWidth = _getResponsiveWidth(context);
 
     // profileImages 리스트 안의 각 항목을 확인해요.
     final List images = category['profileImages'] as List? ?? [];
@@ -114,7 +115,7 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
               return Container(
                 width: profileSize,
                 height: profileSize,
-                margin: const EdgeInsets.only(right: 4),
+                margin: EdgeInsets.only(right: screenWidth * 0.011), // 반응형 마진
                 child: Image.asset('assets/profile.png'),
               );
             }
@@ -122,7 +123,7 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
             return Container(
               width: profileSize,
               height: profileSize,
-              margin: const EdgeInsets.only(right: 4),
+              margin: EdgeInsets.only(right: screenWidth * 0.011), // 반응형 마진
               child: CircleAvatar(
                 backgroundImage: CachedNetworkImageProvider(imageUrl),
                 onBackgroundImageError: (exception, stackTrace) {

@@ -20,6 +20,7 @@ import 'views/about_archiving/archive_main_screen.dart';
 import 'views/about_archiving/my_archives_screen.dart';
 import 'views/about_archiving/shared_archives_screen.dart';
 import 'views/about_camera/camera_screen.dart';
+import 'views/about_feed/feed_home.dart';
 import 'views/about_login/register_screen.dart';
 import 'views/about_login/login_screen.dart';
 import 'views/about_login/start_screen.dart';
@@ -36,48 +37,39 @@ import 'package:intl/date_symbol_data_local.dart'; // 1. 이 줄을 추가하세
 import 'views/home_navigator_screen.dart';
 import 'views/home_screen.dart'; // PlatformDispatcher를 위해 필요
 
-/// Firebase Emulator에 연결하는 함수 (개발 환경에서만 사용)
-/*void _connectToFirebaseEmulator() {
-  // 🔥 개발 환경에서만 에뮬레이터 사용 (릴리즈 빌드에서는 실제 Firebase 사용)
-  if (kDebugMode) {
-    try {
-      // Firestore Emulator 연결
-      FirebaseFirestore.instance.useFirestoreEmulator('127.0.0.1', 8080);
-
-      // Auth Emulator 연결
-      FirebaseAuth.instance.useAuthEmulator('127.0.0.1', 9099);
-
-      // Storage Emulator 연결
-      FirebaseStorage.instance.useStorageEmulator('127.0.0.1', 9199);
-
-      debugPrint('🔥 Firebase Emulators 연결 완료!');
-      debugPrint('🔥 Firestore: http://127.0.0.1:8080');
-      debugPrint('🔥 Auth: http://127.0.0.1:9099');
-      debugPrint('🔥 Storage: http://127.0.0.1:9199');
-      debugPrint('🔥 UI: http://127.0.0.1:4000');
-    } catch (e) {
-      debugPrint('⚠️ Emulator 연결 실패 (이미 연결되었거나 에뮬레이터가 실행되지 않음): $e');
-    }
-  }
-}*/
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // 날짜 포맷팅 초기화 (한국어 로케일)
   await initializeDateFormatting('ko_KR', null);
 
-  // Firebase 초기화
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Firebase 초기화 (더 안전한 방법)
+  bool firebaseInitialized = false;
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    firebaseInitialized = true;
+    debugPrint('✅ Firebase 초기화 성공');
+
+    // Firebase Auth 설정 (Firebase가 성공적으로 초기화된 경우에만)
+    try {
+      FirebaseAuth.instance.setSettings(
+        appVerificationDisabledForTesting: false,
+        forceRecaptchaFlow: false,
+      );
+      debugPrint('✅ Firebase Auth 설정 완료');
+    } catch (authError) {
+      debugPrint('⚠️ Firebase Auth 설정 실패: $authError');
+    }
+  } catch (e) {
+    debugPrint('❌ Firebase 초기화 실패: $e');
+    debugPrint('📱 앱은 Firebase 없이 계속 실행됩니다');
+    // Firebase 없이도 앱이 실행되도록 처리
+  }
 
   // 🔥 Firebase Emulator 연결 설정 (개발 환경에서만)
   //_connectToFirebaseEmulator();
-
-  // Firebase Auth 설정 (iOS에서 reCAPTCHA 관련 문제 해결)
-  FirebaseAuth.instance.setSettings(
-    appVerificationDisabledForTesting: false,
-    forceRecaptchaFlow: false,
-  );
 
   // 에러 핸들링 추가
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -103,11 +95,13 @@ void main() async {
 
   debugPaintSizeEnabled = false;
 
-  runApp(MyApp());
+  runApp(MyApp(firebaseInitialized: firebaseInitialized));
 }
 
 class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+  final bool firebaseInitialized;
+
+  const MyApp({super.key, required this.firebaseInitialized});
 
   @override
   State<MyApp> createState() => _MyAppState();
@@ -122,6 +116,24 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Firebase가 초기화되지 않았으면 로딩 화면 표시
+    if (!widget.firebaseInitialized) {
+      return MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('앱을 준비하고 있습니다...'),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthController()),
@@ -190,6 +202,8 @@ class _MyAppState extends State<MyApp> {
 
           // 친구 관리 라우트
           '/contact_manager': (context) => const FriendManagementScreen(),
+
+          '/feed_home': (context) => const FeedHomeScreen(),
         },
         theme: ThemeData(iconTheme: IconThemeData(color: Colors.white)),
       ),
