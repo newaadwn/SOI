@@ -242,6 +242,22 @@ class UserMatchingService {
       return ContactSearchStatus.error;
     }
   }
+
+  /// ID로 사용자 검색
+  ///
+  /// [userId] 검색할 사용자 ID
+  /// Returns: UserSearchModel 또는 null
+  Future<List<UserSearchModel>> searchUserById(String userId) async {
+    try {
+      debugPrint('UserMatchingService: ID로 사용자 검색 시작 - $userId');
+      final result = await _userSearchRepository.searchUsersById(userId);
+      debugPrint('UserMatchingService: ID 검색 결과 - $result');
+      return result;
+    } catch (e) {
+      debugPrint('UserMatchingService: ID로 사용자 검색 실패 - $e');
+      rethrow; // Controller에서 에러 처리하도록 전달
+    }
+  }
 }
 
 /// 연락처 매칭 결과

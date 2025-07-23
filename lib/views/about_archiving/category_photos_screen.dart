@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/category_data_model.dart';
-import '../../services/photo_service.dart';
 import 'photo_grid_item.dart';
 
 class CategoryPhotosScreen extends StatelessWidget {

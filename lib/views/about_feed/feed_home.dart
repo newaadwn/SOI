@@ -5,11 +5,14 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/photo_controller.dart';
 import '../../controllers/audio_controller.dart';
+import '../../controllers/comment_record_controller.dart';
 import '../../models/category_data_model.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/auth_model.dart';
+import '../../models/comment_record_model.dart';
 import '../../utils/format_utils.dart';
 import '../about_archiving/widgets/custom_waveform_widget.dart';
+import 'widgets/voice_comment_widget.dart';
 
 class FeedHomeScreen extends StatefulWidget {
   const FeedHomeScreen({super.key});
@@ -21,12 +24,20 @@ class FeedHomeScreen extends StatefulWidget {
 class _FeedHomeScreenState extends State<FeedHomeScreen> {
   List<Map<String, dynamic>> _allPhotos = []; // 카테고리 정보와 함께 저장
   bool _isLoading = true;
-  String? _error;
 
   // 프로필 정보 캐싱
   final Map<String, String> _userProfileImages = {};
   final Map<String, String> _userNames = {};
   final Map<String, bool> _profileLoadingStates = {};
+
+  // 음성 댓글 상태 관리
+  final Map<String, bool> _voiceCommentActiveStates = {}; // 사진 ID별 음성 댓글 활성화 상태
+  final Map<String, bool> _voiceCommentSavedStates =
+      {}; // 사진 ID별 음성 댓글 저장 완료 상태
+  final Map<String, String> _savedCommentIds = {}; // 사진 ID별 저장된 댓글 ID
+
+  // 프로필 이미지 위치 관리
+  final Map<String, Offset?> _profileImagePositions = {}; // 사진 ID별 프로필 이미지 위치
 
   @override
   void initState() {
@@ -42,7 +53,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     try {
       setState(() {
         _isLoading = true;
-        _error = null;
       });
 
       final authController = Provider.of<AuthController>(
@@ -65,6 +75,22 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       }
 
       debugPrint('🔍 현재 사용자 ID: $currentUserId');
+
+      // 현재 사용자의 프로필 이미지를 미리 로드
+      if (!_userProfileImages.containsKey(currentUserId)) {
+        try {
+          final currentUserProfileImage = await authController
+              .getUserProfileImageUrlWithCache(currentUserId);
+          setState(() {
+            _userProfileImages[currentUserId] = currentUserProfileImage;
+          });
+          debugPrint(
+            '👤 현재 사용자 프로필 이미지 로드됨: $currentUserId -> $currentUserProfileImage',
+          );
+        } catch (e) {
+          debugPrint('❌ 현재 사용자 프로필 이미지 로드 실패: $e');
+        }
+      }
 
       // 사용자가 속한 카테고리들 가져오기
       await categoryController.loadUserCategories(currentUserId);
@@ -119,10 +145,15 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         final PhotoDataModel photo = photoData['photo'] as PhotoDataModel;
         _loadUserProfileForPhoto(photo.userID);
       }
+
+      // 모든 사진의 음성 댓글 정보 로드 (프로필 위치 포함)
+      for (Map<String, dynamic> photoData in allPhotos) {
+        final PhotoDataModel photo = photoData['photo'] as PhotoDataModel;
+        _loadVoiceCommentsForPhoto(photo.id, currentUserId);
+      }
     } catch (e) {
       debugPrint('❌ 사진 로드 실패: $e');
       setState(() {
-        _error = e.toString();
         _isLoading = false;
       });
     }
@@ -171,6 +202,57 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     }
   }
 
+  /// 특정 사진의 음성 댓글 정보를 로드하여 프로필 위치 복원
+  Future<void> _loadVoiceCommentsForPhoto(
+    String photoId,
+    String currentUserId,
+  ) async {
+    try {
+      debugPrint('🔍 음성 댓글 로드 시작 - 사진: $photoId, 사용자: $currentUserId');
+
+      final commentRecordController = CommentRecordController();
+      await commentRecordController.loadCommentRecordsByPhotoId(photoId);
+      final comments = commentRecordController.commentRecords;
+
+      debugPrint('📊 로드된 댓글 수: ${comments.length}');
+
+      // 현재 사용자의 댓글 찾기
+      final userComment =
+          comments
+              .where((comment) => comment.recorderUser == currentUserId)
+              .firstOrNull;
+
+      if (userComment != null) {
+        debugPrint('🔄 사진 ${photoId}의 저장된 음성 댓글 발견 - ID: ${userComment.id}');
+
+        // 저장된 상태로 설정
+        if (mounted) {
+          setState(() {
+            _voiceCommentSavedStates[photoId] = true;
+            _savedCommentIds[photoId] = userComment.id;
+
+            // 프로필 위치가 있으면 복원
+            if (userComment.profilePosition != null) {
+              _profileImagePositions[photoId] = userComment.profilePosition;
+              debugPrint(
+                '📍 프로필 위치 복원됨 - photoId: $photoId, 위치: ${userComment.profilePosition}',
+              );
+            }
+          });
+        }
+      } else {
+        debugPrint('🔍 사진 $photoId에 현재 사용자의 댓글 없음');
+      }
+    } catch (e) {
+      debugPrint('❌ 사진 $photoId의 음성 댓글 로드 실패: $e');
+      // 더 자세한 오류 정보 출력
+      if (e.toString().contains('ServiceException')) {
+        debugPrint('🔍 ServiceException 세부사항: ${e.toString()}');
+        debugPrint('🔍 오류 타입: ${e.runtimeType}');
+      }
+    }
+  }
+
   /// 오디오 재생/일시정지 토글
   Future<void> _toggleAudio(PhotoDataModel photo) async {
     if (photo.audioUrl.isEmpty) {
@@ -190,6 +272,234 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           context,
         ).showSnackBar(SnackBar(content: Text('음성 파일을 재생할 수 없습니다: $e')));
       }
+    }
+  }
+
+  /// 음성 댓글 토글
+  void _toggleVoiceComment(String photoId) {
+    setState(() {
+      _voiceCommentActiveStates[photoId] =
+          !(_voiceCommentActiveStates[photoId] ?? false);
+    });
+  }
+
+  /// 음성 댓글 녹음 완료 콜백
+  Future<void> _onVoiceCommentCompleted(
+    String photoId,
+    String? audioPath,
+    List<double>? waveformData,
+    int? duration, // duration 매개변수 추가
+  ) async {
+    if (audioPath == null || waveformData == null || duration == null) {
+      debugPrint('❌ 음성 댓글 데이터가 유효하지 않습니다');
+      return;
+    }
+
+    try {
+      final authController = Provider.of<AuthController>(
+        context,
+        listen: false,
+      );
+
+      // CommentRecordController를 직접 생성하여 사용 (Provider 문제 해결용)
+      final commentRecordController = CommentRecordController();
+
+      final currentUserId = authController.getUserId;
+      if (currentUserId == null || currentUserId.isEmpty) {
+        throw Exception('로그인된 사용자를 찾을 수 없습니다.');
+      }
+
+      debugPrint(
+        '🎤 음성 댓글 저장 시작 - 사진: $photoId, 사용자: $currentUserId, 시간: ${duration}ms',
+      );
+
+      // 현재 사용자의 프로필 이미지 URL 가져오기
+      final profileImageUrl = await authController
+          .getUserProfileImageUrlWithCache(currentUserId);
+
+      // CommentRecordController를 통해 저장
+      final commentRecord = await commentRecordController.createCommentRecord(
+        audioFilePath: audioPath,
+        photoId: photoId,
+        recorderUser: currentUserId,
+        waveformData: waveformData,
+        duration: duration,
+        profileImageUrl: profileImageUrl, // 프로필 이미지 URL 전달
+      );
+
+      if (commentRecord != null) {
+        debugPrint('✅ 음성 댓글 저장 완료 - ID: ${commentRecord.id}');
+
+        // 성공 메시지 표시
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('음성 댓글이 저장되었습니다'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
+
+          // 저장 완료 상태로 설정
+          setState(() {
+            _voiceCommentSavedStates[photoId] = true;
+            _savedCommentIds[photoId] = commentRecord.id; // 댓글 ID 저장
+          });
+
+          debugPrint(
+            '🎯 음성 댓글 ID 저장됨 - photoId: $photoId, commentId: ${commentRecord.id}',
+          );
+        }
+      } else {
+        // 에러 메시지는 CommentRecordController에서 처리됨
+        if (mounted) {
+          commentRecordController.showErrorToUser(context);
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ 음성 댓글 저장 실패: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('음성 댓글 저장 실패: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  /// 음성 댓글 삭제 콜백
+  void _onVoiceCommentDeleted(String photoId) {
+    setState(() {
+      _voiceCommentActiveStates[photoId] = false;
+      _voiceCommentSavedStates[photoId] = false; // 저장 상태도 초기화
+      _profileImagePositions[photoId] = null; // 프로필 이미지 위치도 초기화
+    });
+    debugPrint('음성 댓글 삭제됨 - 사진 ID: $photoId');
+  }
+
+  /// 프로필 이미지 드래그 처리
+  void _onProfileImageDragged(String photoId, Offset globalPosition) {
+    debugPrint('🖼️ 프로필 이미지 드래그됨 - 사진: $photoId, 위치: $globalPosition');
+    debugPrint('🔍 현재 저장 상태: ${_voiceCommentSavedStates[photoId]}');
+    debugPrint('🔍 현재 댓글 ID: ${_savedCommentIds[photoId]}');
+
+    // 로컬 상태 업데이트
+    setState(() {
+      _profileImagePositions[photoId] = globalPosition;
+    });
+
+    // Firestore에 위치 저장
+    _updateProfilePositionInFirestore(photoId, globalPosition);
+  }
+
+  /// Firestore에 프로필 위치 업데이트
+  Future<void> _updateProfilePositionInFirestore(
+    String photoId,
+    Offset position,
+  ) async {
+    try {
+      debugPrint('🔍 프로필 위치 업데이트 시작 - photoId: $photoId, position: $position');
+
+      // 음성 댓글이 저장된 상태에서만 위치 업데이트
+      final isSaved = _voiceCommentSavedStates[photoId] == true;
+      debugPrint('🔍 음성 댓글 저장 상태 확인: isSaved = $isSaved');
+      debugPrint('🔍 _voiceCommentSavedStates: $_voiceCommentSavedStates');
+
+      if (!isSaved) {
+        debugPrint('⚠️ 음성 댓글이 저장되지 않아 위치 업데이트를 건너뜁니다');
+        return;
+      }
+
+      final commentRecordController = Provider.of<CommentRecordController>(
+        context,
+        listen: false,
+      );
+
+      // 현재 사용자의 음성 댓글 찾기 (photoId로 검색)
+      final authController = Provider.of<AuthController>(
+        context,
+        listen: false,
+      );
+      final currentUserId = authController.getUserId;
+
+      if (currentUserId == null) {
+        debugPrint('❌ 현재 사용자 ID를 찾을 수 없습니다');
+        return;
+      }
+
+      debugPrint('🔍 현재 사용자 ID: $currentUserId');
+
+      // 저장된 댓글 ID가 있는지 확인
+      final savedCommentId = _savedCommentIds[photoId];
+      debugPrint('🔍 저장된 댓글 ID: $savedCommentId');
+
+      if (savedCommentId != null && savedCommentId.isNotEmpty) {
+        // 저장된 댓글 ID를 직접 사용
+        debugPrint('🔍 저장된 댓글 ID로 직접 위치 업데이트 시작');
+        final success = await commentRecordController.updateProfilePosition(
+          commentId: savedCommentId,
+          photoId: photoId,
+          profilePosition: position,
+        );
+
+        if (success) {
+          debugPrint('✅ 프로필 위치가 Firestore에 저장되었습니다');
+        } else {
+          debugPrint('❌ 프로필 위치 저장에 실패했습니다');
+        }
+        return; // 성공적으로 처리했으므로 종료
+      }
+
+      // 저장된 댓글 ID가 없으면 기존 방식으로 댓글 찾기
+      debugPrint('🔍 저장된 댓글 ID가 없어 캐시/서버에서 검색 시작');
+
+      // 먼저 캐시에서 댓글 찾기
+      final cachedComments = commentRecordController.getCommentsByPhotoId(
+        photoId,
+      );
+      debugPrint('🔍 캐시에서 찾은 댓글 수: ${cachedComments.length}');
+
+      List<CommentRecordModel> comments = cachedComments;
+
+      // 캐시에 없거나 비어있으면 서버에서 로드
+      if (comments.isEmpty) {
+        debugPrint('🔍 캐시가 비어있어 서버에서 음성 댓글 로드 시작 - photoId: $photoId');
+        await commentRecordController.loadCommentRecordsByPhotoId(photoId);
+        comments = commentRecordController.commentRecords;
+        debugPrint('🔍 서버에서 로드된 댓글 수: ${comments.length}');
+      }
+
+      for (var comment in comments) {
+        debugPrint('🔍 댓글 - ID: ${comment.id}, 사용자: ${comment.recorderUser}');
+      }
+      final userComment =
+          comments
+              .where((comment) => comment.recorderUser == currentUserId)
+              .firstOrNull;
+
+      debugPrint('🔍 현재 사용자의 댓글 찾기 결과: ${userComment?.id}');
+
+      if (userComment != null) {
+        debugPrint('🔍 프로필 위치 업데이트 호출 시작');
+        final success = await commentRecordController.updateProfilePosition(
+          commentId: userComment.id,
+          photoId: photoId,
+          profilePosition: position,
+        );
+
+        if (success) {
+          debugPrint('✅ 프로필 위치가 Firestore에 저장되었습니다');
+        } else {
+          debugPrint('❌ 프로필 위치 저장에 실패했습니다');
+        }
+      } else {
+        debugPrint('⚠️ 해당 사진에 대한 사용자의 음성 댓글을 찾을 수 없습니다');
+      }
+    } catch (e) {
+      debugPrint('❌ 프로필 위치 업데이트 중 오류 발생: $e');
     }
   }
 
@@ -320,29 +630,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        title: const Text(
-          'SOI 피드',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        backgroundColor: Colors.black,
-        elevation: 0,
-        actions: [
-          IconButton(
-            onPressed: _loadUserCategoriesAndPhotos,
-            icon: const Icon(Icons.refresh, color: Colors.white),
-            tooltip: '새로고침',
-          ),
-        ],
-      ),
-      body: _buildBody(),
-    );
+    return Scaffold(backgroundColor: Colors.black, body: _buildBody());
   }
 
   Widget _buildBody() {
@@ -354,41 +642,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
             CircularProgressIndicator(color: Colors.white),
             SizedBox(height: 16),
             Text('사진을 불러오는 중...', style: TextStyle(color: Colors.white70)),
-          ],
-        ),
-      );
-    }
-
-    if (_error != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.red, size: 64),
-            const SizedBox(height: 16),
-            Text(
-              '오류가 발생했습니다',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              _error!,
-              style: const TextStyle(color: Colors.white70),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadUserCategoriesAndPhotos,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('다시 시도'),
-            ),
           ],
         ),
       );
@@ -420,13 +673,18 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       );
     }
 
-    return PageView.builder(
-      scrollDirection: Axis.vertical,
-      itemCount: _allPhotos.length,
-      itemBuilder: (context, index) {
-        final photoData = _allPhotos[index];
-        return _buildPhotoCard(photoData, index);
-      },
+    return RefreshIndicator(
+      onRefresh: _loadUserCategoriesAndPhotos,
+      color: Colors.white,
+      backgroundColor: Colors.black,
+      child: PageView.builder(
+        scrollDirection: Axis.vertical,
+        itemCount: _allPhotos.length,
+        itemBuilder: (context, index) {
+          final photoData = _allPhotos[index];
+          return _buildPhotoCard(photoData, index);
+        },
+      ),
     );
   }
 
@@ -444,200 +702,331 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     // 화면 높이의 60%를 사용하되, 최대 600px, 최소 400px로 제한
     final cardHeight = (screenHeight * (500 / 852)).clamp(400.0, 600.0);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Stack(
-          alignment: Alignment.topCenter,
+    return DragTarget<String>(
+      onAcceptWithDetails: (details) async {
+        // 드롭된 좌표를 사진 내 상대 좌표로 변환
+        final RenderBox renderBox = context.findRenderObject() as RenderBox;
+        final localPosition = renderBox.globalToLocal(details.offset);
+
+        debugPrint('✅ 프로필 이미지가 사진 영역에 드롭됨');
+        debugPrint('📍 글로벌 좌표: ${details.offset}');
+        debugPrint('📍 로컬 좌표: $localPosition');
+
+        // 사진 영역 내 좌표로 저장
+        setState(() {
+          _profileImagePositions[photo.id] = localPosition;
+        });
+
+        // Firestore에 위치 업데이트 (백그라운드에서 실행)
+        _updateProfilePositionInFirestore(photo.id, localPosition);
+      },
+      builder: (context, candidateData, rejectedData) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 배경 이미지
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                photo.imageUrl,
-                fit: BoxFit.cover,
-                width: cardWidth,
-                height: cardHeight,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
+            SizedBox(height: 20.5),
+            Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                // 배경 이미지
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: CachedNetworkImage(
+                    imageUrl: photo.imageUrl,
+                    fit: BoxFit.cover,
                     width: cardWidth,
                     height: cardHeight,
-                    color: Colors.grey[900],
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        value:
-                            loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                                : null,
-                        color: Colors.white,
-                      ),
+                    placeholder: (context, url) {
+                      return Container(
+                        width: cardWidth,
+                        height: cardHeight,
+                        color: Colors.grey[900],
+                        child: const Center(),
+                      );
+                    },
+                  ),
+                ),
+                // 카테고리 정보
+                Padding(
+                  padding: EdgeInsets.only(top: screenHeight * 0.02),
+                  child: Container(
+                    width: cardWidth * 0.3,
+                    height: screenHeight * 0.038,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.5),
+                      borderRadius: BorderRadius.circular(20),
                     ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    width: cardWidth,
-                    height: cardHeight,
-                    color: Colors.grey[900],
-                    child: const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    child: Text(
+                      categoryName,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: screenWidth * 0.032,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+
+                // 오디오 컨트롤 오버레이 (photo_detail처럼)
+                if (photo.audioUrl.isNotEmpty)
+                  Positioned(
+                    bottom: screenHeight * 0.018,
+                    left: screenWidth * 0.05,
+                    right: screenWidth * 0.05,
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: screenWidth * 0.032,
+                        vertical: screenHeight * 0.01,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Color(0xff000000).withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(25),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
                         children: [
-                          Icon(
-                            Icons.broken_image,
-                            color: Colors.white54,
-                            size: 64,
+                          // 왼쪽 프로필 이미지 (작은 버전)
+                          Container(
+                            width: screenWidth * 0.085,
+                            height: screenWidth * 0.085,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: ClipOval(
+                              child: _buildUserProfileWidget(photo),
+                            ),
                           ),
-                          SizedBox(height: 8),
-                          Text(
-                            '이미지를 불러올 수 없습니다',
-                            style: TextStyle(color: Colors.white70),
+                          SizedBox(width: screenWidth * 0.032),
+
+                          // 가운데 파형 (progress 포함)
+                          Expanded(
+                            child: SizedBox(
+                              height: screenHeight * 0.04,
+                              child: _buildWaveformWidgetWithProgress(photo),
+                            ),
+                          ),
+
+                          SizedBox(width: screenWidth * 0.032),
+
+                          // 오른쪽 재생 시간 (실시간 업데이트)
+                          Consumer<AudioController>(
+                            builder: (context, audioController, child) {
+                              // 현재 사진의 오디오가 재생 중인지 확인
+                              final isCurrentAudio =
+                                  audioController.isPlaying &&
+                                  audioController.currentPlayingAudioUrl ==
+                                      photo.audioUrl;
+
+                              // 실시간 재생 시간 사용
+                              Duration displayDuration = Duration.zero;
+                              if (isCurrentAudio) {
+                                displayDuration =
+                                    audioController.currentPosition;
+                              }
+
+                              return Text(
+                                FormatUtils.formatDuration(displayDuration),
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: screenWidth * 0.032,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
                     ),
-                  );
-                },
-              ),
+                  ),
+
+                // 드롭된 프로필 이미지 표시
+                if (_profileImagePositions[photo.id] != null)
+                  Positioned(
+                    left: (_profileImagePositions[photo.id]!.dx - 13.5).clamp(
+                      0,
+                      cardWidth - 27,
+                    ),
+                    top: (_profileImagePositions[photo.id]!.dy - 13.5 - 20.5)
+                        .clamp(0, cardHeight - 27), // 상단 여백 고려
+                    child: Consumer<AuthController>(
+                      builder: (context, authController, child) {
+                        final currentUserId = authController.currentUser?.uid;
+                        final currentUserProfileImage =
+                            currentUserId != null
+                                ? _userProfileImages[currentUserId]
+                                : null;
+
+                        return Container(
+                          width: 27,
+                          height: 27,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                          ),
+                          child:
+                              currentUserProfileImage != null &&
+                                      currentUserProfileImage.isNotEmpty
+                                  ? ClipOval(
+                                    child: Image.network(
+                                      currentUserProfileImage,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (
+                                        context,
+                                        error,
+                                        stackTrace,
+                                      ) {
+                                        return Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey[700],
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.person,
+                                            color: Colors.white,
+                                            size: 14,
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  )
+                                  : Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[700],
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      Icons.person,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
+                                  ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
             ),
-            // 카테고리 정보
+            // 사진 정보 오버레이
             Padding(
-              padding: EdgeInsets.only(top: screenHeight * 0.02),
-              child: Container(
-                width: cardWidth * 0.3,
-                height: screenHeight * 0.038,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  categoryName,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: screenWidth * 0.032,
-                    fontWeight: FontWeight.w500,
+              padding: EdgeInsets.symmetric(
+                horizontal: screenWidth * 0.05,
+                vertical: screenHeight * 0.01,
+              ),
+              child: Row(
+                children: [
+                  SizedBox(width: screenWidth * 0.032),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '@${_userNames[photo.userID] ?? photo.userID}', // @ 형식으로 표시
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: screenWidth * 0.037,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          _formatTimestamp(
+                            photo.createdAt,
+                          ), // PhotoDataModel의 실제 필드명 사용
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: screenWidth * 0.032,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  overflow: TextOverflow.ellipsis,
-                ),
+                ],
               ),
             ),
-
-            // 오디오 컨트롤 오버레이 (photo_detail처럼)
-            if (photo.audioUrl.isNotEmpty)
-              Positioned(
-                bottom: screenHeight * 0.018,
-                left: screenWidth * 0.05,
-                right: screenWidth * 0.05,
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: screenWidth * 0.032,
-                    vertical: screenHeight * 0.01,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Color(0xff000000).withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.3),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      // 왼쪽 프로필 이미지 (작은 버전)
-                      Container(
-                        width: screenWidth * 0.085,
-                        height: screenWidth * 0.085,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 1.5),
+            // 음성 댓글 UI 또는 댓글 버튼
+            SizedBox(
+              child:
+                  _voiceCommentActiveStates[photo.id] == true
+                      ? Container(
+                        padding: EdgeInsets.symmetric(
+                          vertical: screenHeight * (30 / 852),
                         ),
-                        child: ClipOval(child: _buildUserProfileWidget(photo)),
-                      ),
-                      SizedBox(width: screenWidth * 0.032),
 
-                      // 가운데 파형 (progress 포함)
-                      Expanded(
-                        child: SizedBox(
-                          height: screenHeight * 0.04,
-                          child: _buildWaveformWidgetWithProgress(photo),
+                        child: Consumer<AuthController>(
+                          builder: (context, authController, child) {
+                            final currentUserId =
+                                authController.currentUser?.uid;
+                            final currentUserProfileImage =
+                                currentUserId != null
+                                    ? _userProfileImages[currentUserId]
+                                    : null;
+
+                            // 이미 저장된 상태인지 확인
+                            final isSaved =
+                                _voiceCommentSavedStates[photo.id] == true;
+
+                            return VoiceCommentWidget(
+                              autoStart: !isSaved, // 저장된 상태가 아닐 때만 자동 시작
+                              startAsSaved: isSaved, // 저장된 상태로 시작할지 여부
+                              profileImageUrl: currentUserProfileImage,
+                              onRecordingCompleted: (
+                                audioPath,
+                                waveformData,
+                                duration,
+                              ) {
+                                _onVoiceCommentCompleted(
+                                  photo.id,
+                                  audioPath,
+                                  waveformData,
+                                  duration,
+                                );
+                              },
+                              onRecordingDeleted: () {
+                                _onVoiceCommentDeleted(photo.id);
+                              },
+                              onSaved: () {
+                                // 저장 완료 상태로 설정
+                                setState(() {
+                                  _voiceCommentSavedStates[photo.id] = true;
+                                });
+                                debugPrint(
+                                  '🎯 음성 댓글 저장 완료 UI 표시됨 - photoId: ${photo.id}',
+                                );
+                                debugPrint(
+                                  '🎯 _voiceCommentSavedStates 업데이트: $_voiceCommentSavedStates',
+                                );
+                              },
+                              onProfileImageDragged: (offset) {
+                                // 프로필 이미지 드래그 처리
+                                _onProfileImageDragged(photo.id, offset);
+                              },
+                            );
+                          },
+                        ),
+                      )
+                      : Center(
+                        child: IconButton(
+                          onPressed: () => _toggleVoiceComment(photo.id),
+                          icon: Image.asset(
+                            width: 85 / 393 * screenWidth,
+                            height: 85 / 852 * screenHeight,
+                            'assets/comment.png',
+                          ),
                         ),
                       ),
-
-                      SizedBox(width: screenWidth * 0.032),
-
-                      // 오른쪽 재생 시간 (실시간 업데이트)
-                      Consumer<AudioController>(
-                        builder: (context, audioController, child) {
-                          // 현재 사진의 오디오가 재생 중인지 확인
-                          final isCurrentAudio =
-                              audioController.isPlaying &&
-                              audioController.currentPlayingAudioUrl ==
-                                  photo.audioUrl;
-
-                          // 실시간 재생 시간 사용
-                          Duration displayDuration = Duration.zero;
-                          if (isCurrentAudio) {
-                            displayDuration = audioController.currentPosition;
-                          }
-
-                          return Text(
-                            FormatUtils.formatDuration(displayDuration),
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: screenWidth * 0.032,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            ),
           ],
-        ),
-        // 사진 정보 오버레이
-        Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: screenWidth * 0.05,
-            vertical: screenHeight * 0.01,
-          ),
-          child: Row(
-            children: [
-              //_buildUserProfileWidget(photo),
-              SizedBox(width: screenWidth * 0.032),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '@${_userNames[photo.userID] ?? photo.userID}', // @ 형식으로 표시
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: screenWidth * 0.037,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      _formatTimestamp(
-                        photo.createdAt,
-                      ), // PhotoDataModel의 실제 필드명 사용
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: screenWidth * 0.032,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 

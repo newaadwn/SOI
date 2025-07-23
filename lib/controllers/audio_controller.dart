@@ -15,6 +15,7 @@ class AudioController extends ChangeNotifier {
   String? _currentRecordingPath;
   String? _currentPlayingAudioId;
   String? _currentPlayingAudioUrl; // 현재 재생 중인 오디오 URL 추가
+  String? _currentRecordingUserId; // 현재 녹음 중인 사용자 ID 추가
   int _recordingDuration = 0;
   double _recordingLevel = 0.0;
   double _playbackPosition = 0.0;
@@ -66,6 +67,8 @@ class AudioController extends ChangeNotifier {
   String? get currentRecordingPath => _currentRecordingPath;
   String? get currentPlayingAudioId => _currentPlayingAudioId;
   String? get currentPlayingAudioUrl => _currentPlayingAudioUrl; // getter 추가
+  String? get currentRecordingUserId =>
+      _currentRecordingUserId; // 현재 녹음 중인 사용자 ID getter
   int get recordingDuration => _recordingDuration;
   double get recordingLevel => _recordingLevel;
   double get playbackPosition => _playbackPosition;
@@ -247,7 +250,7 @@ class AudioController extends ChangeNotifier {
   // ==================== 네이티브 녹음 관리 ====================
 
   /// 네이티브 녹음 시작
-  Future<void> startRecording() async {
+  Future<void> startRecording([String? userId]) async {
     try {
       _isLoading = true;
       _error = null;
@@ -272,6 +275,7 @@ class AudioController extends ChangeNotifier {
       if (result.isSuccess) {
         _isRecording = true;
         _currentRecordingPath = result.data;
+        _currentRecordingUserId = userId; // 녹음 중인 사용자 ID 설정
         _recordingDuration = 0;
 
         // 녹음 시간 타이머 시작
@@ -316,6 +320,7 @@ class AudioController extends ChangeNotifier {
 
       _isRecording = false;
       _currentRecordingPath = null;
+      _currentRecordingUserId = null; // 녹음 중인 사용자 ID 초기화
       _recordingDuration = 0;
       _recordingLevel = 0.0;
       _isLoading = false;

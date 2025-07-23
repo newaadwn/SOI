@@ -6,7 +6,6 @@ import '../controllers/auth_controller.dart';
 import '../services/deep_link_service.dart';
 import 'about_archiving/archive_main_screen.dart';
 import 'about_camera/camera_screen.dart';
-import 'home_screen.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 class HomePageNavigationBar extends StatefulWidget {

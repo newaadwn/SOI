@@ -25,14 +25,16 @@ class UserMatchingController extends ChangeNotifier {
   // 추천 친구 (매칭 결과)
   List<ContactMatchResult> _contactMatches = [];
   List<UserSearchModel> _recommendedFriends = [];
-  Map<String, bool> _processingRecommendations = {}; // userId -> isProcessing
+  final Map<String, bool> _processingRecommendations =
+      {}; // userId -> isProcessing
   bool _isLoadingRecommendations = false;
 
   // 사용자 검색
   List<UserSearchModel> _searchResults = [];
   String _currentSearchQuery = '';
   bool _isSearching = false;
-  Map<String, bool> _processingSearchResults = {}; // userId -> isProcessing
+  final Map<String, bool> _processingSearchResults =
+      {}; // userId -> isProcessing
 
   // 매칭 통계
   MatchingStats? _matchingStats;
@@ -177,9 +179,7 @@ class UserMatchingController extends ChangeNotifier {
         _searchResults = [];
       } else {
         // UserSearchRepository로 검색
-        _searchResults = await _userSearchRepository.searchUsersByNickname(
-          query,
-        );
+        _searchResults = await _userSearchRepository.searchUsersById(query);
         debugPrint('사용자 검색 완료: ${_searchResults.length}명 발견');
       }
     } catch (e) {
@@ -189,6 +189,23 @@ class UserMatchingController extends ChangeNotifier {
     } finally {
       _isSearching = false;
       notifyListeners();
+    }
+  }
+
+  /// ID로 사용자 검색
+  ///
+  /// [userId] 검색할 사용자 ID
+  /// Returns: UserSearchModel 또는 null
+  Future<List<UserSearchModel>?> searchUserById(String userId) async {
+    try {
+      debugPrint('ID로 사용자 검색 시작: $userId');
+      final result = await _userMatchingService.searchUserById(userId);
+      debugPrint('ID 검색 결과: ${result}');
+      return result;
+    } catch (e) {
+      debugPrint('ID로 사용자 검색 실패: $e');
+      _setError('사용자 검색 실패: $e');
+      return null;
     }
   }
 
@@ -315,7 +332,7 @@ class UserMatchingController extends ChangeNotifier {
       return ContactSearchStatus.error;
     }
   }
-  
+
   /// 특정 연락처와 매칭되는 사용자 찾기
   ///
   /// [contact] 검색할 연락처

@@ -317,7 +317,7 @@ class AuthController extends ChangeNotifier {
           'id': userInfo.id,
           'name': userInfo.name,
           'phone': userInfo.phone,
-          'birthDate': userInfo.birthDate ?? '',
+          'birthDate': userInfo.birthDate,
         };
       }
 

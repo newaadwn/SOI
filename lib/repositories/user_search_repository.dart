@@ -1,8 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:convert';
 import '../models/user_search_model.dart';
 
 /// 사용자 검색 Repository 클래스
@@ -23,18 +21,18 @@ class UserSearchRepository {
     // 전화번호에서 숫자만 추출
     debugPrint('건네받은 전화번호: $phoneNumber');
     var cleanNumber = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
-    
+
     // 앞자리 0 제거 (Firestore 데이터와 일치시키기 위해)
     if (cleanNumber.startsWith('0')) {
       cleanNumber = cleanNumber.substring(1);
     }
-    
+
     debugPrint('정리된 전화번호: $cleanNumber');
 
     // 현재 Firestore에는 해시값이 아닌 전화번호가 저장되어 있으므로
     // 일단 전화번호를 그대로 반환 (추후 해시 마이그레이션 필요)
     return cleanNumber;
-    
+
     // SHA-256 해시 생성 (추후 사용)
     // final bytes = utf8.encode(cleanNumber);
     // final hash = sha256.convert(bytes);
@@ -57,22 +55,29 @@ class UserSearchRepository {
         final data = doc.data();
         debugPrint('문서 ID: ${doc.id}');
         debugPrint('전체 데이터: $data');
-        debugPrint('사용자: ${data['nickname'] ?? data['name'] ?? "이름없음"}, phone: ${data['phone']}, allowPhoneSearch: ${data['allowPhoneSearch']}');
-        
+        debugPrint(
+          '사용자: ${data['nickname'] ?? data['name'] ?? "이름없음"}, phone: ${data['phone']}, allowPhoneSearch: ${data['allowPhoneSearch']}',
+        );
+
         // 전화번호가 있는 경우 해시값 비교
         if (data['phone'] != null && data['phone'] == hashedPhoneNumber) {
-          debugPrint('*** 해시값 일치! 사용자: ${data['nickname'] ?? data['name'] ?? "이름없음"} ***');
+          debugPrint(
+            '*** 해시값 일치! 사용자: ${data['nickname'] ?? data['name'] ?? "이름없음"} ***',
+          );
         }
       }
-      
+
       // allowPhoneSearch 조건 없이 먼저 검색해보기
-      final testQuery = await _usersCollection
-          .where('phone', isEqualTo: hashedPhoneNumber)
-          .get();
+      final testQuery =
+          await _usersCollection
+              .where('phone', isEqualTo: hashedPhoneNumber)
+              .get();
       debugPrint('allowPhoneSearch 조건 없이 검색: ${testQuery.docs.length}개 발견');
       if (testQuery.docs.isNotEmpty) {
         final testData = testQuery.docs.first.data();
-        debugPrint('찾은 문서의 allowPhoneSearch 값: ${testData['allowPhoneSearch']}');
+        debugPrint(
+          '찾은 문서의 allowPhoneSearch 값: ${testData['allowPhoneSearch']}',
+        );
       }
 
       // allowPhoneSearch가 null이거나 true인 경우 모두 허용
@@ -81,17 +86,18 @@ class UserSearchRepository {
               .where('phone', isEqualTo: hashedPhoneNumber)
               .limit(1)
               .get();
-              
+
       // 추가 필터링: allowPhoneSearch가 명시적으로 false가 아닌 경우만 허용
-      final filteredDocs = querySnapshot.docs.where((doc) {
-        final data = doc.data();
-        final allowSearch = data['allowPhoneSearch'];
-        return allowSearch != false; // null이거나 true인 경우 허용
-      }).toList();
+      final filteredDocs =
+          querySnapshot.docs.where((doc) {
+            final data = doc.data();
+            final allowSearch = data['allowPhoneSearch'];
+            return allowSearch != false; // null이거나 true인 경우 허용
+          }).toList();
 
       debugPrint('검색 결과: ${querySnapshot.docs.length}개 문서 발견');
       debugPrint('필터링 후: ${filteredDocs.length}개 문서');
-      
+
       if (filteredDocs.isEmpty) {
         debugPrint('해당 전화번호로 등록된 사용자가 없거나 검색이 허용되지 않음');
         return null;
@@ -99,8 +105,10 @@ class UserSearchRepository {
 
       final userDoc = filteredDocs.first;
       final userData = userDoc.data();
-      debugPrint('찾은 사용자: ${userData['nickname']}, phone 필드: ${userData['phone']}');
-      
+      debugPrint(
+        '찾은 사용자: ${userData['nickname']}, phone 필드: ${userData['phone']}',
+      );
+
       return UserSearchModel.fromFirestore(userDoc);
     } catch (e) {
       debugPrint('전화번호 검색 중 오류 발생: $e');
@@ -157,11 +165,11 @@ class UserSearchRepository {
   ///
   /// [nickname] 검색할 닉네임
   /// [limit] 최대 결과 수
-  Future<List<UserSearchModel>> searchUsersByNickname(
-    String nickname, {
+  Future<List<UserSearchModel>> searchUsersById(
+    String id, {
     int limit = 20,
   }) async {
-    if (nickname.isEmpty) {
+    if (id.isEmpty) {
       return [];
     }
 
@@ -172,10 +180,7 @@ class UserSearchRepository {
 
       // 1. 정확한 일치 검색
       final exactMatch =
-          await _usersCollection
-              .where('nickname', isEqualTo: nickname)
-              .limit(limit)
-              .get();
+          await _usersCollection.where('id', isEqualTo: id).limit(limit).get();
 
       results.addAll(
         exactMatch.docs.map((doc) {
@@ -188,8 +193,8 @@ class UserSearchRepository {
         final remaining = limit - results.length;
         final prefixMatch =
             await _usersCollection
-                .where('nickname', isGreaterThanOrEqualTo: nickname)
-                .where('nickname', isLessThan: '${nickname}z')
+                .where('id', isGreaterThanOrEqualTo: id)
+                .where('id', isLessThan: '${id}z')
                 .limit(remaining + 10) // 중복 제거를 위해 여유분 가져오기
                 .get();
 

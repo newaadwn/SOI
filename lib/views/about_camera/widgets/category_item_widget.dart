@@ -24,6 +24,8 @@ class CategoryItemWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+
     // 선택된 카테고리인지 확인 (전송 모드)
     final bool isSelected =
         categoryId != null && categoryId == selectedCategoryId;
@@ -31,29 +33,48 @@ class CategoryItemWidget extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 80,
-        margin: const EdgeInsets.symmetric(horizontal: 8),
+        width: (screenWidth * 0.204).clamp(70.0, 90.0), // 반응형 너비
+        margin: EdgeInsets.symmetric(
+          horizontal: (screenWidth * 0.020).clamp(6.0, 10.0),
+        ), // 반응형 마진
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             // 이미지 또는 아이콘 원형 컨테이너
             Container(
-              width: 60,
-              height: 60,
+              width: (screenWidth * 0.153).clamp(55.0, 70.0), // 반응형 너비
+              height: (screenWidth * 0.153).clamp(55.0, 70.0), // 반응형 높이
               decoration: BoxDecoration(
                 color: icon != null ? Colors.grey.shade200 : Colors.transparent,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: isSelected ? Colors.blue : Colors.transparent,
-                  width: isSelected ? 2 : 1,
+                  width:
+                      isSelected
+                          ? (screenWidth * 0.005).clamp(2.0, 3.0)
+                          : 1, // 반응형 테두리
                 ),
               ),
               child: ClipOval(
                 child:
                     isSelected
-                        ? Icon(Icons.send, size: 30, color: Colors.blue)
+                        ? Icon(
+                          Icons.send,
+                          size: (screenWidth * 0.076).clamp(
+                            26.0,
+                            34.0,
+                          ), // 반응형 아이콘 크기
+                          color: Colors.blue,
+                        )
                         : icon != null
-                        ? Icon(icon, size: 40, color: Colors.black)
+                        ? Icon(
+                          icon,
+                          size: (screenWidth * 0.102).clamp(
+                            35.0,
+                            45.0,
+                          ), // 반응형 아이콘 크기
+                          color: Colors.black,
+                        )
                         : (imageUrl != null && imageUrl!.isNotEmpty)
                         ? CachedNetworkImage(
                           imageUrl: imageUrl!,
@@ -61,25 +82,34 @@ class CategoryItemWidget extends StatelessWidget {
                           placeholder:
                               (context, url) => Center(
                                 child: CircularProgressIndicator(
-                                  strokeWidth: 2,
+                                  strokeWidth: (screenWidth * 0.005).clamp(
+                                    1.5,
+                                    2.5,
+                                  ), // 반응형 선 두께
                                   color: Colors.white,
                                 ),
                               ),
                           errorWidget:
                               (context, url, error) => Icon(
                                 Icons.image,
-                                size: 30,
+                                size: (screenWidth * 0.076).clamp(
+                                  26.0,
+                                  34.0,
+                                ), // 반응형 아이콘 크기
                                 color: Colors.grey.shade400,
                               ),
                         )
                         : Icon(
                           Icons.image,
-                          size: 30,
+                          size: (screenWidth * 0.076).clamp(
+                            26.0,
+                            34.0,
+                          ), // 반응형 아이콘 크기
                           color: Colors.grey.shade400,
                         ),
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: (screenWidth * 0.020).clamp(6.0, 10.0)), // 반응형 간격
             // 카테고리 이름
             Text(
               label,
@@ -87,7 +117,7 @@ class CategoryItemWidget extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: (screenWidth * 0.031).clamp(10.0, 14.0), // 반응형 폰트 크기
                 fontWeight: FontWeight.w500,
                 color: isSelected ? Colors.blue : Colors.white,
               ),

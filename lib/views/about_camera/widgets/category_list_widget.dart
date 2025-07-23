@@ -25,6 +25,8 @@ class CategoryListWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -36,13 +38,15 @@ class CategoryListWidget extends StatelessWidget {
         return GridView.builder(
           key: const ValueKey('category_list'),
           controller: scrollController,
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 4,
             childAspectRatio: 0.8,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
+            crossAxisSpacing: (screenWidth * 0.025).clamp(8.0, 12.0), // 반응형 간격
+            mainAxisSpacing: (screenWidth * 0.025).clamp(8.0, 12.0), // 반응형 간격
           ),
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(
+            (screenWidth * 0.041).clamp(14.0, 20.0),
+          ), // 반응형 패딩
           itemCount: categories.isEmpty ? 1 : categories.length + 1,
           itemBuilder: (context, index) {
             // 첫 번째 아이템은 항상 '추가하기' 버튼

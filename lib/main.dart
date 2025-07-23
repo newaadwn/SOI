@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'controllers/comment_record_controller.dart';
 import 'controllers/contact_controller.dart';
 import 'controllers/photo_controller.dart';
 import 'controllers/friend_request_controller.dart';
@@ -29,13 +30,10 @@ import 'views/about_friends/friend_management_screen.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/category_controller.dart';
 import 'controllers/audio_controller.dart';
-import 'controllers/comment_controller.dart';
-
 import 'package:flutter/rendering.dart';
-import 'dart:ui';
-import 'package:intl/date_symbol_data_local.dart'; // 1. 이 줄을 추가하세요.
+import 'package:intl/date_symbol_data_local.dart';
 import 'views/home_navigator_screen.dart';
-import 'views/home_screen.dart'; // PlatformDispatcher를 위해 필요
+import 'views/home_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -67,9 +65,6 @@ void main() async {
     debugPrint('📱 앱은 Firebase 없이 계속 실행됩니다');
     // Firebase 없이도 앱이 실행되도록 처리
   }
-
-  // 🔥 Firebase Emulator 연결 설정 (개발 환경에서만)
-  //_connectToFirebaseEmulator();
 
   // 에러 핸들링 추가
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -121,14 +116,7 @@ class _MyAppState extends State<MyApp> {
       return MaterialApp(
         home: Scaffold(
           body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('앱을 준비하고 있습니다...'),
-              ],
-            ),
+            child: Column(mainAxisAlignment: MainAxisAlignment.center),
           ),
         ),
       );
@@ -139,7 +127,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => CategoryController()),
         ChangeNotifierProvider(create: (_) => AudioController()),
-        ChangeNotifierProvider(create: (_) => CommentController()),
+        ChangeNotifierProvider(create: (_) => CommentRecordController()),
         ChangeNotifierProvider(create: (_) => PhotoController()),
         ChangeNotifierProvider(create: (_) => ContactController()),
 

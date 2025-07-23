@@ -11,6 +11,11 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
     var isUsingFrontCamera: Bool = false
     var photoCaptureResult: FlutterResult?
     
+    // ✅ iOS 오디오 세션 상태 추적
+    private var originalAudioSessionCategory: AVAudioSession.Category?
+    private var originalAudioSessionMode: AVAudioSession.Mode?
+    private var wasAudioSessionActive: Bool = false
+    
     public static func register(with registrar: FlutterPluginRegistrar) {
         // 플랫폼 채널 등록 및 핸들러 설정
         let channel = FlutterMethodChannel(name: "com.soi.camera", binaryMessenger: registrar.messenger())
@@ -105,7 +110,42 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
     
     // 사진 촬영
     func takePicture(result: @escaping FlutterResult) {
+        // ✅ iOS: 개선된 오디오 세션 충돌 방지
+        let audioSession = AVAudioSession.sharedInstance()
+        
+        do {
+            // 현재 오디오 세션 상태 저장
+            originalAudioSessionCategory = audioSession.category
+            originalAudioSessionMode = audioSession.mode
+            wasAudioSessionActive = audioSession.isOtherAudioPlaying
+            
+            // 오디오 녹음이 활성화되어 있는지 확인
+            if audioSession.recordPermission == .granted && 
+               (audioSession.category == .record || audioSession.category == .playAndRecord) {
+                print("📹 iOS: 오디오 녹음 세션 감지 - 카메라 촬영을 위해 일시 변경")
+                
+                // 카메라 촬영을 위한 오디오 세션 설정
+                try audioSession.setCategory(.playback, mode: .default, options: [])
+                try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+                
+                // 잠시 대기하여 오디오 세션 변경사항 적용
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                    self?.performPhotoCapture(result: result)
+                }
+                return
+            }
+        } catch {
+            print("⚠️ iOS: 오디오 세션 처리 실패: \(error.localizedDescription)")
+        }
+        
+        // 오디오 세션 충돌이 없는 경우 바로 촬영 진행
+        performPhotoCapture(result: result)
+    }
+    
+    // ✅ 실제 사진 촬영 수행
+    private func performPhotoCapture(result: @escaping FlutterResult) {
         guard let photoOutput = self.photoOutput else {
+            restoreAudioSession()
             result(FlutterError(code: "NO_PHOTO_OUTPUT", message: "Photo output not available", details: nil))
             return
         }
@@ -118,8 +158,37 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
         photoOutput.capturePhoto(with: settings, delegate: self)
     }
     
+    // ✅ 개선된 오디오 세션 복구
+    private func restoreAudioSession() {
+        guard let originalCategory = originalAudioSessionCategory,
+              let originalMode = originalAudioSessionMode else {
+            return
+        }
+        
+        let audioSession = AVAudioSession.sharedInstance()
+        do {
+            print("📹 iOS: 원래 오디오 세션으로 복구 - Category: \(originalCategory), Mode: \(originalMode)")
+            try audioSession.setCategory(originalCategory, mode: originalMode)
+            try audioSession.setActive(true)
+        } catch {
+            print("⚠️ iOS: 오디오 세션 복구 실패: \(error.localizedDescription)")
+        }
+        
+        // 상태 초기화
+        originalAudioSessionCategory = nil
+        originalAudioSessionMode = nil
+        wasAudioSessionActive = false
+    }
+    
     // 사진 촬영 완료 처리
     public func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
+        // ✅ 촬영 완료 후 즉시 오디오 세션 복구
+        defer {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                self?.restoreAudioSession()
+            }
+        }
+        
         if let error = error {
             photoCaptureResult?(FlutterError(code: "CAPTURE_ERROR", message: error.localizedDescription, details: nil))
             return
@@ -139,6 +208,7 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
         do {
             try imageData.write(to: fileURL)
             photoCaptureResult?(filePath)
+            print("📹 iOS: 사진 촬영 및 저장 성공 - \(filePath)")
         } catch {
             photoCaptureResult?(FlutterError(code: "FILE_SAVE_ERROR", message: error.localizedDescription, details: nil))
         }

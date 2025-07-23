@@ -19,6 +19,9 @@ class AddCategoryWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final screenHeight = MediaQuery.sizeOf(context).height;
+
     return Column(
       children: [
         // 헤더 영역
@@ -26,13 +29,17 @@ class AddCategoryWidget extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             IconButton(
-              icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+              icon: Icon(
+                Icons.arrow_back_ios,
+                color: Colors.white,
+                size: (screenWidth * 0.051).clamp(18.0, 24.0), // 반응형 아이콘 크기
+              ),
               onPressed: onBackPressed,
             ),
             Text(
               '새 카테고리 만들기',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: (screenWidth * 0.041).clamp(14.0, 18.0), // 반응형 폰트 크기
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -42,16 +49,24 @@ class AddCategoryWidget extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xff323232),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.5),
+                  borderRadius: BorderRadius.circular(
+                    (screenWidth * 0.042).clamp(14.0, 20.0),
+                  ), // 반응형 반지름
                 ),
                 elevation: 0,
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: EdgeInsets.symmetric(
+                  horizontal: (screenWidth * 0.051).clamp(16.0, 24.0), // 반응형 패딩
+                  vertical: (screenHeight * 0.012).clamp(8.0, 12.0), // 반응형 패딩
+                ),
               ),
               child: Text(
                 '저장',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 14,
+                  fontSize: (screenWidth * 0.036).clamp(
+                    12.0,
+                    16.0,
+                  ), // 반응형 폰트 크기
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -59,13 +74,14 @@ class AddCategoryWidget extends StatelessWidget {
           ],
         ),
         Divider(color: Color(0xff3d3d3d)),
-        SizedBox(height: 12),
-
+        SizedBox(height: (screenHeight * 0.014).clamp(10.0, 16.0)), // 반응형 간격
         // 스크롤 가능한 컨텐츠 영역
         Expanded(
           child: SingleChildScrollView(
             controller: scrollController,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: (screenWidth * 0.041).clamp(14.0, 20.0),
+            ), // 반응형 패딩
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -76,20 +92,37 @@ class AddCategoryWidget extends StatelessWidget {
                   },
                   icon: Image.asset(
                     'assets/person_add.png',
-                    width: 17,
-                    height: 17,
+                    width: (screenWidth * 0.043).clamp(
+                      15.0,
+                      20.0,
+                    ), // 반응형 아이콘 크기
+                    height: (screenWidth * 0.043).clamp(
+                      15.0,
+                      20.0,
+                    ), // 반응형 아이콘 크기
                   ),
                   label: Text(
                     '친구 추가하기',
-                    style: TextStyle(color: Color(0xffE2E2E2), fontSize: 14),
+                    style: TextStyle(
+                      color: Color(0xffE2E2E2),
+                      fontSize: (screenWidth * 0.036).clamp(
+                        12.0,
+                        16.0,
+                      ), // 반응형 폰트 크기
+                    ),
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xff323232),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16.5),
+                      borderRadius: BorderRadius.circular(
+                        (screenWidth * 0.042).clamp(14.0, 20.0),
+                      ), // 반응형 반지름
                     ),
                     elevation: 0,
-                    minimumSize: Size(117, 30),
+                    minimumSize: Size(
+                      (screenWidth * 0.298).clamp(100.0, 130.0), // 반응형 최소 너비
+                      (screenHeight * 0.035).clamp(28.0, 35.0), // 반응형 최소 높이
+                    ),
                   ),
                 ),
 

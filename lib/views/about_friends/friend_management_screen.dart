@@ -182,6 +182,198 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
     );
   }
 
+  /// ID로 친구 추가 다이얼로그
+  void _showAddByIdDialog(BuildContext context, double scale) {
+    final TextEditingController idController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierColor: Color(0xff171717).withValues(alpha: 0.8), // 반투명 회색 배경
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(horizontal: 40 * scale),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Container(
+                padding: EdgeInsets.all(24 * scale),
+                decoration: BoxDecoration(
+                  color: const Color(0xff2a2a2a), // 어두운 회색 배경
+                  borderRadius: BorderRadius.circular(16 * scale),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // 제목
+                    Text(
+                      '추가할 아이디를 입력해주세요',
+                      style: TextStyle(
+                        color: const Color(0xfff9f9f9),
+                        fontSize: 16 * scale,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+
+                    SizedBox(height: 24 * scale),
+
+                    // ID 입력 필드
+                    Container(
+                      width: 249 * scale,
+                      height: 39 * scale,
+                      decoration: BoxDecoration(
+                        color: const Color(0xff404040),
+                        borderRadius: BorderRadius.circular(8 * scale),
+                      ),
+                      child: TextField(
+                        controller: idController,
+                        style: TextStyle(
+                          color: const Color(0xfff9f9f9),
+                          fontSize: 16 * scale,
+                        ),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: 16 * scale,
+                            vertical: 14 * scale,
+                          ),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+
+                    SizedBox(height: 32 * scale),
+
+                    // 확인 버튼
+                    SizedBox(
+                      width: 145 * scale,
+                      height: 48 * scale,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          final enteredId = idController.text.trim();
+                          if (enteredId.isNotEmpty) {
+                            Navigator.of(context).pop();
+                            _addFriendById(enteredId);
+                          } else {
+                            // ID가 비어있을 때 경고
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('ID를 입력해주세요'),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xffffffff),
+                          foregroundColor: const Color(0xff000000),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24 * scale),
+                          ),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          '확인',
+                          style: TextStyle(
+                            fontSize: 16 * scale,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  /// ID로 친구 추가 처리
+  Future<void> _addFriendById(String id) async {
+    try {
+      // 로딩 상태 표시
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder:
+            (context) => const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            ),
+      );
+
+      // UserMatchingController를 통해 사용자 검색
+      final userMatchingController = Provider.of<UserMatchingController>(
+        context,
+        listen: false,
+      );
+
+      // 입력된 ID로 사용자 검색 (Controller를 통한 비즈니스 로직 처리)
+      final searchResult = await userMatchingController.searchUserById(id);
+
+      // 로딩 다이얼로그 닫기
+      if (mounted) Navigator.of(context).pop();
+
+      if (searchResult == null) {
+        // 사용자를 찾을 수 없는 경우
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('ID "$id"를 찾을 수 없습니다'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // FriendRequestController를 통해 친구 요청 전송
+      final friendRequestController = Provider.of<FriendRequestController>(
+        context,
+        listen: false,
+      );
+
+      final success = await friendRequestController.sendFriendRequest(
+        receiverUid: searchResult.single.uid,
+        message: 'ID로 친구 요청을 보냅니다.',
+      );
+
+      if (mounted) {
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${searchResult.single.id}님에게 친구 요청을 보냈습니다'),
+              backgroundColor: const Color(0xff404040),
+            ),
+          );
+        } else {
+          // 에러 메시지는 FriendRequestController에서 처리됨
+          final errorMessage =
+              friendRequestController.error ?? '친구 요청 전송에 실패했습니다';
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+          );
+        }
+      }
+    } catch (e) {
+      // 로딩 다이얼로그가 열려있다면 닫기
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('친구 추가 중 오류가 발생했습니다: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   /// 설정 이동 팝업 다이얼로그
   void _showPermissionSettingsDialog() {
     showDialog(
@@ -461,12 +653,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
           // ID로 추가 하기
           InkWell(
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('ID로 추가 하기 기능을 구현해주세요'),
-                  backgroundColor: Color(0xff404040),
-                ),
-              );
+              _showAddByIdDialog(context, scale);
             },
             child: Padding(
               padding: EdgeInsets.symmetric(

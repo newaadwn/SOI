@@ -181,6 +181,12 @@ class _CameraScreenState extends State<CameraScreen>
   // cameraservice에 사진 촬영 요청
   Future<void> _takePicture() async {
     try {
+      // ✅ iOS에서 오디오 세션 충돌 방지를 위한 사전 처리
+      if (Theme.of(context).platform == TargetPlatform.iOS) {
+        // iOS 플랫폼에서만 실행 - 잠시 대기하여 오디오 세션 정리
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+
       final String result = await _cameraService.takePicture();
       setState(() {
         imagePath = result;
@@ -200,6 +206,19 @@ class _CameraScreenState extends State<CameraScreen>
       }
     } on PlatformException catch (e) {
       debugPrint("Error taking picture: ${e.message}");
+
+      // ✅ iOS에서 "Cannot Record" 오류가 발생한 경우 추가 정보 제공
+      if (e.message?.contains("Cannot Record") == true) {
+        debugPrint("🚨 iOS 오디오 세션 충돌 감지 - 오디오 녹음 중이었을 가능성");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('카메라 촬영 중 오류가 발생했습니다. 오디오 녹음을 중지하고 다시 시도해주세요.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
     } catch (e) {
       // 추가 예외 처리
       debugPrint("Unexpected error: $e");
@@ -208,15 +227,14 @@ class _CameraScreenState extends State<CameraScreen>
 
   /// ✅ 개선된 갤러리 미리보기 위젯 (photo_manager 기반) - 반응형
   Widget _buildGalleryPreviewWidget(double screenWidth) {
-    // 📱 반응형: 갤러리 미리보기 크기 (기준: 46/393)
-    final gallerySize = 46 / 393 * screenWidth;
-    final borderRadius = 8.76 / 393 * screenWidth;
+    // 📱 개선된 반응형 계산
+    final gallerySize = (screenWidth * 0.117).clamp(40.0, 55.0);
+    final borderRadius = (screenWidth * 0.022).clamp(6.0, 12.0);
 
     return Container(
       width: gallerySize,
       height: gallerySize,
       decoration: BoxDecoration(
-        shape: BoxShape.rectangle,
         borderRadius: BorderRadius.circular(borderRadius),
       ),
       child: _buildGalleryContent(gallerySize, borderRadius),
@@ -338,7 +356,10 @@ class _CameraScreenState extends State<CameraScreen>
                   'SOI',
                   style: TextStyle(
                     color: Color(0xfff8f8f8),
-                    fontSize: (screenWidth * 0.051).clamp(16.0, 24.0), // 📱 개선된 반응형
+                    fontSize: (screenWidth * 0.051).clamp(
+                      16.0,
+                      24.0,
+                    ), // 📱 개선된 반응형
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -362,7 +383,10 @@ class _CameraScreenState extends State<CameraScreen>
                   // 카메라 초기화 중이면 로딩 인디케이터 표시
                   if (_isLoading) {
                     return Container(
-                      width: (screenWidth * 0.903).clamp(300.0, 400.0), // 📱 개선된 반응형
+                      width: (screenWidth * 0.903).clamp(
+                        300.0,
+                        400.0,
+                      ), // 📱 개선된 반응형
                       constraints: BoxConstraints(
                         maxHeight: double.infinity, // 📱 유연한 높이
                       ),
@@ -386,7 +410,10 @@ class _CameraScreenState extends State<CameraScreen>
                   // 초기화 실패 시 오류 메시지 표시
                   if (snapshot.hasError) {
                     return Container(
-                      width: (screenWidth * 0.903).clamp(300.0, 400.0), // 📱 개선된 반응형
+                      width: (screenWidth * 0.903).clamp(
+                        300.0,
+                        400.0,
+                      ), // 📱 개선된 반응형
                       constraints: BoxConstraints(
                         maxHeight: double.infinity, // 📱 유연한 높이
                       ),
@@ -401,7 +428,10 @@ class _CameraScreenState extends State<CameraScreen>
                           '카메라를 초기화할 수 없습니다.\n앱을 다시 시작해 주세요.',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: (screenWidth * 0.041).clamp(14.0, 18.0), // 📱 개선된 반응형
+                            fontSize: (screenWidth * 0.041).clamp(
+                              14.0,
+                              18.0,
+                            ), // 📱 개선된 반응형
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -485,17 +515,17 @@ class _CameraScreenState extends State<CameraScreen>
                 ),
               ),
 
-              // 촬영 버튼 - 반응형
+              // 촬영 버튼 - 개선된 반응형
               IconButton(
                 onPressed: _takePicture,
                 icon: Image.asset(
                   "assets/take_picture.png",
-                  width: 65 / baseWidth * screenWidth, // 📱 반응형
-                  height: 65 / baseWidth * screenWidth, // 📱 반응형 (정사각형 유지)
+                  width: (screenWidth * 0.165).clamp(55.0, 75.0), // 📱 개선된 반응형
+                  height: (screenWidth * 0.165).clamp(55.0, 75.0), // 📱 개선된 반응형
                 ),
               ),
 
-              // 카메라 전환 버튼 - 반응형
+              // 카메라 전환 버튼 - 개선된 반응형
               Expanded(
                 child: SizedBox(
                   child: IconButton(
@@ -503,15 +533,23 @@ class _CameraScreenState extends State<CameraScreen>
                     color: Color(0xffd9d9d9),
                     icon: Image.asset(
                       "assets/switch.png",
-                      width: 67 / baseWidth * screenWidth, // 📱 반응형 (크기 명시)
-                      height: 56 / baseWidth * screenWidth, // 📱 반응형 (정사각형 유지)
+                      width: (screenWidth * 0.170).clamp(
+                        55.0,
+                        80.0,
+                      ), // 📱 개선된 반응형
+                      height: (screenWidth * 0.142).clamp(
+                        45.0,
+                        65.0,
+                      ), // 📱 개선된 반응형
                     ),
                   ),
                 ),
               ),
             ],
           ),
-          SizedBox(height: 24 / baseHeight * screenHeight),
+          SizedBox(
+            height: (screenHeight * 0.028).clamp(20.0, 30.0),
+          ), // 📱 개선된 반응형
         ],
       ),
     );

@@ -25,16 +25,22 @@ class PhotoDisplayWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+
     return Container(
       width: width,
       height: height,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.black,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(
+          (screenWidth * 0.041).clamp(12.0, 20.0),
+        ), // 반응형 반지름
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(
+          (screenWidth * 0.041).clamp(12.0, 20.0),
+        ), // 반응형 반지름
         child: _buildImageWidget(),
       ),
     );
