@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_swift_camera/models/auth_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import '../controllers/comment_record_controller.dart';
 
 /// AuthController는 인증 관련 UI와 비즈니스 로직 사이의 중개 역할을 합니다.
 class AuthController extends ChangeNotifier {
@@ -224,6 +225,10 @@ class AuthController extends ChangeNotifier {
 
       if (result.isSuccess) {
         debugPrint('프로필 이미지가 업데이트되었습니다');
+
+        // 프로필 이미지 업데이트 성공 시, 음성 댓글들의 프로필 이미지 URL도 업데이트
+        await _updateVoiceCommentsProfileImage();
+
         return true;
       } else {
         debugPrint(result.error ?? '프로필 이미지 업데이트에 실패했습니다');
@@ -235,6 +240,46 @@ class AuthController extends ChangeNotifier {
       _isUploading = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  /// 음성 댓글들의 프로필 이미지 URL 업데이트
+  Future<void> _updateVoiceCommentsProfileImage() async {
+    try {
+      final currentUserId = getUserId;
+      if (currentUserId == null || currentUserId.isEmpty) {
+        debugPrint('⚠️ 현재 사용자 ID를 찾을 수 없어 음성 댓글 프로필 이미지 업데이트를 건너뜁니다');
+        return;
+      }
+
+      // 최신 프로필 이미지 URL 가져오기
+      final newProfileImageUrl = await getUserProfileImageUrlWithCache(
+        currentUserId,
+      );
+
+      debugPrint('🔄 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $currentUserId');
+      debugPrint('🔄 새 프로필 이미지 URL: $newProfileImageUrl');
+
+      // CommentRecordController를 사용하여 업데이트
+      final commentRecordController = CommentRecordController();
+      final success = await commentRecordController.updateUserProfileImageUrl(
+        userId: currentUserId,
+        newProfileImageUrl: newProfileImageUrl,
+      );
+
+      if (success) {
+        debugPrint('✅ 음성 댓글 프로필 이미지 URL 업데이트 완료');
+
+        // 프로필 이미지 캐시 클리어 (새 이미지로 갱신)
+        _profileImageCache.remove(currentUserId);
+
+        // UI 갱신을 위해 notifyListeners 호출
+        notifyListeners();
+      } else {
+        debugPrint('❌ 음성 댓글 프로필 이미지 URL 업데이트 실패');
+      }
+    } catch (e) {
+      debugPrint('❌ 음성 댓글 프로필 이미지 URL 업데이트 중 오류 발생: $e');
     }
   }
 

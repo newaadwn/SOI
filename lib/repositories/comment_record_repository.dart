@@ -216,4 +216,48 @@ class CommentRecordRepository {
       throw Exception('프로필 위치 업데이트 실패: $e');
     }
   }
+
+  /// 특정 사용자의 모든 음성 댓글의 프로필 이미지 URL 업데이트
+  Future<void> updateUserProfileImageUrl({
+    required String userId,
+    required String newProfileImageUrl,
+  }) async {
+    try {
+      debugPrint('🔄 사용자 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $userId');
+
+      // 해당 사용자의 모든 음성 댓글 조회
+      final querySnapshot =
+          await _firestore
+              .collection(_collectionName)
+              .where('recorderUser', isEqualTo: userId)
+              .where('isDeleted', isEqualTo: false)
+              .get();
+
+      if (querySnapshot.docs.isEmpty) {
+        debugPrint('📝 업데이트할 음성 댓글이 없습니다 - userId: $userId');
+        return;
+      }
+
+      debugPrint(
+        '📝 ${querySnapshot.docs.length}개의 음성 댓글 프로필 이미지 URL 업데이트 중...',
+      );
+
+      // 배치 업데이트 사용 (성능 최적화)
+      final batch = _firestore.batch();
+
+      for (final doc in querySnapshot.docs) {
+        batch.update(doc.reference, {'profileImageUrl': newProfileImageUrl});
+      }
+
+      // 배치 실행
+      await batch.commit();
+
+      debugPrint(
+        '✅ 사용자 음성 댓글 프로필 이미지 URL 업데이트 완료 - ${querySnapshot.docs.length}개 업데이트됨',
+      );
+    } catch (e) {
+      debugPrint('❌ 사용자 음성 댓글 프로필 이미지 URL 업데이트 실패: $e');
+      throw Exception('사용자 음성 댓글 프로필 이미지 URL 업데이트 실패: $e');
+    }
+  }
 }

@@ -30,11 +30,35 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
         nickName = value;
       });
     });
+
+    // AuthController의 변경사항을 감지하여 프로필 이미지 캐시 업데이트
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final authController = Provider.of<AuthController>(
+        context,
+        listen: false,
+      );
+      authController.addListener(_onAuthControllerChanged);
+    });
+  }
+
+  @override
+  void dispose() {
+    final authController = Provider.of<AuthController>(context, listen: false);
+    authController.removeListener(_onAuthControllerChanged);
+    super.dispose();
+  }
+
+  /// AuthController 변경 감지 시 프로필 이미지 캐시 무효화
+  void _onAuthControllerChanged() {
+    debugPrint('🔄 AuthController 변경 감지 - 아카이브 프로필 이미지 캐시 무효화');
+    setState(() {
+      _categoryProfileImages.clear(); // 모든 프로필 이미지 캐시 무효화
+    });
   }
 
   // 카테고리에 대한 프로필 이미지를 가져오는 함수
   Future<void> _loadProfileImages(String categoryId, List<String> mates) async {
-    // Skip if already loaded
+    // 이미 로드된 경우에도 AuthController 변경에 의해 캐시가 무효화되면 다시 로드
     if (_categoryProfileImages.containsKey(categoryId)) {
       return;
     }
@@ -46,6 +70,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
     );
 
     try {
+      debugPrint('🔄 카테고리 $categoryId의 프로필 이미지 로드 시작');
       final profileImages = await categoryController.getCategoryProfileImages(
         mates,
         authController,
@@ -53,8 +78,9 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
       setState(() {
         _categoryProfileImages[categoryId] = profileImages;
       });
+      debugPrint('✅ 카테고리 $categoryId의 프로필 이미지 로드 완료: ${profileImages.length}개');
     } catch (e) {
-      debugPrint('프로필 이미지 로딩 오류: $e');
+      debugPrint('❌ 프로필 이미지 로딩 오류: $e');
       setState(() {
         _categoryProfileImages[categoryId] = [];
       });

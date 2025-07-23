@@ -112,6 +112,29 @@ class CommentRecordService {
     }
   }
 
+  /// 특정 사용자의 모든 음성 댓글의 프로필 이미지 URL 업데이트
+  Future<void> updateUserProfileImageUrl({
+    required String userId,
+    required String newProfileImageUrl,
+  }) async {
+    if (userId.isEmpty) {
+      throw ServiceException('유효하지 않은 사용자 ID입니다');
+    }
+
+    if (newProfileImageUrl.isEmpty) {
+      throw ServiceException('유효하지 않은 프로필 이미지 URL입니다');
+    }
+
+    try {
+      await _repository.updateUserProfileImageUrl(
+        userId: userId,
+        newProfileImageUrl: newProfileImageUrl,
+      );
+    } catch (e) {
+      throw ServiceException('사용자 음성 댓글 프로필 이미지 URL 업데이트 실패', originalError: e);
+    }
+  }
+
   /// 실시간 음성 댓글 스트림
   Stream<List<CommentRecordModel>> getCommentRecordsStream(String photoId) {
     if (photoId.isEmpty) {

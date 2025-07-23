@@ -42,10 +42,63 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   @override
   void initState() {
     super.initState();
-    // 빌드가 완료된 후에 데이터 로딩 시작
+    _loadUserCategoriesAndPhotos();
+    // AuthController의 변경사항을 감지하여 프로필 이미지 캐시 업데이트
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadUserCategoriesAndPhotos();
+      final authController = Provider.of<AuthController>(
+        context,
+        listen: false,
+      );
+      authController.addListener(_onAuthControllerChanged);
     });
+  }
+
+  @override
+  void dispose() {
+    final authController = Provider.of<AuthController>(context, listen: false);
+    authController.removeListener(_onAuthControllerChanged);
+    super.dispose();
+  }
+
+  /// AuthController 변경 감지 시 프로필 이미지 캐시 업데이트
+  void _onAuthControllerChanged() async {
+    final authController = Provider.of<AuthController>(context, listen: false);
+    final currentUser = authController.currentUser;
+
+    if (currentUser != null) {
+      // 현재 사용자의 최신 프로필 이미지 URL 가져오기
+      final newProfileImageUrl = await authController
+          .getUserProfileImageUrlWithCache(currentUser.uid);
+
+      if (_userProfileImages[currentUser.uid] != newProfileImageUrl) {
+        setState(() {
+          _userProfileImages[currentUser.uid] = newProfileImageUrl;
+        });
+      }
+    }
+  }
+
+  /// 특정 사용자의 프로필 이미지 캐시 강제 리프레시
+  Future<void> refreshUserProfileImage(String userId) async {
+    final authController = Provider.of<AuthController>(context, listen: false);
+
+    try {
+      setState(() {
+        _profileLoadingStates[userId] = true;
+      });
+
+      final profileImageUrl = await authController
+          .getUserProfileImageUrlWithCache(userId);
+
+      setState(() {
+        _userProfileImages[userId] = profileImageUrl;
+        _profileLoadingStates[userId] = false;
+      });
+    } catch (e) {
+      setState(() {
+        _profileLoadingStates[userId] = false;
+      });
+    }
   }
 
   /// 사용자가 속한 카테고리들과 해당 사진들을 모두 로드
@@ -317,6 +370,10 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       final profileImageUrl = await authController
           .getUserProfileImageUrlWithCache(currentUserId);
 
+      // 현재 프로필 이미지 위치 가져오기 (있는 경우)
+      final currentProfilePosition = _profileImagePositions[photoId];
+      debugPrint('🔍 음성 댓글 저장 시 현재 프로필 위치: $currentProfilePosition');
+
       // CommentRecordController를 통해 저장
       final commentRecord = await commentRecordController.createCommentRecord(
         audioFilePath: audioPath,
@@ -325,6 +382,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         waveformData: waveformData,
         duration: duration,
         profileImageUrl: profileImageUrl, // 프로필 이미지 URL 전달
+        profilePosition: currentProfilePosition, // 현재 프로필 위치 전달
       );
 
       if (commentRecord != null) {
@@ -349,6 +407,16 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           debugPrint(
             '🎯 음성 댓글 ID 저장됨 - photoId: $photoId, commentId: ${commentRecord.id}',
           );
+
+          // 댓글 저장 완료 후 대기 중인 프로필 위치가 있다면 업데이트
+          final pendingPosition = _profileImagePositions[photoId];
+          if (pendingPosition != null) {
+            debugPrint('🔄 댓글 저장 완료 후 대기 중인 프로필 위치 업데이트: $pendingPosition');
+            // 짧은 지연 후 위치 업데이트 (setState 완료 대기)
+            Future.delayed(Duration(milliseconds: 200), () {
+              _updateProfilePositionInFirestore(photoId, pendingPosition);
+            });
+          }
         }
       } else {
         // 에러 메시지는 CommentRecordController에서 처리됨
@@ -398,25 +466,37 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   /// Firestore에 프로필 위치 업데이트
   Future<void> _updateProfilePositionInFirestore(
     String photoId,
-    Offset position,
-  ) async {
+    Offset position, {
+    int retryCount = 0,
+    int maxRetries = 3,
+  }) async {
     try {
-      debugPrint('🔍 프로필 위치 업데이트 시작 - photoId: $photoId, position: $position');
+      debugPrint(
+        '🔍 프로필 위치 업데이트 시작 - photoId: $photoId, position: $position, retry: $retryCount',
+      );
 
       // 음성 댓글이 저장된 상태에서만 위치 업데이트
       final isSaved = _voiceCommentSavedStates[photoId] == true;
       debugPrint('🔍 음성 댓글 저장 상태 확인: isSaved = $isSaved');
-      debugPrint('🔍 _voiceCommentSavedStates: $_voiceCommentSavedStates');
 
       if (!isSaved) {
-        debugPrint('⚠️ 음성 댓글이 저장되지 않아 위치 업데이트를 건너뜁니다');
-        return;
+        if (retryCount < maxRetries) {
+          debugPrint(
+            '⏳ 음성 댓글이 아직 저장되지 않음 - ${retryCount + 1}초 후 재시도 (${retryCount + 1}/$maxRetries)',
+          );
+          await Future.delayed(Duration(seconds: 1));
+          return _updateProfilePositionInFirestore(
+            photoId,
+            position,
+            retryCount: retryCount + 1,
+          );
+        } else {
+          debugPrint('⚠️ 최대 재시도 횟수 초과 - 위치 업데이트를 건너뜁니다');
+          return;
+        }
       }
 
-      final commentRecordController = Provider.of<CommentRecordController>(
-        context,
-        listen: false,
-      );
+      final commentRecordController = CommentRecordController();
 
       // 현재 사용자의 음성 댓글 찾기 (photoId로 검색)
       final authController = Provider.of<AuthController>(
@@ -451,6 +531,19 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           debugPrint('❌ 프로필 위치 저장에 실패했습니다');
         }
         return; // 성공적으로 처리했으므로 종료
+      }
+
+      // 저장된 댓글 ID가 없는 경우 재시도 로직
+      if (retryCount < maxRetries) {
+        debugPrint(
+          '🔄 저장된 댓글 ID가 없음 - ${retryCount + 1}초 후 재시도 (${retryCount + 1}/$maxRetries)',
+        );
+        await Future.delayed(Duration(seconds: 1));
+        return _updateProfilePositionInFirestore(
+          photoId,
+          position,
+          retryCount: retryCount + 1,
+        );
       }
 
       // 저장된 댓글 ID가 없으면 기존 방식으로 댓글 찾기
@@ -556,75 +649,79 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   /// 사용자 프로필 이미지 위젯 빌드
   Widget _buildUserProfileWidget(PhotoDataModel photo) {
     final userId = photo.userID;
-    final isLoading = _profileLoadingStates[userId] ?? false;
-    final profileImageUrl = _userProfileImages[userId] ?? '';
 
-    // 반응형 크기 계산
-    final screenWidth = MediaQuery.of(context).size.width;
-    final profileSize = screenWidth * 0.085; // 화면 너비의 8.5%
+    return Consumer<AuthController>(
+      builder: (context, authController, child) {
+        final isLoading = _profileLoadingStates[userId] ?? false;
 
-    return Container(
-      width: profileSize,
-      height: profileSize,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
-      ),
-      child:
-          isLoading
-              ? CircleAvatar(
-                radius: profileSize / 2 - 2,
-                backgroundColor: Colors.grey[700],
-                child: SizedBox(
-                  width: profileSize * 0.4,
-                  height: profileSize * 0.4,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
+        // 캐시된 프로필 이미지 URL 사용
+        final profileImageUrl = _userProfileImages[userId] ?? '';
+
+        // 반응형 크기 계산
+        final screenWidth = MediaQuery.of(context).size.width;
+        final profileSize = screenWidth * 0.085; // 화면 너비의 8.5%
+
+        return Container(
+          width: profileSize,
+          height: profileSize,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2),
+          ),
+          child:
+              isLoading
+                  ? CircleAvatar(
+                    radius: profileSize / 2 - 2,
+                    backgroundColor: Colors.grey[700],
+                    child: SizedBox(
+                      width: profileSize * 0.4,
+                      height: profileSize * 0.4,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                  )
+                  : ClipOval(
+                    child:
+                        profileImageUrl.isNotEmpty
+                            ? CachedNetworkImage(
+                              imageUrl: profileImageUrl,
+                              width: profileSize - 4,
+                              height: profileSize - 4,
+                              fit: BoxFit.cover,
+                              placeholder:
+                                  (context, url) => Container(
+                                    color: Colors.grey[700],
+                                    child: Icon(
+                                      Icons.person,
+                                      color: Colors.white,
+                                      size: profileSize * 0.4,
+                                    ),
+                                  ),
+                              errorWidget:
+                                  (context, url, error) => Container(
+                                    color: Colors.grey[700],
+                                    child: Icon(
+                                      Icons.person,
+                                      color: Colors.white,
+                                      size: profileSize * 0.4,
+                                    ),
+                                  ),
+                            )
+                            : Container(
+                              width: profileSize - 4,
+                              height: profileSize - 4,
+                              color: Colors.grey[700],
+                              child: Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: profileSize * 0.4,
+                              ),
+                            ),
                   ),
-                ),
-              )
-              : profileImageUrl.isNotEmpty
-              ? CachedNetworkImage(
-                imageUrl: profileImageUrl,
-                imageBuilder:
-                    (context, imageProvider) => CircleAvatar(
-                      radius: profileSize / 2 - 2,
-                      backgroundImage: imageProvider,
-                    ),
-                placeholder:
-                    (context, url) => CircleAvatar(
-                      radius: profileSize / 2 - 2,
-                      backgroundColor: Colors.grey[700],
-                      child: SizedBox(
-                        width: profileSize * 0.4,
-                        height: profileSize * 0.4,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                errorWidget:
-                    (context, url, error) => CircleAvatar(
-                      radius: profileSize / 2 - 2,
-                      backgroundColor: Colors.grey[700],
-                      child: Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: profileSize * 0.5,
-                      ),
-                    ),
-              )
-              : CircleAvatar(
-                radius: profileSize / 2 - 2,
-                backgroundColor: Colors.grey[700],
-                child: Icon(
-                  Icons.person,
-                  color: Colors.white,
-                  size: profileSize * 0.5,
-                ),
-              ),
+        );
+      },
     );
   }
 
@@ -717,7 +814,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           _profileImagePositions[photo.id] = localPosition;
         });
 
-        // Firestore에 위치 업데이트 (백그라운드에서 실행)
+        // Firestore에 위치 업데이트 (재시도 로직 포함)
         _updateProfilePositionInFirestore(photo.id, localPosition);
       },
       builder: (context, candidateData, rejectedData) {

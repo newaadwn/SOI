@@ -1,5 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../controllers/auth_controller.dart';
 import '../../../models/category_data_model.dart';
 import '../category_photos_screen.dart';
 
@@ -152,82 +154,86 @@ class ArchiveProfileRowWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Figma 기준: 19px x 19px 프로필 이미지
-    const profileSize = 19.0;
+    return Consumer<AuthController>(
+      builder: (context, authController, child) {
+        // Figma 기준: 19px x 19px 프로필 이미지
+        const profileSize = 19.0;
 
-    // 이미지가 없거나 비어있으면 기본 이미지 하나만 표시
-    if (profileImages.isEmpty) {
-      return SizedBox(
-        width: profileSize,
-        height: profileSize,
-        child: CircleAvatar(
-          radius: profileSize / 2,
-          backgroundColor: Colors.grey[400],
-          child: const Icon(Icons.person, color: Colors.white, size: 12),
-        ),
-      );
-    }
+        // 이미지가 없거나 비어있으면 기본 이미지 하나만 표시
+        if (profileImages.isEmpty) {
+          return SizedBox(
+            width: profileSize,
+            height: profileSize,
+            child: CircleAvatar(
+              radius: profileSize / 2,
+              backgroundColor: Colors.grey[400],
+              child: const Icon(Icons.person, color: Colors.white, size: 12),
+            ),
+          );
+        }
 
-    // 최대 3개까지만 표시하도록 제한
-    final displayImages = profileImages.take(3).toList();
+        // 최대 3개까지만 표시하도록 제한
+        final displayImages = profileImages.take(3).toList();
 
-    return SizedBox(
-      height: profileSize,
-      child: Row(
-        children:
-            displayImages.asMap().entries.map<Widget>((entry) {
-              final index = entry.key;
-              final imageUrl = entry.value;
+        return SizedBox(
+          height: profileSize,
+          child: Row(
+            children:
+                displayImages.asMap().entries.map<Widget>((entry) {
+                  final index = entry.key;
+                  final imageUrl = entry.value;
 
-              return Container(
-                margin: EdgeInsets.only(
-                  right: index < displayImages.length - 1 ? 4.0 : 0.0,
-                ),
-                child: Container(
-                  width: profileSize,
-                  height: profileSize,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 0.5),
-                  ),
-                  child: ClipOval(
-                    child:
-                        imageUrl.isNotEmpty
-                            ? CachedNetworkImage(
-                              imageUrl: imageUrl,
-                              fit: BoxFit.cover,
-                              placeholder:
-                                  (context, url) => Container(
-                                    color: Colors.grey[400],
-                                    child: const Icon(
-                                      Icons.person,
-                                      color: Colors.white,
-                                      size: 12,
-                                    ),
+                  return Container(
+                    margin: EdgeInsets.only(
+                      right: index < displayImages.length - 1 ? 4.0 : 0.0,
+                    ),
+                    child: Container(
+                      width: profileSize,
+                      height: profileSize,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 0.5),
+                      ),
+                      child: ClipOval(
+                        child:
+                            imageUrl.isNotEmpty
+                                ? CachedNetworkImage(
+                                  imageUrl: imageUrl,
+                                  fit: BoxFit.cover,
+                                  placeholder:
+                                      (context, url) => Container(
+                                        color: Colors.grey[400],
+                                        child: const Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 12,
+                                        ),
+                                      ),
+                                  errorWidget:
+                                      (context, url, error) => Container(
+                                        color: Colors.grey[400],
+                                        child: const Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 12,
+                                        ),
+                                      ),
+                                )
+                                : Container(
+                                  color: Colors.grey[400],
+                                  child: const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 12,
                                   ),
-                              errorWidget:
-                                  (context, url, error) => Container(
-                                    color: Colors.grey[400],
-                                    child: const Icon(
-                                      Icons.person,
-                                      color: Colors.white,
-                                      size: 12,
-                                    ),
-                                  ),
-                            )
-                            : Container(
-                              color: Colors.grey[400],
-                              child: const Icon(
-                                Icons.person,
-                                color: Colors.white,
-                                size: 12,
-                              ),
-                            ),
-                  ),
-                ),
-              );
-            }).toList(),
-      ),
+                                ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+          ),
+        );
+      },
     );
   }
 }

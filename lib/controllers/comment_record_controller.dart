@@ -106,6 +106,51 @@ class CommentRecordController extends ChangeNotifier {
     }
   }
 
+  /// 특정 사용자의 모든 음성 댓글의 프로필 이미지 URL 업데이트
+  Future<bool> updateUserProfileImageUrl({
+    required String userId,
+    required String newProfileImageUrl,
+  }) async {
+    try {
+      _setLoading(true);
+      _clearError();
+
+      debugPrint('🔄 사용자 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $userId');
+
+      await _service.updateUserProfileImageUrl(
+        userId: userId,
+        newProfileImageUrl: newProfileImageUrl,
+      );
+
+      // 캐시된 데이터의 프로필 이미지 URL도 업데이트
+      _updateCachedProfileImageUrls(userId, newProfileImageUrl);
+
+      debugPrint('✅ 사용자 음성 댓글 프로필 이미지 URL 업데이트 완료');
+      notifyListeners();
+      return true;
+    } catch (e) {
+      debugPrint('❌ 사용자 음성 댓글 프로필 이미지 URL 업데이트 실패: $e');
+      _setError('프로필 이미지 URL을 업데이트할 수 없습니다: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// 캐시된 댓글들의 프로필 이미지 URL 업데이트
+  void _updateCachedProfileImageUrls(String userId, String newProfileImageUrl) {
+    for (String photoId in _commentCache.keys) {
+      final comments = _commentCache[photoId]!;
+      for (int i = 0; i < comments.length; i++) {
+        if (comments[i].recorderUser == userId) {
+          _commentCache[photoId]![i] = comments[i].copyWith(
+            profileImageUrl: newProfileImageUrl,
+          );
+        }
+      }
+    }
+  }
+
   /// 특정 사진의 음성 댓글들 로드
   Future<void> loadCommentRecordsByPhotoId(String photoId) async {
     try {
