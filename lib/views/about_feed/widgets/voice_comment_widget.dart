@@ -423,7 +423,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
   /// 저장 완료 상태로 변경
   void _markAsSaved() {
-    debugPrint('🔄 음성 댓글 상태 변경: ${_currentState.toString()} → saved');
+    debugPrint(' 음성 댓글 상태 변경: ${_currentState.toString()} → saved');
 
     // 컨트롤러들을 완전히 정리하고 초기화
     _cleanupControllers();

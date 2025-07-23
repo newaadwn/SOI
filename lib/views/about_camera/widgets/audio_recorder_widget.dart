@@ -34,12 +34,20 @@ class AudioRecorderWidget extends StatefulWidget {
   // 사진 ID (comment_records에 저장하기 위해 필요)
   final String? photoId;
 
+  // 프로필 이미지 드래그 콜백
+  final Function(Offset)? onProfileImageDragged;
+
+  // 저장된 댓글 데이터 (프로필 모드로 시작할 때 사용)
+  final CommentRecordModel? savedComment;
+
   const AudioRecorderWidget({
     super.key,
     this.onRecordingCompleted,
     this.onCommentSaved,
     this.autoStart = false, // 기본값은 false
     this.photoId, // 선택적 파라미터
+    this.onProfileImageDragged,
+    this.savedComment,
   });
 
   @override
@@ -65,14 +73,11 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
   /// 파형 데이터
   List<double>? _waveformData;
 
-  /// 🔄 프로필 이미지 표시 모드 (파형 클릭 시 활성화)
+  ///  프로필 이미지 표시 모드 (파형 클릭 시 활성화)
   bool _isProfileMode = false;
 
   /// 사용자 프로필 이미지 URL
   String? _userProfileImageUrl;
-
-  /// 저장된 댓글 ID (프로필 위치 업데이트용)
-  String? _savedCommentId;
 
   @override
   void initState() {
@@ -81,8 +86,16 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     // 🔍 전달받은 photoId 확인
     debugPrint('🔍 AudioRecorderWidget 초기화 - photoId: ${widget.photoId}');
 
-    // autoStart가 true면 처음부터 recording 상태로 시작
-    if (widget.autoStart) {
+    // 저장된 댓글이 있으면 프로필 모드로 시작
+    if (widget.savedComment != null) {
+      _currentState = RecordingState.recorded;
+      _isProfileMode = true;
+      _userProfileImageUrl = widget.savedComment!.profileImageUrl;
+      _recordedFilePath = widget.savedComment!.audioUrl;
+      _waveformData = widget.savedComment!.waveformData;
+      debugPrint('🎯 저장된 댓글로 프로필 모드 시작 - ID: ${widget.savedComment!.id}');
+    } else if (widget.autoStart) {
+      // autoStart가 true면 처음부터 recording 상태로 시작
       _currentState = RecordingState.recording;
     }
 
@@ -120,21 +133,27 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
   /// 녹음 시작 함수
   Future<void> _startRecording() async {
+    // 저장된 댓글이 있으면 녹음 시작하지 않음
+    if (widget.savedComment != null) {
+      debugPrint('❌ 이미 저장된 댓글이 있어 녹음을 시작할 수 없습니다.');
+      return;
+    }
+
     // 파형 표시를 위한 녹음 컨트롤러 시작
     try {
-      debugPrint('🎤🎤🎤 AudioRecorderWidget._startRecording 시작!!! 🎤🎤🎤');
-      debugPrint('🎤 녹음 시작 준비...');
+      debugPrint(' AudioRecorderWidget._startRecording 시작!!! ');
+      debugPrint('녹음 시작 준비...');
 
       // 파형을 그리는 패키지의 녹음 컨트롤러 시작
-      debugPrint('📊 RecorderController 시작...');
+      debugPrint('RecorderController 시작...');
       await recorderController.record();
-      debugPrint('✅ RecorderController 시작 완료');
+      debugPrint('RecorderController 시작 완료');
 
       // AudioController의 녹음 시작 함수 호출
-      debugPrint('🔄 AudioController 녹음 시작...');
+      debugPrint(' AudioController 녹음 시작...');
       await _audioController.startRecording();
-      debugPrint('✅ AudioController 녹음 시작 완료');
-      debugPrint('📁 현재 녹음 경로: ${_audioController.currentRecordingPath}');
+      debugPrint('AudioController 녹음 시작 완료');
+      debugPrint('현재 녹음 경로: ${_audioController.currentRecordingPath}');
 
       // ✅ 녹음 상태로 변경
       setState(() {
@@ -144,9 +163,9 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       // AudioController 상태 감지를 위한 periodic check 시작
       _startAudioControllerListener();
 
-      debugPrint('🎉 녹음 시작 완료 - 상태: ${_currentState}');
+      debugPrint('녹음 시작 완료 - 상태: ${_currentState}');
     } catch (e) {
-      debugPrint('❌ 녹음 시작 오류: $e');
+      debugPrint('녹음 시작 오류: $e');
       setState(() {
         _currentState = RecordingState.idle;
       });
@@ -409,9 +428,6 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       if (commentRecord != null) {
         debugPrint('✅ CommentRecord 저장 성공 - ID: ${commentRecord.id}');
 
-        // 저장된 댓글 ID 저장 (프로필 위치 업데이트용)
-        _savedCommentId = commentRecord.id;
-
         // 프로필 이미지 URL 설정
         _userProfileImageUrl = profileImageUrl;
 
@@ -440,6 +456,21 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     // ✅ 상태에 따라 다른 UI 표시
     switch (_currentState) {
       case RecordingState.idle:
+        // 저장된 댓글이 있으면 녹음 버튼 비활성화
+        if (widget.savedComment != null) {
+          return Container(
+            width: 64,
+            height: 64,
+            child: Center(
+              child: Text(
+                '이미 댓글이\n저장됨',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+            ),
+          );
+        }
+
         return GestureDetector(
           onTap: _startRecording,
           child: Image.asset(
@@ -697,7 +728,13 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         } else {
           debugPrint('❌ 드래그가 DragTarget에 접수되지 않음');
         }
-        _onProfileImageDragged(details.offset);
+
+        // 외부 콜백이 있으면 호출, 없으면 내부 처리
+        if (widget.onProfileImageDragged != null) {
+          widget.onProfileImageDragged!(details.offset);
+        } else {
+          _onProfileImageDragged(details.offset);
+        }
       },
       child: GestureDetector(
         onTap: _onProfileImageTapped, // 클릭하면 다시 파형 모드로 전환
@@ -708,44 +745,11 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
   /// 🖼️ 프로필 이미지 드래그 처리
   void _onProfileImageDragged(Offset globalPosition) {
-    debugPrint('🖼️ 프로필 이미지 드래그됨 - 위치: $globalPosition');
+    debugPrint('[DRAG] 프로필 이미지 드래그됨 - 위치: $globalPosition');
 
-    // 저장된 댓글이 있는 경우에만 위치 업데이트
-    if (_savedCommentId != null && widget.photoId != null) {
-      _updateProfilePositionInFirestore(globalPosition);
-    } else {
-      debugPrint('❌ 댓글 ID 또는 사진 ID가 없어서 위치를 업데이트할 수 없습니다.');
-    }
-  }
-
-  /// 🔥 Firestore에 프로필 위치 업데이트
-  Future<void> _updateProfilePositionInFirestore(Offset position) async {
-    if (_savedCommentId == null || widget.photoId == null) {
-      debugPrint('❌ 댓글 ID 또는 사진 ID가 없습니다.');
-      return;
-    }
-
-    try {
-      debugPrint(
-        '🔥 Firestore 프로필 위치 업데이트 시작 - 댓글: $_savedCommentId, 위치: $position',
-      );
-
-      final commentRecordController = CommentRecordController();
-
-      final success = await commentRecordController.updateProfilePosition(
-        commentId: _savedCommentId!,
-        photoId: widget.photoId!,
-        profilePosition: position,
-      );
-
-      if (success) {
-        debugPrint('✅ Firestore 프로필 위치 업데이트 성공');
-      } else {
-        debugPrint('❌ Firestore 프로필 위치 업데이트 실패');
-      }
-    } catch (e) {
-      debugPrint('❌ Firestore 프로필 위치 업데이트 중 오류: $e');
-    }
+    // 위치 업데이트는 DragTarget(PhotoDetailScreen)에서만 처리
+    // 여기서는 드래그 이벤트만 로깅
+    debugPrint('[DRAG] 드래그 완료 - 위치 업데이트는 DragTarget에서 처리됩니다.');
   }
 
   /// AudioController 상태 감지를 위한 리스너
@@ -927,15 +931,40 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
   }
 
   /// 👤 프로필 이미지 클릭 시 호출되는 메서드
-  void _onProfileImageTapped() {
-    debugPrint('👤 프로필 이미지 클릭됨 - 파형 모드로 전환');
+  void _onProfileImageTapped() async {
+    debugPrint('👤 프로필 이미지 클릭됨');
 
-    setState(() {
-      _isProfileMode = false;
-    });
+    // 저장된 댓글의 오디오 URL이 있으면 재생
+    if (widget.savedComment != null &&
+        widget.savedComment!.audioUrl.isNotEmpty) {
+      debugPrint('🎵 저장된 음성 댓글 재생 시작: ${widget.savedComment!.audioUrl}');
+
+      try {
+        // AudioController를 사용하여 음성 재생
+        await _audioController.toggleAudio(widget.savedComment!.audioUrl);
+        debugPrint('✅ 음성 재생 시작됨');
+      } catch (e) {
+        debugPrint('❌ 음성 재생 실패: $e');
+      }
+    } else if (_recordedFilePath != null && _recordedFilePath!.isNotEmpty) {
+      // 현재 녹음된 파일이 있으면 재생
+      debugPrint('🎵 현재 녹음 파일 재생: $_recordedFilePath');
+
+      try {
+        await _audioController.toggleAudio(_recordedFilePath!);
+        debugPrint('✅ 현재 녹음 파일 재생 시작됨');
+      } catch (e) {
+        debugPrint('❌ 현재 녹음 파일 재생 실패: $e');
+      }
+    } else {
+      debugPrint('🔄 재생할 음성이 없어 파형 모드로 전환');
+      setState(() {
+        _isProfileMode = false;
+      });
+    }
   }
 
-  /// 🔄 사용자 프로필 이미지 로드
+  ///  사용자 프로필 이미지 로드
   Future<void> _loadUserProfileImage() async {
     try {
       final authController = Provider.of<AuthController>(

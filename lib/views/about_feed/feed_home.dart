@@ -40,9 +40,16 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   // 프로필 이미지 위치 관리
   final Map<String, Offset?> _profileImagePositions = {}; // 사진 ID별 프로필 이미지 위치
 
+  // 음성 댓글의 프로필 이미지 URL 캐시 (comment_records에서 가져온 것)
+  final Map<String, String> _commentProfileImageUrls =
+      {}; // 사진 ID별 음성 댓글 프로필 이미지 URL
+
   // 실시간 스트림 구독 관리
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
   _commentStreams = {};
+
+  // AuthController 참조 저장
+  AuthController? _authController;
 
   @override
   void initState() {
@@ -50,18 +57,21 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     _loadUserCategoriesAndPhotos();
     // AuthController의 변경사항을 감지하여 프로필 이미지 캐시 업데이트
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authController = Provider.of<AuthController>(
-        context,
-        listen: false,
-      );
-      authController.addListener(_onAuthControllerChanged);
+      _authController = Provider.of<AuthController>(context, listen: false);
+      _authController!.addListener(_onAuthControllerChanged);
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // AuthController 참조를 안전하게 저장
+    _authController ??= Provider.of<AuthController>(context, listen: false);
+  }
+
+  @override
   void dispose() {
-    final authController = Provider.of<AuthController>(context, listen: false);
-    authController.removeListener(_onAuthControllerChanged);
+    _authController?.removeListener(_onAuthControllerChanged);
 
     // 모든 댓글 스트림 구독 해제
     for (var subscription in _commentStreams.values) {
@@ -74,12 +84,11 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
   /// AuthController 변경 감지 시 프로필 이미지 캐시 업데이트
   void _onAuthControllerChanged() async {
-    final authController = Provider.of<AuthController>(context, listen: false);
-    final currentUser = authController.currentUser;
+    final currentUser = _authController?.currentUser;
 
     if (currentUser != null) {
       // 현재 사용자의 최신 프로필 이미지 URL 가져오기
-      final newProfileImageUrl = await authController
+      final newProfileImageUrl = await _authController!
           .getUserProfileImageUrlWithCache(currentUser.uid);
 
       if (_userProfileImages[currentUser.uid] != newProfileImageUrl) {
@@ -139,7 +148,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         throw Exception('로그인된 사용자를 찾을 수 없습니다.');
       }
 
-      debugPrint('🔍 현재 사용자 ID: $currentUserId');
+      debugPrint('[STREAM] 현재 사용자 ID: $currentUserId');
 
       // 현재 사용자의 프로필 이미지를 미리 로드
       if (!_userProfileImages.containsKey(currentUserId)) {
@@ -150,10 +159,10 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
             _userProfileImages[currentUserId] = currentUserProfileImage;
           });
           debugPrint(
-            '👤 현재 사용자 프로필 이미지 로드됨: $currentUserId -> $currentUserProfileImage',
+            '[PROFILE] 현재 사용자 프로필 이미지 로드됨: $currentUserId -> $currentUserProfileImage',
           );
         } catch (e) {
-          debugPrint('❌ 현재 사용자 프로필 이미지 로드 실패: $e');
+          debugPrint('[ERROR] 현재 사용자 프로필 이미지 로드 실패: $e');
         }
       }
 
@@ -270,7 +279,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   /// 특정 사진의 음성 댓글 정보를 실시간 구독하여 프로필 위치 동기화
   void _subscribeToVoiceCommentsForPhoto(String photoId, String currentUserId) {
     try {
-      debugPrint('� 음성 댓글 실시간 구독 시작 - 사진: $photoId, 사용자: $currentUserId');
+      debugPrint('음성 댓글 실시간 구독 시작 - 사진: $photoId, 사용자: $currentUserId');
 
       // 기존 구독이 있다면 취소
       _commentStreams[photoId]?.cancel();
@@ -283,7 +292,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           .listen(
             (comments) {
               debugPrint(
-                '📊 실시간 댓글 업데이트 수신 - 사진: $photoId, 댓글 수: ${comments.length}',
+                '[REALTIME] 실시간 댓글 업데이트 수신 - 사진: $photoId, 댓글 수: ${comments.length}',
               );
 
               // 현재 사용자의 댓글 찾기
@@ -293,13 +302,22 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                       .firstOrNull;
 
               if (userComment != null) {
-                debugPrint('🔄 실시간 음성 댓글 업데이트 - ID: ${userComment.id}');
+                debugPrint('[REALTIME] 실시간 음성 댓글 업데이트 - ID: ${userComment.id}');
 
                 // 저장된 상태로 설정
                 if (mounted) {
                   setState(() {
                     _voiceCommentSavedStates[photoId] = true;
                     _savedCommentIds[photoId] = userComment.id;
+
+                    // comment_records에서 가져온 프로필 이미지 URL 캐시
+                    if (userComment.profileImageUrl.isNotEmpty) {
+                      _commentProfileImageUrls[photoId] =
+                          userComment.profileImageUrl;
+                      debugPrint(
+                        '[REALTIME] 음성 댓글 프로필 이미지 URL 캐시됨 - photoId: $photoId, URL: ${userComment.profileImageUrl}',
+                      );
+                    }
 
                     // 프로필 위치가 있으면 실시간 업데이트
                     if (userComment.profilePosition != null) {
@@ -310,7 +328,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                       if (oldPosition != newPosition) {
                         _profileImagePositions[photoId] = newPosition;
                         debugPrint(
-                          '� 실시간 프로필 위치 업데이트 - photoId: $photoId, 위치: $newPosition',
+                          '[REALTIME] 실시간 프로필 위치 업데이트 - photoId: $photoId, 위치: $newPosition',
                         );
                       }
                     }
@@ -325,12 +343,15 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                     _voiceCommentSavedStates[photoId] = false;
                     _savedCommentIds.remove(photoId);
                     _profileImagePositions[photoId] = null;
+                    _commentProfileImageUrls.remove(
+                      photoId,
+                    ); // 프로필 이미지 URL 캐시도 제거
                   });
                 }
               }
             },
             onError: (error) {
-              debugPrint('❌ 실시간 댓글 구독 오류 - 사진 $photoId: $error');
+              debugPrint('실시간 댓글 구독 오류 - 사진 $photoId: $error');
             },
           );
     } catch (e) {
@@ -443,7 +464,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           // 댓글 저장 완료 후 대기 중인 프로필 위치가 있다면 업데이트
           final pendingPosition = _profileImagePositions[photoId];
           if (pendingPosition != null) {
-            debugPrint('🔄 댓글 저장 완료 후 대기 중인 프로필 위치 업데이트: $pendingPosition');
+            debugPrint(' 댓글 저장 완료 후 대기 중인 프로필 위치 업데이트: $pendingPosition');
             // 짧은 지연 후 위치 업데이트 (setState 완료 대기)
             Future.delayed(Duration(milliseconds: 200), () {
               _updateProfilePositionInFirestore(photoId, pendingPosition);
@@ -568,7 +589,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       // 저장된 댓글 ID가 없는 경우 재시도 로직
       if (retryCount < maxRetries) {
         debugPrint(
-          '🔄 저장된 댓글 ID가 없음 - ${retryCount + 1}초 후 재시도 (${retryCount + 1}/$maxRetries)',
+          ' 저장된 댓글 ID가 없음 - ${retryCount + 1}초 후 재시도 (${retryCount + 1}/$maxRetries)',
         );
         await Future.delayed(Duration(seconds: 1));
         return _updateProfilePositionInFirestore(
@@ -1006,10 +1027,10 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                               currentUserProfileImage != null &&
                                       currentUserProfileImage.isNotEmpty
                                   ? ClipOval(
-                                    child: Image.network(
-                                      currentUserProfileImage,
+                                    child: CachedNetworkImage(
+                                      imageUrl: currentUserProfileImage,
                                       fit: BoxFit.cover,
-                                      errorBuilder: (
+                                      errorWidget: (
                                         context,
                                         error,
                                         stackTrace,
@@ -1094,19 +1115,197 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                           builder: (context, authController, child) {
                             final currentUserId =
                                 authController.currentUser?.uid;
+
+                            // comment_records의 profileImageUrl 사용 (우선순위)
+                            // 없으면 AuthController의 프로필 이미지 사용 (fallback)
                             final currentUserProfileImage =
-                                currentUserId != null
+                                _commentProfileImageUrls[photo.id] ??
+                                (currentUserId != null
                                     ? _userProfileImages[currentUserId]
-                                    : null;
+                                    : null);
 
                             // 이미 저장된 상태인지 확인
                             final isSaved =
                                 _voiceCommentSavedStates[photo.id] == true;
 
+                            // 이미 댓글이 있으면 저장된 프로필 이미지만 표시
+                            if (isSaved && currentUserId != null) {
+                              return Center(
+                                child: Draggable<String>(
+                                  data: 'profile_image',
+                                  onDragStarted: () {
+                                    debugPrint('저장된 프로필 이미지 드래그 시작 - feed');
+                                  },
+                                  feedback: Transform.scale(
+                                    scale: 1.2,
+                                    child: Opacity(
+                                      opacity: 0.8,
+                                      child: Container(
+                                        width: 40,
+                                        height: 40,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                            color: Colors.white,
+                                            width: 3,
+                                          ),
+                                        ),
+                                        child: ClipOval(
+                                          child:
+                                              currentUserProfileImage != null &&
+                                                      currentUserProfileImage
+                                                          .isNotEmpty
+                                                  ? Image.network(
+                                                    currentUserProfileImage,
+                                                    fit: BoxFit.cover,
+                                                  )
+                                                  : Container(
+                                                    color: Colors.grey.shade600,
+                                                    child: Icon(
+                                                      Icons.person,
+                                                      color: Colors.white,
+                                                      size: 20,
+                                                    ),
+                                                  ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  childWhenDragging: Opacity(
+                                    opacity: 0.3,
+                                    child: Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 3,
+                                        ),
+                                      ),
+                                      child: ClipOval(
+                                        child:
+                                            currentUserProfileImage != null &&
+                                                    currentUserProfileImage
+                                                        .isNotEmpty
+                                                ? Image.network(
+                                                  currentUserProfileImage,
+                                                  fit: BoxFit.cover,
+                                                )
+                                                : Container(
+                                                  color: Colors.grey.shade600,
+                                                  child: Icon(
+                                                    Icons.person,
+                                                    color: Colors.white,
+                                                    size: 20,
+                                                  ),
+                                                ),
+                                      ),
+                                    ),
+                                  ),
+                                  onDragEnd: (details) {
+                                    _onProfileImageDragged(
+                                      photo.id,
+                                      details.offset,
+                                    );
+                                  },
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      // 현재 사용자의 댓글 찾기
+                                      final currentUserId =
+                                          authController.currentUser?.uid;
+                                      if (currentUserId != null) {
+                                        final commentRecordController =
+                                            CommentRecordController();
+
+                                        try {
+                                          // 해당 사진의 댓글들 로드
+                                          await commentRecordController
+                                              .loadCommentRecordsByPhotoId(
+                                                photo.id,
+                                              );
+                                          final comments =
+                                              commentRecordController
+                                                  .commentRecords;
+
+                                          // 현재 사용자의 댓글 찾기
+                                          final userComment =
+                                              comments
+                                                  .where(
+                                                    (comment) =>
+                                                        comment.recorderUser ==
+                                                        currentUserId,
+                                                  )
+                                                  .firstOrNull;
+
+                                          if (userComment != null &&
+                                              userComment.audioUrl.isNotEmpty) {
+                                            debugPrint(
+                                              '🎵 피드에서 저장된 음성 댓글 재생: ${userComment.audioUrl}',
+                                            );
+
+                                            // AudioController를 사용하여 음성 재생
+                                            final audioController =
+                                                Provider.of<AudioController>(
+                                                  context,
+                                                  listen: false,
+                                                );
+                                            await audioController.toggleAudio(
+                                              userComment.audioUrl,
+                                            );
+
+                                            debugPrint('✅ 음성 재생 시작됨');
+                                          } else {
+                                            debugPrint(
+                                              '❌ 재생할 음성 댓글을 찾을 수 없습니다',
+                                            );
+                                          }
+                                        } catch (e) {
+                                          debugPrint('❌ 음성 재생 실패: $e');
+                                        }
+                                      }
+                                    },
+                                    child: Container(
+                                      width: 40,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: Colors.white,
+                                          width: 3,
+                                        ),
+                                      ),
+                                      child: ClipOval(
+                                        child:
+                                            currentUserProfileImage != null &&
+                                                    currentUserProfileImage
+                                                        .isNotEmpty
+                                                ? Image.network(
+                                                  currentUserProfileImage,
+                                                  fit: BoxFit.cover,
+                                                )
+                                                : Container(
+                                                  color: Colors.grey.shade600,
+                                                  child: Icon(
+                                                    Icons.person,
+                                                    color: Colors.white,
+                                                    size: 20,
+                                                  ),
+                                                ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            // 댓글이 없으면 VoiceCommentWidget 표시
                             return VoiceCommentWidget(
                               autoStart: !isSaved, // 저장된 상태가 아닐 때만 자동 시작
                               startAsSaved: isSaved, // 저장된 상태로 시작할지 여부
-                              profileImageUrl: currentUserProfileImage,
+                              profileImageUrl:
+                                  _commentProfileImageUrls[photo.id] ??
+                                  currentUserProfileImage,
                               onRecordingCompleted: (
                                 audioPath,
                                 waveformData,

@@ -19,38 +19,44 @@ class AllArchivesScreen extends StatefulWidget {
 class _AllArchivesScreenState extends State<AllArchivesScreen> {
   String? nickName;
   final Map<String, List<String>> _categoryProfileImages = {};
+  AuthController? _authController; // AuthController 참조 저장
 
   @override
   void initState() {
     super.initState();
     // 이메일이나 닉네임을 미리 가져와요.
-    final authController = Provider.of<AuthController>(context, listen: false);
-    authController.getIdFromFirestore().then((value) {
-      setState(() {
-        nickName = value;
-      });
-    });
-
-    // AuthController의 변경사항을 감지하여 프로필 이미지 캐시 업데이트
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final authController = Provider.of<AuthController>(
-        context,
-        listen: false,
-      );
-      authController.addListener(_onAuthControllerChanged);
+      _authController = Provider.of<AuthController>(context, listen: false);
+      _authController!.getIdFromFirestore().then((value) {
+        setState(() {
+          nickName = value;
+        });
+      });
+
+      // AuthController의 변경사항을 감지하여 프로필 이미지 캐시 업데이트
+      _authController!.addListener(_onAuthControllerChanged);
     });
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // AuthController 참조를 안전하게 저장
+    if (_authController == null) {
+      _authController = Provider.of<AuthController>(context, listen: false);
+    }
+  }
+
+  @override
   void dispose() {
-    final authController = Provider.of<AuthController>(context, listen: false);
-    authController.removeListener(_onAuthControllerChanged);
+    // 저장된 참조를 사용하여 리스너 제거
+    _authController?.removeListener(_onAuthControllerChanged);
     super.dispose();
   }
 
   /// AuthController 변경 감지 시 프로필 이미지 캐시 무효화
   void _onAuthControllerChanged() {
-    debugPrint('🔄 AuthController 변경 감지 - 아카이브 프로필 이미지 캐시 무효화');
+    debugPrint(' AuthController 변경 감지 - 아카이브 프로필 이미지 캐시 무효화');
     setState(() {
       _categoryProfileImages.clear(); // 모든 프로필 이미지 캐시 무효화
     });
@@ -70,7 +76,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
     );
 
     try {
-      debugPrint('🔄 카테고리 $categoryId의 프로필 이미지 로드 시작');
+      debugPrint(' 카테고리 $categoryId의 프로필 이미지 로드 시작');
       final profileImages = await categoryController.getCategoryProfileImages(
         mates,
         authController,

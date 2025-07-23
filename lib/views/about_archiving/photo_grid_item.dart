@@ -78,7 +78,7 @@ class _PhotoGridItemState extends State<PhotoGridItem>
 
   /// AuthController 변경 감지 시 프로필 이미지 캐시 무효화
   void _onAuthControllerChanged() async {
-    debugPrint('🔄 AuthController 변경 감지 - 프로필 이미지 리프레시');
+    debugPrint(' AuthController 변경 감지 - 프로필 이미지 리프레시');
 
     // 정적 캐시에서 해당 사용자 제거
     _profileImageCache.remove(widget.photo.userID);

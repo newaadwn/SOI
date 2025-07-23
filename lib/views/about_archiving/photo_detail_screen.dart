@@ -45,11 +45,14 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   // 음성 댓글 관련 변수들
   final Map<String, List<CommentRecordModel>> _photoComments = {}; // 사진별 음성 댓글들
   final Map<String, Offset?> _profileImagePositions = {}; // 사진별 프로필 이미지 위치
-  final Map<String, String> _commentUserProfileImages = {}; // 댓글 작성자별 프로필 이미지
 
   // 실시간 댓글 동기화를 위한 스트림 구독
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
   _commentStreams = {};
+
+  // 음성 댓글 저장 상태 추적 (feed_home.dart와 동일한 방식)
+  final Map<String, bool> _voiceCommentSavedStates =
+      {}; // 사진 ID별 음성 댓글 저장 완료 상태
 
   @override
   void initState() {
@@ -85,15 +88,12 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
   /// AuthController 변경 감지 시 프로필 이미지 리프레시
   void _onAuthControllerChanged() async {
-    debugPrint('🔄 AuthController 변경 감지 - 프로필 이미지 리프레시');
+    debugPrint('AuthController 변경 감지 - 프로필 이미지 리프레시');
 
     // 프로필 이미지 캐시 무효화를 위한 리프레시 키 증가
     setState(() {
       _profileImageRefreshKey++;
     });
-
-    // 댓글 사용자 프로필 이미지 캐시 무효화
-    _commentUserProfileImages.clear();
 
     // 사용자 프로필 이미지 새로고침
     await _loadUserProfileImage();
@@ -113,7 +113,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         listen: false,
       );
 
-      // ✅ Controller의 캐싱 메서드 사용 (캐시 무효화 포함)
+      // Controller의 캐싱 메서드 사용 (캐시 무효화 포함)
       // 캐시를 우회하여 최신 프로필 이미지를 가져오기 위해 직접 호출
       final profileImageUrl = await authController.getUserProfileImageUrlById(
         currentPhoto.userID,
@@ -130,7 +130,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
           _userName = userInfo?.id ?? currentPhoto.userID; // 이름이 없으면 userID 사용
           _isLoadingProfile = false;
         });
-        debugPrint('✅ 프로필 이미지 업데이트 완료 - URL: $profileImageUrl');
+        debugPrint('프로필 이미지 업데이트 완료 - URL: $profileImageUrl');
       }
     } catch (e) {
       debugPrint('프로필 정보 로드 실패: $e');
@@ -150,7 +150,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     final photoId = currentPhoto.id;
 
     try {
-      debugPrint('� 음성 댓글 실시간 구독 시작 - 사진: $photoId');
+      debugPrint('음성 댓글 실시간 구독 시작 - 사진: $photoId');
 
       // 기존 구독이 있다면 취소
       _commentStreams[photoId]?.cancel();
@@ -163,7 +163,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
           .listen(
             (comments) async {
               debugPrint(
-                '📊 실시간 댓글 업데이트 수신 - 사진: $photoId, 댓글 수: ${comments.length}',
+                '실시간 댓글 업데이트 수신 - 사진: $photoId, 댓글 수: ${comments.length}',
               );
 
               // 댓글들을 저장
@@ -173,12 +173,24 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                 });
               }
 
-              // 각 댓글의 프로필 위치와 프로필 이미지 정보 처리
-              final authController = Provider.of<AuthController>(
-                context,
-                listen: false,
-              );
+              // 현재 사용자의 댓글이 있는지 확인하여 저장 상태 업데이트
+              final currentUserId = _authController?.getUserId;
 
+              if (currentUserId != null) {
+                final hasUserComment = comments.any(
+                  (comment) => comment.recorderUser == currentUserId,
+                );
+
+                if (mounted) {
+                  setState(() {
+                    _voiceCommentSavedStates[photoId] = hasUserComment;
+                  });
+                }
+
+                debugPrint(
+                  '음성 댓글 저장 상태 업데이트 - 사진: $photoId, 현재 사용자 댓글 존재: $hasUserComment',
+                );
+              }
               for (var comment in comments) {
                 // 프로필 위치가 있으면 실시간 업데이트
                 if (comment.profilePosition != null) {
@@ -191,44 +203,18 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                       _profileImagePositions[photoId] = newPosition;
                     });
                     debugPrint(
-                      '� 실시간 프로필 위치 업데이트 - photoId: $photoId, 위치: $newPosition',
+                      '실시간 프로필 위치 업데이트 - photoId: $photoId, 위치: $newPosition',
                     );
                   }
-                }
-
-                // 댓글 작성자의 최신 프로필 이미지 URL 가져오기 (캐시 우회)
-                try {
-                  final latestProfileImageUrl = await authController
-                      .getUserProfileImageUrlById(comment.recorderUser);
-                  if (mounted) {
-                    setState(() {
-                      _commentUserProfileImages[comment.recorderUser] =
-                          latestProfileImageUrl;
-                    });
-                  }
-                  debugPrint(
-                    '📸 댓글 작성자 프로필 이미지 업데이트 - User: ${comment.recorderUser}',
-                  );
-                } catch (e) {
-                  // 실패 시 기존 profileImageUrl 사용
-                  if (comment.profileImageUrl.isNotEmpty && mounted) {
-                    setState(() {
-                      _commentUserProfileImages[comment.recorderUser] =
-                          comment.profileImageUrl;
-                    });
-                  }
-                  debugPrint(
-                    '댓글 작성자 프로필 이미지 로드 실패 - User: ${comment.recorderUser}, Error: $e',
-                  );
                 }
               }
             },
             onError: (error) {
-              debugPrint('❌ 실시간 댓글 구독 오류 - 사진 $photoId: $error');
+              debugPrint('실시간 댓글 구독 오류 - 사진 $photoId: $error');
             },
           );
     } catch (e) {
-      debugPrint('❌ 실시간 댓글 구독 시작 실패 - 사진 $photoId: $e');
+      debugPrint('실시간 댓글 구독 시작 실패 - 사진 $photoId: $e');
     }
   }
 
@@ -238,7 +224,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     Offset position,
   ) async {
     try {
-      debugPrint('🔥 Firestore 프로필 위치 업데이트 시작 - 사진: $photoId, 위치: $position');
+      debugPrint('Firestore 프로필 위치 업데이트 시작 - 사진: $photoId, 위치: $position');
 
       // 현재 사진의 댓글들에서 현재 사용자의 댓글 찾기
       final comments = _photoComments[photoId] ?? [];
@@ -249,7 +235,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       final currentUserId = authController.getUserId;
 
       if (currentUserId == null) {
-        debugPrint('❌ 현재 사용자 ID를 찾을 수 없습니다.');
+        debugPrint('현재 사용자 ID를 찾을 수 없습니다.');
         return;
       }
 
@@ -263,7 +249,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       }
 
       if (userComment == null) {
-        debugPrint('❌ 현재 사용자의 음성 댓글을 찾을 수 없습니다.');
+        debugPrint('현재 사용자의 음성 댓글을 찾을 수 없습니다.');
         return;
       }
 
@@ -276,12 +262,12 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       );
 
       if (success) {
-        debugPrint('✅ Firestore 프로필 위치 업데이트 성공');
+        debugPrint('Firestore 프로필 위치 업데이트 성공');
       } else {
-        debugPrint('❌ Firestore 프로필 위치 업데이트 실패');
+        debugPrint('Firestore 프로필 위치 업데이트 실패');
       }
     } catch (e) {
-      debugPrint('❌ Firestore 프로필 위치 업데이트 중 오류: $e');
+      debugPrint('Firestore 프로필 위치 업데이트 중 오류: $e');
     }
   }
 
@@ -409,39 +395,42 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                 borderRadius: BorderRadius.circular(
                   screenWidth * 0.043,
                 ), // 반응형 반지름
-                child: DragTarget<String>(
-                  onWillAcceptWithDetails: (details) {
-                    debugPrint('🟡 DragTarget에 접근 중 - 데이터: ${details.data}');
-                    return details.data == 'profile_image';
-                  },
-                  onAcceptWithDetails: (details) {
-                    // 드롭된 좌표를 사진 내 상대 좌표로 변환
-                    final RenderBox renderBox =
-                        context.findRenderObject() as RenderBox;
-                    final localPosition = renderBox.globalToLocal(
-                      details.offset,
-                    );
+                child: Builder(
+                  builder: (builderContext) {
+                    return DragTarget<String>(
+                      onWillAcceptWithDetails: (details) {
+                        debugPrint('DragTarget에 접근 중 - 데이터: ${details.data}');
+                        return details.data == 'profile_image';
+                      },
+                      onAcceptWithDetails: (details) {
+                        // 드롭된 좌표를 사진 내 상대 좌표로 변환
+                        final RenderBox renderBox =
+                            builderContext.findRenderObject() as RenderBox;
+                        final localPosition = renderBox.globalToLocal(
+                          details.offset,
+                        );
 
-                    debugPrint('✅ 프로필 이미지가 사진 영역에 드롭됨');
-                    debugPrint('📍 글로벌 좌표: ${details.offset}');
-                    debugPrint('📍 로컬 좌표: $localPosition');
-                    debugPrint('📍 드래그 데이터: ${details.data}');
+                        debugPrint('프로필 이미지가 사진 영역에 드롭됨');
+                        debugPrint('- 글로벌 좌표: ${details.offset}');
+                        debugPrint('- 로컬 좌표: $localPosition');
+                        debugPrint('- 드래그 데이터: ${details.data}');
 
-                    // 사진 영역 내 상대 좌표로 저장
-                    setState(() {
-                      _profileImagePositions[photo.id] = localPosition;
-                    });
+                        // 사진 영역 내 상대 좌표로 저장
+                        setState(() {
+                          _profileImagePositions[photo.id] = localPosition;
+                        });
 
-                    debugPrint(
-                      '💾 로컬 상태 업데이트 완료: ${_profileImagePositions[photo.id]}',
-                    );
+                        debugPrint(
+                          '로컬 상태 업데이트 완료: ${_profileImagePositions[photo.id]}',
+                        );
 
-                    // Firestore에 위치 업데이트
-                    _updateProfilePositionInFirestore(photo.id, localPosition);
-                  },
-                  builder: (context, candidateData, rejectedData) {
-                    return Builder(
-                      builder: (builderContext) {
+                        // Firestore에 위치 업데이트
+                        _updateProfilePositionInFirestore(
+                          photo.id,
+                          localPosition,
+                        );
+                      },
+                      builder: (context, candidateData, rejectedData) {
                         return Stack(
                           alignment: Alignment.center,
                           children: [
@@ -482,10 +471,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                     // 프로필 위치가 있는 댓글의 작성자 찾기
                                     for (var comment in comments) {
                                       if (comment.profilePosition != null) {
-                                        // 최신 프로필 이미지 URL 우선 사용, 없으면 기존 URL 사용
+                                        // comment_records의 profileImageUrl 직접 사용
                                         profileImageUrl =
-                                            _commentUserProfileImages[comment
-                                                .recorderUser] ??
                                             comment.profileImageUrl;
                                         break;
                                       }
@@ -612,8 +599,34 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                     0.004), // 반응형 테두리
                                           ),
                                         ),
-                                        child:
-                                            _isLoadingProfile
+                                        child: Builder(
+                                          builder: (context) {
+                                            // comment_records의 profileImageUrl 우선 사용
+                                            final comments =
+                                                _photoComments[photo.id] ?? [];
+                                            String profileImageToShow =
+                                                _userProfileImageUrl;
+
+                                            // 현재 사용자의 댓글이 있으면 그 댓글의 profileImageUrl 사용
+                                            final currentUserId =
+                                                _authController?.getUserId;
+                                            if (currentUserId != null) {
+                                              for (var comment in comments) {
+                                                if (comment.recorderUser ==
+                                                    currentUserId) {
+                                                  profileImageToShow =
+                                                      comment
+                                                              .profileImageUrl
+                                                              .isNotEmpty
+                                                          ? comment
+                                                              .profileImageUrl
+                                                          : _userProfileImageUrl;
+                                                  break;
+                                                }
+                                              }
+                                            }
+
+                                            return _isLoadingProfile
                                                 ? CircleAvatar(
                                                   radius:
                                                       (screenWidth *
@@ -634,8 +647,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                     ),
                                                   ),
                                                 )
-                                                : _userProfileImageUrl
-                                                    .isNotEmpty
+                                                : profileImageToShow.isNotEmpty
                                                 ? Consumer<AuthController>(
                                                   builder: (
                                                     context,
@@ -644,9 +656,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                   ) {
                                                     return CachedNetworkImage(
                                                       imageUrl:
-                                                          _userProfileImageUrl,
+                                                          profileImageToShow,
                                                       key: ValueKey(
-                                                        'audio_profile_${_userProfileImageUrl}_$_profileImageRefreshKey',
+                                                        'audio_profile_${profileImageToShow}_$_profileImageRefreshKey',
                                                       ), // 리프레시 키를 사용한 캐시 무효화
                                                       imageBuilder:
                                                           (
@@ -721,7 +733,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                         (screenWidth *
                                                             0.043), // 반응형 아이콘 크기
                                                   ),
-                                                ),
+                                                );
+                                          },
+                                        ),
                                       ),
                                       SizedBox(
                                         width: (screenWidth * 0.032),
@@ -819,12 +833,163 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                 ],
               ),
               SizedBox(height: (screenHeight * (29.6 / 852))), // 반응형 간격
-              AudioRecorderWidget(
-                photoId: photo.id,
-                onCommentSaved: (commentRecord) {
-                  debugPrint('🎉 새로운 음성 댓글 저장됨: ${commentRecord.id}');
-                  // 새 댓글이 저장되면 음성 댓글 목록 새로고침
-                  _subscribeToVoiceCommentsForCurrentPhoto();
+              Consumer<AuthController>(
+                builder: (context, authController, child) {
+                  // 이미 저장된 상태인지 확인
+                  final isSaved = _voiceCommentSavedStates[photo.id] == true;
+
+                  // 이미 댓글이 있으면 저장된 프로필 이미지 표시
+                  if (isSaved) {
+                    final comments = _photoComments[photo.id] ?? [];
+                    final currentUserId = authController.currentUser?.uid;
+
+                    // 현재 사용자의 댓글 찾기
+                    CommentRecordModel? userComment;
+                    for (var comment in comments) {
+                      if (comment.recorderUser == currentUserId) {
+                        userComment = comment;
+                        break;
+                      }
+                    }
+
+                    if (userComment != null) {
+                      // comment_records의 profileImageUrl 직접 사용
+                      final currentUserProfileImage =
+                          userComment.profileImageUrl;
+
+                      return Draggable<String>(
+                        data: 'profile_image',
+                        feedback: Transform.scale(
+                          scale: 1.2,
+                          child: Opacity(
+                            opacity: 0.8,
+                            child: Container(
+                              width: 27,
+                              height: 27,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 3,
+                                ),
+                              ),
+                              child: ClipOval(
+                                child:
+                                    currentUserProfileImage.isNotEmpty
+                                        ? Image.network(
+                                          currentUserProfileImage,
+                                          fit: BoxFit.cover,
+                                        )
+                                        : Container(
+                                          color: Colors.grey.shade600,
+                                          child: Icon(
+                                            Icons.person,
+                                            color: Colors.white,
+                                            size: 14,
+                                          ),
+                                        ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        childWhenDragging: Opacity(
+                          opacity: 0.3,
+                          child: Container(
+                            width: 27,
+                            height: 27,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                            ),
+                            child: ClipOval(
+                              child:
+                                  currentUserProfileImage.isNotEmpty
+                                      ? Image.network(
+                                        currentUserProfileImage,
+                                        fit: BoxFit.cover,
+                                      )
+                                      : Container(
+                                        color: Colors.grey.shade600,
+                                        child: Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 14,
+                                        ),
+                                      ),
+                            ),
+                          ),
+                        ),
+                        onDragEnd: (details) {
+                          // DragTarget에서 이미 처리하므로 여기서는 로깅만
+                          debugPrint(
+                            '🚀 프로필 이미지 드래그 종료 - 글로벌 위치: ${details.offset}',
+                          );
+                          debugPrint('📍 DragTarget에서 상대 좌표 변환 처리됨');
+                        },
+                        child: GestureDetector(
+                          onTap: () async {
+                            // 클릭하면 저장된 오디오 재생
+                            if (userComment!.audioUrl.isNotEmpty) {
+                              debugPrint(
+                                '🎵 저장된 음성 댓글 재생: ${userComment.audioUrl}',
+                              );
+                              try {
+                                final audioController =
+                                    Provider.of<AudioController>(
+                                      context,
+                                      listen: false,
+                                    );
+                                await audioController.toggleAudio(
+                                  userComment.audioUrl,
+                                );
+                                debugPrint('✅ 음성 재생 시작됨');
+                              } catch (e) {
+                                debugPrint('❌ 음성 재생 실패: $e');
+                              }
+                            }
+                          },
+                          child: Container(
+                            width: 27,
+                            height: 27,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                            ),
+                            child: ClipOval(
+                              child:
+                                  currentUserProfileImage.isNotEmpty
+                                      ? Image.network(
+                                        currentUserProfileImage,
+                                        fit: BoxFit.cover,
+                                      )
+                                      : Container(
+                                        color: Colors.grey.shade600,
+                                        child: Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 14,
+                                        ),
+                                      ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                  }
+
+                  // 댓글이 없으면 AudioRecorderWidget 표시
+                  return AudioRecorderWidget(
+                    photoId: photo.id,
+                    onCommentSaved: (commentRecord) {
+                      debugPrint('새로운 음성 댓글 저장됨: ${commentRecord.id}');
+                      // 저장 상태 업데이트
+                      setState(() {
+                        _voiceCommentSavedStates[photo.id] = true;
+                      });
+                      // 새 댓글이 저장되면 음성 댓글 목록 새로고침
+                      _subscribeToVoiceCommentsForCurrentPhoto();
+                    },
+                  );
                 },
               ),
             ],

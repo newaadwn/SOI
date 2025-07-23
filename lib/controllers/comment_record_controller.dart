@@ -115,7 +115,7 @@ class CommentRecordController extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      debugPrint('🔄 사용자 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $userId');
+      debugPrint(' 사용자 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $userId');
 
       await _service.updateUserProfileImageUrl(
         userId: userId,
