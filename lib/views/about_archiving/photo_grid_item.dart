@@ -32,6 +32,9 @@ class _PhotoGridItemState extends State<PhotoGridItem>
   bool _isLoadingProfile = true;
   bool _hasLoadedOnce = false; // 한 번 로드했는지 추적
 
+  // AuthController 참조 저장용
+  AuthController? _authController;
+
   // 메모리 캐시 추가 (최대 100개 유저로 제한)
   static final Map<String, String> _profileImageCache = {};
   static const int _maxCacheSize = 100;
@@ -53,6 +56,35 @@ class _PhotoGridItemState extends State<PhotoGridItem>
 
     // 파형 데이터 초기화
     _initializeWaveformData();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // AuthController 참조 저장 및 리스너 등록
+    if (_authController == null) {
+      _authController = Provider.of<AuthController>(context, listen: false);
+      _authController!.addListener(_onAuthControllerChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    // AuthController 리스너 제거 (저장된 참조 사용)
+    _authController?.removeListener(_onAuthControllerChanged);
+    super.dispose();
+  }
+
+  /// AuthController 변경 감지 시 프로필 이미지 캐시 무효화
+  void _onAuthControllerChanged() async {
+    debugPrint('🔄 AuthController 변경 감지 - 프로필 이미지 리프레시');
+
+    // 정적 캐시에서 해당 사용자 제거
+    _profileImageCache.remove(widget.photo.userID);
+
+    // 프로필 이미지 다시 로드
+    await _loadUserProfileImage();
   }
 
   void _initializeWaveformData() {
@@ -95,33 +127,20 @@ class _PhotoGridItemState extends State<PhotoGridItem>
       debugPrint('캐시 크기 초과로 초기화');
     }
 
-    // 캐시 확인 (캐시 활성화)
-    if (_profileImageCache.containsKey(widget.photo.userID)) {
-      debugPrint('캐시에서 프로필 이미지 발견');
-      if (mounted) {
-        setState(() {
-          _userProfileImageUrl = _profileImageCache[widget.photo.userID]!;
-          _isLoadingProfile = false;
-        });
-      }
-      return;
-    }
-
-    // 네트워크에서 로드 (캐시에 없을 때만)
     try {
       final authController = Provider.of<AuthController>(
         context,
         listen: false,
       );
 
-      debugPrint('네트워크에서 프로필 이미지 요청 중...');
-      final profileImageUrl = await authController.getUserProfileImageUrlById(
-        widget.photo.userID,
-      );
+      debugPrint('AuthController에서 프로필 이미지 요청 중...');
+      // AuthController의 캐싱 메서드 사용 (feed_home과 동일)
+      final profileImageUrl = await authController
+          .getUserProfileImageUrlWithCache(widget.photo.userID);
 
       debugPrint('프로필 이미지 URL 받음: "$profileImageUrl"');
 
-      // 캐시에 저장
+      // 로컬 캐시에도 저장
       _profileImageCache[widget.photo.userID] = profileImageUrl;
 
       if (mounted) {
@@ -129,7 +148,7 @@ class _PhotoGridItemState extends State<PhotoGridItem>
           _userProfileImageUrl = profileImageUrl;
           _isLoadingProfile = false;
         });
-        debugPrint('프로필 이미지 상태 업데이트 완료');
+        debugPrint('✅ 프로필 이미지 상태 업데이트 완료');
       } else {
         debugPrint('위젯이 unmounted 상태');
       }
@@ -245,55 +264,62 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                               ),
                             )
                             : _userProfileImageUrl.isNotEmpty
-                            ? CachedNetworkImage(
-                              imageUrl: _userProfileImageUrl,
-                              imageBuilder:
-                                  (context, imageProvider) => CircleAvatar(
-                                    radius: (screenWidth * 0.038).clamp(
-                                      12.0,
-                                      16.0,
-                                    ), // 반응형 반지름
-                                    backgroundImage: imageProvider,
+                            ? Consumer<AuthController>(
+                              builder: (context, authController, child) {
+                                return CachedNetworkImage(
+                                  key: ValueKey(
+                                    'profile_${widget.photo.userID}_${_userProfileImageUrl.hashCode}',
                                   ),
-                              placeholder:
-                                  (context, url) => CircleAvatar(
-                                    radius: (screenWidth * 0.038).clamp(
-                                      12.0,
-                                      16.0,
-                                    ), // 반응형 반지름
-                                    backgroundColor: Colors.grey,
-                                    child: SizedBox(
-                                      width: (screenWidth * 0.043).clamp(
-                                        14.0,
-                                        18.0,
-                                      ), // 반응형 너비
-                                      height: (screenWidth * 0.043).clamp(
-                                        14.0,
-                                        18.0,
-                                      ), // 반응형 높이
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: (screenWidth * 0.0054)
-                                            .clamp(1.5, 2.5), // 반응형 선 두께
-                                        color: Colors.white,
+                                  imageUrl: _userProfileImageUrl,
+                                  imageBuilder:
+                                      (context, imageProvider) => CircleAvatar(
+                                        radius: (screenWidth * 0.038).clamp(
+                                          12.0,
+                                          16.0,
+                                        ), // 반응형 반지름
+                                        backgroundImage: imageProvider,
                                       ),
-                                    ),
-                                  ),
-                              errorWidget:
-                                  (context, url, error) => CircleAvatar(
-                                    radius: (screenWidth * 0.038).clamp(
-                                      12.0,
-                                      16.0,
-                                    ), // 반응형 반지름
-                                    backgroundColor: Colors.grey,
-                                    child: Icon(
-                                      Icons.person,
-                                      color: Colors.white,
-                                      size: (screenWidth * 0.043).clamp(
-                                        14.0,
-                                        18.0,
-                                      ), // 반응형 아이콘 크기
-                                    ),
-                                  ),
+                                  placeholder:
+                                      (context, url) => CircleAvatar(
+                                        radius: (screenWidth * 0.038).clamp(
+                                          12.0,
+                                          16.0,
+                                        ), // 반응형 반지름
+                                        backgroundColor: Colors.grey,
+                                        child: SizedBox(
+                                          width: (screenWidth * 0.043).clamp(
+                                            14.0,
+                                            18.0,
+                                          ), // 반응형 너비
+                                          height: (screenWidth * 0.043).clamp(
+                                            14.0,
+                                            18.0,
+                                          ), // 반응형 높이
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: (screenWidth * 0.0054)
+                                                .clamp(1.5, 2.5), // 반응형 선 두께
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                  errorWidget:
+                                      (context, url, error) => CircleAvatar(
+                                        radius: (screenWidth * 0.038).clamp(
+                                          12.0,
+                                          16.0,
+                                        ), // 반응형 반지름
+                                        backgroundColor: Colors.grey,
+                                        child: Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: (screenWidth * 0.043).clamp(
+                                            14.0,
+                                            18.0,
+                                          ), // 반응형 아이콘 크기
+                                        ),
+                                      ),
+                                );
+                              },
                             )
                             : CircleAvatar(
                               radius: (screenWidth * 0.038).clamp(

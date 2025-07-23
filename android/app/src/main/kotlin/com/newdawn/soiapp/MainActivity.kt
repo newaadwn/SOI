@@ -44,6 +44,12 @@ class MainActivity : FlutterActivity() {
                 handleAudioCall(call, result)
             }
         
+        // native_recorder 채널도 오디오 핸들러로 연결
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "native_recorder")
+            .setMethodCallHandler { call, result ->
+                handleAudioCall(call, result)
+            }
+        
         Log.d(TAG, "✅ Flutter Engine 설정 완료")
     }
     

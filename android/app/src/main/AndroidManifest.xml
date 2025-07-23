@@ -18,7 +18,7 @@
 
     <application
         android:label="flutter_swift_camera"
-        android:name=".FlutterSwiftCameraApplication"
+        android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true">
         <activity

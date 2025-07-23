@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -39,6 +40,10 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   // 프로필 이미지 위치 관리
   final Map<String, Offset?> _profileImagePositions = {}; // 사진 ID별 프로필 이미지 위치
 
+  // 실시간 스트림 구독 관리
+  final Map<String, StreamSubscription<List<CommentRecordModel>>>
+  _commentStreams = {};
+
   @override
   void initState() {
     super.initState();
@@ -57,6 +62,13 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   void dispose() {
     final authController = Provider.of<AuthController>(context, listen: false);
     authController.removeListener(_onAuthControllerChanged);
+
+    // 모든 댓글 스트림 구독 해제
+    for (var subscription in _commentStreams.values) {
+      subscription.cancel();
+    }
+    _commentStreams.clear();
+
     super.dispose();
   }
 
@@ -199,10 +211,10 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         _loadUserProfileForPhoto(photo.userID);
       }
 
-      // 모든 사진의 음성 댓글 정보 로드 (프로필 위치 포함)
+      // 모든 사진의 음성 댓글 실시간 구독 시작 (프로필 위치 동기화)
       for (Map<String, dynamic> photoData in allPhotos) {
         final PhotoDataModel photo = photoData['photo'] as PhotoDataModel;
-        _loadVoiceCommentsForPhoto(photo.id, currentUserId);
+        _subscribeToVoiceCommentsForPhoto(photo.id, currentUserId);
       }
     } catch (e) {
       debugPrint('❌ 사진 로드 실패: $e');
@@ -255,54 +267,74 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     }
   }
 
-  /// 특정 사진의 음성 댓글 정보를 로드하여 프로필 위치 복원
-  Future<void> _loadVoiceCommentsForPhoto(
-    String photoId,
-    String currentUserId,
-  ) async {
+  /// 특정 사진의 음성 댓글 정보를 실시간 구독하여 프로필 위치 동기화
+  void _subscribeToVoiceCommentsForPhoto(String photoId, String currentUserId) {
     try {
-      debugPrint('🔍 음성 댓글 로드 시작 - 사진: $photoId, 사용자: $currentUserId');
+      debugPrint('� 음성 댓글 실시간 구독 시작 - 사진: $photoId, 사용자: $currentUserId');
+
+      // 기존 구독이 있다면 취소
+      _commentStreams[photoId]?.cancel();
 
       final commentRecordController = CommentRecordController();
-      await commentRecordController.loadCommentRecordsByPhotoId(photoId);
-      final comments = commentRecordController.commentRecords;
 
-      debugPrint('📊 로드된 댓글 수: ${comments.length}');
-
-      // 현재 사용자의 댓글 찾기
-      final userComment =
-          comments
-              .where((comment) => comment.recorderUser == currentUserId)
-              .firstOrNull;
-
-      if (userComment != null) {
-        debugPrint('🔄 사진 ${photoId}의 저장된 음성 댓글 발견 - ID: ${userComment.id}');
-
-        // 저장된 상태로 설정
-        if (mounted) {
-          setState(() {
-            _voiceCommentSavedStates[photoId] = true;
-            _savedCommentIds[photoId] = userComment.id;
-
-            // 프로필 위치가 있으면 복원
-            if (userComment.profilePosition != null) {
-              _profileImagePositions[photoId] = userComment.profilePosition;
+      // 실시간 스트림 구독
+      _commentStreams[photoId] = commentRecordController
+          .getCommentRecordsStream(photoId)
+          .listen(
+            (comments) {
               debugPrint(
-                '📍 프로필 위치 복원됨 - photoId: $photoId, 위치: ${userComment.profilePosition}',
+                '📊 실시간 댓글 업데이트 수신 - 사진: $photoId, 댓글 수: ${comments.length}',
               );
-            }
-          });
-        }
-      } else {
-        debugPrint('🔍 사진 $photoId에 현재 사용자의 댓글 없음');
-      }
+
+              // 현재 사용자의 댓글 찾기
+              final userComment =
+                  comments
+                      .where((comment) => comment.recorderUser == currentUserId)
+                      .firstOrNull;
+
+              if (userComment != null) {
+                debugPrint('🔄 실시간 음성 댓글 업데이트 - ID: ${userComment.id}');
+
+                // 저장된 상태로 설정
+                if (mounted) {
+                  setState(() {
+                    _voiceCommentSavedStates[photoId] = true;
+                    _savedCommentIds[photoId] = userComment.id;
+
+                    // 프로필 위치가 있으면 실시간 업데이트
+                    if (userComment.profilePosition != null) {
+                      final newPosition = userComment.profilePosition!;
+                      final oldPosition = _profileImagePositions[photoId];
+
+                      // 위치가 실제로 변경된 경우에만 업데이트
+                      if (oldPosition != newPosition) {
+                        _profileImagePositions[photoId] = newPosition;
+                        debugPrint(
+                          '� 실시간 프로필 위치 업데이트 - photoId: $photoId, 위치: $newPosition',
+                        );
+                      }
+                    }
+                  });
+                }
+              } else {
+                debugPrint('🔍 실시간 업데이트: 사진 $photoId에 현재 사용자의 댓글 없음');
+
+                // 댓글이 삭제된 경우 상태 초기화
+                if (mounted) {
+                  setState(() {
+                    _voiceCommentSavedStates[photoId] = false;
+                    _savedCommentIds.remove(photoId);
+                    _profileImagePositions[photoId] = null;
+                  });
+                }
+              }
+            },
+            onError: (error) {
+              debugPrint('❌ 실시간 댓글 구독 오류 - 사진 $photoId: $error');
+            },
+          );
     } catch (e) {
-      debugPrint('❌ 사진 $photoId의 음성 댓글 로드 실패: $e');
-      // 더 자세한 오류 정보 출력
-      if (e.toString().contains('ServiceException')) {
-        debugPrint('🔍 ServiceException 세부사항: ${e.toString()}');
-        debugPrint('🔍 오류 타입: ${e.runtimeType}');
-      }
+      debugPrint('❌ 실시간 댓글 구독 시작 실패 - 사진 $photoId: $e');
     }
   }
 
