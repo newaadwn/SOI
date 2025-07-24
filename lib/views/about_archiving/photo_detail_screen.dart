@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../models/photo_data_model.dart';
-import '../../models/auth_model.dart';
 import '../../models/comment_record_model.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/audio_controller.dart';
@@ -31,28 +30,24 @@ class PhotoDetailScreen extends StatefulWidget {
 }
 
 class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
+  // 상태 관리 변수들
   late int _currentIndex;
   String _userProfileImageUrl = '';
   String _userName = '';
   bool _isLoadingProfile = true;
-
-  // AuthController 참조 저장용
-  AuthController? _authController;
-
-  // 프로필 이미지 캐시 무효화를 위한 리프레시 카운터
   int _profileImageRefreshKey = 0;
 
-  // 음성 댓글 관련 변수들
-  final Map<String, List<CommentRecordModel>> _photoComments = {}; // 사진별 음성 댓글들
-  final Map<String, Offset?> _profileImagePositions = {}; // 사진별 프로필 이미지 위치
+  // 컨트롤러 참조
+  AuthController? _authController;
+  AudioController? _audioController;
 
-  // 실시간 댓글 동기화를 위한 스트림 구독
+  // 음성 댓글 관련 맵들
+  final Map<String, List<CommentRecordModel>> _photoComments = {};
+  final Map<String, Offset?> _profileImagePositions = {};
+  final Map<String, String> _droppedProfileImageUrls = {};
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
   _commentStreams = {};
-
-  // 음성 댓글 저장 상태 추적 (feed_home.dart와 동일한 방식)
-  final Map<String, bool> _voiceCommentSavedStates =
-      {}; // 사진 ID별 음성 댓글 저장 완료 상태
+  final Map<String, bool> _voiceCommentSavedStates = {};
 
   @override
   void initState() {
@@ -89,20 +84,12 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   /// AuthController 변경 감지 시 프로필 이미지 리프레시
   void _onAuthControllerChanged() async {
     debugPrint('AuthController 변경 감지 - 프로필 이미지 리프레시');
-
-    // 프로필 이미지 캐시 무효화를 위한 리프레시 키 증가
-    setState(() {
-      _profileImageRefreshKey++;
-    });
-
-    // 사용자 프로필 이미지 새로고침
+    setState(() => _profileImageRefreshKey++);
     await _loadUserProfileImage();
-
-    // 현재 사진의 음성 댓글 새로고침 (프로필 이미지 포함)
     _subscribeToVoiceCommentsForCurrentPhoto();
   }
 
-  // 사용자 프로필 정보 로드 (AuthController의 캐싱 메서드 사용)
+  // 사용자 프로필 정보 로드
   Future<void> _loadUserProfileImage() async {
     final currentPhoto = widget.photos[_currentIndex];
     debugPrint('프로필 정보 로딩 시작 - UserID: ${currentPhoto.userID}');
@@ -112,22 +99,15 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         context,
         listen: false,
       );
-
-      // Controller의 캐싱 메서드 사용 (캐시 무효화 포함)
-      // 캐시를 우회하여 최신 프로필 이미지를 가져오기 위해 직접 호출
       final profileImageUrl = await authController.getUserProfileImageUrlById(
         currentPhoto.userID,
       );
-
-      // 사용자 정보 조회하여 이름 가져오기
-      final AuthModel? userInfo = await authController.getUserInfo(
-        currentPhoto.userID,
-      );
+      final userInfo = await authController.getUserInfo(currentPhoto.userID);
 
       if (mounted) {
         setState(() {
           _userProfileImageUrl = profileImageUrl;
-          _userName = userInfo?.id ?? currentPhoto.userID; // 이름이 없으면 userID 사용
+          _userName = userInfo?.id ?? currentPhoto.userID;
           _isLoadingProfile = false;
         });
         debugPrint('프로필 이미지 업데이트 완료 - URL: $profileImageUrl');
@@ -136,86 +116,63 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       debugPrint('프로필 정보 로드 실패: $e');
       if (mounted) {
         setState(() {
-          _userName = currentPhoto.userID; // 에러 시 userID 사용
+          _userName = currentPhoto.userID;
           _isLoadingProfile = false;
         });
       }
     }
   }
 
-  /// 현재 사진의 음성 댓글들과 프로필 위치 로드
   /// 현재 사진의 음성 댓글을 실시간으로 구독하여 위치 동기화
   void _subscribeToVoiceCommentsForCurrentPhoto() {
-    final currentPhoto = widget.photos[_currentIndex];
-    final photoId = currentPhoto.id;
+    final photoId = widget.photos[_currentIndex].id;
+    debugPrint('음성 댓글 실시간 구독 시작 - 사진: $photoId');
 
     try {
-      debugPrint('음성 댓글 실시간 구독 시작 - 사진: $photoId');
-
-      // 기존 구독이 있다면 취소
       _commentStreams[photoId]?.cancel();
 
-      final commentRecordController = CommentRecordController();
-
-      // 실시간 스트림 구독
-      _commentStreams[photoId] = commentRecordController
+      _commentStreams[photoId] = CommentRecordController()
           .getCommentRecordsStream(photoId)
           .listen(
-            (comments) async {
-              debugPrint(
-                '실시간 댓글 업데이트 수신 - 사진: $photoId, 댓글 수: ${comments.length}',
-              );
-
-              // 댓글들을 저장
-              if (mounted) {
-                setState(() {
-                  _photoComments[photoId] = comments;
-                });
-              }
-
-              // 현재 사용자의 댓글이 있는지 확인하여 저장 상태 업데이트
-              final currentUserId = _authController?.getUserId;
-
-              if (currentUserId != null) {
-                final hasUserComment = comments.any(
-                  (comment) => comment.recorderUser == currentUserId,
-                );
-
-                if (mounted) {
-                  setState(() {
-                    _voiceCommentSavedStates[photoId] = hasUserComment;
-                  });
-                }
-
-                debugPrint(
-                  '음성 댓글 저장 상태 업데이트 - 사진: $photoId, 현재 사용자 댓글 존재: $hasUserComment',
-                );
-              }
-              for (var comment in comments) {
-                // 프로필 위치가 있으면 실시간 업데이트
-                if (comment.profilePosition != null) {
-                  final newPosition = comment.profilePosition!;
-                  final oldPosition = _profileImagePositions[photoId];
-
-                  // 위치가 실제로 변경된 경우에만 업데이트
-                  if (oldPosition != newPosition && mounted) {
-                    setState(() {
-                      _profileImagePositions[photoId] = newPosition;
-                    });
-                    debugPrint(
-                      '실시간 프로필 위치 업데이트 - photoId: $photoId, 위치: $newPosition',
-                    );
-                  }
-                }
-              }
-            },
-            onError: (error) {
-              debugPrint('실시간 댓글 구독 오류 - 사진 $photoId: $error');
-            },
+            (comments) => _handleCommentsUpdate(photoId, comments),
+            onError:
+                (error) => debugPrint('실시간 댓글 구독 오류 - 사진 $photoId: $error'),
           );
     } catch (e) {
       debugPrint('실시간 댓글 구독 시작 실패 - 사진 $photoId: $e');
     }
+  }
+
+  /// 댓글 업데이트 처리
+  void _handleCommentsUpdate(
+    String photoId,
+    List<CommentRecordModel> comments,
+  ) async {
+    debugPrint('실시간 댓글 업데이트 수신 - 사진: $photoId, 댓글 수: ${comments.length}');
+
+    if (!mounted) return;
+
+    setState(() {
+      _photoComments[photoId] = comments;
+
+      // 현재 사용자 댓글 존재 여부 확인
+      final currentUserId = _authController?.getUserId;
+      if (currentUserId != null) {
+        _voiceCommentSavedStates[photoId] = comments.any(
+          (comment) => comment.recorderUser == currentUserId,
+        );
+      }
+
+      // 프로필 위치가 있는 댓글 처리
+      for (var comment in comments) {
+        if (comment.profilePosition != null) {
+          _profileImagePositions[photoId] = comment.profilePosition!;
+          _droppedProfileImageUrls[photoId] = comment.profileImageUrl;
+          debugPrint('실시간 프로필 위치 및 이미지 URL 업데이트 - photoId: $photoId');
+          break;
+        }
+      }
+    });
   }
 
   /// Firestore에 프로필 위치 업데이트
@@ -226,8 +183,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     try {
       debugPrint('Firestore 프로필 위치 업데이트 시작 - 사진: $photoId, 위치: $position');
 
-      // 현재 사진의 댓글들에서 현재 사용자의 댓글 찾기
-      final comments = _photoComments[photoId] ?? [];
       final authController = Provider.of<AuthController>(
         context,
         listen: false,
@@ -240,59 +195,51 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       }
 
       // 현재 사용자의 댓글 찾기
-      CommentRecordModel? userComment;
-      for (var comment in comments) {
-        if (comment.recorderUser == currentUserId) {
-          userComment = comment;
-          break;
-        }
-      }
+      final comments = _photoComments[photoId] ?? [];
+      final userComment =
+          comments
+              .where((comment) => comment.recorderUser == currentUserId)
+              .firstOrNull;
 
       if (userComment == null) {
         debugPrint('현재 사용자의 음성 댓글을 찾을 수 없습니다.');
         return;
       }
 
-      // CommentRecordController를 사용하여 위치 업데이트
-      final commentRecordController = CommentRecordController();
-      final success = await commentRecordController.updateProfilePosition(
+      final success = await CommentRecordController().updateProfilePosition(
         commentId: userComment.id,
         photoId: photoId,
         profilePosition: position,
       );
 
-      if (success) {
-        debugPrint('Firestore 프로필 위치 업데이트 성공');
-      } else {
-        debugPrint('Firestore 프로필 위치 업데이트 실패');
-      }
+      debugPrint(
+        success ? 'Firestore 프로필 위치 업데이트 성공' : 'Firestore 프로필 위치 업데이트 실패',
+      );
     } catch (e) {
       debugPrint('Firestore 프로필 위치 업데이트 중 오류: $e');
     }
   }
 
-  // 페이지가 변경될 때마다 호출되어 현재 사진을 업데이트합니다.
+  // 페이지 변경 시 호출
   void _onPageChanged(int index) {
     setState(() {
       _currentIndex = index;
-      _profileImageRefreshKey++; // 페이지 변경 시에도 프로필 이미지 캐시 무효화
+      _profileImageRefreshKey++;
     });
-    _stopAudio(); // 기존 오디오 정지
-    _loadUserProfileImage(); // 새 사용자 프로필 로드
-    _subscribeToVoiceCommentsForCurrentPhoto(); // 새 사진의 음성 댓글 로드
+    _stopAudio();
+    _loadUserProfileImage();
+    _subscribeToVoiceCommentsForCurrentPhoto();
   }
 
-  // 오디오 재생/일시정지 (Controller 사용)
+  // 오디오 재생/일시정지
   Future<void> _toggleAudio() async {
     final currentPhoto = widget.photos[_currentIndex];
-
     if (currentPhoto.audioUrl.isEmpty) {
       debugPrint('오디오 URL이 없습니다');
       return;
     }
 
     try {
-      // Controller의 재생/일시정지 메서드 사용
       await Provider.of<AudioController>(
         context,
         listen: false,
@@ -307,26 +254,24 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     }
   }
 
-  // 오디오 정지 (Controller 사용)
+  // 오디오 정지
   Future<void> _stopAudio() async {
-    // Controller의 정지 메서드 사용
     await Provider.of<AudioController>(context, listen: false).stopAudio();
   }
 
-  // 커스텀 파형 위젯을 빌드하는 메서드 (실시간 progress 포함)
+  // 파형 위젯 빌드
   Widget _buildWaveformWidgetWithProgress(PhotoDataModel photo) {
-    // 오디오가 없는 경우
     if (photo.audioUrl.isEmpty ||
         photo.waveformData == null ||
         photo.waveformData!.isEmpty) {
       return Container(
-        height: (MediaQuery.sizeOf(context).height * 0.038), // 반응형 높이
+        height: MediaQuery.sizeOf(context).height * 0.038,
         alignment: Alignment.center,
         child: Text(
           '오디오 없음',
           style: TextStyle(
             color: Colors.white70,
-            fontSize: (MediaQuery.sizeOf(context).width * 0.027), // 반응형 폰트
+            fontSize: MediaQuery.sizeOf(context).width * 0.027,
           ),
         ),
       );
@@ -334,31 +279,27 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
     return Consumer<AudioController>(
       builder: (context, audioController, child) {
-        // 현재 사진의 오디오가 재생 중인지 확인
         final isCurrentAudio =
             audioController.isPlaying &&
             audioController.currentPlayingAudioUrl == photo.audioUrl;
 
-        // 실시간 재생 진행률 계산 (0.0 ~ 1.0)
         double progress = 0.0;
         if (isCurrentAudio &&
             audioController.currentDuration.inMilliseconds > 0) {
-          progress =
-              audioController.currentPosition.inMilliseconds /
-              audioController.currentDuration.inMilliseconds;
-          progress = progress.clamp(0.0, 1.0);
+          progress = (audioController.currentPosition.inMilliseconds /
+                  audioController.currentDuration.inMilliseconds)
+              .clamp(0.0, 1.0);
         }
 
-        // 파형을 탭해서 재생/일시정지할 수 있도록 GestureDetector 추가
         return GestureDetector(
           onTap: _toggleAudio,
           child: Container(
             alignment: Alignment.center,
             child: CustomWaveformWidget(
               waveformData: photo.waveformData!,
-              color: Color(0xff5a5a5a),
-              activeColor: Colors.white, // 재생 중인 부분은 완전한 흰색
-              progress: progress, // 실시간 재생 진행률 반영
+              color: const Color(0xff5a5a5a),
+              activeColor: Colors.white,
+              progress: progress,
             ),
           ),
         );
@@ -463,20 +404,13 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                     .clamp(0, (screenHeight * 0.65) - 27),
                                 child: Consumer<AuthController>(
                                   builder: (context, authController, child) {
-                                    // 해당 사진의 댓글들 확인
-                                    final comments =
-                                        _photoComments[photo.id] ?? [];
-                                    String? profileImageUrl;
+                                    // 간단한 플로우: 캐시된 URL 직접 사용
+                                    String? profileImageUrl =
+                                        _droppedProfileImageUrls[photo.id];
 
-                                    // 프로필 위치가 있는 댓글의 작성자 찾기
-                                    for (var comment in comments) {
-                                      if (comment.profilePosition != null) {
-                                        // comment_records의 profileImageUrl 직접 사용
-                                        profileImageUrl =
-                                            comment.profileImageUrl;
-                                        break;
-                                      }
-                                    }
+                                    debugPrint(
+                                      '드롭된 프로필 이미지 URL: $profileImageUrl (photo: ${photo.id})',
+                                    );
 
                                     return Consumer<AuthController>(
                                       builder: (
@@ -484,80 +418,108 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                         authController,
                                         child,
                                       ) {
-                                        return Container(
-                                          width: 27,
-                                          height: 27,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: Colors.white,
-                                              width: 2,
+                                        return InkWell(
+                                          onTap: () async {
+                                            _audioController =
+                                                Provider.of<AudioController>(
+                                                  context,
+                                                  listen: false,
+                                                );
+                                            // 프로필 위치를 가진 댓글 찾기
+                                            final comments =
+                                                _photoComments[photo.id] ?? [];
+                                            for (var comment in comments) {
+                                              if (comment.profilePosition !=
+                                                      null &&
+                                                  comment.audioUrl.isNotEmpty) {
+                                                // AudioController로 재생
+                                                await _audioController!
+                                                    .toggleAudio(
+                                                      comment.audioUrl,
+                                                    );
+                                                break;
+                                              }
+                                            }
+                                          },
+                                          child: Container(
+                                            width: 27,
+                                            height: 27,
+                                            decoration: BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: Colors.white,
+                                                width: 2,
+                                              ),
                                             ),
+                                            child:
+                                                profileImageUrl != null &&
+                                                        profileImageUrl
+                                                            .isNotEmpty
+                                                    ? ClipOval(
+                                                      child: CachedNetworkImage(
+                                                        imageUrl:
+                                                            profileImageUrl,
+                                                        key: ValueKey(
+                                                          'detail_profile_${profileImageUrl}_$_profileImageRefreshKey',
+                                                        ), // 리프레시 키를 사용한 캐시 무효화
+                                                        fit: BoxFit.cover,
+                                                        placeholder:
+                                                            (
+                                                              context,
+                                                              url,
+                                                            ) => Container(
+                                                              decoration: BoxDecoration(
+                                                                color:
+                                                                    Colors
+                                                                        .grey[700],
+                                                                shape:
+                                                                    BoxShape
+                                                                        .circle,
+                                                              ),
+                                                              child: Icon(
+                                                                Icons.person,
+                                                                color:
+                                                                    Colors
+                                                                        .white,
+                                                                size: 14,
+                                                              ),
+                                                            ),
+                                                        errorWidget:
+                                                            (
+                                                              context,
+                                                              error,
+                                                              stackTrace,
+                                                            ) => Container(
+                                                              decoration: BoxDecoration(
+                                                                color:
+                                                                    Colors
+                                                                        .grey[700],
+                                                                shape:
+                                                                    BoxShape
+                                                                        .circle,
+                                                              ),
+                                                              child: Icon(
+                                                                Icons.person,
+                                                                color:
+                                                                    Colors
+                                                                        .white,
+                                                                size: 14,
+                                                              ),
+                                                            ),
+                                                      ),
+                                                    )
+                                                    : Container(
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.grey[700],
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.person,
+                                                        color: Colors.white,
+                                                        size: 14,
+                                                      ),
+                                                    ),
                                           ),
-                                          child:
-                                              profileImageUrl != null &&
-                                                      profileImageUrl.isNotEmpty
-                                                  ? ClipOval(
-                                                    child: CachedNetworkImage(
-                                                      imageUrl: profileImageUrl,
-                                                      key: ValueKey(
-                                                        'detail_profile_${profileImageUrl}_$_profileImageRefreshKey',
-                                                      ), // 리프레시 키를 사용한 캐시 무효화
-                                                      fit: BoxFit.cover,
-                                                      placeholder:
-                                                          (
-                                                            context,
-                                                            url,
-                                                          ) => Container(
-                                                            decoration: BoxDecoration(
-                                                              color:
-                                                                  Colors
-                                                                      .grey[700],
-                                                              shape:
-                                                                  BoxShape
-                                                                      .circle,
-                                                            ),
-                                                            child: Icon(
-                                                              Icons.person,
-                                                              color:
-                                                                  Colors.white,
-                                                              size: 14,
-                                                            ),
-                                                          ),
-                                                      errorWidget:
-                                                          (
-                                                            context,
-                                                            error,
-                                                            stackTrace,
-                                                          ) => Container(
-                                                            decoration: BoxDecoration(
-                                                              color:
-                                                                  Colors
-                                                                      .grey[700],
-                                                              shape:
-                                                                  BoxShape
-                                                                      .circle,
-                                                            ),
-                                                            child: Icon(
-                                                              Icons.person,
-                                                              color:
-                                                                  Colors.white,
-                                                              size: 14,
-                                                            ),
-                                                          ),
-                                                    ),
-                                                  )
-                                                  : Container(
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.grey[700],
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: Icon(
-                                                      Icons.person,
-                                                      color: Colors.white,
-                                                      size: 14,
-                                                    ),
-                                                  ),
                                         );
                                       },
                                     );
@@ -584,6 +546,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                       (screenWidth * 0.067),
                                     ), // 반응형 반지름
                                   ),
+                                  // 사진을 찍은 사용자가 녹음한 오디오의 파형을 비롯한 여러가지 정보를 표시하는 부분
                                   child: Row(
                                     children: [
                                       // 왼쪽 프로필 이미지
@@ -601,30 +564,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                         ),
                                         child: Builder(
                                           builder: (context) {
-                                            // comment_records의 profileImageUrl 우선 사용
-                                            final comments =
-                                                _photoComments[photo.id] ?? [];
+                                            // 파형을 표시하는 부분에서는 사진을 올린 사용자의 프로필 이미지가 나오게 함
                                             String profileImageToShow =
                                                 _userProfileImageUrl;
-
-                                            // 현재 사용자의 댓글이 있으면 그 댓글의 profileImageUrl 사용
-                                            final currentUserId =
-                                                _authController?.getUserId;
-                                            if (currentUserId != null) {
-                                              for (var comment in comments) {
-                                                if (comment.recorderUser ==
-                                                    currentUserId) {
-                                                  profileImageToShow =
-                                                      comment
-                                                              .profileImageUrl
-                                                              .isNotEmpty
-                                                          ? comment
-                                                              .profileImageUrl
-                                                          : _userProfileImageUrl;
-                                                  break;
-                                                }
-                                              }
-                                            }
 
                                             return _isLoadingProfile
                                                 ? CircleAvatar(
