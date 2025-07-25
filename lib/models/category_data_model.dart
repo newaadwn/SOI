@@ -6,7 +6,7 @@ class CategoryDataModel {
   final String name;
   final List<String> mates;
   final DateTime createdAt;
-  final String? firstPhotoUrl;
+  final String? categoryPhotoUrl;
   final int photoCount;
 
   CategoryDataModel({
@@ -14,7 +14,7 @@ class CategoryDataModel {
     required this.name,
     required this.mates,
     required this.createdAt,
-    this.firstPhotoUrl,
+    this.categoryPhotoUrl,
     this.photoCount = 0,
   });
 
@@ -28,7 +28,7 @@ class CategoryDataModel {
       name: data['name'] ?? '',
       mates: (data['mates'] as List).cast<String>(),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
-      firstPhotoUrl: data['firstPhotoUrl'],
+      categoryPhotoUrl: data['categoryPhotoUrl'],
       photoCount: data['photoCount'] ?? 0,
     );
   }
@@ -39,7 +39,7 @@ class CategoryDataModel {
       'name': name,
       'mates': mates,
       'createdAt': Timestamp.fromDate(createdAt),
-      'firstPhotoUrl': firstPhotoUrl,
+      'categoryPhotoUrl': categoryPhotoUrl,
       'photoCount': photoCount,
     };
   }
@@ -58,7 +58,7 @@ class CategoryDataModel {
       name: name ?? this.name,
       mates: mates ?? this.mates,
       createdAt: createdAt ?? this.createdAt,
-      firstPhotoUrl: firstPhotoUrl ?? this.firstPhotoUrl,
+      categoryPhotoUrl: categoryPhotoUrl ?? this.categoryPhotoUrl,
       photoCount: photoCount ?? this.photoCount,
     );
   }

@@ -81,57 +81,57 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
       );
     }
 
-    // 카테고리 정보를 가져오는 스트림을 구독해요.
-    final categoryController = Provider.of<CategoryController>(
-      context,
-      listen: false,
-    );
-    final authController = Provider.of<AuthController>(context, listen: false);
-
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: categoryController.streamUserCategoriesWithDetails(
-          uID!,
-          authController,
-        ),
-        builder: (context, snapshot) {
-          // 데이터가 불러오는 중일때
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            );
-          }
-          // 에러가 생겼을 때
-          if (snapshot.hasError) {
+      body: Consumer<CategoryController>(
+        builder: (context, categoryController, child) {
+          // 사용자 카테고리 로드 (한 번만 로드)
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            categoryController.loadUserCategories(uID!);
+          });
+
+          // 로딩 중일 때
+          if (categoryController.isLoading &&
+              categoryController.userCategories.isEmpty) {
             return const Center(
               child: CircularProgressIndicator(color: Colors.white),
             );
           }
 
-          final categories = snapshot.data ?? [];
+          // 에러가 생겼을 때
+          if (categoryController.error != null) {
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            );
+          }
+
+          // 필터링된 카테고리 가져오기
+          final allCategories = categoryController.userCategories;
+
           // 사용자 카테고리만 필터링합니다.
           final userCategories =
-              categories
+              allCategories
                   .where(
                     (category) =>
-                        category['mates'].every((element) => element == uID),
+                        category.mates.every((element) => element == uID),
                   )
                   .toList();
 
           if (userCategories.isEmpty) {
-            return const Center(
+            return Center(
               child: Text(
-                '등록된 카테고리가 없습니다.',
-                style: TextStyle(color: Colors.white),
+                categoryController.searchQuery.isNotEmpty
+                    ? '검색 결과가 없습니다.'
+                    : '등록된 카테고리가 없습니다.',
+                style: const TextStyle(color: Colors.white),
               ),
             );
           }
 
           // 모든 카테고리에 대해 프로필 이미지 로드 요청
           for (var category in userCategories) {
-            final categoryId = category['id'] as String;
-            final mates = (category['mates'] as List).cast<String>();
+            final categoryId = category.id;
+            final mates = category.mates;
             _loadProfileImages(categoryId, mates);
           }
 
@@ -160,13 +160,15 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
                     itemCount: userCategories.length,
                     itemBuilder: (context, index) {
                       final category = userCategories[index];
-                      final categoryId = category['id'] as String;
+                      final categoryMap =
+                          category.toFirestore()..['id'] = category.id;
+                      final categoryId = category.id;
                       final profileImages =
                           _categoryProfileImages[categoryId] ?? [];
                       final imageSize = cardDimensions['imageSize']!;
 
                       return ArchiveCardWidget(
-                        category: category,
+                        category: categoryMap,
                         profileImages: profileImages,
                         imageSize: imageSize,
                       );

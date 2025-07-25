@@ -1,25 +1,3 @@
-/*
- * SharedArchivesScreen
- * 
- * 이 화면은 사용자가 다른 사용자와 공유한 카테고리(아카이빙)를 보여주는 화면입니다.
- * 
- * 기능:
- * 1. 사용자의 닉네임을 Firebase에서 가져옵니다.
- * 2. 현재 사용자가 다른 사용자들과 공유하고 있는 카테고리만 필터링하여 표시합니다.
- * 3. 각 카테고리는 그리드 형태로 표시되며, 각 항목에는 대표 이미지와 카테고리 이름이 표시됩니다.
- * 4. 카테고리 참여자들의 프로필 이미지가 작은 원형 아이콘으로 표시됩니다.
- * 5. 카테고리를 탭하면 해당 카테고리의 사진을 모두 볼 수 있는 CategoryPhotosScreen으로 이동합니다.
- * 
- * 데이터 흐름:
- * - AuthController을 통해 사용자의 닉네임을 가져옵니다.
- * - CategoryController을 통해 사용자가 속한 카테고리 정보를 실시간으로 스트리밍합니다.
- * - 카테고리 중 현재 사용자와 다른 사용자가 함께 있는 카테고리만 필터링합니다.
- * 
- * 주요 위젯:
- * - GridView: 공유 카테고리를 그리드 형태로 표시합니다.
- * - StreamBuilder: Firebase에서 실시간으로 카테고리 데이터를 가져옵니다.
- */
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/category_controller.dart';
@@ -100,58 +78,58 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
       );
     }
 
-    // 카테고리 정보를 가져오는 스트림을 구독해요.
-    final categoryController = Provider.of<CategoryController>(
-      context,
-      listen: false,
-    );
-    final authController = Provider.of<AuthController>(context, listen: false);
-
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        stream: categoryController.streamUserCategoriesWithDetails(
-          nickName!,
-          authController,
-        ),
-        builder: (context, snapshot) {
-          // 데이터가 불러오는 중일때
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            );
-          }
-          // 에러가 생겼을 때
-          if (snapshot.hasError) {
+      body: Consumer<CategoryController>(
+        builder: (context, categoryController, child) {
+          // 사용자 카테고리 로드 (한 번만 로드)
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            categoryController.loadUserCategories(nickName!);
+          });
+
+          // 로딩 중일 때
+          if (categoryController.isLoading &&
+              categoryController.userCategories.isEmpty) {
             return const Center(
               child: CircularProgressIndicator(color: Colors.white),
             );
           }
 
-          final categories = snapshot.data ?? [];
-          // 사용자 카테고리만 필터링합니다.
-          final userCategories =
-              categories
+          // 에러가 생겼을 때
+          if (categoryController.error != null) {
+            return const Center(
+              child: CircularProgressIndicator(color: Colors.white),
+            );
+          }
+
+          // 필터링된 카테고리 가져오기
+          final allCategories = categoryController.userCategories;
+
+          // 공유 카테고리만 필터링합니다.
+          final sharedCategories =
+              allCategories
                   .where(
                     (category) =>
-                        ((category['mates'] as List).contains(nickName) &&
-                            category['mates'].length != 1),
+                        category.mates.contains(nickName) &&
+                        category.mates.length != 1,
                   )
                   .toList();
 
-          if (userCategories.isEmpty) {
-            return const Center(
+          if (sharedCategories.isEmpty) {
+            return Center(
               child: Text(
-                '등록된 카테고리가 없습니다.',
-                style: TextStyle(color: Colors.white),
+                categoryController.searchQuery.isNotEmpty
+                    ? '검색 결과가 없습니다.'
+                    : '등록된 카테고리가 없습니다.',
+                style: const TextStyle(color: Colors.white),
               ),
             );
           }
 
           // 모든 카테고리에 대해 프로필 이미지 로드 요청
-          for (var category in userCategories) {
-            final categoryId = category['id'] as String;
-            final mates = (category['mates'] as List).cast<String>();
+          for (var category in sharedCategories) {
+            final categoryId = category.id;
+            final mates = category.mates;
             _loadProfileImages(categoryId, mates);
           }
 
@@ -177,16 +155,18 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
                       crossAxisSpacing:
                           ArchiveResponsiveHelper.getCrossAxisSpacing(context),
                     ),
-                    itemCount: userCategories.length,
+                    itemCount: sharedCategories.length,
                     itemBuilder: (context, index) {
-                      final category = userCategories[index];
-                      final categoryId = category['id'] as String;
+                      final category = sharedCategories[index];
+                      final categoryMap =
+                          category.toFirestore()..['id'] = category.id;
+                      final categoryId = category.id;
                       final profileImages =
                           _categoryProfileImages[categoryId] ?? [];
                       final imageSize = cardDimensions['imageSize']!;
 
                       return ArchiveCardWidget(
-                        category: category,
+                        category: categoryMap,
                         profileImages: profileImages,
                         imageSize: imageSize,
                       );

@@ -7,6 +7,8 @@ class CategoryController extends ChangeNotifier {
   // 상태 변수들
   final List<String> _selectedNames = [];
   List<CategoryDataModel> _userCategories = [];
+  List<CategoryDataModel> _filteredCategories = [];
+  String _searchQuery = '';
   bool _isLoading = false;
   String? _error;
   String? _lastLoadedUserId; // 마지막으로 로드한 사용자 ID
@@ -18,7 +20,11 @@ class CategoryController extends ChangeNotifier {
 
   // Getters
   List<String> get selectedNames => _selectedNames;
-  List<CategoryDataModel> get userCategories => _userCategories;
+  List<CategoryDataModel> get userCategories =>
+      _filteredCategories.isNotEmpty || _searchQuery.isNotEmpty
+          ? _filteredCategories
+          : _userCategories;
+  String get searchQuery => _searchQuery;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
@@ -35,7 +41,7 @@ class CategoryController extends ChangeNotifier {
     }
 
     debugPrint(
-      'loadUserCategories 시작: userId=$userId, forceReload=$forceReload',
+      '🔍 [CATEGORY_CONTROLLER] loadUserCategories 시작: userId="$userId", forceReload=$forceReload',
     );
 
     // 캐시가 유효한지 확인
@@ -44,13 +50,18 @@ class CategoryController extends ChangeNotifier {
         _lastLoadTime != null && now.difference(_lastLoadTime!) < _cacheTimeout;
 
     debugPrint(
-      '캐시 상태: isLoading=$_isLoading, lastLoadedUserId=$_lastLoadedUserId, isCacheValid=$isCacheValid',
+      '🔍 [CATEGORY_CONTROLLER] 캐시 상태: isLoading=$_isLoading, lastLoadedUserId="$_lastLoadedUserId", isCacheValid=$isCacheValid',
     );
 
-    // 이미 로딩 중이거나 같은 사용자의 데이터가 이미 로드되고 캐시가 유효한 경우 스킵 (forceReload가 true가 아닌 경우)
-    if (!forceReload &&
-        (_isLoading || (_lastLoadedUserId == userId && isCacheValid))) {
-      debugPrint('캐시에서 스킵됨');
+    // 임시로 캐시 무시하고 항상 새로 로드하도록 수정
+    // if (!forceReload &&
+    //     (_isLoading || (_lastLoadedUserId == userId && isCacheValid))) {
+    //   debugPrint('캐시에서 스킵됨');
+    //   return;
+    // }
+
+    if (_isLoading) {
+      debugPrint('🔍 [CATEGORY_CONTROLLER] 이미 로딩 중이므로 스킵');
       return;
     }
 
@@ -59,9 +70,21 @@ class CategoryController extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      debugPrint('CategoryService.getUserCategories 호출 중...');
+      debugPrint(
+        '🔍 [CATEGORY_CONTROLLER] CategoryService.getUserCategories 호출 중...',
+      );
       _userCategories = await _categoryService.getUserCategories(userId);
-      debugPrint('CategoryService에서 반환된 카테고리 수: ${_userCategories.length}');
+      debugPrint(
+        '🔍 [CATEGORY_CONTROLLER] CategoryService에서 반환된 카테고리 수: ${_userCategories.length}',
+      );
+
+      if (_userCategories.isNotEmpty) {
+        for (var category in _userCategories) {
+          debugPrint(
+            '🔍 [CATEGORY_CONTROLLER] 카테고리: ${category.name} (ID: ${category.id})',
+          );
+        }
+      }
 
       _lastLoadedUserId = userId;
       _lastLoadTime = DateTime.now(); // 로드 시간 업데이트
@@ -322,7 +345,7 @@ class CategoryController extends ChangeNotifier {
   Stream<String?> getFirstPhotoUrlStream(String categoryId) {
     return getPhotosStream(categoryId).map((photos) {
       if (photos.isNotEmpty) {
-        return photos.first['imageUrl'] as String?;
+        return photos.first['image'] as String?;
       }
       return null;
     });
@@ -374,7 +397,7 @@ class CategoryController extends ChangeNotifier {
       _isLoading = false;
       _error = e.toString();
       notifyListeners();
-      throw e;
+      rethrow;
     }
   }
 
@@ -403,7 +426,7 @@ class CategoryController extends ChangeNotifier {
       _isLoading = false;
       _error = e.toString();
       notifyListeners();
-      throw e;
+      rethrow;
     }
   }
 
@@ -411,5 +434,209 @@ class CategoryController extends ChangeNotifier {
   void invalidateCache() {
     _lastLoadTime = null;
     _lastLoadedUserId = null;
+  }
+
+  // ==================== 검색 기능 ====================
+
+  /// 검색어로 카테고리 필터링
+  void searchCategories(String query) {
+    _searchQuery = query.trim();
+
+    if (_searchQuery.isEmpty) {
+      _filteredCategories = [];
+    } else {
+      _filteredCategories =
+          _userCategories.where((category) {
+            return _matchesSearch(category.name, _searchQuery);
+          }).toList();
+    }
+
+    notifyListeners();
+  }
+
+  /// 검색 초기화
+  void clearSearch() {
+    _searchQuery = '';
+    _filteredCategories = [];
+    notifyListeners();
+  }
+
+  /// 텍스트가 검색어와 매치되는지 확인 (한글 초성 검색, 영어 약어 검색 포함)
+  bool _matchesSearch(String text, String query) {
+    // 대소문자 구분 없이 기본 검색
+    if (text.toLowerCase().contains(query.toLowerCase())) {
+      return true;
+    }
+
+    // 한글 초성 검색
+    if (_matchesChosung(text, query)) {
+      return true;
+    }
+
+    // 영어 약어 검색
+    return _matchesAcronym(text, query);
+  }
+
+  /// 한글 초성 검색 매치
+  bool _matchesChosung(String text, String query) {
+    try {
+      String textChosung = _extractChosung(text);
+      String queryChosung = _extractChosung(query);
+
+      return textChosung.contains(queryChosung);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 한글에서 초성 추출
+  String _extractChosung(String text) {
+    const chosungList = [
+      'ㄱ',
+      'ㄲ',
+      'ㄴ',
+      'ㄷ',
+      'ㄸ',
+      'ㄹ',
+      'ㅁ',
+      'ㅂ',
+      'ㅃ',
+      'ㅅ',
+      'ㅆ',
+      'ㅇ',
+      'ㅈ',
+      'ㅉ',
+      'ㅊ',
+      'ㅋ',
+      'ㅌ',
+      'ㅍ',
+      'ㅎ',
+    ];
+
+    StringBuffer result = StringBuffer();
+
+    for (int i = 0; i < text.length; i++) {
+      int charCode = text.codeUnitAt(i);
+
+      // 한글인지 확인 (가-힣)
+      if (charCode >= 0xAC00 && charCode <= 0xD7A3) {
+        // 초성 추출
+        int chosungIndex = ((charCode - 0xAC00) / 588).floor();
+        if (chosungIndex >= 0 && chosungIndex < chosungList.length) {
+          result.write(chosungList[chosungIndex]);
+        }
+      } else if (_isChosung(text[i])) {
+        // 이미 초성인 경우
+        result.write(text[i]);
+      } else {
+        // 한글이 아닌 경우 그대로 추가
+        result.write(text[i]);
+      }
+    }
+
+    return result.toString();
+  }
+
+  /// 초성인지 확인
+  bool _isChosung(String char) {
+    const chosungList = [
+      'ㄱ',
+      'ㄲ',
+      'ㄴ',
+      'ㄷ',
+      'ㄸ',
+      'ㄹ',
+      'ㅁ',
+      'ㅂ',
+      'ㅃ',
+      'ㅅ',
+      'ㅆ',
+      'ㅇ',
+      'ㅈ',
+      'ㅉ',
+      'ㅊ',
+      'ㅋ',
+      'ㅌ',
+      'ㅍ',
+      'ㅎ',
+    ];
+    return chosungList.contains(char);
+  }
+
+  // ==================== 영어 약어 검색 ====================
+
+  /// 영어 약어 검색 매치
+  bool _matchesAcronym(String text, String query) {
+    try {
+      // 최소 2글자 이상의 쿼리만 약어 검색 적용
+      if (query.length < 2) {
+        return false;
+      }
+
+      String textAcronym = _extractAcronym(text);
+      String queryLower = query.toLowerCase();
+
+      return textAcronym.contains(queryLower);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// 영어 텍스트에서 약어 추출 (CamelCase 및 공백 기반)
+  String _extractAcronym(String text) {
+    if (text.isEmpty) return '';
+
+    List<String> words = _splitWordsFromText(text);
+    StringBuffer acronym = StringBuffer();
+
+    for (String word in words) {
+      if (word.isNotEmpty) {
+        acronym.write(word[0].toLowerCase());
+      }
+    }
+
+    return acronym.toString();
+  }
+
+  /// 텍스트를 단어로 분리 (공백, 특수문자, CamelCase 고려)
+  List<String> _splitWordsFromText(String text) {
+    List<String> words = [];
+    StringBuffer currentWord = StringBuffer();
+
+    for (int i = 0; i < text.length; i++) {
+      String char = text[i];
+
+      // 공백이나 특수문자인 경우
+      if (char == ' ' ||
+          char == '-' ||
+          char == '_' ||
+          char == '.' ||
+          char == ',') {
+        if (currentWord.isNotEmpty) {
+          words.add(currentWord.toString());
+          currentWord.clear();
+        }
+      }
+      // 대문자인 경우 (CamelCase 처리)
+      else if (char == char.toUpperCase() && char != char.toLowerCase()) {
+        // 이전 단어가 있으면 저장
+        if (currentWord.isNotEmpty) {
+          words.add(currentWord.toString());
+          currentWord.clear();
+        }
+        currentWord.write(char);
+      }
+      // 일반 문자인 경우
+      else {
+        currentWord.write(char);
+      }
+    }
+
+    // 마지막 단어 추가
+    if (currentWord.isNotEmpty) {
+      words.add(currentWord.toString());
+    }
+
+    return words;
   }
 }

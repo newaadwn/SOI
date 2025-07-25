@@ -227,7 +227,7 @@ class AuthController extends ChangeNotifier {
         debugPrint('프로필 이미지가 업데이트되었습니다');
 
         // 프로필 이미지 업데이트 성공 시, 음성 댓글들의 프로필 이미지 URL도 업데이트
-        await _updateVoiceCommentsProfileImage();
+        await _updateVoiceCommentsProfileImage(result.data);
 
         return true;
       } else {
@@ -244,18 +244,15 @@ class AuthController extends ChangeNotifier {
   }
 
   /// 음성 댓글들의 프로필 이미지 URL 업데이트
-  Future<void> _updateVoiceCommentsProfileImage() async {
+  Future<void> _updateVoiceCommentsProfileImage(
+    String newProfileImageUrl,
+  ) async {
     try {
       final currentUserId = getUserId;
       if (currentUserId == null || currentUserId.isEmpty) {
         debugPrint('⚠️ 현재 사용자 ID를 찾을 수 없어 음성 댓글 프로필 이미지 업데이트를 건너뜁니다');
         return;
       }
-
-      // 최신 프로필 이미지 URL 가져오기
-      final newProfileImageUrl = await getUserProfileImageUrlWithCache(
-        currentUserId,
-      );
 
       debugPrint('🔄 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $currentUserId');
       debugPrint('🔄 새 프로필 이미지 URL: $newProfileImageUrl');

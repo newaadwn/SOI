@@ -11,46 +11,46 @@ class CategoryPhotosScreen extends StatelessWidget {
 
   const CategoryPhotosScreen({super.key, required this.category});
 
-  /// 그리드 열 개수 계산 (화면 크기에 따라)
-  int _getGridCrossAxisCount(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
+  /// 화면 크기 구분 메서드들
+  bool _isSmallScreen(BuildContext context) {
+    return MediaQuery.of(context).size.width < 375;
+  }
 
-    if (screenWidth < 360) {
-      return 1;
-    } else if (screenWidth < 500) {
-      return 2;
-    } else if (screenWidth < 800) {
-      return 3;
+  bool _isLargeScreen(BuildContext context) {
+    return MediaQuery.of(context).size.width > 414;
+  }
+
+  /// AppBar 높이 계산 (화면 크기별)
+  double _getAppBarHeight(BuildContext context) {
+    if (_isSmallScreen(context)) {
+      return 50.0; // 작은 화면: 작은 AppBar
+    } else if (_isLargeScreen(context)) {
+      return 60.0; // 큰 화면: 큰 AppBar
     } else {
-      return 4;
+      return 56.0; // 일반 화면: 기본 AppBar
     }
   }
 
-  /// 그리드 아이템의 가로 세로 비율 계산
-  double _getGridAspectRatio(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
-
-    final screenRatio = screenHeight / screenWidth;
-    if (screenRatio > 2.0) {
-      return 0.75;
-    } else if (screenRatio > 1.8) {
-      return 0.8;
+  /// 타이틀 폰트 크기 계산 (화면 크기별)
+  double _getTitleFontSize(BuildContext context) {
+    if (_isSmallScreen(context)) {
+      return 18.0; // 작은 화면: 작은 폰트
+    } else if (_isLargeScreen(context)) {
+      return 22.0; // 큰 화면: 큰 폰트
     } else {
-      return 0.85;
+      return 20.0; // 일반 화면: 일반 폰트
     }
   }
 
-  /// 반응형 간격 계산
-  double _getGridSpacing(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    return screenWidth * 0.03; // 화면 너비의 3%
-  }
-
-  /// 반응형 패딩 계산
-  double _getGridPadding(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    return screenWidth * 0.02; // 화면 너비의 2%
+  /// 아이콘 크기 계산 (화면 크기별)
+  double _getIconSize(BuildContext context) {
+    if (_isSmallScreen(context)) {
+      return 20.0; // 작은 화면: 작은 아이콘
+    } else if (_isLargeScreen(context)) {
+      return 28.0; // 큰 화면: 큰 아이콘
+    } else {
+      return 24.0; // 일반 화면: 일반 아이콘
+    }
   }
 
   @override
@@ -60,18 +60,31 @@ class CategoryPhotosScreen extends StatelessWidget {
       listen: false,
     );
 
+    // 반응형 값들 계산
+    final titleFontSize = _getTitleFontSize(context);
+    final iconSize = _getIconSize(context);
+    final appBarHeight = _getAppBarHeight(context);
+    final isSmallScreen = _isSmallScreen(context);
+
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       appBar: AppBar(
-        iconTheme: IconThemeData(
-          color: Colors.white, //색변경
-        ),
+        toolbarHeight: appBarHeight,
+        iconTheme: IconThemeData(color: Colors.white, size: iconSize),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              category.name,
-              style: const TextStyle(color: Colors.white, fontSize: 20),
+            Expanded(
+              child: Text(
+                category.name,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: titleFontSize,
+                  fontWeight: FontWeight.w600,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ],
         ),
@@ -81,38 +94,63 @@ class CategoryPhotosScreen extends StatelessWidget {
         stream: photoController.getPhotosByCategoryStream(category.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: isSmallScreen ? 2.0 : 3.0,
+              ),
+            );
           }
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 20.0 : 40.0,
+                ),
+                child: Text(
+                  'Error: ${snapshot.error}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isSmallScreen ? 14.0 : 16.0,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
           }
 
           final photos = snapshot.data ?? [];
 
           if (photos.isEmpty) {
-            return const Center(
-              child: Text('사진이 없습니다.', style: TextStyle(color: Colors.white)),
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 20.0 : 40.0,
+                ),
+                child: Text(
+                  '사진이 없습니다.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isSmallScreen ? 14.0 : 16.0,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             );
           }
 
-          // 반응형 그리드로 사진들을 배치
-          final crossAxisCount = _getGridCrossAxisCount(context);
-          final aspectRatio = _getGridAspectRatio(context);
-          final spacing = _getGridSpacing(context);
-          final padding = _getGridPadding(context);
-
           return GridView.builder(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              mainAxisSpacing: spacing,
-              crossAxisSpacing: spacing,
-              childAspectRatio: aspectRatio,
+              crossAxisCount: 2,
+              crossAxisSpacing: 12, // 피그마 디자인에 맞춤: 수평 간격
+              childAspectRatio: 175 / 233, // 피그마 디자인 비율: 175x233
             ),
-            padding: EdgeInsets.all(padding),
+            padding: EdgeInsets.symmetric(
+              horizontal: 15.0, // 피그마 디자인에 맞춤: 좌우 15px
+            ),
             itemCount: photos.length,
             itemBuilder: (context, index) {
               final photo = photos[index];
-              // 랜덤 높이: 200 ~ 350 사이 (예시)
 
               return PhotoGridItem(
                 photo: photo,

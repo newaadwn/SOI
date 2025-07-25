@@ -268,6 +268,141 @@ class PhotoRepository {
     }
   }
 
+  /// 모든 카테고리에서 사진을 페이지네이션으로 조회 (무한 스크롤용)
+  Future<({List<PhotoDataModel> photos, String? lastPhotoId, bool hasMore})>
+  getPhotosFromAllCategoriesPaginated({
+    required List<String> categoryIds,
+    int limit = 20,
+    String? startAfterPhotoId,
+  }) async {
+    try {
+      debugPrint('🔍 페이지네이션 사진 조회 시작');
+      debugPrint('  - 카테고리 개수: ${categoryIds.length}');
+      debugPrint('  - 제한: $limit');
+      debugPrint('  - 시작점: ${startAfterPhotoId ?? 'null'}');
+
+      List<PhotoDataModel> allPhotos = [];
+
+      // 모든 카테고리에서 사진을 가져와서 합치기
+      for (String categoryId in categoryIds) {
+        final categoryPhotos = await _getSingleCategoryPhotos(categoryId);
+        allPhotos.addAll(categoryPhotos);
+      }
+
+      // 최신순으로 정렬
+      allPhotos.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      // startAfterPhotoId가 있다면 해당 위치 이후부터 가져오기
+      int startIndex = 0;
+      if (startAfterPhotoId != null) {
+        startIndex =
+            allPhotos.indexWhere((photo) => photo.id == startAfterPhotoId) + 1;
+        if (startIndex <= 0) startIndex = 0;
+      }
+
+      // 페이지네이션 적용
+      final endIndex = (startIndex + limit).clamp(0, allPhotos.length);
+      final paginatedPhotos = allPhotos.sublist(startIndex, endIndex);
+
+      // 마지막 사진 ID와 더 있는지 여부 확인
+      String? lastPhotoId;
+      bool hasMore = endIndex < allPhotos.length;
+
+      if (paginatedPhotos.isNotEmpty) {
+        lastPhotoId = paginatedPhotos.last.id;
+      }
+
+      debugPrint('📊 페이지네이션 결과:');
+      debugPrint('  - 전체 사진: ${allPhotos.length}개');
+      debugPrint('  - 반환 사진: ${paginatedPhotos.length}개');
+      debugPrint('  - 마지막 ID: $lastPhotoId');
+      debugPrint('  - 더 있음: $hasMore');
+
+      return (
+        photos: paginatedPhotos,
+        lastPhotoId: lastPhotoId,
+        hasMore: hasMore,
+      );
+    } catch (e) {
+      debugPrint('❌ 페이지네이션 사진 조회 오류: $e');
+      return (photos: <PhotoDataModel>[], lastPhotoId: null, hasMore: false);
+    }
+  }
+
+  /// 단일 카테고리에서 사진 조회 (내부 헬퍼 메서드)
+  Future<List<PhotoDataModel>> _getSingleCategoryPhotos(
+    String categoryId,
+  ) async {
+    try {
+      final querySnapshot =
+          await _firestore
+              .collection('categories')
+              .doc(categoryId)
+              .collection('photos')
+              .where('status', isEqualTo: PhotoStatus.active.name)
+              .orderBy('createdAt', descending: true)
+              .get();
+
+      return querySnapshot.docs.map((doc) {
+        final data = doc.data();
+        return PhotoDataModel.fromFirestore(data, doc.id);
+      }).toList();
+    } catch (e) {
+      debugPrint('❌ 카테고리 $categoryId 사진 조회 오류: $e');
+      return [];
+    }
+  }
+
+  /// 카테고리별 사진 목록 조회 (기존 호환성 유지)
+  Future<List<PhotoDataModel>> getPhotosByCategoryLegacy(
+    String categoryId,
+  ) async {
+    try {
+      debugPrint('🔍 카테고리별 사진 조회 시작 - CategoryId: $categoryId');
+
+      final querySnapshot =
+          await _firestore
+              .collection('categories')
+              .doc(categoryId)
+              .collection('photos')
+              .where('status', isEqualTo: PhotoStatus.active.name)
+              .orderBy('createdAt', descending: true)
+              .get();
+
+      debugPrint('📊 조회된 사진 개수: ${querySnapshot.docs.length}');
+
+      final photos =
+          querySnapshot.docs.map((doc) {
+            final data = doc.data();
+            debugPrint('Firestore 원본 데이터 - ID: ${doc.id}');
+            debugPrint('  - UserID: ${data['userID']}');
+            debugPrint(
+              '  - waveformData 필드 존재: ${data.containsKey('waveformData')}',
+            );
+            debugPrint('  - waveformData 값: ${data['waveformData']}');
+            debugPrint(
+              '  - waveformData 타입: ${data['waveformData'].runtimeType}',
+            );
+            if (data['waveformData'] is List) {
+              debugPrint(
+                '  - waveformData 길이: ${(data['waveformData'] as List).length}',
+              );
+            }
+            debugPrint(
+              '  - AudioUrl 존재: ${data['audioUrl']?.isNotEmpty ?? false}',
+            );
+
+            return PhotoDataModel.fromFirestore(data, doc.id);
+          }).toList();
+
+      debugPrint('사진 조회 완료');
+      return photos;
+    } catch (e) {
+      debugPrint('❌ 카테고리별 사진 조회 오류: $e');
+      return [];
+    }
+  }
+
   /// 카테고리별 사진 목록 스트림
   Stream<List<PhotoDataModel>> getPhotosByCategoryStream(String categoryId) {
     debugPrint('🔄 카테고리별 사진 스트림 시작 - CategoryId: $categoryId');

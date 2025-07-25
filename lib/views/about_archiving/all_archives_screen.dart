@@ -42,9 +42,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     // AuthController 참조를 안전하게 저장
-    if (_authController == null) {
-      _authController = Provider.of<AuthController>(context, listen: false);
-    }
+    _authController ??= Provider.of<AuthController>(context, listen: false);
   }
 
   @override
@@ -95,65 +93,95 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 반응형 값들 계산 (헬퍼 클래스 사용)
+    // 반응형 값들 계산 (개선된 헬퍼 클래스 사용)
     final crossAxisCount = ArchiveResponsiveHelper.getGridCrossAxisCount(
       context,
     );
     final aspectRatio = ArchiveResponsiveHelper.getGridAspectRatio();
     final cardDimensions = ArchiveResponsiveHelper.getCardDimensions(context);
+    final isSmallScreen = ArchiveResponsiveHelper.isSmallScreen(context);
+    final isLargeScreen = ArchiveResponsiveHelper.isLargeScreen(context);
 
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
     if (nickName == null) {
       return Scaffold(
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        body: const Center(
-          child: CircularProgressIndicator(color: Colors.white),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Colors.white,
+            strokeWidth: isSmallScreen ? 2.0 : 3.0,
+          ),
         ),
       );
     }
 
-    // 카테고리 정보를 가져오는 스트림을 구독해요.
-    final categoryController = Provider.of<CategoryController>(
-      context,
-      listen: false,
-    );
-
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        // 기존의 streamUserCategoriesWithDetails 대신 streamUserCategories 함수 사용
-        stream: categoryController.streamUserCategoriesAsMap(nickName!),
-        builder: (context, snapshot) {
-          // 데이터가 불러오는 중일때
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            );
-          }
-          // 에러가 생겼을 때
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text(
-                '카테고리 로딩 중 오류가 발생했습니다.',
-                style: TextStyle(color: Colors.white),
+      body: Consumer<CategoryController>(
+        builder: (context, categoryController, child) {
+          // 사용자 카테고리 로드 (한 번만 로드)
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            categoryController.loadUserCategories(nickName!);
+          });
+
+          // 로딩 중일 때
+          if (categoryController.isLoading &&
+              categoryController.userCategories.isEmpty) {
+            return Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: isSmallScreen ? 2.0 : 3.0,
               ),
             );
           }
+
+          // 에러가 생겼을 때
+          if (categoryController.error != null) {
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 20.0 : 40.0,
+                ),
+                child: Text(
+                  categoryController.error!,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isSmallScreen ? 14.0 : 16.0,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+
+          // 필터링된 카테고리 가져오기
+          final categories = categoryController.userCategories;
+
           // 데이터 없으면
-          final categories = snapshot.data ?? [];
           if (categories.isEmpty) {
-            return const Center(
-              child: Text(
-                '등록된 카테고리가 없습니다.',
-                style: TextStyle(color: Colors.white),
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 20.0 : 40.0,
+                ),
+                child: Text(
+                  categoryController.searchQuery.isNotEmpty
+                      ? '검색 결과가 없습니다.'
+                      : '등록된 카테고리가 없습니다.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isSmallScreen ? 14.0 : 16.0,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             );
           }
 
           // 모든 카테고리에 대해 프로필 이미지 로드 요청
           for (var category in categories) {
-            final categoryId = category['id'] as String;
-            final mates = (category['mates'] as List).cast<String>();
+            final categoryId = category.id;
+            final mates = category.mates;
             _loadProfileImages(categoryId, mates);
           }
 
@@ -165,9 +193,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(
-                    height:
-                        ArchiveResponsiveHelper.getResponsiveHeight(context) *
-                        0.01,
+                    height: ArchiveResponsiveHelper.getTopSpacing(context),
                   ),
                   GridView.builder(
                     shrinkWrap: true,
@@ -183,17 +209,28 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
                     itemCount: categories.length,
                     itemBuilder: (context, index) {
                       final category = categories[index];
-                      final categoryId = category['id'] as String;
+                      final categoryMap =
+                          category.toFirestore()..['id'] = category.id;
+                      final categoryId = category.id;
                       final profileImages =
                           _categoryProfileImages[categoryId] ?? [];
                       final imageSize = cardDimensions['imageSize']!;
 
                       return ArchiveCardWidget(
-                        category: category,
+                        category: categoryMap,
                         profileImages: profileImages,
                         imageSize: imageSize,
                       );
                     },
+                  ),
+                  // 하단 여백 추가 (화면 크기별)
+                  SizedBox(
+                    height:
+                        isSmallScreen
+                            ? 16.0
+                            : isLargeScreen
+                            ? 24.0
+                            : 20.0,
                   ),
                 ],
               ),

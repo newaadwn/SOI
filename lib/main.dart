@@ -25,6 +25,7 @@ import 'views/about_feed/feed_home.dart';
 import 'views/about_login/register_screen.dart';
 import 'views/about_login/login_screen.dart';
 import 'views/about_login/start_screen.dart';
+import 'views/about_profile/profile_screen.dart';
 import 'views/about_setting/privacy.dart';
 import 'views/about_friends/friend_management_screen.dart';
 import 'controllers/auth_controller.dart';
@@ -191,7 +192,11 @@ class _MyAppState extends State<MyApp> {
           // 친구 관리 라우트
           '/contact_manager': (context) => const FriendManagementScreen(),
 
+          // 피드 홈 라우트
           '/feed_home': (context) => const FeedHomeScreen(),
+
+          // 프로필 페이지 라우트
+          '/profile_screen': (context) => const ProfileScreen(),
         },
         theme: ThemeData(iconTheme: IconThemeData(color: Colors.white)),
       ),

@@ -180,6 +180,43 @@ class PhotoService {
 
   // ==================== 사진 조회 비즈니스 로직 ====================
 
+  /// 모든 카테고리에서 사진을 페이지네이션으로 조회 (무한 스크롤용)
+  Future<({List<PhotoDataModel> photos, String? lastPhotoId, bool hasMore})>
+  getPhotosFromAllCategoriesPaginated({
+    required List<String> categoryIds,
+    int limit = 20,
+    String? startAfterPhotoId,
+  }) async {
+    try {
+      // 입력 검증
+      if (categoryIds.isEmpty) {
+        throw ArgumentError('카테고리 ID 목록이 필요합니다.');
+      }
+
+      if (limit <= 0 || limit > 100) {
+        throw ArgumentError('제한값은 1과 100 사이여야 합니다.');
+      }
+
+      final result = await _photoRepository.getPhotosFromAllCategoriesPaginated(
+        categoryIds: categoryIds,
+        limit: limit,
+        startAfterPhotoId: startAfterPhotoId,
+      );
+
+      // 비즈니스 로직: 사진 필터링 및 검증
+      final filteredPhotos = _applyPhotoBusinessRules(result.photos);
+
+      return (
+        photos: filteredPhotos,
+        lastPhotoId: result.lastPhotoId,
+        hasMore: result.hasMore,
+      );
+    } catch (e) {
+      debugPrint('페이지네이션 사진 조회 서비스 오류: $e');
+      return (photos: <PhotoDataModel>[], lastPhotoId: null, hasMore: false);
+    }
+  }
+
   /// 카테고리별 사진 목록 조회
   Future<List<PhotoDataModel>> getPhotosByCategory(String categoryId) async {
     try {

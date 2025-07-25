@@ -7,7 +7,7 @@ import '../models/photo_data_model.dart';
 /// Photo Controller - UI와 비즈니스 로직을 연결하는 Controller
 /// Service를 사용해서 UI 상태를 관리하고 사용자 피드백을 제공
 class PhotoController extends ChangeNotifier {
-  // 상태 변수들
+  // 기본 상태 변수들
   bool _isLoading = false;
   bool _isUploading = false;
   double _uploadProgress = 0.0;
@@ -18,12 +18,19 @@ class PhotoController extends ChangeNotifier {
   PhotoDataModel? _selectedPhoto;
   Map<String, int> _photoStats = {};
 
+  // 무한 스크롤 페이지네이션 상태
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+  String? _lastPhotoId;
+  static const int _initialLoadSize = 5;
+  static const int _pageSize = 10;
+
   StreamSubscription<List<PhotoDataModel>>? _photosSubscription;
 
   // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
   final PhotoService _photoService = PhotoService();
 
-  // Getters
+  // Getters - 기본
   bool get isLoading => _isLoading;
   bool get isUploading => _isUploading;
   double get uploadProgress => _uploadProgress;
@@ -32,6 +39,11 @@ class PhotoController extends ChangeNotifier {
   List<PhotoDataModel> get userPhotos => _userPhotos;
   PhotoDataModel? get selectedPhoto => _selectedPhoto;
   Map<String, int> get photoStats => _photoStats;
+
+  // Getters - 페이지네이션
+  bool get hasMore => _hasMore;
+  bool get isLoadingMore => _isLoadingMore;
+  String? get lastPhotoId => _lastPhotoId;
 
   // ==================== 사진 업로드 ====================
 
@@ -155,7 +167,79 @@ class PhotoController extends ChangeNotifier {
 
   // ==================== 사진 조회 ====================
 
-  /// 카테고리별 사진 목록 로드
+  /// 모든 카테고리에서 사진 초기 로드 (무한 스크롤용)
+  Future<void> loadPhotosFromAllCategoriesInitial(
+    List<String> categoryIds,
+  ) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      _hasMore = true;
+      _lastPhotoId = null;
+      _photos.clear(); // 초기 로드이므로 기존 데이터 클리어
+      notifyListeners();
+
+      debugPrint('📱 초기 사진 로드 시작 - 카테고리: ${categoryIds.length}개');
+
+      final result = await _photoService.getPhotosFromAllCategoriesPaginated(
+        categoryIds: categoryIds,
+        limit: _initialLoadSize,
+      );
+
+      _photos = result.photos;
+      _lastPhotoId = result.lastPhotoId;
+      _hasMore = result.hasMore;
+      _isLoading = false;
+      notifyListeners();
+
+      debugPrint('✅ 초기 사진 로드 완료: ${_photos.length}개, 더 있음: $_hasMore');
+    } catch (e) {
+      debugPrint('❌ 초기 사진 로드 오류: $e');
+      _isLoading = false;
+      _error = '사진을 불러오는 중 오류가 발생했습니다.';
+      notifyListeners();
+    }
+  }
+
+  /// 다음 페이지 사진 로드 (무한 스크롤용)
+  Future<void> loadMorePhotos(List<String> categoryIds) async {
+    if (_isLoadingMore || !_hasMore) {
+      debugPrint('⚠️ 이미 로딩 중이거나 더 이상 로드할 사진이 없습니다.');
+      return;
+    }
+
+    try {
+      _isLoadingMore = true;
+      _error = null;
+      notifyListeners();
+
+      debugPrint('📱 추가 사진 로드 시작 - 마지막 ID: $_lastPhotoId');
+
+      final result = await _photoService.getPhotosFromAllCategoriesPaginated(
+        categoryIds: categoryIds,
+        limit: _pageSize,
+        startAfterPhotoId: _lastPhotoId,
+      );
+
+      // 기존 사진 목록에 새로운 사진들 추가
+      _photos.addAll(result.photos);
+      _lastPhotoId = result.lastPhotoId;
+      _hasMore = result.hasMore;
+      _isLoadingMore = false;
+      notifyListeners();
+
+      debugPrint(
+        '✅ 추가 사진 로드 완료: +${result.photos.length}개, 총 ${_photos.length}개, 더 있음: $_hasMore',
+      );
+    } catch (e) {
+      debugPrint('❌ 추가 사진 로드 오류: $e');
+      _isLoadingMore = false;
+      _error = '추가 사진을 불러오는 중 오류가 발생했습니다.';
+      notifyListeners();
+    }
+  }
+
+  /// 카테고리별 사진 목록 로드 (기존 호환성 유지)
   Future<void> loadPhotosByCategory(String categoryId) async {
     try {
       _isLoading = true;
