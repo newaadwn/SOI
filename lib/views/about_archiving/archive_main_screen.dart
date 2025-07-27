@@ -27,6 +27,9 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   final _categoryNameController = TextEditingController();
   final _searchController = TextEditingController();
 
+  // Provider 참조를 미리 저장 (dispose에서 안전하게 사용하기 위함)
+  CategoryController? _categoryController;
+
   // 탭 화면 목록
   final List<Widget> _screens = const [
     AllArchivesScreen(),
@@ -42,12 +45,19 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     _searchController.addListener(_onSearchChanged);
   }
 
-  void _onSearchChanged() {
-    final categoryController = Provider.of<CategoryController>(
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Provider 참조를 안전하게 저장
+    _categoryController ??= Provider.of<CategoryController>(
       context,
       listen: false,
     );
-    categoryController.searchCategories(_searchController.text);
+  }
+
+  void _onSearchChanged() {
+    _categoryController?.searchCategories(_searchController.text);
   }
 
   @override
@@ -591,12 +601,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   @override
   void dispose() {
-    // 검색 상태 초기화
-    final categoryController = Provider.of<CategoryController>(
-      context,
-      listen: false,
-    );
-    categoryController.clearSearch();
+    // 검색 상태 초기화 (저장된 참조 사용)
+    _categoryController?.clearSearch();
 
     _categoryNameController.dispose();
     _searchController.removeListener(_onSearchChanged);

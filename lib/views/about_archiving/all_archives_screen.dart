@@ -28,9 +28,11 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _authController = Provider.of<AuthController>(context, listen: false);
       _authController!.getIdFromFirestore().then((value) {
-        setState(() {
-          nickName = value;
-        });
+        if (mounted) {
+          setState(() {
+            nickName = value;
+          });
+        }
       });
 
       // AuthController의 변경사항을 감지하여 프로필 이미지 캐시 업데이트
@@ -55,9 +57,11 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
   /// AuthController 변경 감지 시 프로필 이미지 캐시 무효화
   void _onAuthControllerChanged() {
     debugPrint(' AuthController 변경 감지 - 아카이브 프로필 이미지 캐시 무효화');
-    setState(() {
-      _categoryProfileImages.clear(); // 모든 프로필 이미지 캐시 무효화
-    });
+    if (mounted) {
+      setState(() {
+        _categoryProfileImages.clear(); // 모든 프로필 이미지 캐시 무효화
+      });
+    }
   }
 
   // 카테고리에 대한 프로필 이미지를 가져오는 함수
@@ -79,15 +83,19 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
         mates,
         authController,
       );
-      setState(() {
-        _categoryProfileImages[categoryId] = profileImages;
-      });
+      if (mounted) {
+        setState(() {
+          _categoryProfileImages[categoryId] = profileImages;
+        });
+      }
       debugPrint('✅ 카테고리 $categoryId의 프로필 이미지 로드 완료: ${profileImages.length}개');
     } catch (e) {
       debugPrint('❌ 프로필 이미지 로딩 오류: $e');
-      setState(() {
-        _categoryProfileImages[categoryId] = [];
-      });
+      if (mounted) {
+        setState(() {
+          _categoryProfileImages[categoryId] = [];
+        });
+      }
     }
   }
 
@@ -209,15 +217,13 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
                     itemCount: categories.length,
                     itemBuilder: (context, index) {
                       final category = categories[index];
-                      final categoryMap =
-                          category.toFirestore()..['id'] = category.id;
                       final categoryId = category.id;
                       final profileImages =
                           _categoryProfileImages[categoryId] ?? [];
                       final imageSize = cardDimensions['imageSize']!;
 
                       return ArchiveCardWidget(
-                        category: categoryMap,
+                        categoryId: categoryId,
                         profileImages: profileImages,
                         imageSize: imageSize,
                       );

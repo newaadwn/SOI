@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/category_service.dart';
 import '../models/category_data_model.dart';
@@ -53,15 +54,15 @@ class CategoryController extends ChangeNotifier {
       '🔍 [CATEGORY_CONTROLLER] 캐시 상태: isLoading=$_isLoading, lastLoadedUserId="$_lastLoadedUserId", isCacheValid=$isCacheValid',
     );
 
-    // 임시로 캐시 무시하고 항상 새로 로드하도록 수정
-    // if (!forceReload &&
-    //     (_isLoading || (_lastLoadedUserId == userId && isCacheValid))) {
-    //   debugPrint('캐시에서 스킵됨');
-    //   return;
-    // }
-
+    // 이미 로딩 중이면 스킵
     if (_isLoading) {
       debugPrint('🔍 [CATEGORY_CONTROLLER] 이미 로딩 중이므로 스킵');
+      return;
+    }
+
+    // forceReload가 아니고 캐시가 유효하면 스킵
+    if (!forceReload && _lastLoadedUserId == userId && isCacheValid) {
+      debugPrint('🔍 [CATEGORY_CONTROLLER] 캐시에서 스킵됨');
       return;
     }
 
@@ -108,6 +109,11 @@ class CategoryController extends ChangeNotifier {
   /// 카테고리 데이터를 스트림으로 가져오는 함수
   Stream<List<CategoryDataModel>> streamUserCategories(String userId) {
     return _categoryService.getUserCategoriesStream(userId);
+  }
+
+  /// 단일 카테고리 실시간 스트림
+  Stream<CategoryDataModel?> streamSingleCategory(String categoryId) {
+    return _categoryService.getCategoryStream(categoryId);
   }
 
   /// 카테고리 생성
@@ -271,6 +277,110 @@ class CategoryController extends ChangeNotifier {
   }
 
   // ==================== 기존 호환성 메서드 ====================
+
+  // ==================== 표지사진 관리 ====================
+
+  /// 갤러리에서 선택한 이미지로 표지사진 업데이트
+  Future<bool> updateCoverPhotoFromGallery({
+    required String categoryId,
+    required File imageFile,
+  }) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final result = await _categoryService.updateCoverPhotoFromGallery(
+        categoryId: categoryId,
+        imageFile: imageFile,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        // 성공 시 카테고리 목록 새로고침
+        invalidateCache();
+        return true;
+      } else {
+        _error = result.error;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      debugPrint('표지사진 업데이트 오류: $e');
+      _isLoading = false;
+      _error = '표지사진 업데이트 중 오류가 발생했습니다.';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// 카테고리 내 사진으로 표지사진 업데이트
+  Future<bool> updateCoverPhotoFromCategory({
+    required String categoryId,
+    required String photoUrl,
+  }) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final result = await _categoryService.updateCoverPhotoFromCategory(
+        categoryId: categoryId,
+        photoUrl: photoUrl,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        // 성공 시 카테고리 목록 새로고침
+        invalidateCache();
+        return true;
+      } else {
+        _error = result.error;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      debugPrint('표지사진 업데이트 오류: $e');
+      _isLoading = false;
+      _error = '표지사진 업데이트 중 오류가 발생했습니다.';
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// 표지사진 삭제
+  Future<bool> deleteCoverPhoto(String categoryId) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final result = await _categoryService.deleteCoverPhoto(categoryId);
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        // 성공 시 카테고리 목록 새로고침
+        invalidateCache();
+        return true;
+      } else {
+        _error = result.error;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      debugPrint('표지사진 삭제 오류: $e');
+      _isLoading = false;
+      _error = '표지사진 삭제 중 오류가 발생했습니다.';
+      notifyListeners();
+      return false;
+    }
+  }
 
   /// 사용자 카테고리 스트림 (Map 형태로 반환)
   Stream<List<Map<String, dynamic>>> streamUserCategoriesAsMap(String userId) {

@@ -40,6 +40,14 @@ class CategoryService {
     return _repository.getUserCategoriesStream(userId);
   }
 
+  /// 단일 카테고리 실시간 스트림
+  Stream<CategoryDataModel?> getCategoryStream(String categoryId) {
+    if (categoryId.isEmpty) {
+      return Stream.value(null);
+    }
+    return _repository.getCategoryStream(categoryId);
+  }
+
   /// 사용자의 카테고리 목록을 한 번만 가져오기
   Future<List<CategoryDataModel>> getUserCategories(String userId) async {
     if (userId.isEmpty) {
@@ -239,6 +247,74 @@ class CategoryService {
   }
 
   // ==================== 기존 호환성 메서드 ====================
+
+  // ==================== 표지사진 관리 ====================
+
+  /// 갤러리에서 선택한 이미지로 표지사진 업데이트
+  Future<AuthResult> updateCoverPhotoFromGallery({
+    required String categoryId,
+    required File imageFile,
+  }) async {
+    try {
+      if (categoryId.isEmpty) {
+        return AuthResult.failure('유효하지 않은 카테고리입니다.');
+      }
+
+      // 이미지 업로드
+      final photoUrl = await _repository.uploadCoverImage(
+        categoryId,
+        imageFile,
+      );
+
+      // 카테고리 표지사진 업데이트
+      await _repository.updateCategoryPhoto(
+        categoryId: categoryId,
+        photoUrl: photoUrl,
+      );
+
+      return AuthResult.success(photoUrl);
+    } catch (e) {
+      debugPrint('표지사진 업데이트 오류: $e');
+      return AuthResult.failure('표지사진 업데이트 중 오류가 발생했습니다.');
+    }
+  }
+
+  /// 카테고리 내 사진으로 표지사진 업데이트
+  Future<AuthResult> updateCoverPhotoFromCategory({
+    required String categoryId,
+    required String photoUrl,
+  }) async {
+    try {
+      if (categoryId.isEmpty || photoUrl.isEmpty) {
+        return AuthResult.failure('유효하지 않은 정보입니다.');
+      }
+
+      await _repository.updateCategoryPhoto(
+        categoryId: categoryId,
+        photoUrl: photoUrl,
+      );
+
+      return AuthResult.success();
+    } catch (e) {
+      debugPrint('표지사진 업데이트 오류: $e');
+      return AuthResult.failure('표지사진 업데이트 중 오류가 발생했습니다.');
+    }
+  }
+
+  /// 표지사진 삭제
+  Future<AuthResult> deleteCoverPhoto(String categoryId) async {
+    try {
+      if (categoryId.isEmpty) {
+        return AuthResult.failure('유효하지 않은 카테고리입니다.');
+      }
+
+      await _repository.deleteCategoryPhoto(categoryId);
+      return AuthResult.success();
+    } catch (e) {
+      debugPrint('표지사진 삭제 오류: $e');
+      return AuthResult.failure('표지사진 삭제 중 오류가 발생했습니다.');
+    }
+  }
 
   /// 카테고리 사진 스트림 (Map 형태로 반환)
   Stream<List<Map<String, dynamic>>> getCategoryPhotosStream(

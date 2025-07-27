@@ -189,31 +189,39 @@ class _PhotoGridItemState extends State<PhotoGridItem>
           SizedBox(
             width: (screenWidth * 0.445).clamp(150.0, 200.0), // 반응형 너비
             height: (screenHeight * 0.272).clamp(200.0, 260.0), // 반응형 높이
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(
-                (screenWidth * 0.016).clamp(4.0, 8.0),
-              ), // 반응형 반지름
-              child: CachedNetworkImage(
-                imageUrl: widget.photo.imageUrl,
-                fit: BoxFit.cover,
-                placeholder:
-                    (context, url) => Container(
-                      color: Colors.grey[300],
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: (screenWidth * 0.0054).clamp(
-                            1.5,
-                            2.5,
-                          ), // 반응형 선 두께
-                          color: Colors.grey,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(
+                  (screenWidth * 0.016).clamp(4.0, 8.0),
+                ),
+                border: Border.all(color: Colors.white),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(
+                  (screenWidth * 0.016).clamp(4.0, 8.0),
+                ),
+                child: CachedNetworkImage(
+                  imageUrl: widget.photo.imageUrl,
+                  fit: BoxFit.fill,
+                  placeholder:
+                      (context, url) => Container(
+                        color: Colors.grey[300],
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: (screenWidth * 0.0054).clamp(
+                              1.5,
+                              2.5,
+                            ), // 반응형 선 두께
+                            color: Colors.grey,
+                          ),
                         ),
                       ),
-                    ),
-                errorWidget:
-                    (context, url, error) => Container(
-                      color: Colors.grey[300],
-                      child: Icon(Icons.error, color: Colors.grey),
-                    ),
+                  errorWidget:
+                      (context, url, error) => Container(
+                        color: Colors.grey[300],
+                        child: Icon(Icons.error, color: Colors.grey),
+                      ),
+                ),
               ),
             ),
           ),

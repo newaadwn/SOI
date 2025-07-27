@@ -50,7 +50,7 @@ class CategoryDataModel {
     String? name,
     List<String>? mates,
     DateTime? createdAt,
-    String? firstPhotoUrl,
+    String? categoryPhotoUrl,
     int? photoCount,
   }) {
     return CategoryDataModel(

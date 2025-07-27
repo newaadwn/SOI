@@ -5,6 +5,7 @@ import '../../theme/theme.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/category_data_model.dart';
 import 'photo_grid_item.dart';
+import 'category_editor_screen.dart';
 
 class CategoryPhotosScreen extends StatelessWidget {
   final CategoryDataModel category;
@@ -74,17 +75,27 @@ class CategoryPhotosScreen extends StatelessWidget {
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: Text(
-                category.name,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: titleFontSize,
-                  fontWeight: FontWeight.w600,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+            Text(
+              category.name,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: titleFontSize,
+                fontWeight: FontWeight.w600,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => CategoryEditorScreen(category: category),
+                  ),
+                );
+              },
+              icon: Icon(Icons.menu),
             ),
           ],
         ),

@@ -28,6 +28,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   // 데이터 관리 (기존)
   List<Map<String, dynamic>> _allPhotos = [];
   bool _isLoading = true;
+  bool _isCategoryListenerActive = false; // 카테고리 리스너 중복 호출 방지
 
   // 무한 스크롤 관련 상태
   final PageController _pageController = PageController();
@@ -97,12 +98,22 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
   /// CategoryController 변경 감지 시 데이터 리로드
   void _onCategoryControllerChanged() async {
+    // 리스너가 이미 활성화 중이거나 로딩 중인 경우 스킵
+    if (_isCategoryListenerActive ||
+        _categoryController!.isLoading ||
+        _isLoading) {
+      return;
+    }
+
     // 로딩이 완료되고 카테고리 데이터가 있을 때만 리로드
-    if (!_categoryController!.isLoading &&
-        _categoryController!.userCategories.isNotEmpty &&
-        _allPhotos.isEmpty) {
+    if (_categoryController!.userCategories.isNotEmpty && _allPhotos.isEmpty) {
       debugPrint('🔄 CategoryController 변경 감지 - 피드 데이터 리로드');
-      await _loadPhotosFromCategories();
+      _isCategoryListenerActive = true;
+      try {
+        await _loadPhotosFromCategories();
+      } finally {
+        _isCategoryListenerActive = false;
+      }
     }
   }
 
@@ -123,11 +134,18 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
       if (currentUserId == null) return;
 
-      await _loadCategoriesAndPhotosWithPagination(
-        _categoryController!,
-        photoController,
-        currentUserId,
-      );
+      // 이미 로드된 카테고리 정보를 사용하여 사진만 로드
+      final userCategories = _categoryController!.userCategories;
+      if (userCategories.isNotEmpty) {
+        final categoryIds =
+            userCategories.map((category) => category.id).toList();
+        await photoController.loadPhotosFromAllCategoriesInitial(categoryIds);
+        _updatePhotosFromController(
+          photoController,
+          userCategories,
+          currentUserId,
+        );
+      }
     } catch (e) {
       debugPrint('❌ 백그라운드 사진 로드 실패: $e');
     }
@@ -223,13 +241,13 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     PhotoController photoController,
     String currentUserId,
   ) async {
-    // 카테고리 로드
+    // 카테고리 로드 (첫 로드만 force로, 이후는 캐시 사용)
     await categoryController.loadUserCategories(
       currentUserId,
-      forceReload: true,
+      forceReload: false, // 캐시 활용하여 불필요한 재로딩 방지
     );
 
-    // 카테고리 로딩 대기
+    // 카테고리 로딩 대기 (최대 5초로 제한)
     int attempts = 0;
     const maxAttempts = 50;
     while (categoryController.isLoading && attempts < maxAttempts) {
@@ -240,6 +258,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
     if (categoryController.isLoading) {
       debugPrint('⚠️ 카테고리 로딩 타임아웃 - 현재 상태로 진행');
+      return; // 타임아웃 시 더 이상 진행하지 않음
     }
 
     final userCategories = categoryController.userCategories;

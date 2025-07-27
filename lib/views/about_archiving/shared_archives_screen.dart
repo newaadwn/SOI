@@ -24,9 +24,11 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
     // 이메일이나 닉네임을 미리 가져와요.
     final authController = Provider.of<AuthController>(context, listen: false);
     authController.getIdFromFirestore().then((value) {
-      setState(() {
-        nickName = value;
-      });
+      if (mounted) {
+        setState(() {
+          nickName = value;
+        });
+      }
     });
   }
 
@@ -48,14 +50,18 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
         mates,
         authController,
       );
-      setState(() {
-        _categoryProfileImages[categoryId] = profileImages;
-      });
+      if (mounted) {
+        setState(() {
+          _categoryProfileImages[categoryId] = profileImages;
+        });
+      }
     } catch (e) {
       debugPrint('프로필 이미지 로딩 오류: $e');
-      setState(() {
-        _categoryProfileImages[categoryId] = [];
-      });
+      if (mounted) {
+        setState(() {
+          _categoryProfileImages[categoryId] = [];
+        });
+      }
     }
   }
 
@@ -158,15 +164,13 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
                     itemCount: sharedCategories.length,
                     itemBuilder: (context, index) {
                       final category = sharedCategories[index];
-                      final categoryMap =
-                          category.toFirestore()..['id'] = category.id;
                       final categoryId = category.id;
                       final profileImages =
                           _categoryProfileImages[categoryId] ?? [];
                       final imageSize = cardDimensions['imageSize']!;
 
                       return ArchiveCardWidget(
-                        category: categoryMap,
+                        categoryId: categoryId,
                         profileImages: profileImages,
                         imageSize: imageSize,
                       );

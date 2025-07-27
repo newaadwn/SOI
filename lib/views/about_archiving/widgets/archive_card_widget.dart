@@ -2,29 +2,51 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/auth_controller.dart';
+import '../../../controllers/category_controller.dart';
 import '../../../models/category_data_model.dart';
 import '../category_photos_screen.dart';
 import 'archive_responsive_helper.dart';
 
-/// 🎨 아카이브 카드 공통 위젯 (반응형 디자인)
+/// 🎨 아카이브 카드 공통 위젯 (반응형 디자인 + 실시간 업데이트)
 /// 168x229 비율의 카드 UI를 제공하며, 화면 크기에 따라 적응합니다.
 class ArchiveCardWidget extends StatelessWidget {
-  final Map<String, dynamic> category;
+  final String categoryId;
   final List<String> profileImages;
   final double imageSize;
 
   const ArchiveCardWidget({
     super.key,
-    required this.category,
+    required this.categoryId,
     required this.profileImages,
     required this.imageSize,
   });
 
   @override
   Widget build(BuildContext context) {
+    return Consumer<CategoryController>(
+      builder: (context, categoryController, child) {
+        return StreamBuilder<CategoryDataModel?>(
+          stream: categoryController.streamSingleCategory(categoryId),
+          builder: (context, snapshot) {
+            final category = snapshot.data;
+            if (category == null) {
+              return _buildErrorCard(context);
+            }
+
+            return _buildCategoryCard(context, category);
+          },
+        );
+      },
+    );
+  }
+
+  /// 실제 카테고리 카드 빌드
+  Widget _buildCategoryCard(BuildContext context, CategoryDataModel category) {
     // 반응형 값들 계산
     final isSmallScreen = ArchiveResponsiveHelper.isSmallScreen(context);
     final isLargeScreen = ArchiveResponsiveHelper.isLargeScreen(context);
+
+    debugPrint('category.categoryPhotoUrl: ${category.categoryPhotoUrl}');
 
     // 화면 크기별 조정값들
     final borderRadius =
@@ -71,16 +93,7 @@ class ArchiveCardWidget extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder:
-                  (context) => CategoryPhotosScreen(
-                    category: CategoryDataModel(
-                      id: category['id'],
-                      name: category['name'],
-                      mates: [],
-                      createdAt: DateTime.now(),
-                      categoryPhotoUrl: category['categoryPhotoUrl'],
-                    ),
-                  ),
+              builder: (context) => CategoryPhotosScreen(category: category),
             ),
           );
         },
@@ -94,7 +107,7 @@ class ArchiveCardWidget extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 🖼️ 메인 이미지 (반응형 크기)
+              // 🖼️ 메인 이미지 (실시간 업데이트)
               Container(
                 width: imageSize,
                 height: imageSize,
@@ -105,9 +118,15 @@ class ArchiveCardWidget extends StatelessWidget {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(borderRadius),
                   child:
-                      category['firstPhotoUrl'] != null
+                      (category.categoryPhotoUrl != null &&
+                              category.categoryPhotoUrl!.isNotEmpty)
                           ? CachedNetworkImage(
-                            imageUrl: category['firstPhotoUrl'],
+                            key: ValueKey(
+                              '${category.id}_${category.categoryPhotoUrl}',
+                            ), // 카테고리ID + URL로 고유 키 생성
+                            imageUrl: category.categoryPhotoUrl!,
+                            cacheKey:
+                                '${category.id}_${category.categoryPhotoUrl}', // 캐시 키도 동일하게 설정
                             fit: BoxFit.cover,
                             placeholder:
                                 (context, url) => Container(
@@ -129,10 +148,13 @@ class ArchiveCardWidget extends StatelessWidget {
                                   ),
                                 ),
                           )
-                          : Icon(
-                            Icons.image,
-                            color: Colors.grey,
-                            size: iconSize,
+                          : Container(
+                            color: Colors.grey[300],
+                            child: Icon(
+                              Icons.image,
+                              color: Colors.grey,
+                              size: iconSize,
+                            ),
                           ),
                 ),
               ),
@@ -147,7 +169,7 @@ class ArchiveCardWidget extends StatelessWidget {
                   // 카테고리 이름 (반응형 폰트 크기)
                   Expanded(
                     child: Text(
-                      category['name'],
+                      category.name,
                       style: TextStyle(
                         color: const Color(0xFFF9F9F9), // Figma 텍스트 색상
                         fontSize:
@@ -173,7 +195,6 @@ class ArchiveCardWidget extends StatelessWidget {
                       width: 30,
                       height: 30,
                       alignment: Alignment.center,
-
                       child: Icon(
                         Icons.more_vert,
                         color: Colors.white,
@@ -199,6 +220,34 @@ class ArchiveCardWidget extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  /// 에러 카드
+  Widget _buildErrorCard(BuildContext context) {
+    final isSmallScreen = ArchiveResponsiveHelper.isSmallScreen(context);
+    final isLargeScreen = ArchiveResponsiveHelper.isLargeScreen(context);
+
+    final borderRadius =
+        isSmallScreen
+            ? 5.0
+            : isLargeScreen
+            ? 8.0
+            : 6.61;
+
+    return Container(
+      decoration: ShapeDecoration(
+        color: const Color(0xFF1C1C1C),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(borderRadius),
+        ),
+      ),
+      child: Center(
+        child: CircularProgressIndicator(
+          color: Colors.white,
+          strokeWidth: isSmallScreen ? 1.5 : 2.0,
         ),
       ),
     );
