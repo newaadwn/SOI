@@ -43,25 +43,22 @@ class CategoryRepository {
               }
             }
 
-            // 사진 개수 가져오기
-            final photoCountSnapshot =
-                await _firestore
-                    .collection('categories')
-                    .doc(doc.id)
-                    .collection('photos')
-                    .count()
-                    .get();
-
             final category = CategoryDataModel.fromFirestore(
               data,
               doc.id,
-            ).copyWith(
-              categoryPhotoUrl: categoryPhotoUrl,
-              photoCount: photoCountSnapshot.count ?? 0,
-            );
+            ).copyWith(categoryPhotoUrl: categoryPhotoUrl);
 
             categories.add(category);
           }
+
+          // 고정된 카테고리를 상단에 위치시키는 정렬
+          categories.sort((a, b) {
+            // 고정된 카테고리를 상단으로
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            // 둘 다 고정되었거나 고정되지 않은 경우 생성일 기준 내림차순
+            return b.createdAt.compareTo(a.createdAt);
+          });
 
           return categories;
         });
@@ -103,19 +100,10 @@ class CategoryRepository {
             }
           }
 
-          // 사진 개수 가져오기
-          final photoCountSnapshot =
-              await _firestore
-                  .collection('categories')
-                  .doc(categoryId)
-                  .collection('photos')
-                  .count()
-                  .get();
-
-          final result = CategoryDataModel.fromFirestore(data, doc.id).copyWith(
-            categoryPhotoUrl: categoryPhotoUrl,
-            photoCount: photoCountSnapshot.count ?? 0,
-          );
+          final result = CategoryDataModel.fromFirestore(
+            data,
+            doc.id,
+          ).copyWith(categoryPhotoUrl: categoryPhotoUrl);
 
           debugPrint(
             '[STREAM] 최종 결과 - categoryPhotoUrl: ${result.categoryPhotoUrl}',
@@ -216,22 +204,28 @@ class CategoryRepository {
         }
       }
 
-      // 사진 개수 가져오기
-      final photoCountSnapshot =
-          await _firestore
-              .collection('categories')
-              .doc(doc.id)
-              .collection('photos')
-              .count()
-              .get();
-
-      final category = CategoryDataModel.fromFirestore(data, doc.id).copyWith(
-        categoryPhotoUrl: categoryPhotoUrl,
-        photoCount: photoCountSnapshot.count ?? 0,
-      );
+      final category = CategoryDataModel.fromFirestore(
+        data,
+        doc.id,
+      ).copyWith(categoryPhotoUrl: categoryPhotoUrl);
 
       categories.add(category);
     }
+
+    // 🎯 고정된 카테고리를 상단에 정렬
+    categories.sort((a, b) {
+      // 1. 고정 상태로 우선 정렬 (고정된 것이 위로)
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+
+      // 2. 같은 고정 상태 내에서는 생성일시 최신순
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    debugPrint('CategoryRepository: 정렬 완료 - 총 ${categories.length}개 카테고리');
+    debugPrint(
+      'CategoryRepository: 고정된 카테고리 수: ${categories.where((c) => c.isPinned).length}',
+    );
 
     return categories;
   }
@@ -291,24 +285,16 @@ class CategoryRepository {
             .limit(1)
             .get();
 
-    final photoCountSnapshot =
-        await _firestore
-            .collection('categories')
-            .doc(categoryId)
-            .collection('photos')
-            .count()
-            .get();
-
     String? categoryPhotoUrl;
     if (photosSnapshot.docs.isNotEmpty) {
       categoryPhotoUrl =
           photosSnapshot.docs.first.data()['imageUrl'] as String?;
     }
 
-    return CategoryDataModel.fromFirestore(doc.data()!, doc.id).copyWith(
-      categoryPhotoUrl: categoryPhotoUrl,
-      photoCount: photoCountSnapshot.count ?? 0,
-    );
+    return CategoryDataModel.fromFirestore(
+      doc.data()!,
+      doc.id,
+    ).copyWith(categoryPhotoUrl: categoryPhotoUrl);
   }
 
   /// 카테고리에게 사진 추가

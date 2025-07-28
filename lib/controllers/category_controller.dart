@@ -165,6 +165,7 @@ class CategoryController extends ChangeNotifier {
     required String categoryId,
     String? name,
     List<String>? mates,
+    bool? isPinned,
   }) async {
     try {
       _isLoading = true;
@@ -174,6 +175,7 @@ class CategoryController extends ChangeNotifier {
         categoryId: categoryId,
         name: name,
         mates: mates,
+        isPinned: isPinned,
       );
 
       _isLoading = false;
@@ -196,6 +198,146 @@ class CategoryController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
       debugPrint('카테고리 수정 중 오류가 발생했습니다. 다시 시도해주세요.');
+    }
+  }
+
+  /// 📌 카테고리 고정/해제 토글
+  Future<void> togglePinCategory(
+    String categoryId,
+    bool currentPinStatus,
+  ) async {
+    try {
+      final newPinStatus = !currentPinStatus;
+
+      // 🚀 즉시 UI 업데이트 - 로컬 상태 변경
+      final categoryIndex = _userCategories.indexWhere(
+        (cat) => cat.id == categoryId,
+      );
+      if (categoryIndex != -1) {
+        // 카테고리 복사 후 isPinned 상태 변경
+        final updatedCategory = CategoryDataModel(
+          id: _userCategories[categoryIndex].id,
+          name: _userCategories[categoryIndex].name,
+          mates: _userCategories[categoryIndex].mates,
+          createdAt: _userCategories[categoryIndex].createdAt,
+          categoryPhotoUrl: _userCategories[categoryIndex].categoryPhotoUrl,
+
+          isPinned: newPinStatus,
+        );
+
+        // 리스트에서 해당 카테고리 업데이트
+        _userCategories[categoryIndex] = updatedCategory;
+
+        // 정렬 다시 적용 (고정된 카테고리를 상단으로)
+        _userCategories.sort((a, b) {
+          // 고정된 카테고리를 상단으로
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          // 둘 다 고정되었거나 고정되지 않은 경우 생성일 기준 내림차순
+          return b.createdAt.compareTo(a.createdAt);
+        });
+
+        // 🎯 즉시 UI 업데이트
+        notifyListeners();
+      }
+
+      _isLoading = true;
+      // 로딩 상태는 별도로 표시하지 않음 (이미 UI가 업데이트되었으므로)
+
+      final result = await _categoryService.updateCategory(
+        categoryId: categoryId,
+        isPinned: newPinStatus,
+      );
+
+      _isLoading = false;
+
+      if (result.isSuccess) {
+        debugPrint('카테고리 고정 상태가 변경되었습니다: $newPinStatus');
+        // 성공 시에는 추가적인 새로고침이 필요하지 않음 (이미 로컬에서 업데이트됨)
+      } else {
+        debugPrint(result.error ?? '카테고리 고정 변경에 실패했습니다.');
+        // 실패 시 이전 상태로 롤백
+        if (categoryIndex != -1) {
+          final rollbackCategory = CategoryDataModel(
+            id: _userCategories[categoryIndex].id,
+            name: _userCategories[categoryIndex].name,
+            mates: _userCategories[categoryIndex].mates,
+            createdAt: _userCategories[categoryIndex].createdAt,
+            categoryPhotoUrl: _userCategories[categoryIndex].categoryPhotoUrl,
+
+            isPinned: currentPinStatus, // 원래 상태로 롤백
+          );
+
+          _userCategories[categoryIndex] = rollbackCategory;
+
+          // 정렬 다시 적용
+          _userCategories.sort((a, b) {
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            return b.createdAt.compareTo(a.createdAt);
+          });
+
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('카테고리 고정 변경 오류: $e');
+      _isLoading = false;
+
+      // 실패 시 이전 상태로 롤백
+      final categoryIndex = _userCategories.indexWhere(
+        (cat) => cat.id == categoryId,
+      );
+      if (categoryIndex != -1) {
+        final rollbackCategory = CategoryDataModel(
+          id: _userCategories[categoryIndex].id,
+          name: _userCategories[categoryIndex].name,
+          mates: _userCategories[categoryIndex].mates,
+          createdAt: _userCategories[categoryIndex].createdAt,
+          categoryPhotoUrl: _userCategories[categoryIndex].categoryPhotoUrl,
+
+          isPinned: currentPinStatus, // 원래 상태로 롤백
+        );
+
+        _userCategories[categoryIndex] = rollbackCategory;
+
+        // 정렬 다시 적용
+        _userCategories.sort((a, b) {
+          if (a.isPinned && !b.isPinned) return -1;
+          if (!a.isPinned && b.isPinned) return 1;
+          return b.createdAt.compareTo(a.createdAt);
+        });
+
+        notifyListeners();
+      }
+    }
+  }
+
+  /// 🚪 카테고리 나가기
+  Future<void> leaveCategoryByUid(String categoryId, String userId) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      final result = await _categoryService.removeUidFromCategory(
+        categoryId: categoryId,
+        uid: userId,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        debugPrint('카테고리에서 나가기 성공: ${result.data}');
+        // 카테고리 목록 새로고침
+        await loadUserCategories(userId);
+      } else {
+        debugPrint(result.error ?? '카테고리 나가기에 실패했습니다.');
+      }
+    } catch (e) {
+      debugPrint('카테고리 나가기 오류: $e');
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

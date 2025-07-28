@@ -76,6 +76,8 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
     );
     final aspectRatio = ArchiveResponsiveHelper.getGridAspectRatio();
     final cardDimensions = ArchiveResponsiveHelper.getCardDimensions(context);
+    final isSmallScreen = ArchiveResponsiveHelper.isSmallScreen(context);
+    //final isLargeScreen = ArchiveResponsiveHelper.isLargeScreen(context);
 
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
     if (uID == null) {
@@ -129,7 +131,11 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
                 categoryController.searchQuery.isNotEmpty
                     ? '검색 결과가 없습니다.'
                     : '등록된 카테고리가 없습니다.',
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isSmallScreen ? 14.0 : 16.0,
+                ),
+                textAlign: TextAlign.center,
               ),
             );
           }

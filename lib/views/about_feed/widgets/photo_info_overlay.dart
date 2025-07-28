@@ -3,13 +3,13 @@ import '../../../models/photo_data_model.dart';
 
 class PhotoInfoOverlay extends StatelessWidget {
   final PhotoDataModel photo;
-  final Map<String, String> userNames;
+  final Map<String, String> userId;
   final VoidCallback? onUserTap;
 
   const PhotoInfoOverlay({
     super.key,
     required this.photo,
-    required this.userNames,
+    required this.userId,
     this.onUserTap,
   });
 
@@ -33,7 +33,7 @@ class PhotoInfoOverlay extends StatelessWidget {
                 GestureDetector(
                   onTap: onUserTap,
                   child: Text(
-                    '@${userNames[photo.userID] ?? photo.userID}', // @ 형식으로 표시
+                    '@${userId[photo.userID] ?? photo.userID}', // @ 형식으로 표시
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: screenWidth * 0.037,

@@ -49,7 +49,7 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     firebaseInitialized = true;
-    debugPrint('✅ Firebase 초기화 성공');
+    debugPrint('Firebase 초기화 성공');
 
     // Firebase Auth 설정 (Firebase가 성공적으로 초기화된 경우에만)
     try {
@@ -57,13 +57,13 @@ void main() async {
         appVerificationDisabledForTesting: false,
         forceRecaptchaFlow: false,
       );
-      debugPrint('✅ Firebase Auth 설정 완료');
+      debugPrint('Firebase Auth 설정 완료');
     } catch (authError) {
-      debugPrint('⚠️ Firebase Auth 설정 실패: $authError');
+      debugPrint('Firebase Auth 설정 실패: $authError');
     }
   } catch (e) {
-    debugPrint('❌ Firebase 초기화 실패: $e');
-    debugPrint('📱 앱은 Firebase 없이 계속 실행됩니다');
+    debugPrint('Firebase 초기화 실패: $e');
+    debugPrint('앱은 Firebase 없이 계속 실행됩니다');
     // Firebase 없이도 앱이 실행되도록 처리
   }
 

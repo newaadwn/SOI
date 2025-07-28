@@ -76,6 +76,309 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  /// 로그아웃 다이얼로그 표시
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 314,
+            height: 234,
+            decoration: BoxDecoration(
+              color: const Color(0xFF323232),
+              borderRadius: BorderRadius.circular(14.2),
+            ),
+            child: Column(
+              children: [
+                // 제목
+                const Padding(
+                  padding: EdgeInsets.only(top: 31.0),
+                  child: Text(
+                    '로그아웃 하시겠어요?',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 19.8,
+                      color: Color(0xFFF9F9F9),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
+                const Spacer(),
+
+                // 버튼들
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 64.0),
+                  child: Column(
+                    children: [
+                      // 확인 버튼
+                      GestureDetector(
+                        onTap: () async {
+                          Navigator.of(context).pop(); // 다이얼로그 닫기
+                          await _performLogout();
+                        },
+                        child: Container(
+                          width: 185.55,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF9F9F9),
+                            borderRadius: BorderRadius.circular(14.2),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '확인',
+                              style: TextStyle(
+                                fontFamily: 'Pretendard Variable',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 17.8,
+                                color: Color(0xFF000000),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 14),
+
+                      // 취소 버튼
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pop(); // 다이얼로그 닫기
+                        },
+                        child: Container(
+                          width: 185.55,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF5A5A5A),
+                            borderRadius: BorderRadius.circular(14.2),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '취소',
+                              style: TextStyle(
+                                fontFamily: 'Pretendard Variable',
+                                fontWeight: FontWeight.w500,
+                                fontSize: 17.8,
+                                color: Color(0xFFCCCCCC),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 46), // 하단 여백
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 실제 로그아웃 수행
+  Future<void> _performLogout() async {
+    try {
+      final authController = context.read<AuthController>();
+      await authController.signOut();
+
+      if (mounted) {
+        // 로그아웃 성공 시 로그인 화면으로 이동
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login', // 로그인 화면 라우트
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        debugPrint('로그아웃 실패: $e');
+        // 에러 메시지 표시 (옵션)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('로그아웃 중 오류가 발생했습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// 계정 삭제 다이얼로그 표시
+  void _showDeleteAccountDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: 314,
+            height: 286,
+            decoration: BoxDecoration(
+              color: const Color(0xFF323232),
+              borderRadius: BorderRadius.circular(14.2),
+            ),
+            child: Column(
+              children: [
+                // 제목
+                const Padding(
+                  padding: EdgeInsets.only(top: 37.0),
+                  child: Text(
+                    '탈퇴하기',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w700,
+                      fontSize: 19.8,
+                      color: Color(0xFFF9F9F9),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
+                // 설명 텍스트
+                const Padding(
+                  padding: EdgeInsets.only(top: 12.0, left: 39.0, right: 39.0),
+                  child: Text(
+                    '탈퇴 버튼 선택시, 계정은\n삭제되며 복구가 불가능합니다.',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 15.8,
+                      height: 1.66,
+                      color: Color(0xFFF9F9F9),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+
+                const Spacer(),
+
+                // 버튼들
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 64.0),
+                  child: Column(
+                    children: [
+                      // 탈퇴 버튼
+                      GestureDetector(
+                        onTap: () async {
+                          Navigator.of(context).pop(); // 다이얼로그 닫기
+                          await _performDeleteAccount();
+                        },
+                        child: Container(
+                          width: 185.55,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF9F9F9),
+                            borderRadius: BorderRadius.circular(14.2),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '탈퇴',
+                              style: TextStyle(
+                                fontFamily: 'Pretendard Variable',
+                                fontWeight: FontWeight.w600,
+                                fontSize: 17.8,
+                                color: Color(0xFF000000),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 13),
+
+                      // 취소 버튼
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pop(); // 다이얼로그 닫기
+                        },
+                        child: Container(
+                          width: 185.55,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF5A5A5A),
+                            borderRadius: BorderRadius.circular(14.2),
+                          ),
+                          child: const Center(
+                            child: Text(
+                              '취소',
+                              style: TextStyle(
+                                fontFamily: 'Pretendard Variable',
+                                fontWeight: FontWeight.w500,
+                                fontSize: 17.8,
+                                color: Color(0xFFCCCCCC),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 35), // 하단 여백
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 실제 계정 삭제 수행
+  Future<void> _performDeleteAccount() async {
+    try {
+      final authController = context.read<AuthController>();
+
+      // 로딩 표시
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (context) => const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
+        );
+      }
+
+      // 계정 삭제 실행
+      await authController.deleteUser();
+
+      if (mounted) {
+        // 로딩 다이얼로그 닫기
+        Navigator.of(context).pop();
+
+        // 계정 삭제 성공 시 로그인 화면으로 이동
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login', // 로그인 화면 라우트
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        // 로딩 다이얼로그 닫기
+        Navigator.of(context).pop();
+
+        debugPrint('계정 삭제 실패: $e');
+        // 에러 메시지 표시
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('계정 삭제 중 오류가 발생했습니다: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
@@ -394,7 +697,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 screenWidth: screenWidth,
                 isSmallScreen: isSmallScreen,
               ),
-              _buildDivider(),
+              Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem(
                 '언어',
                 value: '한국어',
@@ -442,19 +745,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 screenWidth: screenWidth,
                 isSmallScreen: isSmallScreen,
               ),
-              _buildDivider(),
+              Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem(
                 '서비스 이용 약관',
                 screenWidth: screenWidth,
                 isSmallScreen: isSmallScreen,
               ),
-              _buildDivider(),
+              Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem(
                 '오픈소스 라이선스',
                 screenWidth: screenWidth,
                 isSmallScreen: isSmallScreen,
               ),
-              _buildDivider(),
+              Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem(
                 '앱 버전',
                 value: '3.1',
@@ -502,16 +805,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 screenWidth: screenWidth,
                 isSmallScreen: isSmallScreen,
               ),
-              _buildDivider(),
+              Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem(
                 '차단된 친구',
                 screenWidth: screenWidth,
                 isSmallScreen: isSmallScreen,
               ),
-              _buildDivider(),
+              Divider(height: 1, color: const Color(0xFF323232)),
               GestureDetector(
                 onTap: () {
-                  debugPrint('로그아웃 클릭됨');
+                  _showLogoutDialog();
                 },
                 child: _buildSettingsItem(
                   '로그아웃',
@@ -520,10 +823,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   isSmallScreen: isSmallScreen,
                 ),
               ),
-              _buildDivider(),
+              Divider(height: 1, color: const Color(0xFF323232)),
               GestureDetector(
                 onTap: () {
-                  debugPrint('계정 삭제 클릭됨');
+                  _showDeleteAccountDialog();
                 },
                 child: _buildSettingsItem(
                   '계정 삭제',
@@ -606,14 +909,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 18),
-      height: 1,
-      color: const Color(0xFF323232),
     );
   }
 }

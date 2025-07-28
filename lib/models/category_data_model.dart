@@ -7,7 +7,8 @@ class CategoryDataModel {
   final List<String> mates;
   final DateTime createdAt;
   final String? categoryPhotoUrl;
-  final int photoCount;
+
+  final bool isPinned;
 
   CategoryDataModel({
     required this.id,
@@ -15,7 +16,8 @@ class CategoryDataModel {
     required this.mates,
     required this.createdAt,
     this.categoryPhotoUrl,
-    this.photoCount = 0,
+
+    this.isPinned = false,
   });
 
   // Firestore에서 데이터를 가져올 때 사용
@@ -29,7 +31,8 @@ class CategoryDataModel {
       mates: (data['mates'] as List).cast<String>(),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       categoryPhotoUrl: data['categoryPhotoUrl'],
-      photoCount: data['photoCount'] ?? 0,
+
+      isPinned: data['isPinned'] ?? false,
     );
   }
 
@@ -40,7 +43,8 @@ class CategoryDataModel {
       'mates': mates,
       'createdAt': Timestamp.fromDate(createdAt),
       'categoryPhotoUrl': categoryPhotoUrl,
-      'photoCount': photoCount,
+
+      'isPinned': isPinned,
     };
   }
 
@@ -51,7 +55,8 @@ class CategoryDataModel {
     List<String>? mates,
     DateTime? createdAt,
     String? categoryPhotoUrl,
-    int? photoCount,
+
+    bool? isPinned,
   }) {
     return CategoryDataModel(
       id: id ?? this.id,
@@ -59,13 +64,14 @@ class CategoryDataModel {
       mates: mates ?? this.mates,
       createdAt: createdAt ?? this.createdAt,
       categoryPhotoUrl: categoryPhotoUrl ?? this.categoryPhotoUrl,
-      photoCount: photoCount ?? this.photoCount,
+
+      isPinned: isPinned ?? this.isPinned,
     );
   }
 
   @override
   String toString() {
-    return 'CategoryDataModel(id: $id, name: $name, mates: $mates, photoCount: $photoCount)';
+    return 'CategoryDataModel(id: $id, name: $name, mates: $mates';
   }
 
   @override
