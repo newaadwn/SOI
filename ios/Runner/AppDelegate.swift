@@ -66,7 +66,7 @@ import AVFoundation
     application.registerForRemoteNotifications()
     
     // 1️⃣ SwiftCameraPlugin 먼저 등록
-    SwiftCameraPlugin.register(with: self.registrar(forPlugin: "SwiftCameraPlugin")!)
+    SwiftCameraPlugin.register(with: self.registrar(forPlugin: "com.soi.camera")!)
     
     // SwiftAudioConverter 등록
     SwiftAudioConverter.register(with: self.registrar(forPlugin: "SwiftAudioConverter")!)
@@ -78,8 +78,10 @@ import AVFoundation
     
     audioChannel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in
       switch call.method {
-      case "requestPermission":
-        audioRecorder.requestPermission(result: result)
+      case "checkMicrophonePermission":
+        audioRecorder.checkMicrophonePermission(result: result)
+      case "requestMicrophonePermission":
+        audioRecorder.requestMicrophonePermission(result: result)
       case "startRecording":
         if let args = call.arguments as? [String: Any],
            let filePath = args["filePath"] as? String {

@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_swift_camera/views/about_feed/feed_home.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme.dart';
 import '../controllers/auth_controller.dart';
+import '../services/deep_link_service.dart';
 import 'about_archiving/archive_main_screen.dart';
 import 'about_camera/camera_screen.dart';
-import 'home_screen.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 class HomePageNavigationBar extends StatefulWidget {
@@ -27,6 +28,8 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
     // 앱이 실행될 때 잘못된 프로필 이미지 URL을 확인하고 정리
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cleanInvalidProfileImages();
+      // Deep Link 서비스 초기화
+      DeepLinkService.initialize(context);
     });
   }
 
@@ -91,9 +94,9 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
       body: IndexedStack(
         index: _currentPageIndex,
         children: [
-          const HomeScreen(),
-          // 매번 새로운 카메라 스크린 인스턴스 생성
-          _currentPageIndex == 1 ? const CameraScreen() : Container(),
+          const FeedHomeScreen(),
+
+          const CameraScreen(),
           const ArchiveMainScreen(),
         ],
       ),

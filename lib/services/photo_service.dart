@@ -2,11 +2,13 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/photo_data_model.dart';
 import '../repositories/photo_repository.dart';
+import 'audio_service.dart';
 
 /// Photo Service - 사진 관련 비즈니스 로직을 처리
 /// Repository를 사용해서 실제 비즈니스 규칙을 적용
 class PhotoService {
   final PhotoRepository _photoRepository = PhotoRepository();
+  final AudioService _audioService = AudioService();
 
   // ==================== 사진 업로드 비즈니스 로직 ====================
 
@@ -88,22 +90,132 @@ class PhotoService {
     }
   }
 
-  /// 단순 이미지 업로드 (기존 호환성)
-  Future<PhotoUploadResult> uploadSimplePhoto({
-    required File imageFile,
+  /// 사진과 오디오를 파형 데이터와 함께 저장
+  Future<String> savePhotoWithAudio({
+    required String imageFilePath,
+    required String audioFilePath,
+    required String userID,
+    required List<String> userIds,
     required String categoryId,
-    required String userId,
-    String? audioUrl,
+    List<double>? waveformData, // 파형 데이터 파라미터 추가
   }) async {
-    return await uploadPhoto(
-      imageFile: imageFile,
-      categoryId: categoryId,
-      userId: userId,
-      userIds: [userId],
-    );
+    try {
+      debugPrint('사진과 오디오 저장 시작');
+      debugPrint('📁 ImagePath: $imageFilePath');
+      debugPrint('AudioPath: $audioFilePath');
+      debugPrint('👤 UserID: $userID');
+      debugPrint('📂 CategoryId: $categoryId');
+      debugPrint('🌊 제공된 파형 데이터: ${waveformData?.length} samples');
+
+      // 1. 이미지 업로드
+      debugPrint('📤 이미지 업로드 시작...');
+      final imageFile = File(imageFilePath);
+      final imageUrl = await _photoRepository.uploadImageToStorage(
+        imageFile: imageFile,
+        categoryId: categoryId,
+        userId: userID,
+      );
+
+      if (imageUrl == null) {
+        throw Exception('이미지 업로드에 실패했습니다.');
+      }
+      debugPrint('이미지 업로드 완료: $imageUrl');
+
+      // 2. 오디오 업로드
+      debugPrint('오디오 업로드 시작...');
+      final audioFile = File(audioFilePath);
+      final audioUrl = await _photoRepository.uploadAudioToStorage(
+        audioFile: audioFile,
+        categoryId: categoryId,
+        userId: userID,
+      );
+
+      if (audioUrl == null) {
+        throw Exception('오디오 업로드에 실패했습니다.');
+      }
+      debugPrint('오디오 업로드 완료: $audioUrl');
+
+      // 3. 파형 데이터 처리 (제공된 데이터 우선 사용)
+      List<double> finalWaveformData;
+      debugPrint('파형 데이터 처리 시작:');
+      debugPrint('  - 제공된 waveformData null 여부: ${waveformData == null}');
+      debugPrint('  - 제공된 waveformData 길이: ${waveformData?.length ?? 0}');
+
+      if (waveformData != null && waveformData.isNotEmpty) {
+        debugPrint('📊 제공된 파형 데이터 사용: ${waveformData.length} samples');
+        debugPrint('  - 첫 몇 개 샘플: ${waveformData.take(5).toList()}');
+        finalWaveformData = waveformData;
+      } else {
+        debugPrint('🌊 제공된 파형 데이터 없음 - 오디오 파일에서 추출 시작...');
+        finalWaveformData = await _audioService.extractWaveformData(
+          audioFilePath,
+        );
+        debugPrint('📊 파형 데이터 추출 완료: ${finalWaveformData.length} samples');
+        debugPrint('  - 추출된 첫 몇 개 샘플: ${finalWaveformData.take(5).toList()}');
+      }
+
+      // 4. 오디오 길이 계산
+      debugPrint('오디오 길이 계산 시작...');
+      final audioDuration = await _audioService.getAudioDuration(audioFilePath);
+      debugPrint('오디오 길이: ${audioDuration}초');
+
+      // 5. 모든 데이터를 Firestore에 저장
+      debugPrint('Firestore 저장 시작...');
+      final photoId = await _photoRepository.savePhotoWithWaveform(
+        imageUrl: imageUrl,
+        audioUrl: audioUrl,
+        userID: userID,
+        userIds: userIds,
+        categoryId: categoryId,
+        waveformData: finalWaveformData, // 파형 데이터 전달
+      );
+
+      debugPrint('🎉 사진과 오디오 저장 완료 - PhotoId: $photoId');
+      return photoId;
+    } catch (e) {
+      debugPrint('사진 저장 실패: $e');
+      rethrow;
+    }
   }
 
   // ==================== 사진 조회 비즈니스 로직 ====================
+
+  /// 모든 카테고리에서 사진을 페이지네이션으로 조회 (무한 스크롤용)
+  Future<({List<PhotoDataModel> photos, String? lastPhotoId, bool hasMore})>
+  getPhotosFromAllCategoriesPaginated({
+    required List<String> categoryIds,
+    int limit = 20,
+    String? startAfterPhotoId,
+  }) async {
+    try {
+      // 입력 검증
+      if (categoryIds.isEmpty) {
+        throw ArgumentError('카테고리 ID 목록이 필요합니다.');
+      }
+
+      if (limit <= 0 || limit > 100) {
+        throw ArgumentError('제한값은 1과 100 사이여야 합니다.');
+      }
+
+      final result = await _photoRepository.getPhotosFromAllCategoriesPaginated(
+        categoryIds: categoryIds,
+        limit: limit,
+        startAfterPhotoId: startAfterPhotoId,
+      );
+
+      // 비즈니스 로직: 사진 필터링 및 검증
+      final filteredPhotos = _applyPhotoBusinessRules(result.photos);
+
+      return (
+        photos: filteredPhotos,
+        lastPhotoId: result.lastPhotoId,
+        hasMore: result.hasMore,
+      );
+    } catch (e) {
+      debugPrint('페이지네이션 사진 조회 서비스 오류: $e');
+      return (photos: <PhotoDataModel>[], lastPhotoId: null, hasMore: false);
+    }
+  }
 
   /// 카테고리별 사진 목록 조회
   Future<List<PhotoDataModel>> getPhotosByCategory(String categoryId) async {
@@ -164,16 +276,6 @@ class PhotoService {
         photoId: photoId,
       );
 
-      if (photo != null && viewerUserId != null) {
-        // 비즈니스 로직: 조회수 증가 (본인 사진이 아닌 경우만)
-        if (photo.userID != viewerUserId) {
-          await _photoRepository.incrementPhotoViewCount(
-            categoryId: categoryId,
-            photoId: photoId,
-          );
-        }
-      }
-
       return photo;
     } catch (e) {
       debugPrint('사진 상세 조회 서비스 오류: $e');
@@ -209,28 +311,6 @@ class PhotoService {
       return true;
     } catch (e) {
       debugPrint('사진 업데이트 서비스 오류: $e');
-      return false;
-    }
-  }
-
-  /// 사진 좋아요 토글
-  Future<bool> togglePhotoLike({
-    required String categoryId,
-    required String photoId,
-    required String userId,
-  }) async {
-    try {
-      if (categoryId.isEmpty || photoId.isEmpty || userId.isEmpty) {
-        throw ArgumentError('필수 매개변수가 누락되었습니다.');
-      }
-
-      return await _photoRepository.togglePhotoLike(
-        categoryId: categoryId,
-        photoId: photoId,
-        userId: userId,
-      );
-    } catch (e) {
-      debugPrint('사진 좋아요 토글 서비스 오류: $e');
       return false;
     }
   }
@@ -280,22 +360,6 @@ class PhotoService {
     }
   }
 
-  // ==================== 기존 호환성 메서드 ====================
-
-  /// 기존 Map 형태로 사진 목록 조회 (호환성)
-  Future<List<Map<String, dynamic>>> getCategoryPhotosAsMap(
-    String categoryId,
-  ) async {
-    return await _photoRepository.getCategoryPhotosAsMap(categoryId);
-  }
-
-  /// 기존 Map 형태로 사진 스트림 (호환성)
-  Stream<List<Map<String, dynamic>>> getCategoryPhotosStreamAsMap(
-    String categoryId,
-  ) {
-    return _photoRepository.getCategoryPhotosStreamAsMap(categoryId);
-  }
-
   // ==================== 통계 및 유틸리티 ====================
 
   /// 사진 통계 조회
@@ -343,6 +407,36 @@ class PhotoService {
     activePhotos.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     return activePhotos;
+  }
+
+  // ==================== 파형 데이터 유틸리티 ====================
+
+  /// 특정 사진에 파형 데이터 추가
+  Future<bool> addWaveformDataToPhoto({
+    required String categoryId,
+    required String photoId,
+    required String audioFilePath,
+  }) async {
+    try {
+      debugPrint('🌊 특정 사진에 파형 데이터 추가 시작');
+
+      // 오디오 파일에서 파형 데이터 추출
+      final waveformData = await _audioService.extractWaveformData(
+        audioFilePath,
+      );
+      final audioDuration = await _audioService.getAudioDuration(audioFilePath);
+
+      // Repository를 통해 업데이트
+      return await _photoRepository.addWaveformDataToPhoto(
+        categoryId: categoryId,
+        photoId: photoId,
+        waveformData: waveformData,
+        audioDuration: audioDuration,
+      );
+    } catch (e) {
+      debugPrint('특정 사진에 파형 데이터 추가 실패: $e');
+      return false;
+    }
   }
 }
 

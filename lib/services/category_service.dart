@@ -40,6 +40,14 @@ class CategoryService {
     return _repository.getUserCategoriesStream(userId);
   }
 
+  /// 단일 카테고리 실시간 스트림
+  Stream<CategoryDataModel?> getCategoryStream(String categoryId) {
+    if (categoryId.isEmpty) {
+      return Stream.value(null);
+    }
+    return _repository.getCategoryStream(categoryId);
+  }
+
   /// 사용자의 카테고리 목록을 한 번만 가져오기
   Future<List<CategoryDataModel>> getUserCategories(String userId) async {
     if (userId.isEmpty) {
@@ -104,6 +112,7 @@ class CategoryService {
     required String categoryId,
     String? name,
     List<String>? mates,
+    bool? isPinned,
   }) async {
     try {
       final updateData = <String, dynamic>{};
@@ -123,6 +132,11 @@ class CategoryService {
           return AuthResult.failure('최소 1명의 멤버가 필요합니다.');
         }
         updateData['mates'] = mates;
+      }
+
+      // 3. 고정 상태 업데이트
+      if (isPinned != null) {
+        updateData['isPinned'] = isPinned;
       }
 
       if (updateData.isEmpty) {
@@ -240,6 +254,74 @@ class CategoryService {
 
   // ==================== 기존 호환성 메서드 ====================
 
+  // ==================== 표지사진 관리 ====================
+
+  /// 갤러리에서 선택한 이미지로 표지사진 업데이트
+  Future<AuthResult> updateCoverPhotoFromGallery({
+    required String categoryId,
+    required File imageFile,
+  }) async {
+    try {
+      if (categoryId.isEmpty) {
+        return AuthResult.failure('유효하지 않은 카테고리입니다.');
+      }
+
+      // 이미지 업로드
+      final photoUrl = await _repository.uploadCoverImage(
+        categoryId,
+        imageFile,
+      );
+
+      // 카테고리 표지사진 업데이트
+      await _repository.updateCategoryPhoto(
+        categoryId: categoryId,
+        photoUrl: photoUrl,
+      );
+
+      return AuthResult.success(photoUrl);
+    } catch (e) {
+      debugPrint('표지사진 업데이트 오류: $e');
+      return AuthResult.failure('표지사진 업데이트 중 오류가 발생했습니다.');
+    }
+  }
+
+  /// 카테고리 내 사진으로 표지사진 업데이트
+  Future<AuthResult> updateCoverPhotoFromCategory({
+    required String categoryId,
+    required String photoUrl,
+  }) async {
+    try {
+      if (categoryId.isEmpty || photoUrl.isEmpty) {
+        return AuthResult.failure('유효하지 않은 정보입니다.');
+      }
+
+      await _repository.updateCategoryPhoto(
+        categoryId: categoryId,
+        photoUrl: photoUrl,
+      );
+
+      return AuthResult.success();
+    } catch (e) {
+      debugPrint('표지사진 업데이트 오류: $e');
+      return AuthResult.failure('표지사진 업데이트 중 오류가 발생했습니다.');
+    }
+  }
+
+  /// 표지사진 삭제
+  Future<AuthResult> deleteCoverPhoto(String categoryId) async {
+    try {
+      if (categoryId.isEmpty) {
+        return AuthResult.failure('유효하지 않은 카테고리입니다.');
+      }
+
+      await _repository.deleteCategoryPhoto(categoryId);
+      return AuthResult.success();
+    } catch (e) {
+      debugPrint('표지사진 삭제 오류: $e');
+      return AuthResult.failure('표지사진 삭제 중 오류가 발생했습니다.');
+    }
+  }
+
   /// 카테고리 사진 스트림 (Map 형태로 반환)
   Stream<List<Map<String, dynamic>>> getCategoryPhotosStream(
     String categoryId,
@@ -248,22 +330,6 @@ class CategoryService {
   }
 
   // ==================== 유틸리티 ====================
-
-  /// 카테고리 이름 중복 검사 (같은 사용자의 카테고리 중에서)
-  Future<bool> isDuplicateCategoryName(String userId, String name) async {
-    try {
-      final categories = await getUserCategories(userId);
-      final normalizedName = _normalizeCategoryName(name);
-
-      return categories.any(
-        (category) =>
-            category.name.toLowerCase() == normalizedName.toLowerCase(),
-      );
-    } catch (e) {
-      debugPrint('카테고리 이름 중복 검사 오류: $e');
-      return false;
-    }
-  }
 
   /// 사용자가 카테고리의 멤버인지 확인
   bool isUserMemberOfCategory(CategoryDataModel category, String userId) {
@@ -296,6 +362,41 @@ class CategoryService {
       return AuthResult.success(null);
     } catch (e) {
       return AuthResult.failure('카테고리에 사용자 추가 실패: $e');
+    }
+  }
+
+  /// 카테고리에서 사용자 제거 (UID로)
+  Future<AuthResult> removeUidFromCategory({
+    required String categoryId,
+    required String uid,
+  }) async {
+    try {
+      // 현재 카테고리 정보 가져오기
+      final category = await _repository.getCategory(categoryId);
+      if (category == null) {
+        return AuthResult.failure('카테고리를 찾을 수 없습니다.');
+      }
+
+      // mates 리스트에서 해당 UID 제거
+      final updatedMates = List<String>.from(category.mates);
+      if (!updatedMates.contains(uid)) {
+        return AuthResult.failure('해당 사용자는 이 카테고리의 멤버가 아닙니다.');
+      }
+
+      updatedMates.remove(uid);
+
+      // 멤버가 모두 없어지면 카테고리 삭제
+      if (updatedMates.isEmpty) {
+        await _repository.deleteCategory(categoryId);
+        return AuthResult.success('카테고리에서 나갔습니다. 마지막 멤버였으므로 카테고리가 삭제되었습니다.');
+      }
+
+      // mates 업데이트
+      await _repository.updateCategory(categoryId, {'mates': updatedMates});
+      return AuthResult.success('카테고리에서 나갔습니다.');
+    } catch (e) {
+      debugPrint('카테고리에서 사용자 제거 실패: $e');
+      return AuthResult.failure('카테고리 나가기 중 오류가 발생했습니다.');
     }
   }
 }

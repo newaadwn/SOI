@@ -6,16 +6,18 @@ class CategoryDataModel {
   final String name;
   final List<String> mates;
   final DateTime createdAt;
-  final String? firstPhotoUrl;
-  final int photoCount;
+  final String? categoryPhotoUrl;
+
+  final bool isPinned;
 
   CategoryDataModel({
     required this.id,
     required this.name,
     required this.mates,
     required this.createdAt,
-    this.firstPhotoUrl,
-    this.photoCount = 0,
+    this.categoryPhotoUrl,
+
+    this.isPinned = false,
   });
 
   // Firestore에서 데이터를 가져올 때 사용
@@ -28,8 +30,9 @@ class CategoryDataModel {
       name: data['name'] ?? '',
       mates: (data['mates'] as List).cast<String>(),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
-      firstPhotoUrl: data['firstPhotoUrl'],
-      photoCount: data['photoCount'] ?? 0,
+      categoryPhotoUrl: data['categoryPhotoUrl'],
+
+      isPinned: data['isPinned'] ?? false,
     );
   }
 
@@ -39,8 +42,9 @@ class CategoryDataModel {
       'name': name,
       'mates': mates,
       'createdAt': Timestamp.fromDate(createdAt),
-      'firstPhotoUrl': firstPhotoUrl,
-      'photoCount': photoCount,
+      'categoryPhotoUrl': categoryPhotoUrl,
+
+      'isPinned': isPinned,
     };
   }
 
@@ -50,22 +54,24 @@ class CategoryDataModel {
     String? name,
     List<String>? mates,
     DateTime? createdAt,
-    String? firstPhotoUrl,
-    int? photoCount,
+    String? categoryPhotoUrl,
+
+    bool? isPinned,
   }) {
     return CategoryDataModel(
       id: id ?? this.id,
       name: name ?? this.name,
       mates: mates ?? this.mates,
       createdAt: createdAt ?? this.createdAt,
-      firstPhotoUrl: firstPhotoUrl ?? this.firstPhotoUrl,
-      photoCount: photoCount ?? this.photoCount,
+      categoryPhotoUrl: categoryPhotoUrl ?? this.categoryPhotoUrl,
+
+      isPinned: isPinned ?? this.isPinned,
     );
   }
 
   @override
   String toString() {
-    return 'CategoryDataModel(id: $id, name: $name, mates: $mates, photoCount: $photoCount)';
+    return 'CategoryDataModel(id: $id, name: $name, mates: $mates';
   }
 
   @override

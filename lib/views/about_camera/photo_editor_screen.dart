@@ -6,8 +6,6 @@ import '../../controllers/audio_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/photo_controller.dart';
-
-// 분리된 위젯들을 임포트
 import '../home_navigator_screen.dart';
 import 'widgets/photo_display_widget.dart';
 import 'widgets/audio_recorder_widget.dart';
@@ -35,6 +33,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   String? _selectedCategoryId;
   bool _categoriesLoaded = false; // 카테고리 로드 상태 추적
 
+  // 추출된 파형 데이터 저장
+  List<double>? _recordedWaveformData;
+
   // 컨트롤러
   final _draggableScrollController = DraggableScrollableController();
   final _categoryNameController = TextEditingController();
@@ -55,6 +56,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
+
     // 앱이 다시 활성화될 때 카테고리 목록을 새로고침
     if (state == AppLifecycleState.resumed) {
       _categoriesLoaded = false; // 플래그 리셋
@@ -74,6 +76,11 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     );
     _authController = Provider.of<AuthController>(context, listen: false);
     _photoController = Provider.of<PhotoController>(context, listen: false);
+
+    // 빌드 완료 후 오디오 초기화 실행
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _audioController.initialize();
+    });
 
     // 현재 로그인한 유저의 카테고리 로드 (빌드 완료 후 실행)
     if (!_categoriesLoaded) {
@@ -143,47 +150,45 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   Future<void> _loadUserCategories({bool forceReload = false}) async {
     if (!forceReload && _categoriesLoaded) return; // 이미 로드된 경우 스킵
 
-    setState(() {
-      _isLoading = true; // 로딩 시작
-    });
+    // ✅ UI 로딩 상태를 별도로 관리하여 화면 전환 속도 향상
+    if (!forceReload) {
+      // 첫 로드시에는 로딩 UI를 최소화
+      setState(() {
+        _isLoading = false; // 이미지는 바로 보이도록
+      });
+    }
 
     try {
       // 현재 로그인한 유저의 UID 가져오기
       final currentUser = _authController.currentUser;
       if (currentUser != null) {
         debugPrint('현재 사용자 UID: ${currentUser.uid}');
-        debugPrint('현재 사용자 전화번호: ${currentUser.phoneNumber}');
 
-        // 사용자 닉네임도 확인
-        try {
-          final userNickName = await _authController.getIdFromFirestore();
-          debugPrint('현재 사용자 닉네임: $userNickName');
-        } catch (e) {
-          debugPrint('사용자 닉네임 가져오기 실패: $e');
-        }
+        // ✅ 백그라운드에서 카테고리 로드 (UI 블로킹 없음)
+        Future.microtask(() async {
+          try {
+            await _categoryController.loadUserCategories(
+              currentUser.uid,
+              forceReload: forceReload,
+            );
+            _categoriesLoaded = true;
+            debugPrint(
+              '로드된 카테고리 수: ${_categoryController.userCategories.length}',
+            );
 
-        // CategoryController의 메서드 호출하여 카테고리 로드
-        await _categoryController.loadUserCategories(
-          currentUser.uid,
-          forceReload: forceReload,
-        );
-        _categoriesLoaded = true; // 로드 완료 표시
-        debugPrint('로드된 카테고리 수: ${_categoryController.userCategories.length}');
-
-        // 카테고리 목록 상세 정보 출력
-        for (int i = 0; i < _categoryController.userCategories.length; i++) {
-          final category = _categoryController.userCategories[i];
-          debugPrint(
-            '카테고리 $i: ID=${category.id}, 이름=${category.name}, 멤버=${category.mates}',
-          );
-        }
+            // 카테고리 로딩 완료 후 UI 업데이트 (필요한 경우에만)
+            if (mounted) {
+              setState(() {});
+            }
+          } catch (e) {
+            debugPrint('백그라운드 카테고리 로드 오류: $e');
+          }
+        });
       } else {
         debugPrint('현재 로그인한 사용자가 없습니다.');
       }
     } catch (e) {
       debugPrint('카테고리 로드 오류: $e');
-    } finally {
-      // 로딩 완료 처리 (성공 여부와 상관없이)
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -192,92 +197,207 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     }
   }
 
-  // 카테고리에 사진과 음성 업로드 함수
-  Future<void> _savePhotoAndAudioToCategory(String categoryId) async {
-    debugPrint('사진 업로드 시작: categoryId=$categoryId');
+  // ✅ 완전히 독립적인 백그라운드 업로드 함수
+  void _savePhotoAndAudioToCategory(String categoryId) {
+    // Future를 시작하되 await하지 않음 (Fire and Forget 패턴)
+    _executeBackgroundUpload(categoryId)
+        .then((_) {
+          debugPrint('백그라운드 업로드 완료');
+        })
+        .catchError((e) {
+          debugPrint('백그라운드 업로드 오류: $e');
+        });
+  }
 
-    setState(() {
-      _isLoading = true;
-    });
-
+  // 실제 업로드 작업을 수행하는 private 메서드
+  Future<void> _executeBackgroundUpload(String categoryId) async {
     try {
-      // 현재 사용자 닉네임 가져오기
-      final userNickName = await _authController.getIdFromFirestore();
-      debugPrint('사용자 닉네임: $userNickName');
-
-      String imagePath = '';
-      bool uploadSuccess = false;
+      debugPrint('백그라운드 업로드 실행 시작');
 
       // 로컬 이미지 경로나 다운로드 URL 중 하나 선택
       if (_useLocalImage && widget.imagePath != null) {
-        debugPrint('로컬 이미지 업로드 시도: ${widget.imagePath}');
-        imagePath = widget.imagePath!;
+        final String imagePath = widget.imagePath!;
+        debugPrint('로컬 이미지 업로드: $imagePath');
 
-        // AudioController를 사용하여 오디오 처리
-        final String audioPath = await _audioController.processAudioForUpload();
-        debugPrint('오디오 경로: $audioPath');
-
-        // Firebase Auth에서 UID 가져오기
+        // Firebase Auth에서 UID 먼저 확인 (가장 빠른 작업)
         final String? userId = _authController.getUserId;
-
         if (userId == null) {
-          debugPrint('사용자 ID가 없습니다.');
           throw Exception('사용자 ID가 없습니다. 로그인이 필요합니다.');
         }
 
-        debugPrint('사용자 UID: $userId');
+        debugPrint('사용자 ID: $userId');
 
-        // PhotoController를 사용하여 사진 업로드 (Firebase UID 사용)
-        uploadSuccess = await _photoController.uploadPhoto(
-          imageFile: File(imagePath),
-          categoryId: categoryId,
-          userId: userId, // userNickName 대신 Firebase Auth UID 사용
-          userIds: [userId], // userNickName 대신 Firebase Auth UID 사용
-          audioFile: audioPath.isNotEmpty ? File(audioPath) : null,
+        // 이미지 파일 존재 확인
+        final imageFile = File(imagePath);
+        if (!await imageFile.exists()) {
+          throw Exception('이미지 파일이 존재하지 않습니다: $imagePath');
+        }
+        debugPrint('이미지 파일 확인 완료');
+
+        // ✅ 오디오 처리를 더 최적화 - 조건부 처리
+        String audioPath = '';
+        bool hasValidAudio = false;
+
+        debugPrint('오디오 파일 확인 시작...');
+        debugPrint(
+          '  - currentRecordingPath: ${_audioController.currentRecordingPath}',
         );
+        debugPrint('  - 파형 데이터 길이: ${_recordedWaveformData?.length ?? 0}');
 
-        debugPrint('로컬 이미지 업로드 결과: $uploadSuccess');
+        if (_audioController.currentRecordingPath != null &&
+            _audioController.currentRecordingPath!.isNotEmpty) {
+          // 오디오 파일 존재 확인 - 개선된 로직
+          final audioFile = File(_audioController.currentRecordingPath!);
+          debugPrint('파일 경로 확인: ${audioFile.path}');
+
+          final fileExists = await audioFile.exists();
+          debugPrint('파일 존재 여부: $fileExists');
+
+          if (fileExists) {
+            final fileSize = await audioFile.length();
+            debugPrint('오디오 파일 존재: 크기 ${fileSize} bytes');
+            if (fileSize > 0) {
+              try {
+                audioPath = await _audioController.processAudioForUpload();
+                debugPrint('processAudioForUpload 결과: "$audioPath"');
+
+                if (audioPath.isNotEmpty) {
+                  hasValidAudio = true;
+                  debugPrint('오디오 파일 처리 완료');
+                } else {
+                  debugPrint('processAudioForUpload가 빈 문자열 반환');
+
+                  // processAudioForUpload가 실패해도 원본 파일 경로 사용 시도
+                  debugPrint('원본 파일 경로로 대체 시도');
+                  audioPath = _audioController.currentRecordingPath!;
+
+                  // 원본 파일이 여전히 존재하는지 확인
+                  if (await File(audioPath).exists()) {
+                    hasValidAudio = true;
+                    debugPrint('원본 파일 경로 사용: $audioPath');
+                  } else {
+                    debugPrint('원본 파일도 접근 불가');
+                  }
+                }
+              } catch (e) {
+                debugPrint('오디오 처리 실패: $e');
+
+                // 예외 발생해도 원본 파일 사용 시도
+                debugPrint('예외 발생, 원본 파일 경로로 대체 시도');
+                audioPath = _audioController.currentRecordingPath!;
+
+                if (await File(audioPath).exists()) {
+                  hasValidAudio = true;
+                  debugPrint('예외 상황에서 원본 파일 경로 사용: $audioPath');
+                } else {
+                  debugPrint('원본 파일도 접근 불가 (예외 상황)');
+                }
+              }
+            } else {
+              debugPrint('오디오 파일 크기가 0 bytes');
+            }
+          } else {
+            debugPrint('오디오 파일이 존재하지 않음');
+            debugPrint('존재하지 않는 파일 경로: ${audioFile.path}');
+
+            // 파일이 존재하지 않아도 경로가 있다면 혹시 다른 위치에 있을 수 있음
+            debugPrint('디렉토리 및 파일명 분석 시도');
+            try {
+              final directory = audioFile.parent;
+              final fileName = audioFile.uri.pathSegments.last;
+              debugPrint('디렉토리: ${directory.path}');
+              debugPrint('파일명: $fileName');
+
+              if (await directory.exists()) {
+                debugPrint('디렉토리는 존재함');
+                final files = await directory.list().toList();
+                debugPrint('디렉토리 내 파일 개수: ${files.length}');
+
+                // 같은 이름으로 시작하는 파일이 있는지 확인
+                for (final file in files) {
+                  if (file.path.contains('audio_') &&
+                      file.path.endsWith('.m4a')) {
+                    debugPrint('발견된 오디오 파일: ${file.path}');
+                  }
+                }
+              } else {
+                debugPrint('디렉토리도 존재하지 않음');
+              }
+            } catch (e) {
+              debugPrint('디렉토리 분석 실패: $e');
+            }
+          }
+        } else {
+          debugPrint('currentRecordingPath가 null이거나 비어있음');
+        }
+
+        debugPrint('최종 조건 확인:');
+        debugPrint('  - hasValidAudio: $hasValidAudio');
+        debugPrint('  - 파형 데이터: ${_recordedWaveformData?.length ?? 0} samples');
+
+        // ✅ 사용자 닉네임은 마지막에 처리 (필수가 아닌 경우)
+        try {
+          final String userNickName =
+              await _authController.getIdFromFirestore();
+          debugPrint('사용자 닉네임: $userNickName');
+        } catch (e) {
+          debugPrint('사용자 닉네임 가져오기 실패 (무시): $e');
+        }
+
+        debugPrint('업로드 실행 준비:');
+        debugPrint('  - 이미지: $imagePath');
+        debugPrint('  - 오디오: ${hasValidAudio ? audioPath : '없음'}');
+        debugPrint('  - 파형 데이터: ${_recordedWaveformData?.length ?? 0} samples');
+
+        // ✅ 업로드 조건 복원 - 실제 파형 데이터가 있을 때만 오디오와 함께 업로드
+        if (hasValidAudio &&
+            audioPath.isNotEmpty &&
+            _recordedWaveformData != null &&
+            _recordedWaveformData!.isNotEmpty) {
+          // 오디오 파일과 실제 파형 데이터가 모두 있는 경우
+          debugPrint(
+            '오디오와 함께 업로드 (실제 파형 데이터: ${_recordedWaveformData!.length} samples)',
+          );
+          await _photoController.uploadPhotoWithAudio(
+            imageFilePath: imagePath,
+            audioFilePath: audioPath,
+            userID: userId,
+            userIds: [userId],
+            categoryId: categoryId,
+            waveformData: _recordedWaveformData,
+          );
+        } else {
+          // 이미지만 업로드
+          debugPrint('이미지만 업로드 (오디오 없음 또는 파형 데이터 없음)');
+          debugPrint('  - hasValidAudio: $hasValidAudio');
+          debugPrint('  - audioPath.isNotEmpty: ${audioPath.isNotEmpty}');
+          debugPrint(
+            '  - _recordedWaveformData != null: ${_recordedWaveformData != null}',
+          );
+          debugPrint(
+            '  - _recordedWaveformData!.isNotEmpty: ${_recordedWaveformData?.isNotEmpty ?? false}',
+          );
+
+          await _photoController.uploadPhoto(
+            imageFile: File(imagePath),
+            categoryId: categoryId,
+            userId: userId,
+            userIds: [userId],
+            audioFile: null,
+          );
+        }
       } else if (_useDownloadUrl && widget.downloadUrl != null) {
         debugPrint('다운로드 URL 업로드는 현재 지원되지 않습니다: ${widget.downloadUrl}');
-        // downloadUrl의 경우 URL에서 이미지를 다운로드한 후 업로드해야 함
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('URL 이미지는 현재 지원되지 않습니다.')));
-        return;
+        throw Exception('다운로드 URL 업로드는 지원되지 않습니다.');
       } else {
         debugPrint('업로드할 이미지가 없습니다.');
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('업로드할 이미지가 없습니다.')));
-        return;
+        throw Exception('업로드할 이미지가 없습니다.');
       }
 
-      // 업로드 성공 시 처리
-      if (uploadSuccess) {
-        debugPrint('업로드 성공!');
-
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
-          ),
-        );
-
-        // 잠시 대기 후 화면 이동
-        Future.delayed(Duration(milliseconds: 500));
-      } else {
-        debugPrint('업로드 실패');
-      }
+      debugPrint('백그라운드 업로드 완료');
     } catch (e) {
-      debugPrint('사진 및 음성 업로드 오류: $e');
-    } finally {
-      // 상태 초기화
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _selectedCategoryId = null;
-        });
-      }
+      debugPrint('백그라운드 업로드 실행 오류: $e');
+      rethrow; // 에러를 다시 던져서 catchError에서 처리
     }
   }
 
@@ -285,6 +405,13 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   void _handleCategorySelection(String categoryId) {
     // 이미 선택된 카테고리를 다시 클릭했을 때 (전송 실행)
     if (_selectedCategoryId == categoryId) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
+          settings: RouteSettings(name: '/home'),
+        ),
+        (route) => false,
+      );
       _savePhotoAndAudioToCategory(categoryId);
     } else {
       // 새로운 카테고리 선택 (선택 모드로 변경)
@@ -354,15 +481,26 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
   @override
   Widget build(BuildContext context) {
-    double screenHeight = MediaQuery.of(context).size.height;
-    double screenWidth = MediaQuery.of(context).size.width;
+    // 📱 개선된 반응형: MediaQuery.sizeOf() 사용
+    final screenSize = MediaQuery.sizeOf(context);
+    final screenWidth = screenSize.width;
+    final screenHeight = screenSize.height;
+
+    // 📱 반응형: 기준 해상도 설정 (393 x 852 기준)
+    const double baseWidth = 393;
+    const double baseHeight = 852;
 
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        iconTheme: IconThemeData(color: Colors.white),
         title: Text(
           'SOI',
-          style: TextStyle(color: AppTheme.lightTheme.colorScheme.secondary),
+          style: TextStyle(
+            color: AppTheme.lightTheme.colorScheme.secondary,
+            fontSize: 20,
+          ),
+          textAlign: TextAlign.center,
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       ),
@@ -389,13 +527,53 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                             downloadUrl: widget.downloadUrl,
                             useLocalImage: _useLocalImage,
                             useDownloadUrl: _useDownloadUrl,
-                            width: 354 / 393 * screenWidth,
-                            height: 471 / 852 * screenHeight,
+                            width: 354 / baseWidth * screenWidth,
+                            height: 500 / baseHeight * screenHeight,
                           ),
-                          SizedBox(height: 20 / 852 * screenHeight),
+                          SizedBox(
+                            height: (screenHeight * (19 / 852)),
+                          ), // 개선된 반응형
                           // 오디오 녹음 위젯
                           AudioRecorderWidget(
-                            onRecordingCompleted: null, // AudioController에서 처리
+                            onRecordingCompleted: (
+                              String? audioPath,
+                              List<double>? waveformData,
+                            ) {
+                              debugPrint('PhotoEditorScreen - 녹음 완료 콜백 호출됨');
+                              debugPrint('  - audioPath: $audioPath');
+                              debugPrint(
+                                '  - waveformData null 여부: ${waveformData == null}',
+                              );
+                              debugPrint(
+                                '  - waveformData 길이: ${waveformData?.length ?? 0}',
+                              );
+
+                              if (waveformData != null &&
+                                  waveformData.isNotEmpty) {
+                                debugPrint('실제 파형 데이터 수신');
+                                debugPrint(
+                                  '첫 5개 샘플: ${waveformData.take(5).toList()}',
+                                );
+                                debugPrint(
+                                  '마지막 5개 샘플: ${waveformData.length > 5 ? waveformData.sublist(waveformData.length - 5) : waveformData}',
+                                );
+                                debugPrint(
+                                  '데이터 범위: ${waveformData.reduce((a, b) => a < b ? a : b)} ~ ${waveformData.reduce((a, b) => a > b ? a : b)}',
+                                );
+                              } else {
+                                debugPrint('파형 데이터 없음 또는 빈 데이터');
+                              }
+
+                              // 파형 데이터를 상태 변수에 저장
+                              setState(() {
+                                _recordedWaveformData = waveformData;
+                              });
+
+                              debugPrint('PhotoEditorScreen 상태 업데이트 완료');
+                              debugPrint(
+                                '  - _recordedWaveformData 길이: ${_recordedWaveformData?.length ?? 0}',
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -405,15 +583,28 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       ),
       bottomSheet: DraggableScrollableSheet(
         controller: _draggableScrollController,
-        initialChildSize: 0.25,
-        minChildSize: 0.2,
-
+        initialChildSize: (screenHeight * 0.195 / screenHeight).clamp(
+          0.15,
+          0.25,
+        ), // 반응형 초기 크기
+        minChildSize: (screenHeight * 0.195 / screenHeight).clamp(
+          0.15,
+          0.25,
+        ), // 반응형 최소 크기
+        maxChildSize: (screenHeight * 0.8 / screenHeight).clamp(
+          0.7,
+          0.9,
+        ), // 반응형 최대 크기
         expand: false,
         builder: (context, scrollController) {
           return Container(
             decoration: BoxDecoration(
               color: Color(0xff171717),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+              borderRadius: BorderRadius.vertical(
+                top: Radius.circular(
+                  (screenWidth * 0.041).clamp(12.0, 20.0),
+                ), // 개선된 반응형
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -421,12 +612,20 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                 // 드래그 핸들
                 Center(
                   child: Container(
-                    height: 5 / 852 * screenHeight,
-                    width: 109 / 393 * screenWidth,
-                    margin: const EdgeInsets.only(top: 8, bottom: 16),
+                    height: (screenHeight * 0.006).clamp(4.0, 8.0), // 개선된 반응형
+                    width: (screenWidth * 0.277).clamp(80.0, 120.0), // 개선된 반응형
+                    margin: EdgeInsets.only(
+                      top: (screenHeight * 0.009).clamp(6.0, 10.0), // 개선된 반응형
+                      bottom: (screenHeight * 0.019).clamp(
+                        12.0,
+                        20.0,
+                      ), // 개선된 반응형
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(
+                        (screenWidth * 0.005).clamp(2.0, 4.0),
+                      ), // 개선된 반응형
                     ),
                   ),
                 ),
@@ -453,16 +652,22 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                 // 시트를 0.2 크기로 애니메이션
                                 if (mounted) {
                                   // 위젯이 아직 살아있는지 확인
-                                  Future.delayed(
-                                    Duration(milliseconds: 50),
-                                    () {
-                                      _draggableScrollController.animateTo(
-                                        0.25,
-                                        duration: Duration(milliseconds: 10),
-                                        curve: Curves.fastOutSlowIn,
-                                      );
-                                    },
-                                  );
+                                  Future.delayed(Duration(milliseconds: 50), () {
+                                    if (mounted &&
+                                        _draggableScrollController.isAttached) {
+                                      try {
+                                        _draggableScrollController.animateTo(
+                                          0.25,
+                                          duration: Duration(milliseconds: 10),
+                                          curve: Curves.fastOutSlowIn,
+                                        );
+                                      } catch (e) {
+                                        debugPrint(
+                                          'DraggableScrollController animateTo 오류 (무시): $e',
+                                        );
+                                      }
+                                    }
+                                  });
                                 }
                               },
                               onSavePressed:
@@ -474,23 +679,29 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                               scrollController: scrollController,
                               selectedCategoryId: _selectedCategoryId,
                               onCategorySelected: _handleCategorySelection,
-                              onAddCategoryPressed: () {
+                              addCategoryPressed: () {
                                 setState(() {
                                   _showAddCategoryUI = true;
                                 });
                                 // 시트를 0.7 크기로 애니메이션
                                 if (mounted) {
                                   // 위젯이 아직 살아있는지 확인
-                                  Future.delayed(
-                                    Duration(milliseconds: 50),
-                                    () {
-                                      _draggableScrollController.animateTo(
-                                        0.65,
-                                        duration: Duration(milliseconds: 10),
-                                        curve: Curves.fastOutSlowIn,
-                                      );
-                                    },
-                                  );
+                                  Future.delayed(Duration(milliseconds: 50), () {
+                                    if (mounted &&
+                                        _draggableScrollController.isAttached) {
+                                      try {
+                                        _draggableScrollController.animateTo(
+                                          0.65,
+                                          duration: Duration(milliseconds: 10),
+                                          curve: Curves.fastOutSlowIn,
+                                        );
+                                      } catch (e) {
+                                        debugPrint(
+                                          'DraggableScrollController animateTo 오류 (무시): $e',
+                                        );
+                                      }
+                                    }
+                                  });
                                 }
                               },
                               isLoading: _categoryController.isLoading,
@@ -507,9 +718,26 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _categoryNameController.dispose();
-    _draggableScrollController.dispose();
+    try {
+      WidgetsBinding.instance.removeObserver(this);
+    } catch (e) {
+      debugPrint('WidgetsBinding observer 제거 오류 (무시): $e');
+    }
+
+    try {
+      _categoryNameController.dispose();
+    } catch (e) {
+      debugPrint('CategoryNameController dispose 오류 (무시): $e');
+    }
+
+    try {
+      if (_draggableScrollController.isAttached) {
+        _draggableScrollController.dispose();
+      }
+    } catch (e) {
+      debugPrint('DraggableScrollController dispose 오류 (무시): $e');
+    }
+
     super.dispose();
   }
 }

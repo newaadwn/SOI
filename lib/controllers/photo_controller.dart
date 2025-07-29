@@ -1,14 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import '../services/photo_service.dart';
 import '../models/photo_data_model.dart';
 
 /// Photo Controller - UI와 비즈니스 로직을 연결하는 Controller
 /// Service를 사용해서 UI 상태를 관리하고 사용자 피드백을 제공
 class PhotoController extends ChangeNotifier {
-  // 상태 변수들
+  // 기본 상태 변수들
   bool _isLoading = false;
   bool _isUploading = false;
   double _uploadProgress = 0.0;
@@ -16,27 +15,35 @@ class PhotoController extends ChangeNotifier {
 
   List<PhotoDataModel> _photos = [];
   List<PhotoDataModel> _userPhotos = [];
-  List<PhotoDataModel> _searchResults = [];
   PhotoDataModel? _selectedPhoto;
   Map<String, int> _photoStats = {};
-  List<String> _popularTags = [];
+
+  // 무한 스크롤 페이지네이션 상태
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+  String? _lastPhotoId;
+  static const int _initialLoadSize = 5;
+  static const int _pageSize = 10;
 
   StreamSubscription<List<PhotoDataModel>>? _photosSubscription;
 
   // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
   final PhotoService _photoService = PhotoService();
 
-  // Getters
+  // Getters - 기본
   bool get isLoading => _isLoading;
   bool get isUploading => _isUploading;
   double get uploadProgress => _uploadProgress;
   String? get error => _error;
   List<PhotoDataModel> get photos => _photos;
   List<PhotoDataModel> get userPhotos => _userPhotos;
-  List<PhotoDataModel> get searchResults => _searchResults;
   PhotoDataModel? get selectedPhoto => _selectedPhoto;
   Map<String, int> get photoStats => _photoStats;
-  List<String> get popularTags => _popularTags;
+
+  // Getters - 페이지네이션
+  bool get hasMore => _hasMore;
+  bool get isLoadingMore => _isLoadingMore;
+  String? get lastPhotoId => _lastPhotoId;
 
   // ==================== 사진 업로드 ====================
 
@@ -73,9 +80,6 @@ class PhotoController extends ChangeNotifier {
         audioFile = null;
       }
 
-      // 업로드 진행률 시뮬레이션
-      _simulateUploadProgress();
-
       debugPrint('PhotoController: PhotoService.uploadPhoto 호출');
       final result = await _photoService.uploadPhoto(
         imageFile: imageFile,
@@ -96,7 +100,7 @@ class PhotoController extends ChangeNotifier {
 
       if (result.isSuccess) {
         // ✅ 성공 시 UI 피드백
-        Fluttertoast.showToast(msg: '사진이 성공적으로 업로드되었습니다.');
+        debugPrint('사진이 성공적으로 업로드되었습니다.');
 
         // 사진 목록 새로고침
         await loadPhotosByCategory(categoryId);
@@ -105,7 +109,7 @@ class PhotoController extends ChangeNotifier {
       } else {
         // ❌ 실패 시 UI 피드백
         _error = result.error;
-        Fluttertoast.showToast(msg: result.error ?? '사진 업로드에 실패했습니다.');
+        debugPrint(result.error ?? '사진 업로드에 실패했습니다.');
         return false;
       }
     } catch (e) {
@@ -116,29 +120,126 @@ class PhotoController extends ChangeNotifier {
       notifyListeners();
 
       // ❌ 에러 시 UI 피드백
-      Fluttertoast.showToast(msg: '사진 업로드 중 오류가 발생했습니다.');
+      debugPrint('사진 업로드 중 오류가 발생했습니다.');
       return false;
     }
   }
 
-  /// 단순 사진 업로드 (기존 호환성)
-  Future<bool> uploadSimplePhoto({
-    required File imageFile,
+  /// 사진 업로드 (파형 데이터 포함)
+  Future<bool> uploadPhotoWithAudio({
+    required String imageFilePath,
+    required String audioFilePath,
+    required String userID,
+    required List<String> userIds,
     required String categoryId,
-    required String userId,
-    String? audioUrl,
+    List<double>? waveformData, // 파형 데이터 파라미터 추가
   }) async {
-    return await uploadPhoto(
-      imageFile: imageFile,
-      categoryId: categoryId,
-      userId: userId,
-      userIds: [userId],
-    );
+    try {
+      _isUploading = true;
+      _uploadProgress = 0.0;
+      _error = null;
+      notifyListeners();
+
+      // Service를 통해 업로드 (파형 데이터 전달)
+      final photoId = await _photoService.savePhotoWithAudio(
+        imageFilePath: imageFilePath,
+        audioFilePath: audioFilePath,
+        userID: userID,
+        userIds: userIds,
+        categoryId: categoryId,
+        waveformData: waveformData, // 파형 데이터 전달
+      );
+
+      _isUploading = false;
+      _uploadProgress = 1.0;
+      notifyListeners();
+
+      debugPrint('사진이 성공적으로 업로드되었습니다. ID: $photoId');
+      return true;
+    } catch (e) {
+      debugPrint('사진 업로드 실패: $e');
+      _isUploading = false;
+      _error = '사진 업로드 중 오류가 발생했습니다.';
+      notifyListeners();
+      return false;
+    }
   }
 
   // ==================== 사진 조회 ====================
 
-  /// 카테고리별 사진 목록 로드
+  /// 모든 카테고리에서 사진 초기 로드 (무한 스크롤용)
+  Future<void> loadPhotosFromAllCategoriesInitial(
+    List<String> categoryIds,
+  ) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      _hasMore = true;
+      _lastPhotoId = null;
+      _photos.clear(); // 초기 로드이므로 기존 데이터 클리어
+      notifyListeners();
+
+      debugPrint('📱 초기 사진 로드 시작 - 카테고리: ${categoryIds.length}개');
+
+      final result = await _photoService.getPhotosFromAllCategoriesPaginated(
+        categoryIds: categoryIds,
+        limit: _initialLoadSize,
+      );
+
+      _photos = result.photos;
+      _lastPhotoId = result.lastPhotoId;
+      _hasMore = result.hasMore;
+      _isLoading = false;
+      notifyListeners();
+
+      debugPrint('✅ 초기 사진 로드 완료: ${_photos.length}개, 더 있음: $_hasMore');
+    } catch (e) {
+      debugPrint('❌ 초기 사진 로드 오류: $e');
+      _isLoading = false;
+      _error = '사진을 불러오는 중 오류가 발생했습니다.';
+      notifyListeners();
+    }
+  }
+
+  /// 다음 페이지 사진 로드 (무한 스크롤용)
+  Future<void> loadMorePhotos(List<String> categoryIds) async {
+    if (_isLoadingMore || !_hasMore) {
+      debugPrint('⚠️ 이미 로딩 중이거나 더 이상 로드할 사진이 없습니다.');
+      return;
+    }
+
+    try {
+      _isLoadingMore = true;
+      _error = null;
+      notifyListeners();
+
+      debugPrint('📱 추가 사진 로드 시작 - 마지막 ID: $_lastPhotoId');
+
+      final result = await _photoService.getPhotosFromAllCategoriesPaginated(
+        categoryIds: categoryIds,
+        limit: _pageSize,
+        startAfterPhotoId: _lastPhotoId,
+      );
+
+      // 기존 사진 목록에 새로운 사진들 추가
+      _photos.addAll(result.photos);
+      _lastPhotoId = result.lastPhotoId;
+      _hasMore = result.hasMore;
+      _isLoadingMore = false;
+      notifyListeners();
+
+      debugPrint(
+        '✅ 추가 사진 로드 완료: +${result.photos.length}개, 총 ${_photos.length}개, 더 있음: $_hasMore',
+      );
+    } catch (e) {
+      debugPrint('❌ 추가 사진 로드 오류: $e');
+      _isLoadingMore = false;
+      _error = '추가 사진을 불러오는 중 오류가 발생했습니다.';
+      notifyListeners();
+    }
+  }
+
+  /// 카테고리별 사진 목록 로드 (기존 호환성 유지)
   Future<void> loadPhotosByCategory(String categoryId) async {
     try {
       _isLoading = true;
@@ -152,14 +253,14 @@ class PhotoController extends ChangeNotifier {
       notifyListeners();
 
       if (photos.isEmpty) {
-        Fluttertoast.showToast(msg: '사진이 없습니다.');
+        debugPrint('사진이 없습니다.');
       }
     } catch (e) {
       debugPrint('카테고리별 사진 로드 오류: $e');
       _isLoading = false;
       _error = '사진을 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '사진을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('사진을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -201,14 +302,14 @@ class PhotoController extends ChangeNotifier {
       notifyListeners();
 
       if (photos.isEmpty) {
-        Fluttertoast.showToast(msg: '사용자의 사진이 없습니다.');
+        debugPrint('사용자의 사진이 없습니다.');
       }
     } catch (e) {
       debugPrint('사용자별 사진 로드 오류: $e');
       _isLoading = false;
       _error = '사용자 사진을 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '사용자 사진을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('사용자 사진을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -234,14 +335,14 @@ class PhotoController extends ChangeNotifier {
       notifyListeners();
 
       if (photo == null) {
-        Fluttertoast.showToast(msg: '사진을 찾을 수 없습니다.');
+        debugPrint('사진을 찾을 수 없습니다.');
       }
     } catch (e) {
       debugPrint('사진 상세 조회 오류: $e');
       _isLoading = false;
       _error = '사진 상세 정보를 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '사진 상세 정보를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('사진 상세 정보를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -277,7 +378,7 @@ class PhotoController extends ChangeNotifier {
         return true;
       } else {
         // ❌ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: '사진 정보 업데이트에 실패했습니다. 다시 시도해주세요.');
+        debugPrint('사진 정보 업데이트에 실패했습니다. 다시 시도해주세요.');
         return false;
       }
     } catch (e) {
@@ -285,50 +386,7 @@ class PhotoController extends ChangeNotifier {
       _isLoading = false;
       _error = '사진 업데이트 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '사진 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.');
-      return false;
-    }
-  }
-
-  /// 사진 좋아요 토글
-  Future<bool> togglePhotoLike({
-    required String categoryId,
-    required String photoId,
-    required String userId,
-  }) async {
-    try {
-      final success = await _photoService.togglePhotoLike(
-        categoryId: categoryId,
-        photoId: photoId,
-        userId: userId,
-      );
-
-      if (success) {
-        // ✅ 성공 시 UI 피드백 (토스트는 표시하지 않음 - UX 고려)
-
-        // 현재 선택된 사진 업데이트
-        if (_selectedPhoto?.id == photoId) {
-          await loadPhotoDetails(
-            categoryId: categoryId,
-            photoId: photoId,
-            viewerUserId: userId,
-          );
-        }
-
-        // 사진 목록에서 해당 사진 업데이트
-        final photoIndex = _photos.indexWhere((p) => p.id == photoId);
-        if (photoIndex != -1) {
-          await loadPhotosByCategory(categoryId);
-        }
-
-        return true;
-      } else {
-        Fluttertoast.showToast(msg: '좋아요 처리에 실패했습니다. 다시 시도해주세요.');
-        return false;
-      }
-    } catch (e) {
-      debugPrint('사진 좋아요 토글 오류: $e');
-      Fluttertoast.showToast(msg: '좋아요 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('사진 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.');
       return false;
     }
   }
@@ -360,12 +418,11 @@ class PhotoController extends ChangeNotifier {
       if (success) {
         // ✅ 성공 시 UI 피드백
         final message = permanentDelete ? '사진이 완전히 삭제되었습니다.' : '사진이 삭제되었습니다.';
-        Fluttertoast.showToast(msg: message);
+        debugPrint(message);
 
         // 사진 목록에서 제거
         _photos.removeWhere((photo) => photo.id == photoId);
         _userPhotos.removeWhere((photo) => photo.id == photoId);
-        _searchResults.removeWhere((photo) => photo.id == photoId);
 
         // 선택된 사진이 삭제된 경우 초기화
         if (_selectedPhoto?.id == photoId) {
@@ -376,7 +433,7 @@ class PhotoController extends ChangeNotifier {
         return true;
       } else {
         // ❌ 실패 시 UI 피드백
-        Fluttertoast.showToast(msg: '사진 삭제에 실패했습니다. 다시 시도해주세요.');
+        debugPrint('사진 삭제에 실패했습니다. 다시 시도해주세요.');
         return false;
       }
     } catch (e) {
@@ -384,26 +441,12 @@ class PhotoController extends ChangeNotifier {
       _isLoading = false;
       _error = '사진 삭제 중 오류가 발생했습니다.';
       notifyListeners();
-      Fluttertoast.showToast(msg: '사진 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('사진 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
       return false;
     }
   }
 
   // ==================== 기존 호환성 메서드 ====================
-
-  /// 기존 Map 형태로 사진 목록 조회 (호환성)
-  Future<List<Map<String, dynamic>>> getCategoryPhotosAsMap(
-    String categoryId,
-  ) async {
-    return await _photoService.getCategoryPhotosAsMap(categoryId);
-  }
-
-  /// 기존 Map 형태로 사진 스트림 (호환성)
-  Stream<List<Map<String, dynamic>>> getCategoryPhotosStreamAsMap(
-    String categoryId,
-  ) {
-    return _photoService.getCategoryPhotosStreamAsMap(categoryId);
-  }
 
   // ==================== 통계 및 유틸리티 ====================
 
@@ -424,34 +467,10 @@ class PhotoController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// 검색 결과 초기화
-  void clearSearchResults() {
-    _searchResults.clear();
-    notifyListeners();
-  }
-
   /// 선택된 사진 초기화
   void clearSelectedPhoto() {
     _selectedPhoto = null;
     notifyListeners();
-  }
-
-  // ==================== 내부 유틸리티 메서드 ====================
-
-  /// 업로드 진행률 시뮬레이션
-  void _simulateUploadProgress() {
-    Timer.periodic(const Duration(milliseconds: 100), (timer) {
-      if (!_isUploading) {
-        timer.cancel();
-        return;
-      }
-
-      _uploadProgress += 0.05;
-      if (_uploadProgress >= 0.9) {
-        timer.cancel();
-      }
-      notifyListeners();
-    });
   }
 
   // ==================== 리소스 해제 ====================
@@ -460,5 +479,11 @@ class PhotoController extends ChangeNotifier {
   void dispose() {
     _photosSubscription?.cancel();
     super.dispose();
+  }
+
+  /// 카테고리별 사진 스트림 직접 반환 (StreamBuilder 용)
+  Stream<List<PhotoDataModel>> getPhotosByCategoryStream(String categoryId) {
+    debugPrint('📺 PhotoController: 사진 스트림 요청 - CategoryId: $categoryId');
+    return _photoService.getPhotosByCategoryStream(categoryId);
   }
 }

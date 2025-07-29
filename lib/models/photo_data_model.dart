@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 /// 사진 데이터 모델 (순수 데이터 클래스)
 class PhotoDataModel {
@@ -10,6 +11,7 @@ class PhotoDataModel {
   final String categoryId;
   final DateTime createdAt;
   final PhotoStatus status;
+  final List<double>? waveformData; // 실제 오디오 파형 데이터 추가
 
   PhotoDataModel({
     required this.id,
@@ -20,10 +22,39 @@ class PhotoDataModel {
     required this.categoryId,
     required this.createdAt,
     this.status = PhotoStatus.active,
+    this.waveformData, // 파형 데이터 추가
   });
 
   // Firestore에서 데이터를 가져올 때 사용
   factory PhotoDataModel.fromFirestore(Map<String, dynamic> data, String id) {
+    // 디버그: Firestore 원본 데이터 확인
+    debugPrint('🔍 Firestore 데이터 파싱 시작 - ID: $id');
+    debugPrint('  - waveformData 필드 존재: ${data.containsKey('waveformData')}');
+    debugPrint('  - waveformData 값: ${data['waveformData']}');
+    debugPrint('  - waveformData 타입: ${data['waveformData'].runtimeType}');
+
+    // waveformData 타입 캐스팅 처리
+    List<double>? waveformData;
+    if (data['waveformData'] != null) {
+      final dynamic waveformRaw = data['waveformData'];
+      debugPrint('  - waveformRaw 타입: ${waveformRaw.runtimeType}');
+
+      if (waveformRaw is List) {
+        try {
+          waveformData = waveformRaw.map((e) => (e as num).toDouble()).toList();
+          debugPrint('  - 파형 데이터 파싱 성공: ${waveformData.length} samples');
+          debugPrint('  - 첫 몇 개 샘플: ${waveformData.take(5).toList()}');
+        } catch (e) {
+          debugPrint('  - ❌ 파형 데이터 파싱 실패: $e');
+          waveformData = null;
+        }
+      } else {
+        debugPrint('  - ⚠️ waveformData가 List 타입이 아님');
+      }
+    } else {
+      debugPrint('  - ⚠️ waveformData 필드가 null');
+    }
+
     return PhotoDataModel(
       id: id,
       imageUrl: data['imageUrl'] ?? '',
@@ -36,6 +67,7 @@ class PhotoDataModel {
         (e) => e.name == data['status'],
         orElse: () => PhotoStatus.active,
       ),
+      waveformData: waveformData, // 파형 데이터 추가
     );
   }
 
@@ -54,7 +86,7 @@ class PhotoDataModel {
 
   // Firestore에 저장할 때 사용
   Map<String, dynamic> toFirestore() {
-    return {
+    final Map<String, dynamic> data = {
       'imageUrl': imageUrl,
       'audioUrl': audioUrl,
       'userID': userID,
@@ -63,11 +95,18 @@ class PhotoDataModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status.name,
     };
+
+    // waveformData가 있을 때만 추가
+    if (waveformData != null) {
+      data['waveformData'] = waveformData;
+    }
+
+    return data;
   }
 
   // 기존 PhotoModel 호환을 위한 toMap
   Map<String, dynamic> toMap() {
-    return {
+    final Map<String, dynamic> data = {
       'imageUrl': imageUrl,
       'audioUrl': audioUrl,
       'userID': userID,
@@ -76,6 +115,13 @@ class PhotoDataModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status.name,
     };
+
+    // waveformData가 있을 때만 추가
+    if (waveformData != null) {
+      data['waveformData'] = waveformData;
+    }
+
+    return data;
   }
 
   // 복사본 생성 (일부 필드 업데이트용)
@@ -88,6 +134,7 @@ class PhotoDataModel {
     String? categoryId,
     DateTime? createdAt,
     PhotoStatus? status,
+    List<double>? waveformData, // 파형 데이터 추가
   }) {
     return PhotoDataModel(
       id: id ?? this.id,
@@ -98,6 +145,7 @@ class PhotoDataModel {
       categoryId: categoryId ?? this.categoryId,
       createdAt: createdAt ?? this.createdAt,
       status: status ?? this.status,
+      waveformData: waveformData ?? this.waveformData, // 파형 데이터 추가
     );
   }
 

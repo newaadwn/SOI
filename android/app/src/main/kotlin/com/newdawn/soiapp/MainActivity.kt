@@ -2,241 +2,316 @@ package com.newdawn.soiapp
 
 import android.Manifest
 import android.content.pm.PackageManager
-import android.media.MediaRecorder
-import android.os.Build
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import android.util.Log
 
 class MainActivity : FlutterActivity() {
-    private val CHANNEL = "com.soi.camera"
-    private val AUDIO_CHANNEL = "native_recorder"
-    private lateinit var cameraHandler: CameraHandler
-    private val CAMERA_PERMISSION_CODE = 100
-    private val AUDIO_PERMISSION_CODE = 101
+    companion object {
+        private const val CAMERA_CHANNEL = "com.soi.camera"
+        private const val AUDIO_CHANNEL = "com.soi.audio"
+        private const val CAMERA_PERMISSION_REQUEST_CODE = 1001
+        private const val AUDIO_PERMISSION_REQUEST_CODE = 1002
+        private const val TAG = "MainActivity"
+    }
     
-    // 네이티브 오디오 녹음 관련 변수
-    private var mediaRecorder: MediaRecorder? = null
-    private var recordingStartTime: Long = 0
-    private var isRecording = false
-    private var currentFilePath: String? = null
+    private lateinit var cameraHandler: CameraHandler
+    private lateinit var audioRecorder: AudioRecorder
     
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         
-        // AudioConverter 플러그인 등록
-        flutterEngine.plugins.add(AudioConverter())
-        
-        // 카메라 핸들러 초기화
+        // 핸들러 초기화
         cameraHandler = CameraHandler(this)
+        audioRecorder = AudioRecorder(this)
         
-        // 네이티브 카메라 뷰 등록
-        flutterEngine.platformViewsController.registry.registerViewFactory(
-            "com.soi.camera/preview",
-            NativeCameraViewFactory(flutterEngine.dartExecutor.binaryMessenger)
-        )
+        // 권한 확인
+        checkAndRequestPermissions()
         
-        // 메서드 채널 설정 (카메라)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-            // 권한 확인
-            if (!checkCameraPermissions() && 
-                (call.method == "initCamera" || 
-                call.method == "takePicture" || 
-                call.method == "switchCamera")) {
-                requestCameraPermissions()
-                result.error("PERMISSION_DENIED", "카메라 권한이 필요합니다", null)
-                return@setMethodCallHandler
+        // 카메라 채널 설정
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CAMERA_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                handleCameraCall(call, result)
             }
-            
-            when (call.method) {
-                "initCamera" -> {
-                    cameraHandler.initCamera { success, error ->
-                        if (success) {
-                            result.success("카메라 초기화 성공")
-                        } else {
-                            result.error("INIT_FAILED", error ?: "카메라 초기화 실패", null)
-                        }
-                    }
-                }
-                "takePicture" -> {
-                    cameraHandler.takePicture { path, error ->
-                        if (path != null) {
-                            result.success(path)
-                        } else {
-                            result.error("CAPTURE_FAILED", error ?: "사진 촬영 실패", null)
-                        }
-                    }
-                }
-                "switchCamera" -> {
-                    cameraHandler.switchCamera { success, error ->
-                        if (success) {
-                            result.success(true)
-                        } else {
-                            result.error("SWITCH_FAILED", error ?: "카메라 전환 실패", null)
-                        }
-                    }
-                }
-                "setFlash" -> {
-                    val isOn = call.argument<Boolean>("isOn") ?: false
-                    cameraHandler.setFlash(isOn) { success, error ->
-                        if (success) {
-                            result.success(true)
-                        } else {
-                            result.error("FLASH_FAILED", error ?: "플래시 설정 실패", null)
-                        }
-                    }
-                }
-                "pauseCamera" -> {
-                    cameraHandler.pauseCamera()
-                    result.success(true)
-                }
-                "resumeCamera" -> {
-                    cameraHandler.resumeCamera()
-                    result.success(true)
-                }
-                "disposeCamera" -> {
-                    cameraHandler.disposeCamera()
-                    result.success(true)
-                }
-                "optimizeCamera" -> {
-                    val autoFocus = call.argument<Boolean>("autoFocus") ?: true
-                    val highQuality = call.argument<Boolean>("highQuality") ?: true
-                    val stabilization = call.argument<Boolean>("stabilization") ?: true
-                    cameraHandler.optimizeCamera(autoFocus, highQuality, stabilization)
-                    result.success(true)
-                }
-                else -> result.notImplemented()
-            }
-        }
         
-        // 🎯 네이티브 오디오 녹음 메서드 채널 설정
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AUDIO_CHANNEL).setMethodCallHandler { call, result ->
-            when (call.method) {
-                "requestPermission" -> {
-                    requestAudioPermission(result)
-                }
-                "startRecording" -> {
-                    val filePath = call.argument<String>("filePath")
-                    if (filePath != null) {
-                        startRecording(filePath, result)
+        // 오디오 채널 설정
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, AUDIO_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                handleAudioCall(call, result)
+            }
+        
+        // native_recorder 채널도 오디오 핸들러로 연결
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "native_recorder")
+            .setMethodCallHandler { call, result ->
+                handleAudioCall(call, result)
+            }
+        
+        Log.d(TAG, "✅ Flutter Engine 설정 완료")
+    }
+    
+    /**
+     * 카메라 메서드 처리
+     */
+    private fun handleCameraCall(call: MethodCall, result: MethodChannel.Result) {
+        when (call.method) {
+            "initCamera" -> {
+                try {
+                    if (hasCameraPermission()) {
+                        val success = cameraHandler.initCamera()
+                        result.success(success)
                     } else {
-                        result.error("INVALID_ARGUMENTS", "Invalid file path", null)
+                        result.error("PERMISSION_DENIED", "카메라 권한이 없습니다", null)
                     }
+                } catch (e: Exception) {
+                    Log.e(TAG, "카메라 초기화 오류", e)
+                    result.error("CAMERA_ERROR", "카메라 초기화 실패: ${e.message}", null)
                 }
-                "stopRecording" -> {
-                    stopRecording(result)
+            }
+            "takePicture" -> {
+                try {
+                    if (hasCameraPermission()) {
+                        val outputDir = cameraHandler.getOutputDirectory()
+                        val photoPath = cameraHandler.takePicture(outputDir)
+                        if (photoPath.isNotEmpty()) {
+                            result.success(photoPath)
+                        } else {
+                            result.error("CAPTURE_FAILED", "사진 촬영에 실패했습니다", null)
+                        }
+                    } else {
+                        result.error("PERMISSION_DENIED", "카메라 권한이 없습니다", null)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "사진 촬영 오류", e)
+                    result.error("CAMERA_ERROR", "사진 촬영 실패: ${e.message}", null)
                 }
-                "isRecording" -> {
-                    result.success(isRecording)
+            }
+            "isSessionActive" -> {
+                try {
+                    val isActive = cameraHandler.isSessionActive()
+                    result.success(isActive)
+                } catch (e: Exception) {
+                    Log.e(TAG, "세션 상태 확인 오류", e)
+                    result.error("CAMERA_ERROR", "세션 상태 확인 실패: ${e.message}", null)
                 }
-                else -> {
-                    result.notImplemented()
+            }
+            "switchCamera" -> {
+                try {
+                    val success = cameraHandler.switchCamera()
+                    result.success(success)
+                } catch (e: Exception) {
+                    Log.e(TAG, "카메라 전환 오류", e)
+                    result.error("CAMERA_ERROR", "카메라 전환 실패: ${e.message}", null)
                 }
+            }
+            "hasCameraPermission" -> {
+                val hasPermission = hasCameraPermission()
+                result.success(hasPermission)
+            }
+            else -> {
+                result.notImplemented()
             }
         }
     }
     
-    // 권한 체크
-    private fun checkCameraPermissions(): Boolean {
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED &&
-               ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+    /**
+     * 오디오 메서드 처리
+     */
+    private fun handleAudioCall(call: MethodCall, result: MethodChannel.Result) {
+        when (call.method) {
+            "startRecording" -> {
+                try {
+                    if (hasAudioPermission()) {
+                        val filePath = call.argument<String>("filePath")
+                        if (filePath != null) {
+                            val success = audioRecorder.startRecording(filePath)
+                            result.success(success)
+                        } else {
+                            // 기본 파일 경로 생성
+                            val outputDir = audioRecorder.getOutputDirectory()
+                            val defaultPath = "${outputDir}/SOI_${System.currentTimeMillis()}.m4a"
+                            val success = audioRecorder.startRecording(defaultPath)
+                            if (success) {
+                                result.success(mapOf("success" to true, "filePath" to defaultPath))
+                            } else {
+                                result.error("RECORDING_FAILED", "녹음 시작에 실패했습니다", null)
+                            }
+                        }
+                    } else {
+                        result.error("PERMISSION_DENIED", "오디오 권한이 없습니다", null)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "녹음 시작 오류", e)
+                    result.error("AUDIO_ERROR", "녹음 시작 실패: ${e.message}", null)
+                }
+            }
+            "stopRecording" -> {
+                try {
+                    val recordingResult = audioRecorder.stopRecording()
+                    if (recordingResult != null) {
+                        val resultMap = mapOf(
+                            "duration" to recordingResult.duration,
+                            "filePath" to recordingResult.filePath,
+                            "success" to recordingResult.success
+                        )
+                        result.success(resultMap)
+                    } else {
+                        result.error("NOT_RECORDING", "녹음 중이 아닙니다", null)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "녹음 중지 오류", e)
+                    result.error("AUDIO_ERROR", "녹음 중지 실패: ${e.message}", null)
+                }
+            }
+            "isRecording" -> {
+                try {
+                    val recording = audioRecorder.isRecording()
+                    result.success(recording)
+                } catch (e: Exception) {
+                    Log.e(TAG, "녹음 상태 확인 오류", e)
+                    result.error("AUDIO_ERROR", "녹음 상태 확인 실패: ${e.message}", null)
+                }
+            }
+            "getCurrentDuration" -> {
+                try {
+                    val duration = audioRecorder.getCurrentDuration()
+                    result.success(duration)
+                } catch (e: Exception) {
+                    Log.e(TAG, "녹음 시간 확인 오류", e)
+                    result.error("AUDIO_ERROR", "녹음 시간 확인 실패: ${e.message}", null)
+                }
+            }
+            "pauseRecording" -> {
+                try {
+                    val success = audioRecorder.pauseRecording()
+                    result.success(success)
+                } catch (e: Exception) {
+                    Log.e(TAG, "녹음 일시정지 오류", e)
+                    result.error("AUDIO_ERROR", "녹음 일시정지 실패: ${e.message}", null)
+                }
+            }
+            "resumeRecording" -> {
+                try {
+                    val success = audioRecorder.resumeRecording()
+                    result.success(success)
+                } catch (e: Exception) {
+                    Log.e(TAG, "녹음 재개 오류", e)
+                    result.error("AUDIO_ERROR", "녹음 재개 실패: ${e.message}", null)
+                }
+            }
+            "hasAudioPermission" -> {
+                val hasPermission = hasAudioPermission()
+                result.success(hasPermission)
+            }
+            else -> {
+                result.notImplemented()
+            }
+        }
     }
     
-    // 권한 요청
-    private fun requestCameraPermissions() {
-        ActivityCompat.requestPermissions(
+    /**
+     * 권한 확인 메서드들
+     */
+    private fun hasCameraPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
             this,
-            arrayOf(
-                Manifest.permission.CAMERA,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            ),
-            CAMERA_PERMISSION_CODE
-        )
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
     }
     
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode == CAMERA_PERMISSION_CODE) {
-            if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                // 권한이 부여됨, 카메라 초기화 시도
-                cameraHandler.initCamera { _, _ -> }
-            }
+    private fun hasAudioPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.RECORD_AUDIO
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+    
+    private fun hasStoragePermission(): Boolean {
+        return ContextCompat.checkSelfPermission(
+            this,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+    
+    /**
+     * 권한 요청
+     */
+    private fun checkAndRequestPermissions() {
+        val permissionsNeeded = mutableListOf<String>()
+        
+        if (!hasCameraPermission()) {
+            permissionsNeeded.add(Manifest.permission.CAMERA)
         }
-        // 오디오 권한 결과는 별도 처리 (콜백 방식)
-    }
-    
-    // 🎯 네이티브 오디오 녹음 함수들
-    private fun requestAudioPermission(result: MethodChannel.Result) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
-            != PackageManager.PERMISSION_GRANTED) {
-            
+        
+        if (!hasAudioPermission()) {
+            permissionsNeeded.add(Manifest.permission.RECORD_AUDIO)
+        }
+        
+        // API 29 이하에서만 WRITE_EXTERNAL_STORAGE 권한 필요
+        if (android.os.Build.VERSION.SDK_INT <= android.os.Build.VERSION_CODES.Q && !hasStoragePermission()) {
+            permissionsNeeded.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+        }
+        
+        if (permissionsNeeded.isNotEmpty()) {
+            Log.d(TAG, "권한 요청: $permissionsNeeded")
             ActivityCompat.requestPermissions(
                 this,
-                arrayOf(Manifest.permission.RECORD_AUDIO),
-                AUDIO_PERMISSION_CODE
+                permissionsNeeded.toTypedArray(),
+                CAMERA_PERMISSION_REQUEST_CODE
             )
-            result.success(false)
         } else {
-            result.success(true)
+            Log.d(TAG, "모든 권한이 이미 부여되어 있습니다")
         }
     }
-
-    private fun startRecording(filePath: String, result: MethodChannel.Result) {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) 
-            != PackageManager.PERMISSION_GRANTED) {
-            result.error("PERMISSION_ERROR", "Audio recording permission not granted", null)
-            return
-        }
-
-        try {
-            mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                MediaRecorder(this)
-            } else {
-                @Suppress("DEPRECATION")
-                MediaRecorder()
+    
+    /**
+     * 권한 요청 결과 처리
+     */
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        
+        when (requestCode) {
+            CAMERA_PERMISSION_REQUEST_CODE -> {
+                val grantedPermissions = mutableListOf<String>()
+                val deniedPermissions = mutableListOf<String>()
+                
+                for (i in permissions.indices) {
+                    if (grantResults[i] == PackageManager.PERMISSION_GRANTED) {
+                        grantedPermissions.add(permissions[i])
+                    } else {
+                        deniedPermissions.add(permissions[i])
+                    }
+                }
+                
+                if (grantedPermissions.isNotEmpty()) {
+                    Log.d(TAG, "권한 부여됨: $grantedPermissions")
+                }
+                
+                if (deniedPermissions.isNotEmpty()) {
+                    Log.w(TAG, "권한 거부됨: $deniedPermissions")
+                }
             }
-
-            mediaRecorder?.apply {
-                setAudioSource(MediaRecorder.AudioSource.MIC)
-                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-                setOutputFile(filePath)
-                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-                
-                // 🎯 고품질 오디오 설정 (현재 Flutter 설정보다 향상)
-                setAudioSamplingRate(44100)  // CD 품질
-                setAudioChannels(1)  // 모노 (음성 녹음에 적합)
-                setAudioEncodingBitRate(192000)  // 192kbps (기존 Flutter Android: 160kbps)
-                
-                prepare()
-                start()
-                
-                recordingStartTime = System.currentTimeMillis()
-                isRecording = true
-                currentFilePath = filePath
-                
-                result.success(true)
-            }
-        } catch (e: Exception) {
-            result.error("RECORDING_ERROR", "Failed to start recording: ${e.message}", null)
         }
     }
-
-    private fun stopRecording(result: MethodChannel.Result) {
+    
+    /**
+     * 액티비티 종료 시 리소스 해제
+     */
+    override fun onDestroy() {
+        super.onDestroy()
         try {
-            mediaRecorder?.apply {
-                stop()
-                release()
-            }
-            mediaRecorder = null
-            isRecording = false
-            
-            result.success(currentFilePath)
-            currentFilePath = null
+            cameraHandler.release()
+            audioRecorder.release()
+            Log.d(TAG, "✅ 리소스 해제 완료")
         } catch (e: Exception) {
-            result.error("RECORDING_ERROR", "Failed to stop recording: ${e.message}", null)
+            Log.e(TAG, "리소스 해제 오류", e)
         }
     }
 }

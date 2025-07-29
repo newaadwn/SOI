@@ -11,6 +11,7 @@
 		041BEDBE2D9451FF0053C294 /* CameraViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 041BEDBD2D9451FF0053C294 /* CameraViewController.swift */; };
 		04677C5D2E127BFA00AA3B7E /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 04677C5C2E127BFA00AA3B7E /* GoogleService-Info.plist */; };
 		04A31F3E2DAA0FC20065EC94 /* SwiftAudioConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A31F3D2DAA0FC20065EC94 /* SwiftAudioConverter.swift */; };
+		04A31F3F2DAA0FC30065EC95 /* NativeAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04A31F3E2DAA0FC30065EC95 /* NativeAudioRecorder.swift */; };
 		09196A23B325C7BCCCC3A6E6 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5F42FE5DEBC698F9A3CCDAFA /* Pods_Runner.framework */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
@@ -51,6 +52,7 @@
 		045543A22DAF9C0B0034CE48 /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		04677C5C2E127BFA00AA3B7E /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		04A31F3D2DAA0FC20065EC94 /* SwiftAudioConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwiftAudioConverter.swift; sourceTree = "<group>"; };
+		04A31F3E2DAA0FC30065EC95 /* NativeAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeAudioRecorder.swift; sourceTree = "<group>"; };
 		14615095B5D806F725D66B67 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
@@ -151,6 +153,7 @@
 				04079F2C2D938E570076F318 /* SwiftCameraPlugin.swift */,
 				041BEDBD2D9451FF0053C294 /* CameraViewController.swift */,
 				04A31F3D2DAA0FC20065EC94 /* SwiftAudioConverter.swift */,
+				04A31F3E2DAA0FC30065EC95 /* NativeAudioRecorder.swift */,
 				04677C5C2E127BFA00AA3B7E /* GoogleService-Info.plist */,
 			);
 			path = Runner;
@@ -412,6 +415,7 @@
 				04079F2D2D938E570076F318 /* SwiftCameraPlugin.swift in Sources */,
 				041BEDBE2D9451FF0053C294 /* CameraViewController.swift in Sources */,
 				04A31F3E2DAA0FC20065EC94 /* SwiftAudioConverter.swift in Sources */,
+				04A31F3F2DAA0FC30065EC95 /* NativeAudioRecorder.swift in Sources */,
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 			);

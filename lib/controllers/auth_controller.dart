@@ -1,6 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_swift_camera/models/auth_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import '../controllers/comment_record_controller.dart';
 
 /// AuthController는 인증 관련 UI와 비즈니스 로직 사이의 중개 역할을 합니다.
 class AuthController extends ChangeNotifier {
@@ -18,6 +21,11 @@ class AuthController extends ChangeNotifier {
   // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
   final AuthService _authService = AuthService();
 
+  // 프로필 이미지 캐싱을 위한 변수들 추가
+  static final Map<String, String> _profileImageCache = {};
+  static const int _maxCacheSize = 100;
+  final Map<String, bool> _loadingStates = {}; // 로딩 상태 관리
+
   // Getters
   String get verificationId => _verificationId;
   List<String> get searchResults => _searchResults;
@@ -28,10 +36,72 @@ class AuthController extends ChangeNotifier {
   User? get currentUser => _authService.currentUser;
   String? get getUserId => _authService.getUserId;
 
+  // ✅ 자동 로그인 관련 상수
+  static const String _keyIsLoggedIn = 'is_logged_in';
+  static const String _keyUserId = 'user_id';
+  static const String _keyPhoneNumber = 'user_phone_number';
+
   // 검색 결과 초기화
   void clearSearchResults() {
     _searchResults.clear();
     notifyListeners();
+  }
+
+  /// 프로필 이미지 URL 가져오기 (캐싱 포함)
+  Future<String> getUserProfileImageUrlById(String userId) async {
+    return await _authService.getUserProfileImageUrlById(userId);
+  }
+
+  /// 사용자 정보 가져오기
+  Future<AuthModel?> getUserInfo(String userId) async {
+    return await _authService.getUserInfo(userId);
+  }
+
+  /// 프로필 이미지 URL 가져오기 (캐싱 + 로딩 상태 관리)
+  Future<String> getUserProfileImageUrlWithCache(String userId) async {
+    // 이미 로딩 중인 경우 중복 요청 방지
+    if (_loadingStates[userId] == true) {
+      // 로딩이 완료될 때까지 대기
+      while (_loadingStates[userId] == true) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+    }
+
+    // 캐시 크기 관리
+    if (_profileImageCache.length > _maxCacheSize) {
+      _profileImageCache.clear();
+      debugPrint('프로필 이미지 캐시 크기 초과로 초기화');
+    }
+
+    // 캐시 확인
+    if (_profileImageCache.containsKey(userId)) {
+      debugPrint('캐시에서 프로필 이미지 발견 - UserID: $userId');
+      return _profileImageCache[userId]!;
+    }
+
+    // 네트워크에서 로드
+    try {
+      _loadingStates[userId] = true;
+      debugPrint('네트워크에서 프로필 이미지 로딩 시작 - UserID: $userId');
+
+      final profileImageUrl = await _authService.getUserProfileImageUrlById(
+        userId,
+      );
+
+      // 캐시에 저장
+      _profileImageCache[userId] = profileImageUrl;
+      _loadingStates[userId] = false;
+
+      debugPrint('프로필 이미지 로딩 완료 - UserID: $userId');
+      return profileImageUrl;
+    } catch (e) {
+      _loadingStates[userId] = false;
+      debugPrint('프로필 이미지 로드 실패 - UserID: $userId, Error: $e');
+
+      // 빈 문자열 반환하여 에러 상태 표시
+      _profileImageCache[userId] = '';
+      return '';
+    }
   }
 
   // 사용자 검색
@@ -127,6 +197,8 @@ class AuthController extends ChangeNotifier {
     final result = await _authService.signOut();
 
     if (result.isSuccess) {
+      // ✅ 로그아웃 성공 시 저장된 로그인 상태 삭제
+      await clearLoginState();
       debugPrint("로그아웃되었습니다.");
     } else {
       debugPrint(result.error ?? "로그아웃 중 오류가 발생했습니다.");
@@ -153,6 +225,10 @@ class AuthController extends ChangeNotifier {
 
       if (result.isSuccess) {
         debugPrint('프로필 이미지가 업데이트되었습니다');
+
+        // 프로필 이미지 업데이트 성공 시, 음성 댓글들의 프로필 이미지 URL도 업데이트
+        await _updateVoiceCommentsProfileImage(result.data);
+
         return true;
       } else {
         debugPrint(result.error ?? '프로필 이미지 업데이트에 실패했습니다');
@@ -164,6 +240,43 @@ class AuthController extends ChangeNotifier {
       _isUploading = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  /// 음성 댓글들의 프로필 이미지 URL 업데이트
+  Future<void> _updateVoiceCommentsProfileImage(
+    String newProfileImageUrl,
+  ) async {
+    try {
+      final currentUserId = getUserId;
+      if (currentUserId == null || currentUserId.isEmpty) {
+        debugPrint('⚠️ 현재 사용자 ID를 찾을 수 없어 음성 댓글 프로필 이미지 업데이트를 건너뜁니다');
+        return;
+      }
+
+      debugPrint('🔄 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $currentUserId');
+      debugPrint('🔄 새 프로필 이미지 URL: $newProfileImageUrl');
+
+      // CommentRecordController를 사용하여 업데이트
+      final commentRecordController = CommentRecordController();
+      final success = await commentRecordController.updateUserProfileImageUrl(
+        userId: currentUserId,
+        newProfileImageUrl: newProfileImageUrl,
+      );
+
+      if (success) {
+        debugPrint('✅ 음성 댓글 프로필 이미지 URL 업데이트 완료');
+
+        // 프로필 이미지 캐시 클리어 (새 이미지로 갱신)
+        _profileImageCache.remove(currentUserId);
+
+        // UI 갱신을 위해 notifyListeners 호출
+        notifyListeners();
+      } else {
+        debugPrint('❌ 음성 댓글 프로필 이미지 URL 업데이트 실패');
+      }
+    } catch (e) {
+      debugPrint('❌ 음성 댓글 프로필 이미지 URL 업데이트 중 오류 발생: $e');
     }
   }
 
@@ -181,5 +294,146 @@ class AuthController extends ChangeNotifier {
   // 프로필 이미지 URL 정리 (현재는 Service에서 처리하지 않으므로 빈 메서드로 유지)
   Future<void> cleanInvalidProfileImageUrl() async {
     notifyListeners();
+  }
+
+  // ✅ ===== 자동 로그인 관련 메서드들 =====
+
+  /// 로그인 상태를 SharedPreferences에 저장
+  Future<void> saveLoginState({
+    required String userId,
+    required String phoneNumber,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyIsLoggedIn, true);
+      await prefs.setString(_keyUserId, userId);
+      await prefs.setString(_keyPhoneNumber, phoneNumber);
+      debugPrint('🔐 로그인 상태 저장 완료: $userId');
+    } catch (e) {
+      debugPrint('❌ 로그인 상태 저장 실패: $e');
+    }
+  }
+
+  /// 저장된 로그인 상태 확인
+  Future<bool> isLoggedIn() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final isLoggedIn = prefs.getBool(_keyIsLoggedIn) ?? false;
+      debugPrint('🔍 저장된 로그인 상태: $isLoggedIn');
+      return isLoggedIn;
+    } catch (e) {
+      debugPrint('❌ 로그인 상태 확인 실패: $e');
+      return false;
+    }
+  }
+
+  /// 저장된 사용자 정보 가져오기
+  Future<Map<String, String?>> getSavedUserInfo() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return {
+        'userId': prefs.getString(_keyUserId),
+        'phoneNumber': prefs.getString(_keyPhoneNumber),
+      };
+    } catch (e) {
+      debugPrint('❌ 저장된 사용자 정보 가져오기 실패: $e');
+      return {'userId': null, 'phoneNumber': null};
+    }
+  }
+
+  /// 저장된 사용자의 Firestore 정보 가져오기 (auth_final용)
+  Future<Map<String, String>?> getSavedUserFirestoreInfo() async {
+    try {
+      final savedInfo = await getSavedUserInfo();
+      final userId = savedInfo['userId'];
+
+      if (userId == null) {
+        debugPrint('❌ 저장된 사용자 ID 없음');
+        return null;
+      }
+
+      // Firestore에서 사용자 정보 가져오기
+      final userInfo = await getUserInfo(userId);
+      if (userInfo != null) {
+        return {
+          'id': userInfo.id,
+          'name': userInfo.name,
+          'phone': userInfo.phone,
+          'birthDate': userInfo.birthDate,
+        };
+      }
+
+      debugPrint('❌ Firestore에서 사용자 정보를 찾을 수 없음');
+      return null;
+    } catch (e) {
+      debugPrint('❌ 사용자 Firestore 정보 가져오기 실패: $e');
+      return null;
+    }
+  }
+
+  /// 자동 로그인 시도
+  Future<bool> tryAutoLogin() async {
+    try {
+      debugPrint('🔄 자동 로그인 시도 중...');
+
+      // 저장된 로그인 상태 확인
+      final isUserLoggedIn = await isLoggedIn();
+      if (!isUserLoggedIn) {
+        debugPrint('❌ 저장된 로그인 정보 없음');
+        return false;
+      }
+
+      // Firebase Auth 현재 사용자 확인
+      final currentUser = _authService.currentUser;
+      if (currentUser == null) {
+        debugPrint('❌ Firebase Auth 사용자 없음 - 로그인 상태 초기화');
+        await clearLoginState();
+        return false;
+      }
+
+      debugPrint('✅ 자동 로그인 성공: ${currentUser.uid}');
+      return true;
+    } catch (e) {
+      debugPrint('❌ 자동 로그인 실패: $e');
+      await clearLoginState();
+      return false;
+    }
+  }
+
+  /// 로그인 상태 삭제 (로그아웃 시 호출)
+  Future<void> clearLoginState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyIsLoggedIn);
+      await prefs.remove(_keyUserId);
+      await prefs.remove(_keyPhoneNumber);
+      debugPrint('🗑️ 로그인 상태 삭제 완료');
+    } catch (e) {
+      debugPrint('❌ 로그인 상태 삭제 실패: $e');
+    }
+  }
+
+  /// 로그인 성공 시 상태 저장하는 개선된 로그인 메서드
+  Future<void> signInWithSmsCodeAndSave(
+    String smsCode,
+    String phoneNumber,
+    Function() onSuccess,
+  ) async {
+    final result = await _authService.signInWithSmsCode(
+      verificationId: _verificationId,
+      smsCode: smsCode,
+    );
+
+    if (result.isSuccess) {
+      // ✅ 로그인 성공 시 상태 저장
+      final currentUser = _authService.currentUser;
+      if (currentUser != null) {
+        await saveLoginState(userId: currentUser.uid, phoneNumber: phoneNumber);
+        debugPrint("✅ 로그인 성공 및 상태 저장 완료!");
+        onSuccess();
+      }
+    } else {
+      debugPrint(result.error ?? "로그인에 실패했습니다.");
+    }
   }
 }

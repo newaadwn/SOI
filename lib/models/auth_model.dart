@@ -50,6 +50,25 @@ class AuthModel {
     };
   }
 
+  /// 서버 타임스탬프를 사용하여 Firestore에 저장할 Map 변환
+  Map<String, dynamic> toFirestoreWithServerTimestamp({bool isUpdate = false}) {
+    final data = {
+      'uid': uid,
+      'id': id,
+      'name': name,
+      'phone': phone,
+      'birth_date': birthDate,
+      'profile_image': profileImage,
+      'lastLogin': FieldValue.serverTimestamp(),
+    };
+    
+    if (!isUpdate) {
+      data['createdAt'] = FieldValue.serverTimestamp();
+    }
+    
+    return data;
+  }
+
   /// 사용자 정보 업데이트를 위한 copyWith
   AuthModel copyWith({
     String? uid,

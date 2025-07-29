@@ -8,7 +8,8 @@ class NativeAudioRecorder: NSObject, AVAudioRecorderDelegate {
         recordingSession = AVAudioSession.sharedInstance()
         
         do {
-            try recordingSession?.setCategory(.playAndRecord, mode: .default)
+            // ✅ iOS: 카메라와 호환되는 오디오 세션 설정
+            try recordingSession?.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker])
             try recordingSession?.setActive(true)
             
             recordingSession?.requestRecordPermission { allowed in
@@ -23,6 +24,14 @@ class NativeAudioRecorder: NSObject, AVAudioRecorderDelegate {
     
     func startRecording(filePath: String, result: @escaping FlutterResult) {
         let audioURL = URL(fileURLWithPath: filePath)
+        
+        // ✅ iOS: 카메라 촬영과 충돌하지 않도록 오디오 세션 재설정
+        do {
+            try recordingSession?.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker])
+            try recordingSession?.setActive(true, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("⚠️ iOS AudioRecorder: 오디오 세션 설정 실패: \(error.localizedDescription)")
+        }
         
         // 🎯 고품질 오디오 설정 (현재 Flutter 설정보다 향상)
         let settings: [String: Any] = [
@@ -53,12 +62,24 @@ class NativeAudioRecorder: NSObject, AVAudioRecorderDelegate {
             result(FlutterError(code: "RECORDING_ERROR", message: "Failed to create recorder", details: error.localizedDescription))
         }
     }
+            }
+        } catch {
+            result(FlutterError(code: "RECORDING_ERROR", message: "Failed to create recorder", details: error.localizedDescription))
+        }
+    }
     
     func stopRecording(result: @escaping FlutterResult) {
         audioRecorder?.stop()
         let filePath = audioRecorder?.url.path
         audioRecorder = nil
         recordingStartTime = nil
+        
+        // ✅ iOS: 녹음 종료 후 오디오 세션을 다른 앱들이 사용할 수 있도록 정리
+        do {
+            try recordingSession?.setActive(false, options: .notifyOthersOnDeactivation)
+        } catch {
+            print("⚠️ iOS AudioRecorder: 오디오 세션 비활성화 실패: \(error.localizedDescription)")
+        }
         
         result(filePath)
     }

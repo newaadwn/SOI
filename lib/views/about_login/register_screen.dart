@@ -319,10 +319,15 @@ class _AuthScreenState extends State<AuthScreen> {
                       ),
                     ),
                     onPressed: () {
-                      _authViewModel.signInWithSmsCode(controller.text, () {
-                        // 인자를 받아들이되 사용하지 않음
-                        _goToNextPage();
-                      });
+                      // ✅ 회원가입 시에도 로그인 상태 저장
+                      _authViewModel.signInWithSmsCodeAndSave(
+                        controller.text,
+                        phoneNumber, // 전화번호도 함께 전달
+                        () {
+                          // 인증 완료 후 다음 페이지로
+                          _goToNextPage();
+                        },
+                      );
                     },
                     child: Text(
                       '인증하기',

@@ -67,6 +67,23 @@ android {
 dependencies {
     // 멀티덱스 지원
     implementation("androidx.multidex:multidex:2.0.1")
+    
+    // CameraX 의존성 추가
+    val cameraxVersion = "1.3.1"
+    implementation("androidx.camera:camera-core:${cameraxVersion}")
+    implementation("androidx.camera:camera-camera2:${cameraxVersion}")
+    implementation("androidx.camera:camera-lifecycle:${cameraxVersion}")
+    implementation("androidx.camera:camera-view:${cameraxVersion}")
+    implementation("androidx.camera:camera-extensions:${cameraxVersion}")
+    
+    // Lifecycle Process 추가 (ProcessLifecycleOwner 사용을 위함)
+    implementation("androidx.lifecycle:lifecycle-process:2.7.0")
+    
+    // Guava 라이브러리 추가
+    implementation("com.google.guava:guava:31.1-android")
+    
+    // 또는 더 가벼운 버전 사용
+    // implementation("com.google.guava:guava:31.1-jre")
 }
 
 flutter {

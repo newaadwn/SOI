@@ -17,6 +17,26 @@ class AuthService {
 
   // ==================== 비즈니스 로직 ====================
 
+  Future<String> getUserProfileImageUrlById(String userId) async {
+    try {
+      debugPrint('👤 프로필 이미지 URL 조회 시작 - UserId: $userId');
+      return await _repository.getUserProfileImageUrlById(userId);
+    } catch (e) {
+      debugPrint('사용자 프로필 이미지 가져오기 실패: $e');
+      return '';
+    }
+  }
+
+  Future<AuthModel?> getUserInfo(String userId) async {
+    try {
+      debugPrint('👤 사용자 정보 조회 시작 - UserId: $userId');
+      return await _repository.getUserInfo(userId);
+    } catch (e) {
+      debugPrint('사용자 정보 가져오기 실패: $e');
+      return null;
+    }
+  }
+
   // 전화번호 형식 정규화
   String _formatPhoneNumber(String phone) {
     String formatted = phone;
@@ -128,7 +148,7 @@ class AuthService {
         // 기존 사용자 업데이트
         await _repository.updateUser(existingUser.id, {
           'uid': uid,
-          'lastLogin': Timestamp.now(),
+          'lastLogin': FieldValue.serverTimestamp(),
           'id': id,
           'name': name,
           'birth_date': birthDate,
@@ -250,7 +270,7 @@ class AuthService {
       // Firestore 업데이트
       await _repository.updateUser(currentUser.uid, {
         'profile_image': downloadUrl,
-        'updatedAt': Timestamp.now(),
+        'updatedAt': FieldValue.serverTimestamp(),
       });
 
       return AuthResult.success(downloadUrl);

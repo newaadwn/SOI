@@ -11,10 +11,14 @@
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <!-- 연락처 접근 권한 추가 -->
     <uses-permission android:name="android.permission.READ_CONTACTS" />
+    
+    <!-- 카메라 하드웨어 특성 정의 -->
+    <uses-feature android:name="android.hardware.camera.any" android:required="true" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
     <application
         android:label="flutter_swift_camera"
-        android:name=".FlutterSwiftCameraApplication"
+        android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:requestLegacyExternalStorage="true">
         <activity
@@ -37,6 +41,14 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            
+            <!-- Deep Link를 위한 Intent Filter 추가 -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="soi" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

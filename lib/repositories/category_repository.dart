@@ -23,71 +23,133 @@ class CategoryRepository {
           for (final doc in querySnapshot.docs) {
             final data = doc.data();
 
-            // 첫 번째 사진 URL과 사진 개수를 가져오기
-            final photosSnapshot =
-                await _firestore
-                    .collection('categories')
-                    .doc(doc.id)
-                    .collection('photos')
-                    .orderBy('createdAt', descending: true)
-                    .limit(1)
-                    .get();
+            // 사용자가 설정한 커버 사진이 있는지 확인
+            String? categoryPhotoUrl = data['categoryPhotoUrl'] as String?;
 
-            final photoCountSnapshot =
-                await _firestore
-                    .collection('categories')
-                    .doc(doc.id)
-                    .collection('photos')
-                    .count()
-                    .get();
+            // 커버 사진이 없다면 가장 최근 사진을 가져오기
+            if (categoryPhotoUrl == null || categoryPhotoUrl.isEmpty) {
+              final photosSnapshot =
+                  await _firestore
+                      .collection('categories')
+                      .doc(doc.id)
+                      .collection('photos')
+                      .orderBy('createdAt', descending: true)
+                      .limit(1)
+                      .get();
 
-            String? firstPhotoUrl;
-            if (photosSnapshot.docs.isNotEmpty) {
-              firstPhotoUrl =
-                  photosSnapshot.docs.first.data()['url'] as String?;
+              if (photosSnapshot.docs.isNotEmpty) {
+                categoryPhotoUrl =
+                    photosSnapshot.docs.first.data()['imageUrl'] as String?;
+              }
             }
 
             final category = CategoryDataModel.fromFirestore(
               data,
               doc.id,
-            ).copyWith(
-              firstPhotoUrl: firstPhotoUrl,
-              photoCount: photoCountSnapshot.count ?? 0,
-            );
+            ).copyWith(categoryPhotoUrl: categoryPhotoUrl);
 
             categories.add(category);
           }
 
+          // 고정된 카테고리를 상단에 위치시키는 정렬
+          categories.sort((a, b) {
+            // 고정된 카테고리를 상단으로
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+            // 둘 다 고정되었거나 고정되지 않은 경우 생성일 기준 내림차순
+            return b.createdAt.compareTo(a.createdAt);
+          });
+
           return categories;
+        });
+  }
+
+  /// 단일 카테고리 실시간 스트림
+  Stream<CategoryDataModel?> getCategoryStream(String categoryId) {
+    return _firestore
+        .collection('categories')
+        .doc(categoryId)
+        .snapshots()
+        .asyncMap((doc) async {
+          if (!doc.exists || doc.data() == null) return null;
+
+          final data = doc.data()!;
+
+          // 사용자가 설정한 커버 사진이 있는지 확인
+          String? categoryPhotoUrl = data['categoryPhotoUrl'] as String?;
+          debugPrint('[STREAM] 카테고리 $categoryId의 커버사진 URL: $categoryPhotoUrl');
+
+          // 커버 사진이 없다면 가장 최근 사진을 가져오기
+          if (categoryPhotoUrl == null || categoryPhotoUrl.isEmpty) {
+            debugPrint('[STREAM] 커버사진이 없어서 최신 사진을 찾는 중...');
+            final photosSnapshot =
+                await _firestore
+                    .collection('categories')
+                    .doc(categoryId)
+                    .collection('photos')
+                    .orderBy('createdAt', descending: true)
+                    .limit(1)
+                    .get();
+
+            if (photosSnapshot.docs.isNotEmpty) {
+              categoryPhotoUrl =
+                  photosSnapshot.docs.first.data()['imageUrl'] as String?;
+              debugPrint('[STREAM] 최신 사진 URL: $categoryPhotoUrl');
+            } else {
+              debugPrint('[STREAM] 사진이 없음 - 기본 아이콘 표시');
+            }
+          }
+
+          final result = CategoryDataModel.fromFirestore(
+            data,
+            doc.id,
+          ).copyWith(categoryPhotoUrl: categoryPhotoUrl);
+
+          debugPrint(
+            '[STREAM] 최종 결과 - categoryPhotoUrl: ${result.categoryPhotoUrl}',
+          );
+          return result;
         });
   }
 
   /// 사용자의 카테고리 목록을 한 번만 가져오기
   Future<List<CategoryDataModel>> getUserCategories(String userId) async {
     debugPrint('CategoryRepository: Firestore 쿼리 시작... userId=$userId');
+    debugPrint('사용자 ID 길이: ${userId.length}, 비어있음: ${userId.isEmpty}');
 
     // 먼저 Firebase Auth UID로 검색
+    debugPrint('1단계: UID로 카테고리 검색 시작...');
     var querySnapshot =
         await _firestore
             .collection('categories')
             .where('mates', arrayContains: userId)
             .get();
 
-    debugPrint(
-      'CategoryRepository: UID로 검색 결과. 문서 수: ${querySnapshot.docs.length}',
-    );
+    debugPrint('1단계 결과: UID로 검색된 문서 수: ${querySnapshot.docs.length}');
+
+    // 쿼리 결과가 있으면 각 문서의 mates 배열을 확인
+    if (querySnapshot.docs.isNotEmpty) {
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        debugPrint('문서 ${doc.id}의 mates: ${data['mates']}');
+      }
+    }
 
     // 만약 UID로 찾은 결과가 없다면, 사용자 닉네임으로도 검색해보기
     if (querySnapshot.docs.isEmpty) {
       try {
+        debugPrint('2단계: 닉네임으로 추가 검색 시작...');
         // 사용자 문서에서 닉네임 가져오기
         final userDoc = await _firestore.collection('users').doc(userId).get();
+        debugPrint('사용자 문서 존재 여부: ${userDoc.exists}');
+
         if (userDoc.exists) {
           final userData = userDoc.data() as Map<String, dynamic>;
+          debugPrint('사용자 문서 데이터: $userData');
           final nickName = userData['id'] as String?; // 'id' 필드에 닉네임이 저장됨
 
           if (nickName != null && nickName.isNotEmpty) {
-            debugPrint('CategoryRepository: 닉네임으로 추가 검색... nickName=$nickName');
+            debugPrint('닉네임으로 추가 검색... nickName=$nickName');
 
             querySnapshot =
                 await _firestore
@@ -95,14 +157,24 @@ class CategoryRepository {
                     .where('mates', arrayContains: nickName)
                     .get();
 
-            debugPrint(
-              'CategoryRepository: 닉네임으로 검색 결과. 문서 수: ${querySnapshot.docs.length}',
-            );
+            debugPrint('2단계 결과: 닉네임으로 검색된 문서 수: ${querySnapshot.docs.length}');
+
+            // 닉네임 검색 결과도 확인
+            if (querySnapshot.docs.isNotEmpty) {
+              for (var doc in querySnapshot.docs) {
+                final data = doc.data();
+                debugPrint('문서 ${doc.id}의 mates: ${data['mates']}');
+              }
+            }
+          } else {
+            debugPrint('사용자 문서에서 닉네임을 찾을 수 없음');
           }
         }
       } catch (e) {
-        debugPrint('CategoryRepository: 닉네임 검색 중 오류: $e');
+        debugPrint('닉네임 검색 중 오류: $e');
       }
+    } else {
+      debugPrint('UID 검색에서 결과를 찾았으므로 닉네임 검색 생략');
     }
 
     final categories = <CategoryDataModel>[];
@@ -112,36 +184,48 @@ class CategoryRepository {
       final data = doc.data();
       debugPrint('CategoryRepository: 문서 데이터: $data');
 
-      // 첫 번째 사진 URL과 사진 개수를 가져오기
-      final photosSnapshot =
-          await _firestore
-              .collection('categories')
-              .doc(doc.id)
-              .collection('photos')
-              .orderBy('createdAt', descending: true)
-              .limit(1)
-              .get();
+      // 사용자가 설정한 커버 사진이 있는지 확인
+      String? categoryPhotoUrl = data['categoryPhotoUrl'] as String?;
 
-      final photoCountSnapshot =
-          await _firestore
-              .collection('categories')
-              .doc(doc.id)
-              .collection('photos')
-              .count()
-              .get();
+      // 커버 사진이 없다면 가장 최근 사진을 가져오기
+      if (categoryPhotoUrl == null || categoryPhotoUrl.isEmpty) {
+        final photosSnapshot =
+            await _firestore
+                .collection('categories')
+                .doc(doc.id)
+                .collection('photos')
+                .orderBy('createdAt', descending: true)
+                .limit(1)
+                .get();
 
-      String? firstPhotoUrl;
-      if (photosSnapshot.docs.isNotEmpty) {
-        firstPhotoUrl = photosSnapshot.docs.first.data()['url'] as String?;
+        if (photosSnapshot.docs.isNotEmpty) {
+          categoryPhotoUrl =
+              photosSnapshot.docs.first.data()['imageUrl'] as String?;
+        }
       }
 
-      final category = CategoryDataModel.fromFirestore(data, doc.id).copyWith(
-        firstPhotoUrl: firstPhotoUrl,
-        photoCount: photoCountSnapshot.count ?? 0,
-      );
+      final category = CategoryDataModel.fromFirestore(
+        data,
+        doc.id,
+      ).copyWith(categoryPhotoUrl: categoryPhotoUrl);
 
       categories.add(category);
     }
+
+    // 🎯 고정된 카테고리를 상단에 정렬
+    categories.sort((a, b) {
+      // 1. 고정 상태로 우선 정렬 (고정된 것이 위로)
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+
+      // 2. 같은 고정 상태 내에서는 생성일시 최신순
+      return b.createdAt.compareTo(a.createdAt);
+    });
+
+    debugPrint('CategoryRepository: 정렬 완료 - 총 ${categories.length}개 카테고리');
+    debugPrint(
+      'CategoryRepository: 고정된 카테고리 수: ${categories.where((c) => c.isPinned).length}',
+    );
 
     return categories;
   }
@@ -201,23 +285,16 @@ class CategoryRepository {
             .limit(1)
             .get();
 
-    final photoCountSnapshot =
-        await _firestore
-            .collection('categories')
-            .doc(categoryId)
-            .collection('photos')
-            .count()
-            .get();
-
-    String? firstPhotoUrl;
+    String? categoryPhotoUrl;
     if (photosSnapshot.docs.isNotEmpty) {
-      firstPhotoUrl = photosSnapshot.docs.first.data()['url'] as String?;
+      categoryPhotoUrl =
+          photosSnapshot.docs.first.data()['imageUrl'] as String?;
     }
 
-    return CategoryDataModel.fromFirestore(doc.data()!, doc.id).copyWith(
-      firstPhotoUrl: firstPhotoUrl,
-      photoCount: photoCountSnapshot.count ?? 0,
-    );
+    return CategoryDataModel.fromFirestore(
+      doc.data()!,
+      doc.id,
+    ).copyWith(categoryPhotoUrl: categoryPhotoUrl);
   }
 
   /// 카테고리에게 사진 추가
@@ -293,6 +370,40 @@ class CategoryRepository {
   }
 
   // ==================== 기존 호환성 메서드 ====================
+
+  /// 카테고리 표지사진 업데이트
+  Future<void> updateCategoryPhoto({
+    required String categoryId,
+    required String photoUrl,
+  }) async {
+    await _firestore.collection('categories').doc(categoryId).update({
+      'categoryPhotoUrl': photoUrl,
+    });
+  }
+
+  /// 카테고리 표지사진 삭제
+  Future<void> deleteCategoryPhoto(String categoryId) async {
+    await _firestore.collection('categories').doc(categoryId).update({
+      'categoryPhotoUrl': FieldValue.delete(),
+    });
+  }
+
+  /// 표지사진용 이미지 업로드
+  Future<String> uploadCoverImage(String categoryId, File imageFile) async {
+    final fileName =
+        'cover_${categoryId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final ref = _storage
+        .ref()
+        .child('categories')
+        .child(categoryId)
+        .child('covers')
+        .child(fileName);
+
+    final uploadTask = ref.putFile(imageFile);
+    final snapshot = await uploadTask.whenComplete(() => null);
+
+    return await snapshot.ref.getDownloadURL();
+  }
 
   /// 카테고리 사진 스트림 (Map 형태로 반환)
   Stream<List<Map<String, dynamic>>> getCategoryPhotosStream(

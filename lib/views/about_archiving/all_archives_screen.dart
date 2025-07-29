@@ -1,11 +1,14 @@
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../theme/theme.dart';
-import 'category_photos_screen.dart';
+import 'widgets/archive_card_widget.dart';
+import 'widgets/archive_responsive_helper.dart';
 
+// 전체 아카이브 화면
+// 모든 사용자의 아카이브 목록을 표시
+// 아카이브를 클릭하면 아카이브 상세 화면으로 이동
 class AllArchivesScreen extends StatefulWidget {
   const AllArchivesScreen({super.key});
 
@@ -16,67 +19,54 @@ class AllArchivesScreen extends StatefulWidget {
 class _AllArchivesScreenState extends State<AllArchivesScreen> {
   String? nickName;
   final Map<String, List<String>> _categoryProfileImages = {};
+  AuthController? _authController; // AuthController 참조 저장
 
   @override
   void initState() {
     super.initState();
     // 이메일이나 닉네임을 미리 가져와요.
-    final authViewModel = Provider.of<AuthController>(context, listen: false);
-    authViewModel.getIdFromFirestore().then((value) {
-      setState(() {
-        nickName = value;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _authController = Provider.of<AuthController>(context, listen: false);
+      _authController!.getIdFromFirestore().then((value) {
+        if (mounted) {
+          setState(() {
+            nickName = value;
+          });
+        }
       });
+
+      // AuthController의 변경사항을 감지하여 프로필 이미지 캐시 업데이트
+      _authController!.addListener(_onAuthControllerChanged);
     });
   }
 
-  Widget _buildProfileRow(List<String> profileImages) {
-    // 이미지가 없거나 비어있으면 기본 이미지 하나만 표시
-    if (profileImages.isEmpty) {
-      return SizedBox(
-        width: 20,
-        height: 20,
-        child: Image.asset('assets/profile.png'),
-      );
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // AuthController 참조를 안전하게 저장
+    _authController ??= Provider.of<AuthController>(context, listen: false);
+  }
+
+  @override
+  void dispose() {
+    // 저장된 참조를 사용하여 리스너 제거
+    _authController?.removeListener(_onAuthControllerChanged);
+    super.dispose();
+  }
+
+  /// AuthController 변경 감지 시 프로필 이미지 캐시 무효화
+  void _onAuthControllerChanged() {
+    debugPrint(' AuthController 변경 감지 - 아카이브 프로필 이미지 캐시 무효화');
+    if (mounted) {
+      setState(() {
+        _categoryProfileImages.clear(); // 모든 프로필 이미지 캐시 무효화
+      });
     }
-
-    // 최대 3개까지만 표시하도록 제한
-    final displayImages = profileImages.take(3).toList();
-
-    return Row(
-      children:
-          displayImages.map<Widget>((imageUrl) {
-            // 만약 이미지가 빈 문자열이면, 기본 이미지를 보여줘요.
-            if (imageUrl.toString().isEmpty) {
-              return Container(
-                width: 20,
-                height: 20,
-                margin: const EdgeInsets.only(right: 4),
-                child: Image.asset('assets/profile.png'),
-              );
-            }
-            // 값이 있으면 해당 이미지를 원형으로 보여줘요.
-            return Container(
-              width: 20,
-              height: 20,
-              margin: const EdgeInsets.only(right: 4),
-              child: CircleAvatar(
-                backgroundImage: CachedNetworkImageProvider(imageUrl),
-                onBackgroundImageError: (exception, stackTrace) {
-                  debugPrint('이미지 로딩 오류: $exception');
-                  // 에러 발생 시 별도 처리가 필요하면 여기에 추가
-                },
-                // 이미지 로드 실패 시 기본 이미지 표시
-                child:
-                    imageUrl.isEmpty ? Image.asset('assets/profile.png') : null,
-              ),
-            );
-          }).toList(),
-    );
   }
 
   // 카테고리에 대한 프로필 이미지를 가져오는 함수
   Future<void> _loadProfileImages(String categoryId, List<String> mates) async {
-    // Skip if already loaded
+    // 이미 로드된 경우에도 AuthController 변경에 의해 캐시가 무효화되면 다시 로드
     if (_categoryProfileImages.containsKey(categoryId)) {
       return;
     }
@@ -88,195 +78,165 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
     );
 
     try {
+      debugPrint(' 카테고리 $categoryId의 프로필 이미지 로드 시작');
       final profileImages = await categoryController.getCategoryProfileImages(
         mates,
         authController,
       );
-      setState(() {
-        _categoryProfileImages[categoryId] = profileImages;
-      });
+      if (mounted) {
+        setState(() {
+          _categoryProfileImages[categoryId] = profileImages;
+        });
+      }
+      debugPrint('✅ 카테고리 $categoryId의 프로필 이미지 로드 완료: ${profileImages.length}개');
     } catch (e) {
-      debugPrint('프로필 이미지 로딩 오류: $e');
-      setState(() {
-        _categoryProfileImages[categoryId] = [];
-      });
+      debugPrint('❌ 프로필 이미지 로딩 오류: $e');
+      if (mounted) {
+        setState(() {
+          _categoryProfileImages[categoryId] = [];
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // 화면의 너비와 높이를 가져와요.
-    double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
+    // 반응형 값들 계산 (개선된 헬퍼 클래스 사용)
+    final crossAxisCount = ArchiveResponsiveHelper.getGridCrossAxisCount(
+      context,
+    );
+    final aspectRatio = ArchiveResponsiveHelper.getGridAspectRatio();
+    final cardDimensions = ArchiveResponsiveHelper.getCardDimensions(context);
+    final isSmallScreen = ArchiveResponsiveHelper.isSmallScreen(context);
+    final isLargeScreen = ArchiveResponsiveHelper.isLargeScreen(context);
 
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
     if (nickName == null) {
       return Scaffold(
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        body: const Center(
-          child: CircularProgressIndicator(color: Colors.white),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Colors.white,
+            strokeWidth: isSmallScreen ? 2.0 : 3.0,
+          ),
         ),
       );
     }
 
-    // 카테고리 정보를 가져오는 스트림을 구독해요.
-    final categoryController = Provider.of<CategoryController>(
-      context,
-      listen: false,
-    );
-
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      body: StreamBuilder<List<Map<String, dynamic>>>(
-        // 기존의 streamUserCategoriesWithDetails 대신 streamUserCategories 함수 사용
-        stream: categoryController.streamUserCategoriesAsMap(nickName!),
-        builder: (context, snapshot) {
-          // 데이터가 불러오는 중일때
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            );
-          }
-          // 에러가 생겼을 때
-          if (snapshot.hasError) {
-            return const Center(
-              child: Text(
-                '카테고리 로딩 중 오류가 발생했습니다.',
-                style: TextStyle(color: Colors.white),
+      body: Consumer<CategoryController>(
+        builder: (context, categoryController, child) {
+          // 사용자 카테고리 로드 (한 번만 로드)
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            categoryController.loadUserCategories(nickName!);
+          });
+
+          // 로딩 중일 때
+          if (categoryController.isLoading &&
+              categoryController.userCategories.isEmpty) {
+            return Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: isSmallScreen ? 2.0 : 3.0,
               ),
             );
           }
+
+          // 에러가 생겼을 때
+          if (categoryController.error != null) {
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 20.0 : 40.0,
+                ),
+                child: Text(
+                  categoryController.error!,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isSmallScreen ? 14.0 : 16.0,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+
+          // 필터링된 카테고리 가져오기
+          final categories = categoryController.userCategories;
+
           // 데이터 없으면
-          final categories = snapshot.data ?? [];
           if (categories.isEmpty) {
-            return const Center(
-              child: Text(
-                '등록된 카테고리가 없습니다.',
-                style: TextStyle(color: Colors.white),
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 20.0 : 40.0,
+                ),
+                child: Text(
+                  categoryController.searchQuery.isNotEmpty
+                      ? '검색 결과가 없습니다.'
+                      : '등록된 카테고리가 없습니다.',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isSmallScreen ? 14.0 : 16.0,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             );
           }
 
           // 모든 카테고리에 대해 프로필 이미지 로드 요청
           for (var category in categories) {
-            final categoryId = category['id'] as String;
-            final mates = (category['mates'] as List).cast<String>();
+            final categoryId = category.id;
+            final mates = category.mates;
             _loadProfileImages(categoryId, mates);
           }
 
           // 데이터가 있으면 화면을 스크롤할 수 있도록 만듭니다.
-          return SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: (17 / 393) * screenWidth,
-              ),
+          return Padding(
+            padding: ArchiveResponsiveHelper.getGridPadding(context),
+            child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: ArchiveResponsiveHelper.getTopSpacing(context),
+                  ),
                   GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          childAspectRatio: 0.8,
-                          mainAxisSpacing: 8,
-                          crossAxisSpacing: 8,
-                        ),
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: crossAxisCount,
+                      childAspectRatio: aspectRatio, // Figma 비율 사용
+                      mainAxisSpacing:
+                          ArchiveResponsiveHelper.getMainAxisSpacing(context),
+                      crossAxisSpacing:
+                          ArchiveResponsiveHelper.getCrossAxisSpacing(context),
+                    ),
                     itemCount: categories.length,
                     itemBuilder: (context, index) {
                       final category = categories[index];
-                      final categoryId = category['id'] as String;
+                      final categoryId = category.id;
                       final profileImages =
                           _categoryProfileImages[categoryId] ?? [];
+                      final imageSize = cardDimensions['imageSize']!;
 
-                      return Container(
-                        decoration: ShapeDecoration(
-                          color: const Color(0xFF292929),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                        ),
-                        child: InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder:
-                                    (context) => CategoryPhotosScreen(
-                                      categoryId: category['id'],
-                                      categoryName: category['name'],
-                                    ),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Column(
-                              children: [
-                                // 대표 사진을 보여줘요.
-                                category['firstPhotoUrl'] != null
-                                    ? ClipRRect(
-                                      borderRadius: BorderRadius.circular(6),
-                                      child: Image.network(
-                                        category['firstPhotoUrl'],
-                                        width: 175,
-                                        height: 145,
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (
-                                          context,
-                                          error,
-                                          stackTrace,
-                                        ) {
-                                          debugPrint('카테고리 이미지 로드 오류: $error');
-                                          return Container(
-                                            width: 175,
-                                            height: 145,
-                                            color: const Color(0xFF383838),
-                                            child: const Icon(
-                                              Icons.image_not_supported,
-                                              color: Colors.white54,
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    )
-                                    : SizedBox(
-                                      width: 175,
-                                      height: 145,
-                                      child: const Icon(
-                                        Icons.photo,
-                                        color: Colors.white54,
-                                      ),
-                                    ),
-                                SizedBox(height: 8 / 852 * screenHeight),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    // 카테고리 이름 보여줘요.
-                                    Text(
-                                      category['name'],
-                                      style: TextStyle(
-                                        color:
-                                            AppTheme
-                                                .lightTheme
-                                                .colorScheme
-                                                .secondary,
-                                        fontSize: 16 / 852 * screenHeight,
-                                      ),
-                                    ),
-                                    // 프로필 사진들을 함수로 쉽게 보여줘요.
-                                    _buildProfileRow(profileImages),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                      return ArchiveCardWidget(
+                        categoryId: categoryId,
+                        profileImages: profileImages,
+                        imageSize: imageSize,
                       );
                     },
+                  ),
+                  // 하단 여백 추가 (화면 크기별)
+                  SizedBox(
+                    height:
+                        isSmallScreen
+                            ? 16.0
+                            : isLargeScreen
+                            ? 24.0
+                            : 20.0,
                   ),
                 ],
               ),

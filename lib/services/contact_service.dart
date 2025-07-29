@@ -1,602 +1,303 @@
-import 'package:flutter_contacts/flutter_contacts.dart';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
-import '../models/contact_data_model.dart';
+import 'package:flutter_contacts/flutter_contacts.dart';
 import '../repositories/contact_repository.dart';
 
-/// Contact Service - 연락처 관련 비즈니스 로직을 처리
-/// Repository를 사용해서 실제 비즈니스 규칙을 적용
+/// 연락처 관련 비즈니스 로직을 담당하는 서비스 클래스
 class ContactService {
-  final ContactRepository _contactRepository = ContactRepository();
+  final ContactRepository _repository = ContactRepository();
 
-  // ==================== 연락처 추가 비즈니스 로직 ====================
+  /// 싱글톤 인스턴스
+  static final ContactService _instance = ContactService._internal();
+  factory ContactService() => _instance;
+  ContactService._internal();
 
-  /// 연락처 추가
-  Future<ContactSyncResult> addContact({
-    required ContactDataModel contact,
-    bool checkDuplicate = true,
-  }) async {
+  /// 연락처 동기화 상태
+  bool _contactSyncEnabled = false;
+  bool get contactSyncEnabled => _contactSyncEnabled;
+
+  /// 로딩 상태
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
+
+  /// 초기화 완료 여부
+  bool _isInitialized = false;
+  bool get isInitialized => _isInitialized;
+
+  /// 초기화 (앱 시작 시 호출)
+  Future<void> initialize() async {
+    if (_isInitialized) return;
+
     try {
-      // 입력 검증
-      final validationResult = _validateContact(contact);
-      if (!validationResult.isValid) {
-        return ContactSyncResult.failure(validationResult.error!);
-      }
-
-      // 중복 검사 (옵션)
-      if (checkDuplicate) {
-        final exists = await _contactRepository.isContactExists(
-          contact.phoneNumber,
-        );
-        if (exists) {
-          return ContactSyncResult.failure('이미 등록된 연락처입니다.');
-        }
-      }
-
-      // 비즈니스 로직: 연락처 타입에 따른 추가 검증
-      final typeValidation = _validateContactType(contact);
-      if (!typeValidation.isValid) {
-        return ContactSyncResult.failure(typeValidation.error!);
-      }
-
-      // Repository를 통해 저장
-      final contactId = await _contactRepository.saveContactToFirestore(
-        contact,
-      );
-
-      if (contactId != null) {
-        return ContactSyncResult.success(addedCount: 1);
-      } else {
-        return ContactSyncResult.failure('연락처 저장에 실패했습니다.');
-      }
+      await _loadContactSyncSetting();
+      _isInitialized = true;
     } catch (e) {
-      return ContactSyncResult.failure('연락처 추가 중 오류가 발생했습니다: $e');
+      debugPrint('ContactService 초기화 실패: $e');
     }
   }
 
-  /// 디바이스 연락처에서 가져와서 추가
-  Future<ContactSyncResult> addContactFromDevice(Contact deviceContact) async {
+  /// 페이지 진입 시 연락처 권한 자동 요청 및 설정 로드
+  Future<ContactInitResult> initializeContactPermission() async {
+    _setLoading(true);
+
     try {
-      // 디바이스 연락처를 ContactDataModel로 변환
-      final contactData = ContactDataModel.fromFlutterContact(deviceContact);
+      // 1. 저장된 설정 먼저 로드
+      await _loadContactSyncSetting();
 
-      // 비즈니스 로직: 최소 정보 검증
-      if (contactData.displayName.isEmpty && contactData.phoneNumber.isEmpty) {
-        return ContactSyncResult.failure('이름 또는 전화번호가 필요합니다.');
-      }
+      // 2. 자동으로 권한 요청
+      final result = await _repository.requestContactPermission();
 
-      return await addContact(contact: contactData);
-    } catch (e) {
-      return ContactSyncResult.failure('디바이스 연락처 추가 중 오류가 발생했습니다: $e');
-    }
-  }
+      if (result) {
+        // 권한이 허용된 경우 토글을 true로 설정
+        _contactSyncEnabled = true;
+        await _saveContactSyncSetting(true);
 
-  /// 디바이스 연락처 일괄 동기화
-  Future<ContactSyncResult> syncContactsFromDevice({
-    bool skipDuplicates = true,
-    int? maxCount,
-  }) async {
-    try {
-      // 권한 확인
-      final permissionStatus =
-          await _contactRepository.checkContactsPermission();
-      if (permissionStatus != PermissionStatus.granted) {
-        return ContactSyncResult.failure('연락처 접근 권한이 필요합니다.');
-      }
-
-      // 디바이스 연락처 가져오기
-      final deviceContacts = await _contactRepository.getAllDeviceContacts();
-
-      if (deviceContacts.isEmpty) {
-        return ContactSyncResult.failure('디바이스에 연락처가 없습니다.');
-      }
-
-      // 비즈니스 로직: 최대 개수 제한
-      final contactsToSync =
-          maxCount != null
-              ? deviceContacts.take(maxCount).toList()
-              : deviceContacts;
-
-      int addedCount = 0;
-      int errorCount = 0;
-      List<String> errors = [];
-
-      // 각 연락처 처리
-      for (final deviceContact in contactsToSync) {
-        try {
-          final result = await addContactFromDevice(deviceContact);
-          if (result.isSuccess) {
-            addedCount++;
-          } else {
-            if (!skipDuplicates || !result.error!.contains('이미 등록된')) {
-              errorCount++;
-              errors.add('${deviceContact.displayName}: ${result.error}');
-            }
-          }
-        } catch (e) {
-          errorCount++;
-          errors.add('${deviceContact.displayName}: $e');
-        }
-      }
-
-      return ContactSyncResult(
-        isSuccess: addedCount > 0,
-        addedCount: addedCount,
-        errorCount: errorCount,
-        errors: errors,
-      );
-    } catch (e) {
-      return ContactSyncResult.failure('연락처 동기화 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  // ==================== 연락처 조회 비즈니스 로직 ====================
-
-  /// 연락처 목록 조회
-  Future<List<ContactDataModel>> getContacts({
-    ContactSearchFilter? filter,
-  }) async {
-    try {
-      List<ContactDataModel> contacts;
-
-      if (filter != null) {
-        contacts = await _contactRepository.searchContactsInFirestore(
-          filter: filter,
+        return ContactInitResult.success(
+          message: '연락처 동기화가 활성화되었습니다',
+          isEnabled: true,
         );
       } else {
-        contacts = await _contactRepository.getContactsFromFirestore();
-      }
+        // 권한이 거부된 경우
+        _contactSyncEnabled = false;
+        await _saveContactSyncSetting(false);
 
-      // 비즈니스 로직: 정렬 및 필터링 적용
-      return _applyContactBusinessRules(contacts, filter);
-    } catch (e) {
-      throw Exception('연락처 목록 조회 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  /// 연락처 스트림 (실시간)
-  Stream<List<ContactDataModel>> getContactsStream({
-    ContactSearchFilter? filter,
-  }) {
-    return _contactRepository.getContactsStreamFromFirestore().map(
-      (contacts) => _applyContactBusinessRules(contacts, filter),
-    );
-  }
-
-  /// 특정 연락처 상세 조회
-  Future<ContactDataModel?> getContactDetails(String contactId) async {
-    try {
-      if (contactId.isEmpty) {
-        throw ArgumentError('연락처 ID가 필요합니다.');
-      }
-
-      return await _contactRepository.getContactById(contactId);
-    } catch (e) {
-      throw Exception('연락처 상세 조회 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  /// 전화번호로 연락처 검색
-  Future<ContactDataModel?> findContactByPhone(String phoneNumber) async {
-    try {
-      // 비즈니스 로직: 전화번호 정규화
-      final normalizedPhone = _normalizePhoneNumber(phoneNumber);
-      if (normalizedPhone.isEmpty) {
-        throw ArgumentError('유효한 전화번호가 필요합니다.');
-      }
-
-      return await _contactRepository.findContactByPhone(normalizedPhone);
-    } catch (e) {
-      throw Exception('전화번호 검색 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  /// 연락처 텍스트 검색
-  Future<List<ContactDataModel>> searchContacts(String query) async {
-    try {
-      if (query.trim().isEmpty) {
-        return await getContacts();
-      }
-
-      // 모든 연락처 가져와서 클라이언트 사이드 검색
-      final allContacts = await _contactRepository.getContactsFromFirestore();
-
-      final normalizedQuery = query.toLowerCase().trim();
-
-      return allContacts.where((contact) {
-        return contact.searchKeywords.any(
-          (keyword) => keyword.contains(normalizedQuery),
+        return ContactInitResult.failure(
+          message: '연락처 권한이 거부되었습니다',
+          isEnabled: false,
         );
-      }).toList();
+      }
     } catch (e) {
-      throw Exception('연락처 검색 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  /// 즐겨찾기 연락처 조회
-  Future<List<ContactDataModel>> getFavoriteContacts() async {
-    try {
-      final filter = ContactSearchFilter(isFavorite: true);
-      return await getContacts(filter: filter);
-    } catch (e) {
-      throw Exception('즐겨찾기 연락처 조회 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  // ==================== 연락처 업데이트 비즈니스 로직 ====================
-
-  /// 연락처 정보 업데이트
-  Future<bool> updateContact({
-    required String contactId,
-    String? displayName,
-    String? phoneNumber,
-    String? email,
-    List<String>? phoneNumbers,
-    List<String>? emails,
-    ContactType? type,
-    String? notes,
-    String? organization,
-    String? jobTitle,
-  }) async {
-    try {
-      // 기존 연락처 조회
-      final existingContact = await _contactRepository.getContactById(
-        contactId,
+      return ContactInitResult.error(
+        message: '초기화 중 오류가 발생했습니다: $e',
+        isEnabled: false,
       );
-      if (existingContact == null) {
-        throw Exception('연락처를 찾을 수 없습니다.');
-      }
+    } finally {
+      _setLoading(false);
+    }
+  }
 
-      // 업데이트 데이터 준비
-      final Map<String, dynamic> updates = {};
-
-      if (displayName != null) {
-        // 비즈니스 로직: 이름 길이 제한
-        if (displayName.length > 50) {
-          throw Exception('이름은 50자를 초과할 수 없습니다.');
-        }
-        updates['displayName'] = displayName;
-      }
-
-      if (phoneNumber != null) {
-        // 비즈니스 로직: 전화번호 정규화 및 검증
-        final normalizedPhone = _normalizePhoneNumber(phoneNumber);
-        if (normalizedPhone.isEmpty) {
-          throw Exception('유효한 전화번호를 입력해주세요.');
-        }
-
-        // 중복 검사 (본인 제외)
-        final existingByPhone = await _contactRepository.findContactByPhone(
-          normalizedPhone,
-        );
-        if (existingByPhone != null && existingByPhone.id != contactId) {
-          throw Exception('이미 등록된 전화번호입니다.');
-        }
-
-        updates['phoneNumber'] = normalizedPhone;
-      }
-
-      if (email != null) {
-        // 비즈니스 로직: 이메일 형식 검증
-        if (email.isNotEmpty && !_isValidEmail(email)) {
-          throw Exception('유효한 이메일 형식이 아닙니다.');
-        }
-        updates['email'] = email;
-      }
-
-      if (phoneNumbers != null) {
-        updates['phoneNumbers'] = phoneNumbers;
-      }
-
-      if (emails != null) {
-        // 모든 이메일 검증
-        for (final emailAddr in emails) {
-          if (emailAddr.isNotEmpty && !_isValidEmail(emailAddr)) {
-            throw Exception('$emailAddr는 유효한 이메일 형식이 아닙니다.');
-          }
-        }
-        updates['emails'] = emails;
-      }
-
-      if (type != null) {
-        updates['type'] = type.name;
-      }
-
-      if (notes != null) {
-        // 비즈니스 로직: 메모 길이 제한
-        if (notes.length > 500) {
-          throw Exception('메모는 500자를 초과할 수 없습니다.');
-        }
-        updates['notes'] = notes;
-      }
-
-      if (organization != null) {
-        updates['organization'] = organization;
-      }
-
-      if (jobTitle != null) {
-        updates['jobTitle'] = jobTitle;
-      }
-
-      if (updates.isEmpty) {
-        return true; // 업데이트할 내용이 없음
-      }
-
-      return await _contactRepository.updateContactInFirestore(
-        contactId: contactId,
-        updates: updates,
+  /// 토글 상태 변경 처리
+  Future<ContactToggleResult> handleToggleChange() async {
+    if (_contactSyncEnabled) {
+      // 토글을 끄려고 하는 경우 - 설정 이동 필요
+      return ContactToggleResult.requiresSettings(
+        message: '연락처 동기화를 비활성화하려면 기기 설정에서 연락처 권한을 직접 해제해주세요.',
       );
-    } catch (e) {
-      throw Exception('연락처 업데이트 중 오류가 발생했습니다: $e');
+    } else {
+      // 토글을 켜려고 하는 경우 - 권한 재요청
+      return await _requestContactPermission();
     }
-  }
-
-  /// 즐겨찾기 토글
-  Future<bool> toggleFavorite(String contactId) async {
-    try {
-      final contact = await _contactRepository.getContactById(contactId);
-      if (contact == null) {
-        throw Exception('연락처를 찾을 수 없습니다.');
-      }
-
-      return await _contactRepository.toggleFavoriteInFirestore(
-        contactId: contactId,
-        isFavorite: !contact.isFavorite,
-      );
-    } catch (e) {
-      throw Exception('즐겨찾기 토글 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  // ==================== 연락처 삭제 비즈니스 로직 ====================
-
-  /// 연락처 삭제
-  Future<bool> deleteContact({
-    required String contactId,
-    bool permanentDelete = false,
-  }) async {
-    try {
-      final contact = await _contactRepository.getContactById(contactId);
-      if (contact == null) {
-        throw Exception('연락처를 찾을 수 없습니다.');
-      }
-
-      if (permanentDelete) {
-        return await _contactRepository.permanentDeleteContactFromFirestore(
-          contactId,
-        );
-      } else {
-        return await _contactRepository.deleteContactFromFirestore(contactId);
-      }
-    } catch (e) {
-      throw Exception('연락처 삭제 중 오류가 발생했습니다: $e');
-    }
-  }
-
-  // ==================== 권한 관리 ====================
-
-  /// 연락처 권한 확인
-  Future<PermissionStatus> checkContactsPermission() async {
-    return await _contactRepository.checkContactsPermission();
   }
 
   /// 연락처 권한 요청
-  Future<PermissionStatus> requestContactsPermission() async {
-    return await _contactRepository.requestContactsPermission();
+  Future<ContactToggleResult> requestContactPermission() async {
+    return await _requestContactPermission();
   }
 
-  /// 설정 앱 열기
-  Future<bool> openSettings() async {
-    return await _contactRepository.openAppSettings();
-  }
+  /// 설정에서 돌아온 후 권한 상태 재확인
+  Future<ContactToggleResult> checkPermissionAfterSettings() async {
+    try {
+      final hasPermission = await _repository.requestContactPermission();
+      _contactSyncEnabled = hasPermission;
+      await _saveContactSyncSetting(hasPermission);
 
-  // ==================== 디바이스 연락처 조회 ====================
-
-  /// 디바이스 연락처 전체 조회
-  Future<List<Contact>> getAllDeviceContacts() async {
-    return await _contactRepository.getAllDeviceContacts();
-  }
-
-  /// 디바이스 연락처 검색
-  Future<List<Contact>> searchDeviceContacts(String query) async {
-    return await _contactRepository.searchDeviceContactsByName(query);
-  }
-
-  // ==================== 기존 호환성 메서드 ====================
-
-  /// 기존 ContactModel과의 호환성
-  Stream<List<Map<String, dynamic>>> getContactsAsMapStream() {
-    return _contactRepository.getContactsAsMapStream();
-  }
-
-  /// 기존 addContact 메서드 호환성
-  Future<String> addContactLegacy(Map<String, dynamic> contactData) async {
-    return await _contactRepository.addContact(contactData);
-  }
-
-  /// 기존 updateContact 메서드 호환성
-  Future<void> updateContactLegacy(
-    Map<String, dynamic> contactData,
-    String contactId,
-  ) async {
-    return await _contactRepository.updateContact(contactData, contactId);
-  }
-
-  /// 기존 deleteContact 메서드 호환성
-  Future<void> deleteContactLegacy(String contactId) async {
-    return await _contactRepository.deleteContact(contactId);
-  }
-
-  // ==================== 통계 및 유틸리티 ====================
-
-  /// 연락처 통계 조회
-  Future<Map<String, int>> getContactStats() async {
-    return await _contactRepository.getContactStats();
-  }
-
-  /// 연락처 이니셜 가져오기
-  String getInitials(String? name) {
-    if (name == null || name.isEmpty) return '?';
-
-    List<String> nameParts = name.split(' ');
-    if (nameParts.length > 1) {
-      return nameParts[0][0] + nameParts[1][0];
-    } else if (name.isNotEmpty) {
-      return name[0];
-    } else {
-      return '?';
-    }
-  }
-
-  /// 전화번호 포맷팅
-  String formatPhoneNumber(String? phone) {
-    if (phone == null || phone.isEmpty) {
-      return '번호 없음';
-    }
-
-    String cleaned = phone.replaceAll(RegExp(r'[^\d]'), '');
-    if (cleaned.length == 11 && cleaned.startsWith('010')) {
-      return '${cleaned.substring(0, 3)}-${cleaned.substring(3, 7)}-${cleaned.substring(7)}';
-    }
-
-    return phone;
-  }
-
-  /// 연락처 아바타 위젯 생성
-  Widget buildContactAvatar(Contact contact, {double radius = 20.0}) {
-    if (contact.photo != null && contact.photo!.isNotEmpty) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundImage: MemoryImage(contact.photo!),
+      return ContactToggleResult.success(
+        message: hasPermission ? '연락처 동기화가 활성화되었습니다' : '연락처 동기화가 비활성화되었습니다',
+        isEnabled: hasPermission,
+      );
+    } catch (e) {
+      return ContactToggleResult.error(
+        message: '권한 확인 중 오류가 발생했습니다: $e',
+        isEnabled: false,
       );
     }
-
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: Colors.blue,
-      child: Text(
-        getInitials(contact.displayName),
-        style: const TextStyle(color: Colors.white),
-      ),
-    );
   }
 
-  // ==================== 비즈니스 규칙 검증 ====================
+  /// Repository에서 연락처 동기화 설정 로드
+  Future<void> _loadContactSyncSetting() async {
+    _contactSyncEnabled = await _repository.loadContactSyncSetting();
+  }
 
-  /// 연락처 검증
-  ContactValidationResult _validateContact(ContactDataModel contact) {
-    // 필수 필드 검증
-    if (contact.displayName.isEmpty && contact.phoneNumber.isEmpty) {
-      return ContactValidationResult.invalid('이름 또는 전화번호가 필요합니다.');
-    }
+  /// Repository에 연락처 동기화 설정 저장
+  Future<void> _saveContactSyncSetting(bool value) async {
+    await _repository.saveContactSyncSetting(value);
+  }
 
-    // 이름 길이 검증
-    if (contact.displayName.length > 50) {
-      return ContactValidationResult.invalid('이름은 50자를 초과할 수 없습니다.');
-    }
+  /// 연락처 권한 요청 (내부 메서드)
+  Future<ContactToggleResult> _requestContactPermission() async {
+    _setLoading(true);
 
-    // 전화번호 검증
-    if (contact.phoneNumber.isNotEmpty) {
-      final normalizedPhone = _normalizePhoneNumber(contact.phoneNumber);
-      if (normalizedPhone.isEmpty) {
-        return ContactValidationResult.invalid('유효한 전화번호를 입력해주세요.');
+    try {
+      final result = await _repository.requestContactPermission();
+
+      if (result) {
+        _contactSyncEnabled = true;
+        await _saveContactSyncSetting(true);
+
+        return ContactToggleResult.success(
+          message: '연락처 동기화가 활성화되었습니다',
+          isEnabled: true,
+        );
+      } else {
+        return ContactToggleResult.failure(
+          message: '연락처 권한이 필요합니다',
+          isEnabled: false,
+        );
       }
+    } catch (e) {
+      return ContactToggleResult.error(
+        message: '권한 요청 중 오류가 발생했습니다: $e',
+        isEnabled: false,
+      );
+    } finally {
+      _setLoading(false);
     }
-
-    // 이메일 검증
-    if (contact.email != null && contact.email!.isNotEmpty) {
-      if (!_isValidEmail(contact.email!)) {
-        return ContactValidationResult.invalid('유효한 이메일 형식이 아닙니다.');
-      }
-    }
-
-    return ContactValidationResult.valid();
   }
 
-  /// 연락처 타입 검증
-  ContactValidationResult _validateContactType(ContactDataModel contact) {
-    // 비즈니스 로직: 비상연락처는 전화번호 필수
-    if (contact.type == ContactType.emergency && contact.phoneNumber.isEmpty) {
-      return ContactValidationResult.invalid('비상연락처는 전화번호가 필수입니다.');
-    }
-
-    return ContactValidationResult.valid();
+  /// 로딩 상태 설정
+  void _setLoading(bool loading) {
+    _isLoading = loading;
   }
 
-  /// 연락처 비즈니스 규칙 적용
-  List<ContactDataModel> _applyContactBusinessRules(
-    List<ContactDataModel> contacts,
-    ContactSearchFilter? filter,
-  ) {
-    // 활성 상태만 필터링 (기본)
-    List<ContactDataModel> filteredContacts =
-        contacts
-            .where((contact) => contact.status == ContactStatus.active)
-            .toList();
-
-    // 텍스트 검색 (클라이언트 사이드)
-    if (filter?.query != null && filter!.query!.isNotEmpty) {
-      final query = filter.query!.toLowerCase();
-      filteredContacts =
-          filteredContacts.where((contact) {
-            return contact.searchKeywords.any(
-              (keyword) => keyword.contains(query),
-            );
-          }).toList();
+  /// 연락처 목록 가져오기 (권한이 있을 때)
+  Future<List<Contact>> getContacts() async {
+    if (!_contactSyncEnabled) {
+      throw Exception('연락처 동기화가 비활성화되어 있습니다');
     }
 
-    // 정렬: 즐겨찾기 > 이름순
-    filteredContacts.sort((a, b) {
-      if (a.isFavorite && !b.isFavorite) return -1;
-      if (!a.isFavorite && b.isFavorite) return 1;
-      return a.displayName.compareTo(b.displayName);
-    });
-
-    return filteredContacts;
+    try {
+      return await _repository.getContacts();
+    } catch (e) {
+      throw Exception('연락처 목록을 가져오는데 실패했습니다: $e');
+    }
   }
 
-  /// 전화번호 정규화
-  String _normalizePhoneNumber(String phone) {
-    // 특수문자 제거 후 숫자만 남기기
-    final cleaned = phone.replaceAll(RegExp(r'[^\d]'), '');
-
-    // 최소 길이 검증
-    if (cleaned.length < 8) {
-      return '';
+  /// 특정 연락처 정보 가져오기
+  Future<Contact?> getContact(String id) async {
+    if (!_contactSyncEnabled) {
+      throw Exception('연락처 동기화가 비활성화되어 있습니다');
     }
 
-    // 한국 번호 형식 정규화
-    if (cleaned.length == 11 && cleaned.startsWith('010')) {
-      return cleaned;
+    try {
+      return await _repository.getContact(id);
+    } catch (e) {
+      throw Exception('연락처 정보를 가져오는데 실패했습니다: $e');
     }
-
-    // 기타 유효한 형식 확인
-    if (cleaned.length >= 8 && cleaned.length <= 15) {
-      return cleaned;
-    }
-
-    return '';
   }
 
-  /// 이메일 형식 검증
-  bool _isValidEmail(String email) {
-    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
-    return emailRegex.hasMatch(email);
+  /// 연락처 검색
+  Future<List<Contact>> searchContacts(String query) async {
+    if (!_contactSyncEnabled) {
+      throw Exception('연락처 동기화가 비활성화되어 있습니다');
+    }
+
+    try {
+      return await _repository.searchContacts(query);
+    } catch (e) {
+      throw Exception('연락처 검색에 실패했습니다: $e');
+    }
   }
 }
 
-/// 연락처 검증 결과
-class ContactValidationResult {
-  final bool isValid;
-  final String? error;
+/// 연락처 초기화 결과
+class ContactInitResult {
+  final bool isSuccess;
+  final bool isEnabled;
+  final String message;
+  final ContactInitResultType type;
 
-  ContactValidationResult._({required this.isValid, this.error});
+  ContactInitResult._({
+    required this.isSuccess,
+    required this.isEnabled,
+    required this.message,
+    required this.type,
+  });
 
-  factory ContactValidationResult.valid() {
-    return ContactValidationResult._(isValid: true);
-  }
+  factory ContactInitResult.success({
+    required String message,
+    required bool isEnabled,
+  }) => ContactInitResult._(
+    isSuccess: true,
+    isEnabled: isEnabled,
+    message: message,
+    type: ContactInitResultType.success,
+  );
 
-  factory ContactValidationResult.invalid(String error) {
-    return ContactValidationResult._(isValid: false, error: error);
-  }
+  factory ContactInitResult.failure({
+    required String message,
+    required bool isEnabled,
+  }) => ContactInitResult._(
+    isSuccess: false,
+    isEnabled: isEnabled,
+    message: message,
+    type: ContactInitResultType.failure,
+  );
+
+  factory ContactInitResult.error({
+    required String message,
+    required bool isEnabled,
+  }) => ContactInitResult._(
+    isSuccess: false,
+    isEnabled: isEnabled,
+    message: message,
+    type: ContactInitResultType.error,
+  );
 }
+
+/// 연락처 토글 결과
+class ContactToggleResult {
+  final bool isSuccess;
+  final bool isEnabled;
+  final String message;
+  final ContactToggleResultType type;
+
+  ContactToggleResult._({
+    required this.isSuccess,
+    required this.isEnabled,
+    required this.message,
+    required this.type,
+  });
+
+  factory ContactToggleResult.success({
+    required String message,
+    required bool isEnabled,
+  }) => ContactToggleResult._(
+    isSuccess: true,
+    isEnabled: isEnabled,
+    message: message,
+    type: ContactToggleResultType.success,
+  );
+
+  factory ContactToggleResult.failure({
+    required String message,
+    required bool isEnabled,
+  }) => ContactToggleResult._(
+    isSuccess: false,
+    isEnabled: isEnabled,
+    message: message,
+    type: ContactToggleResultType.failure,
+  );
+
+  factory ContactToggleResult.error({
+    required String message,
+    required bool isEnabled,
+  }) => ContactToggleResult._(
+    isSuccess: false,
+    isEnabled: isEnabled,
+    message: message,
+    type: ContactToggleResultType.error,
+  );
+
+  factory ContactToggleResult.requiresSettings({required String message}) =>
+      ContactToggleResult._(
+        isSuccess: false,
+        isEnabled: true, // 현재는 활성화된 상태
+        message: message,
+        type: ContactToggleResultType.requiresSettings,
+      );
+}
+
+/// 연락처 초기화 결과 타입
+enum ContactInitResultType { success, failure, error }
+
+/// 연락처 토글 결과 타입
+enum ContactToggleResultType { success, failure, error, requiresSettings }

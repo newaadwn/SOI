@@ -3,64 +3,91 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_sound/flutter_sound.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
 import '../models/audio_data_model.dart';
 
 /// Firebase에서 오디오 관련 데이터를 가져오고, 저장하고, 업데이트하고 삭제하는 등의 로직들
 class AudioRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
-  final FlutterSoundRecorder _recorder = FlutterSoundRecorder();
-  final FlutterSoundPlayer _player = FlutterSoundPlayer();
   static const MethodChannel _channel = MethodChannel('native_recorder');
 
-  // ==================== 권한 관리 ====================
+  // ==================== 권한 관리 (네이티브) ====================
 
-  /// 마이크 권한 요청
-  static Future<bool> requestPermission() async {
+  /// 마이크 권한 상태 확인 (네이티브에서 처리)
+  static Future<bool> checkMicrophonePermission() async {
     try {
-      final bool granted = await _channel.invokeMethod('requestPermission');
-      return granted;
+      final bool hasPermission = await _channel.invokeMethod(
+        'checkMicrophonePermission',
+      );
+      debugPrint('🔍 네이티브 마이크 권한 상태: $hasPermission');
+      return hasPermission;
     } catch (e) {
-      print('Error requesting permission: $e');
+      debugPrint('❌ 네이티브 마이크 권한 확인 오류: $e');
       return false;
     }
   }
 
-  /// 저장소 권한 요청
-  Future<bool> requestStoragePermission() async {
-    final status = await Permission.storage.request();
-    return status == PermissionStatus.granted;
+  /// 마이크 권한 요청 (네이티브에서 처리)
+  static Future<bool> requestMicrophonePermission() async {
+    try {
+      debugPrint('🎤 네이티브에서 마이크 권한을 요청합니다...');
+      final bool granted = await _channel.invokeMethod(
+        'requestMicrophonePermission',
+      );
+
+      if (granted) {
+        debugPrint('✅ 네이티브 마이크 권한이 허용되었습니다.');
+        return true;
+      } else {
+        debugPrint('❌ 네이티브 마이크 권한이 거부되었습니다.');
+        return false;
+      }
+    } catch (e) {
+      debugPrint('❌ 네이티브 마이크 권한 요청 중 오류: $e');
+      return false;
+    }
   }
 
-  // ==================== 녹음 관리 ====================
+  /// 저장소 권한 요청 (네이티브에서 처리하지 않음)
+  Future<bool> requestStoragePermission() async {
+    // 저장소 권한은 현재 사용하지 않음 (Firebase Storage 사용)
+    debugPrint('저장소 권한은 Firebase Storage 사용으로 불필요');
+    return true;
+  }
 
-  /// 레코더 초기화
+  // ==================== 네이티브 녹음 관리 ====================
+
+  /// 레코더 초기화 (네이티브만 사용)
   Future<void> initializeRecorder() async {
-    await _recorder.openRecorder();
+    // 네이티브 녹음만 사용하므로 초기화 불필요
+    debugPrint('네이티브 녹음 초기화 완료');
   }
 
   /// 레코더 종료
   Future<void> disposeRecorder() async {
-    await _recorder.closeRecorder();
+    // 네이티브 녹음만 사용하므로 종료 작업 불필요
+    debugPrint('네이티브 녹음 종료 완료');
   }
 
-  /// 네이티브 녹음 시작
-  /// [filePath]: 녹음 파일이 저장될 경로 (확장자 .m4a)
+  /// 네이티브 녹음 시작 (메인)
+  /// Returns: 생성된 파일 경로
   static Future<String> startRecording() async {
     try {
       final tempDir = await getTemporaryDirectory();
-      final String fileExtension = '.m4a'; // 녹음 파일 확장자
+      //final String fileExtension = '.m4a'; // AAC 코덱 사용
       String filePath =
-          '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
-      final String started = await _channel.invokeMethod('startRecording', {
+          '${tempDir.path}/audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+      final String startedPath = await _channel.invokeMethod('startRecording', {
         'filePath': filePath,
       });
-      return started;
+
+      debugPrint('🎤 네이티브 녹음 시작: $startedPath');
+      return startedPath; // 실제 생성된 파일 경로 반환
     } catch (e) {
-      print('Error starting recording: $e');
+      debugPrint('❌ 네이티브 녹음 시작 오류: $e');
       return '';
     }
   }
@@ -70,70 +97,72 @@ class AudioRepository {
   static Future<String?> stopRecording() async {
     try {
       final String? filePath = await _channel.invokeMethod('stopRecording');
-      debugPrint('녹음 파일 경로: $filePath');
+      debugPrint('🎤 네이티브 녹음 중지: $filePath');
       return filePath;
     } catch (e) {
-      print('Error stopping recording: $e');
+      debugPrint('❌ 네이티브 녹음 중지 오류: $e');
       return null;
     }
   }
 
-  /// 녹음 상태 확인
+  /// 네이티브 녹음 상태 확인
   static Future<bool> isRecording() async {
     try {
       final bool recording = await _channel.invokeMethod('isRecording');
       return recording;
     } catch (e) {
-      print('Error checking recording status: $e');
+      debugPrint('❌ 네이티브 녹음 상태 확인 오류: $e');
       return false;
     }
   }
 
-  /// 녹음 레벨 스트림
-  Stream<RecordingDisposition>? get recordingStream => _recorder.onProgress;
+  // 네이티브 녹음에서는 레벨 스트림 제공하지 않음
 
-  // ==================== 재생 관리 ====================
+  // ==================== 재생 관리 (네이티브) ====================
 
-  /// 플레이어 초기화
+  /// 플레이어 초기화 (audioplayers 패키지 사용)
   Future<void> initializePlayer() async {
-    await _player.openPlayer();
+    debugPrint('네이티브 플레이어 초기화 완료');
   }
 
   /// 플레이어 종료
   Future<void> disposePlayer() async {
-    await _player.closePlayer();
+    debugPrint('네이티브 플레이어 종료 완료');
   }
 
-  /// 오디오 재생 (로컬 파일)
-  Future<void> playFromFile(String filePath) async {
-    await _player.startPlayer(fromURI: filePath);
-  }
-
-  /// 오디오 재생 (URL)
+  /// 오디오 재생 (URL) - audioplayers 사용
   Future<void> playFromUrl(String url) async {
-    await _player.startPlayer(fromURI: url);
+    // audioplayers 패키지를 사용하여 재생
+    // 실제 구현은 AudioController에서 처리
+    debugPrint('URL 재생: $url');
+  }
+
+  /// 오디오 재생 (로컬 파일) - audioplayers 사용
+  Future<void> playFromFile(String filePath) async {
+    // audioplayers 패키지를 사용하여 로컬 파일 재생
+    // 실제 구현은 AudioController에서 처리
+    debugPrint('로컬 파일 재생: $filePath');
   }
 
   /// 재생 중지
   Future<void> stopPlaying() async {
-    await _player.stopPlayer();
+    debugPrint('재생 중지');
   }
 
   /// 재생 일시정지
   Future<void> pausePlaying() async {
-    await _player.pausePlayer();
+    debugPrint('재생 일시정지');
   }
 
   /// 재생 재개
   Future<void> resumePlaying() async {
-    await _player.resumePlayer();
+    debugPrint('재생 재개');
   }
 
-  /// 재생 상태 확인
-  bool get isPlaying => _player.isPlaying;
+  /// 재생 상태 확인 (기본값 false)
+  bool get isPlaying => false;
 
-  /// 재생 진행률 스트림
-  Stream<PlaybackDisposition>? get playbackStream => _player.onProgress;
+  // 네이티브에서는 재생 진행률 스트림 제공하지 않음
 
   // ==================== 파일 관리 ====================
 
@@ -308,5 +337,103 @@ class AudioRepository {
     final ref = _storage.ref().child('audios').child(audioId).child(fileName);
 
     return ref.putFile(file).snapshotEvents;
+  }
+
+  /// 오디오 파일에서 파형 데이터 추출
+  Future<List<double>> extractWaveformData(String audioFilePath) async {
+    debugPrint('🌊 파형 데이터 추출 시작 - 파일: $audioFilePath');
+
+    final controller = PlayerController();
+
+    try {
+      await controller.preparePlayer(
+        path: audioFilePath,
+        shouldExtractWaveform: true,
+      );
+
+      // 파형 추출 완료 대기 (PhotoGridItem과 동일한 로직)
+      List<double> rawData = [];
+      int attempts = 0;
+      const maxAttempts = 200; // 20초 대기 (업로드 시에는 더 오래 기다림)
+
+      debugPrint('⏳ 파형 추출 완료 대기 중...');
+      while (attempts < maxAttempts && rawData.isEmpty) {
+        await Future.delayed(const Duration(milliseconds: 100));
+        attempts++;
+
+        try {
+          final currentData = controller.waveformData;
+          if (currentData.isNotEmpty) {
+            rawData = currentData;
+            debugPrint(
+              '✅ 파형 추출 완료: ${rawData.length} samples (${attempts * 100}ms 소요)',
+            );
+            break;
+          }
+        } catch (e) {
+          // 아직 준비되지 않음, 계속 대기
+        }
+
+        // 진행률 로그 (5초마다)
+        if (attempts % 50 == 0) {
+          debugPrint('⏳ 파형 추출 대기 중... ${attempts * 100}ms');
+        }
+      }
+
+      debugPrint('📊 원본 파형 데이터 길이: ${rawData.length}');
+
+      if (rawData.isEmpty) {
+        debugPrint('❌ 파형 데이터 추출 시간 초과 또는 실패');
+        return [];
+      }
+
+      // 데이터 최적화 (100개 포인트로 압축)
+      final compressedData = _compressWaveformData(rawData, targetLength: 100);
+      debugPrint('🗜️ 압축된 파형 데이터 길이: ${compressedData.length}');
+      debugPrint('📈 파형 샘플: ${compressedData.take(5).toList()}...');
+
+      return compressedData;
+    } catch (e) {
+      debugPrint('❌ 파형 데이터 추출 실패: $e');
+      return [];
+    } finally {
+      controller.dispose();
+    }
+  }
+
+  /// 파형 데이터 압축
+  List<double> _compressWaveformData(
+    List<double> data, {
+    int targetLength = 100,
+  }) {
+    if (data.length <= targetLength) return data;
+
+    final step = data.length / targetLength;
+    final compressed = <double>[];
+
+    for (int i = 0; i < targetLength; i++) {
+      final index = (i * step).round();
+      if (index < data.length) {
+        compressed.add(data[index]);
+      }
+    }
+
+    return compressed;
+  }
+
+  /// 오디오 길이 계산 (더 정확한 방법)
+  Future<double> getAudioDurationAccurate(String audioFilePath) async {
+    final controller = PlayerController();
+
+    try {
+      await controller.preparePlayer(path: audioFilePath);
+      final duration = controller.maxDuration;
+      return duration / 1000.0; // 밀리초를 초로 변환
+    } catch (e) {
+      debugPrint('오디오 길이 계산 실패: $e');
+      return 0.0;
+    } finally {
+      controller.dispose();
+    }
   }
 }

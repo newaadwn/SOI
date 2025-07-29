@@ -142,7 +142,7 @@ class AuthRepository {
 
   // 사용자 정보 저장
   Future<void> saveUser(AuthModel user) async {
-    await _firestore.collection('users').doc(user.uid).set(user.toFirestore());
+    await _firestore.collection('users').doc(user.uid).set(user.toFirestoreWithServerTimestamp());
   }
 
   // 사용자 정보 업데이트
@@ -158,6 +158,47 @@ class AuthRepository {
       return AuthModel.fromFirestore(doc.data()!);
     }
     return null;
+  }
+
+  // 사용자 정보 조회 (getUserInfo 별칭)
+  Future<AuthModel?> getUserInfo(String userId) async {
+    return await getUser(userId);
+  }
+
+  // 사용자 프로필 이미지 URL 조회
+  Future<String> getUserProfileImageUrlById(String userId) async {
+    try {
+      debugPrint('👤 프로필 이미지 URL 조회 시작 - UserId: $userId');
+
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+
+      debugPrint('📄 사용자 문서 존재: ${userDoc.exists}');
+
+      if (userDoc.exists) {
+        final data = userDoc.data() as Map<String, dynamic>;
+
+        // 각 필드 개별 확인
+        final profileImageUrl = data['profileImageUrl'];
+        final profileImage = data['profile_image'];
+
+        debugPrint('profileImageUrl 필드: $profileImageUrl');
+        debugPrint('profile_image 필드: $profileImage');
+        debugPrint('전체 사용자 데이터: $data');
+
+        // 두 가지 필드명 모두 시도 (기존 호환성)
+        final finalUrl = profileImageUrl ?? profileImage ?? '';
+
+        debugPrint('최종 ProfileImageUrl: "$finalUrl"');
+
+        return finalUrl;
+      }
+
+      debugPrint('사용자 문서가 존재하지 않음');
+      return '';
+    } catch (e) {
+      debugPrint('사용자 프로필 이미지 가져오기 실패: $e');
+      return '';
+    }
   }
 
   // 사용자 검색 (닉네임으로)
