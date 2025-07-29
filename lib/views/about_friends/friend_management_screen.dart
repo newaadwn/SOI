@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_boxicons/flutter_boxicons.dart';
 import 'package:flutter_contacts/contact.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
@@ -9,6 +10,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../controllers/contact_controller.dart';
 import '../../controllers/user_matching_controller.dart';
 import '../../controllers/friend_request_controller.dart';
+import '../../controllers/friend_controller.dart';
 import '../../models/friend_request_model.dart';
 import '../../services/contact_service.dart';
 import '../../services/user_matching_service.dart';
@@ -33,7 +35,43 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
     // ✅ 화면을 즉시 표시하고 백그라운드에서 초기화 시작
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeContactPermissionInBackground();
+      _initializeFriendController();
+      _initializeFriendRequestController();
     });
+  }
+
+  /// FriendController 초기화
+  Future<void> _initializeFriendController() async {
+    try {
+      if (!mounted) return;
+
+      final friendController = Provider.of<FriendController>(
+        context,
+        listen: false,
+      );
+
+      await friendController.initialize();
+      debugPrint('FriendController 초기화 완료');
+    } catch (e) {
+      debugPrint('FriendController 초기화 실패: $e');
+    }
+  }
+
+  /// FriendRequestController 초기화
+  Future<void> _initializeFriendRequestController() async {
+    try {
+      if (!mounted) return;
+
+      final friendRequestController = Provider.of<FriendRequestController>(
+        context,
+        listen: false,
+      );
+
+      await friendRequestController.initialize();
+      debugPrint('FriendRequestController 초기화 완료');
+    } catch (e) {
+      debugPrint('FriendRequestController 초기화 실패: $e');
+    }
   }
 
   /// ✅ 백그라운드에서 연락처 권한 및 초기화 처리 (화면 전환 지연 방지)
@@ -800,6 +838,16 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
       builder: (context, friendRequestController, child) {
         final receivedRequests = friendRequestController.receivedRequests;
 
+        // 디버그 정보 출력
+        debugPrint('FriendRequestController 상태:');
+        debugPrint('- isLoading: ${friendRequestController.isLoading}');
+        debugPrint('- isInitialized: ${friendRequestController.isInitialized}');
+        debugPrint('- error: ${friendRequestController.error}');
+        debugPrint('- receivedRequests 개수: ${receivedRequests.length}');
+        if (receivedRequests.isNotEmpty) {
+          debugPrint('- 첫 번째 요청: ${receivedRequests.first.senderid}');
+        }
+
         return SizedBox(
           width: 354 * scale,
           child: Card(
@@ -808,13 +856,107 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12 * scale),
             ),
-            child:
+            child: Column(
+              children: [
+                // Debug 모드에서만 테스트 버튼 표시
+                if (kDebugMode) ...[
+                  Padding(
+                    padding: EdgeInsets.all(12 * scale),
+                    child: Column(
+                      children: [
+                        // 상태 정보 표시
+                        Container(
+                          width: double.infinity,
+                          padding: EdgeInsets.all(8 * scale),
+                          margin: EdgeInsets.only(bottom: 8 * scale),
+                          decoration: BoxDecoration(
+                            color: const Color(0xff333333),
+                            borderRadius: BorderRadius.circular(4 * scale),
+                          ),
+                          child: Text(
+                            'Controller 상태:\n'
+                            '초기화: ${friendRequestController.isInitialized}\n'
+                            '로딩: ${friendRequestController.isLoading}\n'
+                            '에러: ${friendRequestController.error ?? "없음"}\n'
+                            '요청 개수: ${receivedRequests.length}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 10 * scale,
+                            ),
+                          ),
+                        ),
+                        // 테스트 버튼들
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            ElevatedButton(
+                              onPressed: () {},
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.blue,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8 * scale,
+                                  vertical: 4 * scale,
+                                ),
+                              ),
+                              child: Text(
+                                '테스트 요청 생성',
+                                style: TextStyle(fontSize: 10 * scale),
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {},
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8 * scale,
+                                  vertical: 4 * scale,
+                                ),
+                              ),
+                              child: Text(
+                                '5개 요청 생성',
+                                style: TextStyle(fontSize: 10 * scale),
+                              ),
+                            ),
+                            ElevatedButton(
+                              onPressed: () {},
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.red,
+                                foregroundColor: Colors.white,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 8 * scale,
+                                  vertical: 4 * scale,
+                                ),
+                              ),
+                              child: Text(
+                                '테스트 삭제',
+                                style: TextStyle(fontSize: 10 * scale),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(
+                    color: Color(0xff404040),
+                    height: 1,
+                    thickness: 1,
+                  ),
+                ],
+
+                // 친구 요청 리스트
                 receivedRequests.isEmpty
                     ? SizedBox(
                       height: 132 * scale,
                       child: Center(
                         child: Text(
-                          '받은 친구 요청이 없습니다',
+                          friendRequestController.isLoading
+                              ? '친구 요청을 불러오는 중...'
+                              : friendRequestController.error != null
+                              ? '오류: ${friendRequestController.error}'
+                              : '받은 친구 요청이 없습니다',
                           style: TextStyle(
                             color: const Color(0xff666666),
                             fontSize: 14 * scale,
@@ -833,6 +975,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
                             );
                           }).toList(),
                     ),
+              ],
+            ),
           ),
         );
       },
@@ -1032,19 +1176,127 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
 
   // 사용자가 추가한 친구 목록
   Widget _buildFriendListCard(BuildContext context, double scale) {
-    return SizedBox(
-      width: 354 * scale,
-      height: 132 * scale,
-      child: Card(
-        clipBehavior: Clip.antiAliasWithSaveLayer,
-        color: const Color(0xff1c1c1c),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12 * scale),
-        ),
-        child: const Center(
-          child: Text('친구 목록', style: TextStyle(color: Color(0xfff9f9f9))),
-        ),
-      ),
+    return Consumer<FriendController>(
+      builder: (context, friendController, child) {
+        final friends = friendController.friends;
+
+        return SizedBox(
+          width: 354 * scale,
+          child: Card(
+            clipBehavior: Clip.antiAliasWithSaveLayer,
+            color: const Color(0xff1c1c1c),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12 * scale),
+            ),
+            child:
+                friends.isEmpty
+                    ? SizedBox(
+                      height: 132 * scale,
+                      child: Center(
+                        child: Text(
+                          '아직 친구가 없습니다',
+                          style: TextStyle(
+                            color: const Color(0xff666666),
+                            fontSize: 14 * scale,
+                          ),
+                        ),
+                      ),
+                    )
+                    : Container(
+                      padding: EdgeInsets.symmetric(horizontal: scale * 18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // 친구들 리스트 (세로 리스트)
+                          ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: friends.length,
+                            itemBuilder: (context, index) {
+                              final friend = friends[index];
+                              return ListTile(
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: 0,
+                                ),
+                                leading: CircleAvatar(
+                                  radius: 20 * scale,
+                                  backgroundColor: const Color(0xff323232),
+                                  backgroundImage:
+                                      friend.profileImageUrl != null
+                                          ? NetworkImage(
+                                            friend.profileImageUrl!,
+                                          )
+                                          : null,
+                                  child:
+                                      friend.profileImageUrl == null
+                                          ? Text(
+                                            friend.id.isNotEmpty
+                                                ? friend.id[0]
+                                                : '?',
+                                            style: TextStyle(
+                                              color: const Color(0xfff9f9f9),
+                                              fontSize: 14 * scale,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          )
+                                          : null,
+                                ),
+                                title: Text(
+                                  friend.name,
+                                  style: TextStyle(
+                                    color: const Color(0xffd9d9d9),
+                                    fontSize: 14 * scale,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  friend.id,
+                                  style: TextStyle(
+                                    color: const Color(0xff999999),
+                                    fontSize: 12 * scale,
+                                  ),
+                                ),
+                                onTap: () {
+                                  // TODO: 친구 상세 페이지로 이동
+                                  debugPrint('친구 상세 페이지로 이동: ${friend.name}');
+                                },
+                              );
+                            },
+                          ),
+
+                          // 더보기 링크 (친구가 10명 이상일 때)
+                          GestureDetector(
+                            onTap: () {
+                              // TODO: 친구 목록 전체 화면으로 이동
+                              debugPrint('더보기 클릭됨');
+                            },
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.add, size: 18 * scale),
+                                    SizedBox(width: 8 * scale),
+                                    Text(
+                                      '더보기',
+                                      style: TextStyle(
+                                        color: const Color(0xffd9d9d9),
+                                        fontSize: 16 * scale,
+                                        decoration: TextDecoration.underline,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 12 * scale),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+          ),
+        );
+      },
     );
   }
 

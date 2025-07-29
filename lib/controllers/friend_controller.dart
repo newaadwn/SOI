@@ -23,7 +23,7 @@ class FriendController extends ChangeNotifier {
   bool _isSearching = false;
 
   // 작업 상태
-  Map<String, bool> _processingFriends = {}; // friendUid -> isProcessing
+  final Map<String, bool> _processingFriends = {}; // friendUid -> isProcessing
 
   // 통계 정보
   Map<String, dynamic> _friendStats = {};

@@ -103,19 +103,34 @@ class FriendRequestService {
         orElse: () => throw Exception('친구 요청을 찾을 수 없습니다'),
       );
 
-      // 2. 친구 요청 수락 처리
+      // 2. 현재 사용자 정보 가져오기 (실제 사용자 정보)
+      if (_authController.currentUser == null) {
+        throw Exception('로그인이 필요합니다. 다시 로그인해주세요.');
+      }
+
+      final currentUser = _authController.currentUser!;
+      final currentUserId = await _authController.getUserID();
+      final currentUserName = currentUser.displayName ?? currentUserId;
+
+      // 3. 요청 발신자 정보 가져오기
+      final senderInfo = await _userSearchRepository.searchUserById(
+        request.senderUid,
+      );
+      final senderName = senderInfo?.name ?? request.senderid;
+
+      // 4. 친구 요청 수락 처리
       await _friendRequestRepository.acceptFriendRequest(requestId);
 
-      // 3. 양방향 친구 관계 생성
+      // 5. 양방향 친구 관계 생성
       await _friendRepository.addFriend(
         friendUid: request.senderUid,
         friendid: request.senderid,
-        friendName: request.senderid, // 임시로 닉네임 사용
-        currentUserid: request.receiverid,
-        currentUserName: request.receiverid, // 임시로 닉네임 사용
+        friendName: senderName, // 실제 발신자 이름 사용
+        currentUserid: currentUserId,
+        currentUserName: currentUserName, // 실제 현재 사용자 이름 사용
       );
 
-      // 4. 처리 완료된 친구 요청 삭제 (선택적)
+      // 6. 처리 완료된 친구 요청 삭제 (선택적)
       await _friendRequestRepository.deleteFriendRequest(requestId);
     } catch (e) {
       throw Exception('친구 요청 수락 실패: $e');
