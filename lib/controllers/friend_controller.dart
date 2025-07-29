@@ -54,11 +54,12 @@ class FriendController extends ChangeNotifier {
 
   /// 초기화 (앱 시작 시 호출)
   Future<void> initialize() async {
-    if (_isInitialized) return;
-
     try {
       _setLoading(true);
       _clearError();
+
+      // 이전 구독 해제 및 상태 초기화
+      await _reset();
 
       // 실시간 친구 목록 구독
       await _subscribeToFriends();
@@ -77,6 +78,38 @@ class FriendController extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  /// 상태 초기화 (사용자 변경 시 호출)
+  Future<void> reset() async {
+    await _reset();
+    _isInitialized = false;
+  }
+
+  /// 내부 상태 초기화
+  Future<void> _reset() async {
+    // 기존 구독 해제
+    await _friendsSubscription?.cancel();
+    await _favoriteFriendsSubscription?.cancel();
+    _friendsSubscription = null;
+    _favoriteFriendsSubscription = null;
+
+    // 데이터 초기화
+    _friends.clear();
+    _favoriteFriends.clear();
+    _categorizedFriends.clear();
+    _searchResults.clear();
+    _processingFriends.clear();
+    _friendStats.clear();
+
+    // 상태 초기화
+    _isLoading = false;
+    _isSearching = false;
+    _currentSearchQuery = '';
+    _error = null;
+
+    notifyListeners();
+    debugPrint('FriendController 상태 초기화 완료');
   }
 
   /// 친구 삭제

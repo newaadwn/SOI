@@ -46,11 +46,12 @@ class FriendRequestController extends ChangeNotifier {
 
   /// 초기화 (앱 시작 시 호출)
   Future<void> initialize() async {
-    if (_isInitialized) return;
-
     try {
       _setLoading(true);
       _clearError();
+
+      // 이전 구독 해제 및 상태 초기화
+      await _reset();
 
       // 실시간 친구 요청 목록 구독
       await _subscribeToRequests();
@@ -66,6 +67,35 @@ class FriendRequestController extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  /// 상태 초기화 (사용자 변경 시 호출)
+  Future<void> reset() async {
+    await _reset();
+    _isInitialized = false;
+  }
+
+  /// 내부 상태 초기화
+  Future<void> _reset() async {
+    // 기존 구독 해제
+    await _receivedRequestsSubscription?.cancel();
+    await _sentRequestsSubscription?.cancel();
+    _receivedRequestsSubscription = null;
+    _sentRequestsSubscription = null;
+
+    // 데이터 초기화
+    _receivedRequests.clear();
+    _sentRequests.clear();
+    _processingRequests.clear();
+    _requestStats = {'received': 0, 'sent': 0};
+
+    // 상태 초기화
+    _isLoading = false;
+    _isSendingRequest = false;
+    _error = null;
+
+    notifyListeners();
+    debugPrint('FriendRequestController 상태 초기화 완료');
   }
 
   /// 친구 요청 전송

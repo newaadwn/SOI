@@ -255,7 +255,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
           if (fileExists) {
             final fileSize = await audioFile.length();
-            debugPrint('오디오 파일 존재: 크기 ${fileSize} bytes');
+            debugPrint('오디오 파일 존재: 크기 $fileSize bytes');
             if (fileSize > 0) {
               try {
                 audioPath = await _audioController.processAudioForUpload();

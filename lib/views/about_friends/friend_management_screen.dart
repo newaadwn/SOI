@@ -50,6 +50,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
         listen: false,
       );
 
+      // 기존 상태 초기화 후 재초기화
+      await friendController.reset();
       await friendController.initialize();
       debugPrint('FriendController 초기화 완료');
     } catch (e) {
@@ -67,6 +69,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
         listen: false,
       );
 
+      // 기존 상태 초기화 후 재초기화
+      await friendRequestController.reset();
       await friendRequestController.initialize();
       debugPrint('FriendRequestController 초기화 완료');
     } catch (e) {
@@ -839,14 +843,21 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
         final receivedRequests = friendRequestController.receivedRequests;
 
         // 디버그 정보 출력
-        debugPrint('FriendRequestController 상태:');
+        debugPrint('=== FriendRequestController 상태 ===');
         debugPrint('- isLoading: ${friendRequestController.isLoading}');
         debugPrint('- isInitialized: ${friendRequestController.isInitialized}');
         debugPrint('- error: ${friendRequestController.error}');
         debugPrint('- receivedRequests 개수: ${receivedRequests.length}');
+        debugPrint('- 현재 사용자 UID: ${AuthController().currentUser?.uid}');
         if (receivedRequests.isNotEmpty) {
-          debugPrint('- 첫 번째 요청: ${receivedRequests.first.senderid}');
+          debugPrint('- 첫 번째 요청 정보:');
+          debugPrint('  - ID: ${receivedRequests.first.id}');
+          debugPrint('  - 발신자: ${receivedRequests.first.senderid}');
+          debugPrint('  - 수신자 UID: ${receivedRequests.first.receiverUid}');
+          debugPrint('  - 상태: ${receivedRequests.first.status}');
+          debugPrint('  - 생성일: ${receivedRequests.first.createdAt}');
         }
+        debugPrint('==================================');
 
         return SizedBox(
           width: 354 * scale,
@@ -858,94 +869,6 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
             ),
             child: Column(
               children: [
-                // Debug 모드에서만 테스트 버튼 표시
-                if (kDebugMode) ...[
-                  Padding(
-                    padding: EdgeInsets.all(12 * scale),
-                    child: Column(
-                      children: [
-                        // 상태 정보 표시
-                        Container(
-                          width: double.infinity,
-                          padding: EdgeInsets.all(8 * scale),
-                          margin: EdgeInsets.only(bottom: 8 * scale),
-                          decoration: BoxDecoration(
-                            color: const Color(0xff333333),
-                            borderRadius: BorderRadius.circular(4 * scale),
-                          ),
-                          child: Text(
-                            'Controller 상태:\n'
-                            '초기화: ${friendRequestController.isInitialized}\n'
-                            '로딩: ${friendRequestController.isLoading}\n'
-                            '에러: ${friendRequestController.error ?? "없음"}\n'
-                            '요청 개수: ${receivedRequests.length}',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10 * scale,
-                            ),
-                          ),
-                        ),
-                        // 테스트 버튼들
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: [
-                            ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 8 * scale,
-                                  vertical: 4 * scale,
-                                ),
-                              ),
-                              child: Text(
-                                '테스트 요청 생성',
-                                style: TextStyle(fontSize: 10 * scale),
-                              ),
-                            ),
-                            ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 8 * scale,
-                                  vertical: 4 * scale,
-                                ),
-                              ),
-                              child: Text(
-                                '5개 요청 생성',
-                                style: TextStyle(fontSize: 10 * scale),
-                              ),
-                            ),
-                            ElevatedButton(
-                              onPressed: () {},
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.red,
-                                foregroundColor: Colors.white,
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 8 * scale,
-                                  vertical: 4 * scale,
-                                ),
-                              ),
-                              child: Text(
-                                '테스트 삭제',
-                                style: TextStyle(fontSize: 10 * scale),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(
-                    color: Color(0xff404040),
-                    height: 1,
-                    thickness: 1,
-                  ),
-                ],
-
                 // 친구 요청 리스트
                 receivedRequests.isEmpty
                     ? SizedBox(
@@ -954,8 +877,6 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
                         child: Text(
                           friendRequestController.isLoading
                               ? '친구 요청을 불러오는 중...'
-                              : friendRequestController.error != null
-                              ? '오류: ${friendRequestController.error}'
                               : '받은 친구 요청이 없습니다',
                           style: TextStyle(
                             color: const Color(0xff666666),
