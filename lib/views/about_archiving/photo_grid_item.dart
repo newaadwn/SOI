@@ -202,7 +202,7 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                 ),
                 child: CachedNetworkImage(
                   imageUrl: widget.photo.imageUrl,
-                  fit: BoxFit.fill,
+                  fit: BoxFit.cover,
                   placeholder:
                       (context, url) => Container(
                         color: Colors.grey[300],

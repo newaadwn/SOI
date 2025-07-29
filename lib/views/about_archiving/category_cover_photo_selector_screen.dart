@@ -34,18 +34,14 @@ class _CategoryCoverPhotoSelectorScreenState
     return Scaffold(
       backgroundColor: const Color(0xFF111111),
       appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          color: Colors.white,
-          onPressed: () => Navigator.pop(context),
-        ),
         backgroundColor: const Color(0xFF111111),
+        iconTheme: const IconThemeData(color: Colors.white),
         elevation: 0,
         scrolledUnderElevation: 0,
         centerTitle: false,
         titleSpacing: 0,
         title: Text(
-          '표지사진 선택',
+          '표지사진 변경',
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -53,143 +49,171 @@ class _CategoryCoverPhotoSelectorScreenState
             fontFamily: 'Pretendard Variable',
           ),
         ),
-        actions: [
-          if (selectedPhotoUrl != null)
-            TextButton(
+      ),
+      body: Stack(
+        alignment: Alignment.bottomCenter,
+        children: [
+          Consumer<PhotoController>(
+            builder: (context, photoController, child) {
+              if (photoController.isLoading) {
+                return const Center(
+                  child: CircularProgressIndicator(color: Color(0xFFffffff)),
+                );
+              }
+
+              if (photoController.photos.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.photo_library_outlined,
+                        size: 64,
+                        color: Colors.grey[600],
+                      ),
+                      SizedBox(height: 16),
+                      Text(
+                        '아직 사진이 없습니다',
+                        style: TextStyle(
+                          color: Colors.grey[600],
+                          fontSize: 16,
+                          fontFamily: 'Pretendard Variable',
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8,
+                    childAspectRatio: 175 / 232,
+                  ),
+                  itemCount: photoController.photos.length,
+                  itemBuilder: (context, index) {
+                    final photo = photoController.photos[index];
+                    final isSelected = selectedPhotoUrl == photo.imageUrl;
+
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          selectedPhotoUrl = isSelected ? null : photo.imageUrl;
+                        });
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8),
+                          border:
+                              isSelected
+                                  ? Border.all(
+                                    color: Colors.white, // 흰색 테두리
+                                  )
+                                  : null,
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Stack(
+                            children: [
+                              // 사진
+                              CachedNetworkImage(
+                                imageUrl: photo.imageUrl,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                                placeholder:
+                                    (context, url) => Container(
+                                      color: Colors.grey[300],
+                                      child: const Center(
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                                errorWidget:
+                                    (context, url, error) => Container(
+                                      color: Colors.grey[300],
+                                      child: const Icon(
+                                        Icons.error,
+                                        color: Colors.grey,
+                                      ),
+                                    ),
+                              ),
+
+                              // 선택 표시 - 체크 이모지
+                              if (isSelected)
+                                Positioned(
+                                  top: 8,
+                                  left: 8, // 왼쪽 위로 변경
+                                  child: Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: Colors.black,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(color: Colors.white),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    child: const Center(
+                                      child: Text(
+                                        '✓', // 체크 이모지
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            },
+          ),
+          SizedBox(
+            width: 349,
+            height: 50,
+            child: ElevatedButton(
               onPressed: _updateCoverPhoto,
+              style: ElevatedButton.styleFrom(
+                backgroundColor:
+                    (selectedPhotoUrl == null)
+                        ? const Color(0xFF5a5a5a)
+                        : const Color(0xFFf9f9f9),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26.9),
+                ),
+              ),
               child: Text(
-                '완료',
+                '확인',
                 style: TextStyle(
-                  color: const Color(0xFF007AFF),
+                  color:
+                      (selectedPhotoUrl == null) ? Colors.white : Colors.black,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                   fontFamily: 'Pretendard Variable',
                 ),
               ),
             ),
+          ),
         ],
-      ),
-      body: Consumer<PhotoController>(
-        builder: (context, photoController, child) {
-          if (photoController.isLoading) {
-            return const Center(
-              child: CircularProgressIndicator(color: Color(0xFF007AFF)),
-            );
-          }
-
-          if (photoController.photos.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.photo_library_outlined,
-                    size: 64,
-                    color: Colors.grey[600],
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    '아직 사진이 없습니다',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 16,
-                      fontFamily: 'Pretendard Variable',
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: GridView.builder(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: 1.0,
-              ),
-              itemCount: photoController.photos.length,
-              itemBuilder: (context, index) {
-                final photo = photoController.photos[index];
-                final isSelected = selectedPhotoUrl == photo.imageUrl;
-
-                return GestureDetector(
-                  onTap: () {
-                    setState(() {
-                      selectedPhotoUrl = isSelected ? null : photo.imageUrl;
-                    });
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border:
-                          isSelected
-                              ? Border.all(
-                                color: const Color(0xFF007AFF),
-                                width: 3,
-                              )
-                              : null,
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Stack(
-                        children: [
-                          // 사진
-                          CachedNetworkImage(
-                            imageUrl: photo.imageUrl,
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                            placeholder:
-                                (context, url) => Container(
-                                  color: Colors.grey[300],
-                                  child: const Center(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.grey,
-                                    ),
-                                  ),
-                                ),
-                            errorWidget:
-                                (context, url, error) => Container(
-                                  color: Colors.grey[300],
-                                  child: const Icon(
-                                    Icons.error,
-                                    color: Colors.grey,
-                                  ),
-                                ),
-                          ),
-
-                          // 선택 표시
-                          if (isSelected)
-                            Positioned(
-                              top: 8,
-                              right: 8,
-                              child: Container(
-                                width: 24,
-                                height: 24,
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFF007AFF),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.check,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          );
-        },
       ),
     );
   }

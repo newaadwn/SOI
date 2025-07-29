@@ -126,12 +126,7 @@ class PhotoRepository {
           .collection('photos')
           .add(photo.toFirestore());
 
-      // 2. 카테고리의 categoryPhotoUrl 업데이트(최신 사진으로)
-      await _firestore.collection('categories').doc(categoryId).update({
-        'categoryPhotoUrl': photo.imageUrl,
-      });
-
-      // 3. 카테고리에 사진이 처음 추가되는 경우, 자동으로 표지사진 설정
+      // 2. 카테고리에 사진이 처음 추가되는 경우, 자동으로 표지사진 설정
       final categoryDoc =
           await _firestore.collection('categories').doc(categoryId).get();
       if (categoryDoc.exists) {

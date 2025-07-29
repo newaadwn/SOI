@@ -16,9 +16,9 @@ class ArchivePopupMenuWidget {
         Navigator.of(context).overlay!.context.findRenderObject() as RenderBox;
     final RelativeRect position = RelativeRect.fromRect(
       Rect.fromPoints(
-        button.localToGlobal(const Offset(0, 0), ancestor: overlay),
+        button.localToGlobal(const Offset(20, 0), ancestor: overlay),
         button.localToGlobal(
-          button.size.bottomRight(Offset.zero),
+          button.size.bottomRight(Offset(10, 0)),
           ancestor: overlay,
         ),
       ),

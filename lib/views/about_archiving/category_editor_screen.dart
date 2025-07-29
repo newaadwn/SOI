@@ -1,9 +1,13 @@
 import 'dart:io';
+import 'package:bitcoin_icons/bitcoin_icons.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/category_data_model.dart';
 import '../../controllers/category_controller.dart';
+import '../../controllers/auth_controller.dart';
 import 'category_cover_photo_selector_screen.dart';
 
 class CategoryEditorScreen extends StatefulWidget {
@@ -20,194 +24,230 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF111111),
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios),
-          color: Colors.white,
-          onPressed: () => Navigator.pop(context),
-        ),
-        backgroundColor: const Color(0xFF111111),
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        centerTitle: false,
-        titleSpacing: 0,
-        title: Text(
-          '수정하기',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            fontFamily: 'Pretendard Variable',
+    return Consumer<CategoryController>(
+      builder: (context, categoryController, child) {
+        // 최신 카테고리 데이터 가져오기
+        final currentCategory = categoryController.userCategories.firstWhere(
+          (cat) => cat.id == widget.category.id,
+          orElse: () => widget.category, // 찾지 못하면 원본 사용
+        );
+
+        return Scaffold(
+          backgroundColor: const Color(0xFF111111),
+          appBar: AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios),
+              color: Colors.white,
+              onPressed: () => Navigator.pop(context),
+            ),
+            backgroundColor: const Color(0xFF111111),
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            centerTitle: false,
+            titleSpacing: 0,
+            title: Text(
+              '수정하기',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w600,
+                fontFamily: 'Pretendard Variable',
+              ),
+            ),
           ),
-        ),
-      ),
-      body: Padding(
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 표지사진 수정 섹션
-            GestureDetector(
-              onTap: () {
-                // 표지사진 수정 바텀시트 표시
-                _showCoverPhotoBottomSheet(context);
-              },
-              child: Container(
-                width: double.infinity,
-                height: 173,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF5A5A5A),
-                  borderRadius: BorderRadius.circular(8),
+          body: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 표지사진 수정 섹션
+                GestureDetector(
+                  onTap: () {
+                    // 표지사진 수정 바텀시트 표시
+                    _showCoverPhotoBottomSheet(context);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    height: 173,
+                    decoration: BoxDecoration(
+                      // 기존 색상을 유지하면서 이미지를 배경으로 추가
+                      color: const Color(0xFF5A5A5A),
+                      borderRadius: BorderRadius.circular(8),
+                      image:
+                          currentCategory.categoryPhotoUrl != null &&
+                                  currentCategory.categoryPhotoUrl!.isNotEmpty
+                              ? DecorationImage(
+                                image: CachedNetworkImageProvider(
+                                  currentCategory.categoryPhotoUrl!,
+                                ),
+                                fit: BoxFit.cover,
+                              )
+                              : null,
+                    ),
+                    // child는 Container로 감싸서 opacity 적용
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.image, color: Colors.white, size: 51),
+                            SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  '표지사진 수정',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w400,
+                                    fontFamily: 'Pretendard Variable',
+                                  ),
+                                ),
+                                SizedBox(width: 4),
+                                Image.asset(
+                                  'assets/edit.png',
+                                  width: 18,
+                                  height: 18,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-                child: Center(
+
+                SizedBox(height: 24),
+
+                // 카테고리 이름 섹션
+                Container(
+                  width: double.infinity,
+                  height: 75,
+                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2A2A),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.image, color: Colors.white, size: 51),
-                      SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '표지사진 수정',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w400,
-                              fontFamily: 'Pretendard Variable',
-                            ),
+                      Text(
+                        '카테고리 이름',
+                        style: TextStyle(
+                          color: const Color(0xFFAAAAAA),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                          fontFamily: 'Pretendard Variable',
+                        ),
+                      ),
+
+                      Flexible(
+                        child: Text(
+                          currentCategory.name,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Pretendard Variable',
                           ),
-                          SizedBox(width: 4),
-                          Image.asset('assets/edit.png', width: 18, height: 18),
-                        ],
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ),
 
-            SizedBox(height: 24),
+                SizedBox(height: 12),
 
-            // 카테고리 이름 섹션
-            Container(
-              width: double.infinity,
-              height: 75,
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2A2A2A),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    '카테고리 이름',
-                    style: TextStyle(
-                      color: const Color(0xFFAAAAAA),
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      fontFamily: 'Pretendard Variable',
-                    ),
-                  ),
-
-                  Flexible(
-                    child: Text(
-                      widget.category.name,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Pretendard Variable',
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(height: 12),
-
-            // 알림설정 섹션
-            Container(
-              width: double.infinity,
-              height: 62,
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF2A2A2A),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      '알림설정',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                        fontFamily: 'Pretendard Variable',
-                      ),
-                    ),
-                  ),
-                  Switch(
-                    value: _notificationEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _notificationEnabled = value;
-                      });
-                    },
-                    activeColor: Colors.black,
-                    activeTrackColor: const Color(0xFFf9f9f9),
-                    inactiveThumbColor: Colors.black,
-                    inactiveTrackColor: const Color(0xFFf9f9f9),
-                  ),
-                ],
-              ),
-            ),
-            SizedBox(height: 24),
-            // 나가기 버튼
-            SizedBox(
-              width: double.infinity,
-              height: 62,
-              child: ElevatedButton(
-                onPressed: () {
-                  // 카테고리 나가기 확인 다이얼로그
-                  _showExitDialog(context);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2A2A2A),
-                  foregroundColor: Color(0xffff0000),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
+                // 알림설정 섹션
+                Container(
+                  width: double.infinity,
+                  height: 62,
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF2A2A2A),
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          '알림설정',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w400,
+                            fontFamily: 'Pretendard Variable',
+                          ),
+                        ),
+                      ),
+                      Switch(
+                        value: _notificationEnabled,
+                        onChanged: (value) {
+                          setState(() {
+                            _notificationEnabled = value;
+                          });
+                        },
+                        activeColor: Colors.black,
+                        activeTrackColor: const Color(0xFFf9f9f9),
+                        inactiveThumbColor: Colors.black,
+                        inactiveTrackColor: const Color(0xFFf9f9f9),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Image.asset('assets/log_out.png', width: 24, height: 24),
-                    SizedBox(width: 12),
-                    Text(
-                      '나가기',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Pretendard Variable',
+                SizedBox(height: 24),
+                // 나가기 버튼
+                SizedBox(
+                  width: double.infinity,
+                  height: 62,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // 카테고리 나가기 확인 다이얼로그
+                      _showExitDialog(context);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2A2A2A),
+                      foregroundColor: Color(0xffff0000),
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                  ],
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/log_out.png',
+                          width: 24,
+                          height: 24,
+                        ),
+                        SizedBox(width: 12),
+                        Text(
+                          '나가기',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Pretendard Variable',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -231,19 +271,34 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
               // 핸들바
               Container(
                 margin: EdgeInsets.only(top: 12),
-                width: 36,
-                height: 4,
+                width: 56,
+                height: 3,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF666666),
+                  color: const Color(0xFFcccccc),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-
-              SizedBox(height: 24),
+              SizedBox(height: 9),
+              Text(
+                '표지 사진 수정',
+                style: TextStyle(
+                  color: const Color(0xFFF8F8F8),
+                  fontSize: 18,
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              SizedBox(height: 9),
+              Divider(color: const Color(0xFF5A5A5A)),
+              SizedBox(height: 9),
 
               // 카메라로 촬영
               ListTile(
-                leading: Icon(Icons.camera_alt, color: Colors.white, size: 24),
+                leading: Icon(
+                  BitcoinIcons.photo_outline,
+                  color: Colors.white,
+                  size: 26,
+                ),
                 title: Text(
                   '사진찍기',
                   style: TextStyle(
@@ -262,7 +317,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
               // 갤러리에서 선택
               ListTile(
                 leading: Icon(
-                  Icons.photo_library,
+                  BitcoinIcons.photo_outline,
                   color: Colors.white,
                   size: 24,
                 ),
@@ -283,7 +338,11 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
 
               // 카테고리에서 선택
               ListTile(
-                leading: Icon(Icons.collections, color: Colors.white, size: 24),
+                leading: Icon(
+                  MdiIcons.cameraOutline,
+                  color: Colors.white,
+                  size: 24,
+                ),
                 title: Text(
                   '카테고리에서 선택',
                   style: TextStyle(
@@ -301,15 +360,16 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
 
               // 표지삭제
               ListTile(
-                leading: Icon(
-                  Icons.delete_outline,
-                  color: const Color(0xFFFF3B30),
-                  size: 24,
+                leading: Container(
+                  width: 21,
+                  height: 21,
+                  alignment: Alignment.center,
+                  child: Image.asset('assets/delete.png'),
                 ),
                 title: Text(
                   '표지삭제',
                   style: TextStyle(
-                    color: const Color(0xFFFF3B30),
+                    color: Colors.white,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     fontFamily: 'Pretendard Variable',
@@ -387,10 +447,13 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
     );
 
     if (result != null) {
-      // 선택된 사진 URL로 업데이트 성공
-      setState(() {
-        // UI 새로고침을 위해 setState 호출
-      });
+      // 선택된 사진 URL로 업데이트 성공 - 카테고리 데이터 다시 로드
+      final categoryController = context.read<CategoryController>();
+      final authController = context.read<AuthController>();
+      final userId = authController.getUserId;
+      if (userId != null) {
+        await categoryController.loadUserCategories(userId, forceReload: true);
+      }
     }
   }
 
@@ -404,15 +467,19 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
     );
 
     if (success) {
+      // 카테고리 데이터 다시 로드
+      final authController = context.read<AuthController>();
+      final userId = authController.getUserId;
+      if (userId != null) {
+        await categoryController.loadUserCategories(userId, forceReload: true);
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('표지사진이 변경되었습니다.'),
           backgroundColor: Color(0xFF007AFF),
         ),
       );
-      setState(() {
-        // UI 새로고침을 위해 setState 호출
-      });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -432,15 +499,19 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
     );
 
     if (success) {
+      // 카테고리 데이터 다시 로드
+      final authController = context.read<AuthController>();
+      final userId = authController.getUserId;
+      if (userId != null) {
+        await categoryController.loadUserCategories(userId, forceReload: true);
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('표지사진이 삭제되었습니다.'),
           backgroundColor: Color(0xFF007AFF),
         ),
       );
-      setState(() {
-        // UI 새로고침을 위해 setState 호출
-      });
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

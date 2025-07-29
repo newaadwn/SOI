@@ -410,7 +410,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         debugPrint('다운로드 URL 업로드는 현재 지원되지 않습니다: ${widget.downloadUrl}');
         throw Exception('다운로드 URL 업로드는 지원되지 않습니다.');
       } else {
-        debugPrint('❌ 업로드할 이미지가 없습니다.');
+        debugPrint('업로드할 이미지가 없습니다.');
         throw Exception('업로드할 이미지가 없습니다.');
       }
 
@@ -506,6 +506,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
+        iconTheme: IconThemeData(color: Colors.white),
         title: Text(
           'SOI',
           style: TextStyle(
@@ -516,80 +517,82 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       ),
-      body: Column(
-        children: [
-          // Main content
-          Center(
-            child:
-                _isLoading
-                    ? const CircularProgressIndicator()
-                    : _errorMessage != null
-                    ? Text(
-                      _errorMessage!,
-                      style: const TextStyle(color: Colors.white),
-                    )
-                    : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // Main content
+            Center(
+              child:
+                  _isLoading
+                      ? const CircularProgressIndicator()
+                      : _errorMessage != null
+                      ? Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.white),
+                      )
+                      : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
 
-                      children: [
-                        // 이미지 표시 위젯
-                        PhotoDisplayWidget(
-                          imagePath: widget.imagePath,
-                          downloadUrl: widget.downloadUrl,
-                          useLocalImage: _useLocalImage,
-                          useDownloadUrl: _useDownloadUrl,
-                          width: 354 / baseWidth * screenWidth, // 📱 반응형
-                          height: 500 / baseHeight * screenHeight, // 📱 반응형
-                        ),
-                        SizedBox(
-                          height: (screenHeight * (19 / 852)),
-                        ), // 개선된 반응형
-                        // 오디오 녹음 위젯
-                        AudioRecorderWidget(
-                          onRecordingCompleted: (
-                            String? audioPath,
-                            List<double>? waveformData,
-                          ) {
-                            debugPrint('PhotoEditorScreen - 녹음 완료 콜백 호출됨');
-                            debugPrint('  - audioPath: $audioPath');
-                            debugPrint(
-                              '  - waveformData null 여부: ${waveformData == null}',
-                            );
-                            debugPrint(
-                              '  - waveformData 길이: ${waveformData?.length ?? 0}',
-                            );
-
-                            if (waveformData != null &&
-                                waveformData.isNotEmpty) {
-                              debugPrint('실제 파형 데이터 수신');
+                        children: [
+                          // 이미지 표시 위젯
+                          PhotoDisplayWidget(
+                            imagePath: widget.imagePath,
+                            downloadUrl: widget.downloadUrl,
+                            useLocalImage: _useLocalImage,
+                            useDownloadUrl: _useDownloadUrl,
+                            width: 354 / baseWidth * screenWidth,
+                            height: 500 / baseHeight * screenHeight,
+                          ),
+                          SizedBox(
+                            height: (screenHeight * (19 / 852)),
+                          ), // 개선된 반응형
+                          // 오디오 녹음 위젯
+                          AudioRecorderWidget(
+                            onRecordingCompleted: (
+                              String? audioPath,
+                              List<double>? waveformData,
+                            ) {
+                              debugPrint('PhotoEditorScreen - 녹음 완료 콜백 호출됨');
+                              debugPrint('  - audioPath: $audioPath');
                               debugPrint(
-                                '첫 5개 샘플: ${waveformData.take(5).toList()}',
+                                '  - waveformData null 여부: ${waveformData == null}',
                               );
                               debugPrint(
-                                '마지막 5개 샘플: ${waveformData.length > 5 ? waveformData.sublist(waveformData.length - 5) : waveformData}',
+                                '  - waveformData 길이: ${waveformData?.length ?? 0}',
                               );
+
+                              if (waveformData != null &&
+                                  waveformData.isNotEmpty) {
+                                debugPrint('실제 파형 데이터 수신');
+                                debugPrint(
+                                  '첫 5개 샘플: ${waveformData.take(5).toList()}',
+                                );
+                                debugPrint(
+                                  '마지막 5개 샘플: ${waveformData.length > 5 ? waveformData.sublist(waveformData.length - 5) : waveformData}',
+                                );
+                                debugPrint(
+                                  '데이터 범위: ${waveformData.reduce((a, b) => a < b ? a : b)} ~ ${waveformData.reduce((a, b) => a > b ? a : b)}',
+                                );
+                              } else {
+                                debugPrint('파형 데이터 없음 또는 빈 데이터');
+                              }
+
+                              // 파형 데이터를 상태 변수에 저장
+                              setState(() {
+                                _recordedWaveformData = waveformData;
+                              });
+
+                              debugPrint('PhotoEditorScreen 상태 업데이트 완료');
                               debugPrint(
-                                '데이터 범위: ${waveformData.reduce((a, b) => a < b ? a : b)} ~ ${waveformData.reduce((a, b) => a > b ? a : b)}',
+                                '  - _recordedWaveformData 길이: ${_recordedWaveformData?.length ?? 0}',
                               );
-                            } else {
-                              debugPrint('파형 데이터 없음 또는 빈 데이터');
-                            }
-
-                            // 파형 데이터를 상태 변수에 저장
-                            setState(() {
-                              _recordedWaveformData = waveformData;
-                            });
-
-                            debugPrint('PhotoEditorScreen 상태 업데이트 완료');
-                            debugPrint(
-                              '  - _recordedWaveformData 길이: ${_recordedWaveformData?.length ?? 0}',
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-          ),
-        ],
+                            },
+                          ),
+                        ],
+                      ),
+            ),
+          ],
+        ),
       ),
       bottomSheet: DraggableScrollableSheet(
         controller: _draggableScrollController,

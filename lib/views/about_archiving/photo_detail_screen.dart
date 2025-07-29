@@ -381,7 +381,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                               height: screenHeight * 0.65, // 반응형 높이
                               child: CachedNetworkImage(
                                 imageUrl: photo.imageUrl,
-                                fit: BoxFit.cover,
+                                fit: BoxFit.fill, // 비율 유지하면서 영역을 채움
                                 placeholder:
                                     (context, url) =>
                                         Container(color: Colors.grey[900]),
