@@ -27,7 +27,7 @@ class AddCategoryWidget extends StatelessWidget {
         children: [
           // 네비게이션 헤더
           Container(
-            padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: EdgeInsets.only(left: 12, right: 20),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [

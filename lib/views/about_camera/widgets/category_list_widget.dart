@@ -11,7 +11,7 @@ class CategoryListWidget extends StatelessWidget {
   final ScrollController scrollController;
   final String? selectedCategoryId;
   final Function(String categoryId) onCategorySelected;
-  final VoidCallback onAddCategoryPressed;
+  final VoidCallback addCategoryPressed;
   final bool isLoading;
 
   const CategoryListWidget({
@@ -19,7 +19,7 @@ class CategoryListWidget extends StatelessWidget {
     required this.scrollController,
     this.selectedCategoryId,
     required this.onCategorySelected,
-    required this.onAddCategoryPressed,
+    required this.addCategoryPressed,
     required this.isLoading,
   });
 
@@ -54,7 +54,7 @@ class CategoryListWidget extends StatelessWidget {
               return CategoryItemWidget(
                 icon: Icons.add,
                 label: '추가하기',
-                onTap: onAddCategoryPressed,
+                onTap: addCategoryPressed,
               );
             }
             // 카테고리가 없는 경우 안내 메시지 표시
@@ -72,17 +72,12 @@ class CategoryListWidget extends StatelessWidget {
               final category = categories[index - 1];
               final categoryId = category.id;
 
-              return StreamBuilder<String?>(
-                stream: viewModel.getFirstPhotoUrlStream(categoryId),
-                builder: (context, asyncSnapshot) {
-                  return CategoryItemWidget(
-                    imageUrl: asyncSnapshot.data,
-                    label: category.name,
-                    categoryId: categoryId,
-                    selectedCategoryId: selectedCategoryId,
-                    onTap: () => onCategorySelected(categoryId),
-                  );
-                },
+              return CategoryItemWidget(
+                imageUrl: category.categoryPhotoUrl,
+                label: category.name,
+                categoryId: categoryId,
+                selectedCategoryId: selectedCategoryId,
+                onTap: () => onCategorySelected(categoryId),
               );
             }
           },

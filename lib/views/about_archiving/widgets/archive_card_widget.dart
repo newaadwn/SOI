@@ -226,28 +226,32 @@ class ArchiveCardWidget extends StatelessWidget {
                   ),
 
                   // 더보기 버튼 (반응형 크기)
-                  InkWell(
-                    onTap: () {
-                      ArchivePopupMenuWidget.showArchivePopupMenu(
-                        context,
-                        category,
+                  Builder(
+                    builder: (buttonContext) {
+                      return InkWell(
+                        onTap: () {
+                          ArchivePopupMenuWidget.showArchivePopupMenu(
+                            buttonContext,
+                            category,
+                          );
+                        },
+                        child: Container(
+                          width: 30,
+                          height: 30,
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.more_vert,
+                            color: Colors.white,
+                            size:
+                                isSmallScreen
+                                    ? 14.0
+                                    : isLargeScreen
+                                    ? 22.0
+                                    : 22.0,
+                          ),
+                        ),
                       );
                     },
-                    child: Container(
-                      width: 30,
-                      height: 30,
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.more_vert,
-                        color: Colors.white,
-                        size:
-                            isSmallScreen
-                                ? 14.0
-                                : isLargeScreen
-                                ? 22.0
-                                : 22.0,
-                      ),
-                    ),
                   ),
                 ],
               ),

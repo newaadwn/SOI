@@ -197,28 +197,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     }
   }
 
-  // 카테고리에 사진과 음성 업로드 함수
-  void _savePhotoAndAudioToCategory(String categoryId) {
-    debugPrint('사진 업로드 시작: categoryId=$categoryId');
-
-    // ✅ 즉시 화면 전환 (모든 처리를 백그라운드로)
-    debugPrint('즉시 아카이브 화면으로 이동');
-
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
-        settings: RouteSettings(name: '/home'),
-      ),
-      (route) => false,
-    );
-
-    _performBackgroundUpload(categoryId);
-
-    debugPrint('즉시 화면 전환 스케줄링 완료');
-  }
-
   // ✅ 완전히 독립적인 백그라운드 업로드 함수
-  void _performBackgroundUpload(String categoryId) {
+  void _savePhotoAndAudioToCategory(String categoryId) {
     // Future를 시작하되 await하지 않음 (Fire and Forget 패턴)
     _executeBackgroundUpload(categoryId)
         .then((_) {
@@ -425,6 +405,13 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   void _handleCategorySelection(String categoryId) {
     // 이미 선택된 카테고리를 다시 클릭했을 때 (전송 실행)
     if (_selectedCategoryId == categoryId) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
+          settings: RouteSettings(name: '/home'),
+        ),
+        (route) => false,
+      );
       _savePhotoAndAudioToCategory(categoryId);
     } else {
       // 새로운 카테고리 선택 (선택 모드로 변경)
@@ -692,7 +679,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                               scrollController: scrollController,
                               selectedCategoryId: _selectedCategoryId,
                               onCategorySelected: _handleCategorySelection,
-                              onAddCategoryPressed: () {
+                              addCategoryPressed: () {
                                 setState(() {
                                   _showAddCategoryUI = true;
                                 });

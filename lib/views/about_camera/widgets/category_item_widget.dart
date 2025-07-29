@@ -25,106 +25,156 @@ class CategoryItemWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
-
-    // 선택된 카테고리인지 확인 (전송 모드)
-    final bool isSelected =
-        categoryId != null && categoryId == selectedCategoryId;
+    final isSelected = _isSelectedCategory();
+    final dimensions = _calculateDimensions(screenWidth);
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: (screenWidth * 0.204).clamp(70.0, 90.0), // 반응형 너비
-        margin: EdgeInsets.symmetric(
-          horizontal: (screenWidth * 0.020).clamp(6.0, 10.0),
-        ), // 반응형 마진
+        width: dimensions.itemWidth,
+        margin: EdgeInsets.symmetric(horizontal: dimensions.margin),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // 이미지 또는 아이콘 원형 컨테이너
-            Container(
-              width: (screenWidth * 0.153).clamp(55.0, 70.0), // 반응형 너비
-              height: (screenWidth * 0.153).clamp(55.0, 70.0), // 반응형 높이
-              decoration: BoxDecoration(
-                color: icon != null ? Colors.grey.shade200 : Colors.transparent,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isSelected ? Colors.blue : Colors.transparent,
-                  width:
-                      isSelected
-                          ? (screenWidth * 0.005).clamp(2.0, 3.0)
-                          : 1, // 반응형 테두리
-                ),
-              ),
-              child: ClipOval(
-                child:
-                    isSelected
-                        ? Icon(
-                          Icons.send,
-                          size: (screenWidth * 0.076).clamp(
-                            26.0,
-                            34.0,
-                          ), // 반응형 아이콘 크기
-                          color: Colors.blue,
-                        )
-                        : icon != null
-                        ? Icon(
-                          icon,
-                          size: (screenWidth * 0.102).clamp(
-                            35.0,
-                            45.0,
-                          ), // 반응형 아이콘 크기
-                          color: Colors.black,
-                        )
-                        : (imageUrl != null && imageUrl!.isNotEmpty)
-                        ? CachedNetworkImage(
-                          imageUrl: imageUrl!,
-                          fit: BoxFit.cover,
-                          placeholder:
-                              (context, url) => Center(
-                                child: CircularProgressIndicator(
-                                  strokeWidth: (screenWidth * 0.005).clamp(
-                                    1.5,
-                                    2.5,
-                                  ), // 반응형 선 두께
-                                  color: Colors.white,
-                                ),
-                              ),
-                          errorWidget:
-                              (context, url, error) => Icon(
-                                Icons.image,
-                                size: (screenWidth * 0.076).clamp(
-                                  26.0,
-                                  34.0,
-                                ), // 반응형 아이콘 크기
-                                color: Colors.grey.shade400,
-                              ),
-                        )
-                        : Icon(
-                          Icons.image,
-                          size: (screenWidth * 0.076).clamp(
-                            26.0,
-                            34.0,
-                          ), // 반응형 아이콘 크기
-                          color: Colors.grey.shade400,
-                        ),
-              ),
-            ),
-            SizedBox(height: (screenWidth * 0.020).clamp(6.0, 10.0)), // 반응형 간격
-            // 카테고리 이름
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: (screenWidth * 0.031).clamp(10.0, 14.0), // 반응형 폰트 크기
-                fontWeight: FontWeight.w500,
-                color: isSelected ? Colors.blue : Colors.white,
-              ),
-            ),
+            _buildCircularContainer(dimensions, isSelected),
+            SizedBox(height: dimensions.spacing),
+            _buildCategoryLabel(dimensions, isSelected),
           ],
         ),
       ),
     );
   }
+
+  /// 선택된 카테고리인지 확인
+  bool _isSelectedCategory() {
+    return categoryId != null && categoryId == selectedCategoryId;
+  }
+
+  /// 화면 크기에 따른 반응형 치수 계산
+  _CategoryDimensions _calculateDimensions(double screenWidth) {
+    return _CategoryDimensions(
+      itemWidth: (screenWidth * 0.204).clamp(70.0, 90.0),
+      containerSize: (screenWidth * 0.153).clamp(55.0, 70.0),
+      margin: (screenWidth * 0.020).clamp(6.0, 10.0),
+      spacing: (screenWidth * 0.020).clamp(6.0, 10.0),
+      borderWidth: (screenWidth * 0.005).clamp(2.0, 3.0),
+      iconSize: (screenWidth * 0.102).clamp(35.0, 45.0),
+      smallIconSize: (screenWidth * 0.076).clamp(26.0, 34.0),
+      strokeWidth: (screenWidth * 0.005).clamp(1.5, 2.5),
+      fontSize: (screenWidth * 0.031).clamp(10.0, 14.0),
+    );
+  }
+
+  /// 원형 컨테이너 빌드
+  Widget _buildCircularContainer(
+    _CategoryDimensions dimensions,
+    bool isSelected,
+  ) {
+    return Container(
+      width: dimensions.containerSize,
+      height: dimensions.containerSize,
+      decoration: BoxDecoration(
+        color: (icon != null) ? Colors.grey.shade200 : Colors.transparent,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: isSelected ? Colors.blue : Colors.white,
+          width: isSelected ? dimensions.borderWidth : 1,
+        ),
+      ),
+      child: ClipOval(child: _buildContainerChild(dimensions, isSelected)),
+    );
+  }
+
+  /// 컨테이너 내부 위젯 빌드
+  Widget _buildContainerChild(_CategoryDimensions dimensions, bool isSelected) {
+    // 선택된 상태일 때는 전송 아이콘 표시
+    if (isSelected) {
+      return Icon(
+        Icons.send,
+        size: dimensions.smallIconSize,
+        color: Colors.blue,
+      );
+    }
+
+    // 기본 아이콘이 있는 경우
+    if (icon != null) {
+      return Icon(icon!, size: dimensions.iconSize, color: Colors.black);
+    }
+
+    // 이미지 URL이 있는 경우
+    if (imageUrl != null && imageUrl!.isNotEmpty) {
+      return CachedNetworkImage(
+        imageUrl: imageUrl!,
+        fit: BoxFit.cover,
+        placeholder: (context, url) => _buildLoadingIndicator(dimensions),
+        errorWidget: (context, url, error) => _buildErrorIcon(dimensions),
+      );
+    }
+
+    // 기본 이미지 아이콘
+    return Icon(
+      Icons.image,
+      size: dimensions.smallIconSize,
+      color: Colors.grey.shade400,
+    );
+  }
+
+  /// 로딩 인디케이터 빌드
+  Widget _buildLoadingIndicator(_CategoryDimensions dimensions) {
+    return Center(
+      child: CircularProgressIndicator(
+        strokeWidth: dimensions.strokeWidth,
+        color: Colors.white,
+      ),
+    );
+  }
+
+  /// 에러 아이콘 빌드
+  Widget _buildErrorIcon(_CategoryDimensions dimensions) {
+    return Icon(
+      Icons.image,
+      size: dimensions.smallIconSize,
+      color: Colors.grey.shade400,
+    );
+  }
+
+  /// 카테고리 라벨 빌드
+  Widget _buildCategoryLabel(_CategoryDimensions dimensions, bool isSelected) {
+    return Text(
+      label,
+      textAlign: TextAlign.center,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: dimensions.fontSize,
+        fontWeight: FontWeight.w500,
+        color: Colors.white,
+      ),
+    );
+  }
+}
+
+/// 카테고리 아이템의 반응형 치수를 관리하는 클래스
+class _CategoryDimensions {
+  final double itemWidth;
+  final double containerSize;
+  final double margin;
+  final double spacing;
+  final double borderWidth;
+  final double iconSize;
+  final double smallIconSize;
+  final double strokeWidth;
+  final double fontSize;
+
+  const _CategoryDimensions({
+    required this.itemWidth,
+    required this.containerSize,
+    required this.margin,
+    required this.spacing,
+    required this.borderWidth,
+    required this.iconSize,
+    required this.smallIconSize,
+    required this.strokeWidth,
+    required this.fontSize,
+  });
 }

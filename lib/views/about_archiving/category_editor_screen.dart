@@ -20,16 +20,15 @@ class CategoryEditorScreen extends StatefulWidget {
 }
 
 class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
-  bool _notificationEnabled = true; // 알림 설정 상태
+  bool _notificationEnabled = true;
 
   @override
   Widget build(BuildContext context) {
     return Consumer<CategoryController>(
       builder: (context, categoryController, child) {
-        // 최신 카테고리 데이터 가져오기
         final currentCategory = categoryController.userCategories.firstWhere(
           (cat) => cat.id == widget.category.id,
-          orElse: () => widget.category, // 찾지 못하면 원본 사용
+          orElse: () => widget.category,
         );
 
         return Scaffold(
