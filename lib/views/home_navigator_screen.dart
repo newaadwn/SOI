@@ -95,7 +95,6 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
         index: _currentPageIndex,
         children: [
           const FeedHomeScreen(),
-
           const CameraScreen(),
           const ArchiveMainScreen(),
         ],

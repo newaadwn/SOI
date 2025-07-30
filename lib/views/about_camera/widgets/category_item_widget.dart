@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:iconoir_flutter/iconoir_flutter.dart' hide Text;
 import 'package:cached_network_image/cached_network_image.dart';
 
 /// 카테고리 아이템 위젯
@@ -30,7 +31,8 @@ class CategoryItemWidget extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 200), // ✅ 선택 시 부드러운 애니메이션
         width: dimensions.itemWidth,
         margin: EdgeInsets.symmetric(horizontal: dimensions.margin),
         child: Column(
@@ -38,7 +40,7 @@ class CategoryItemWidget extends StatelessWidget {
           children: [
             _buildCircularContainer(dimensions, isSelected),
             SizedBox(height: dimensions.spacing),
-            _buildCategoryLabel(dimensions, isSelected),
+            _buildCategoryLabel(dimensions),
           ],
         ),
       ),
@@ -76,26 +78,24 @@ class CategoryItemWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: (icon != null) ? Colors.grey.shade200 : Colors.transparent,
         shape: BoxShape.circle,
-        border: Border.all(
-          color: isSelected ? Colors.blue : Colors.white,
-          width: isSelected ? dimensions.borderWidth : 1,
+        border: Border.all(color: Colors.white),
+      ),
+      child: ClipOval(
+        child: Stack(
+          children: [
+            // 배경 이미지/아이콘
+            Center(child: _buildContainerChild(dimensions)),
+
+            // 선택된 상태일 때 오버레이와 전송 아이콘
+            if (isSelected) _buildSelectionOverlay(dimensions),
+          ],
         ),
       ),
-      child: ClipOval(child: _buildContainerChild(dimensions, isSelected)),
     );
   }
 
   /// 컨테이너 내부 위젯 빌드
-  Widget _buildContainerChild(_CategoryDimensions dimensions, bool isSelected) {
-    // 선택된 상태일 때는 전송 아이콘 표시
-    if (isSelected) {
-      return Icon(
-        Icons.send,
-        size: dimensions.smallIconSize,
-        color: Colors.blue,
-      );
-    }
-
+  Widget _buildContainerChild(_CategoryDimensions dimensions) {
     // 기본 아이콘이 있는 경우
     if (icon != null) {
       return Icon(icon!, size: dimensions.iconSize, color: Colors.black);
@@ -119,6 +119,31 @@ class CategoryItemWidget extends StatelessWidget {
     );
   }
 
+  /// 선택된 상태의 오버레이 빌드 (피그마 디자인 반영)
+  Widget _buildSelectionOverlay(_CategoryDimensions dimensions) {
+    return Container(
+      width: dimensions.containerSize,
+      height: dimensions.containerSize,
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.78), // 피그마와 동일한 투명도
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: SizedBox(
+          width: dimensions.containerSize * 0.71, // 44.89/63.14 ≈ 0.71
+          height: dimensions.containerSize * 0.71,
+          child: Center(
+            child: SendDiagonalSolid(
+              width: dimensions.containerSize * 0.565, // 35.69/63.14 ≈ 0.565
+              height: dimensions.containerSize * 0.56, // 35.38/63.14 ≈ 0.56
+              color: Colors.black,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// 로딩 인디케이터 빌드
   Widget _buildLoadingIndicator(_CategoryDimensions dimensions) {
     return Center(
@@ -139,7 +164,7 @@ class CategoryItemWidget extends StatelessWidget {
   }
 
   /// 카테고리 라벨 빌드
-  Widget _buildCategoryLabel(_CategoryDimensions dimensions, bool isSelected) {
+  Widget _buildCategoryLabel(_CategoryDimensions dimensions) {
     return Text(
       label,
       textAlign: TextAlign.center,

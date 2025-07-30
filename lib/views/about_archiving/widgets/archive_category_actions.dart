@@ -97,6 +97,12 @@ class ArchiveCategoryActions {
     BuildContext context,
     CategoryDataModel category,
   ) async {
+    // 🔧 위젯이 여전히 활성 상태인지 확인
+    if (!context.mounted) {
+      debugPrint('위젯이 이미 dispose되어 카테고리 나가기를 중단합니다.hhhh');
+      return;
+    }
+
     try {
       final categoryController = Provider.of<CategoryController>(
         context,
@@ -108,18 +114,24 @@ class ArchiveCategoryActions {
       final currentUserId = authService.getUserId;
 
       if (currentUserId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('사용자 정보를 찾을 수 없습니다.'),
-            backgroundColor: Colors.red,
-            duration: Duration(seconds: 2),
-          ),
-        );
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('사용자 정보를 찾을 수 없습니다.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
         return;
       }
 
+      // 🔧 비동기 작업 전에 mounted 체크
+      if (!context.mounted) return;
+
       await categoryController.leaveCategoryByUid(category.id, currentUserId);
 
+      // 🔧 비동기 작업 후에도 mounted 체크
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -132,6 +144,7 @@ class ArchiveCategoryActions {
     } catch (e) {
       debugPrint('카테고리 나가기 실패: $e');
 
+      // 🔧 에러 처리 시에도 mounted 체크
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

@@ -33,7 +33,7 @@ class CategoryListWidget extends StatelessWidget {
 
     return Consumer<CategoryController>(
       builder: (context, viewModel, child) {
-        final categories = viewModel.userCategories;
+        final categories = viewModel.userCategoryList;
 
         return GridView.builder(
           key: const ValueKey('category_list'),

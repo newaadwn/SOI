@@ -441,7 +441,7 @@ class CategoryRepository {
     required String uid,
   }) async {
     await _firestore.collection('categories').doc(categoryId).update({
-      'userIds': FieldValue.arrayUnion([uid]),
+      'mates': FieldValue.arrayUnion([uid]),
     });
   }
 }

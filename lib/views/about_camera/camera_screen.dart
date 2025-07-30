@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/camera_service.dart';
-//import '../../theme/theme.dart';
 import 'photo_editor_screen.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -18,14 +17,14 @@ class _CameraScreenState extends State<CameraScreen>
   // Swift와 통신할 플랫폼 채널
   final CameraService _cameraService = CameraService();
 
-  // ✅ 추가: 카메라 관련 상태 변수
+  // 추가: 카메라 관련 상태 변수
   // 촬영된 이미지 경로
   String imagePath = '';
 
   // 플래시 상태 추적
   bool isFlashOn = false;
 
-  // ✅ 추가: 줌 레벨 관리
+  // 추가: 줌 레벨 관리
   // 기본 줌 레벨
   String currentZoom = '1x';
 
@@ -36,16 +35,16 @@ class _CameraScreenState extends State<CameraScreen>
   // 카메라 로딩 중 상태
   bool _isLoading = true;
 
-  // ✅ 갤러리 미리보기 상태 관리
+  // 갤러리 미리보기 상태 관리
   AssetEntity? _firstGalleryImage;
   bool _isLoadingGallery = false;
   String? _galleryError;
 
-  // ✅ IndexedStack에서 상태 유지
+  // IndexedStack에서 상태 유지
   @override
   bool get wantKeepAlive => true;
 
-  // ✅ 개선: 지연 초기화로 성능 향상
+  // 개선: 지연 초기화로 성능 향상
   @override
   void initState() {
     super.initState();
@@ -53,13 +52,13 @@ class _CameraScreenState extends State<CameraScreen>
     // 앱 라이프사이클 옵저버 등록
     WidgetsBinding.instance.addObserver(this);
 
-    // ✅ 카메라 초기화를 지연시킴 (첫 빌드에서 UI 블로킹 방지)
+    // 카메라 초기화를 지연시킴 (첫 빌드에서 UI 블로킹 방지)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeCameraAsync();
     });
   }
 
-  // ✅ 화면이 다시 표시될 때 호출되는 메서드 추가
+  // 화면이 다시 표시될 때 호출되는 메서드 추가
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -70,7 +69,7 @@ class _CameraScreenState extends State<CameraScreen>
     });
   }
 
-  // ✅ 비동기 카메라 초기화
+  // 비동기 카메라 초기화
   Future<void> _initializeCameraAsync() async {
     if (!_isInitialized && mounted) {
       try {
@@ -79,7 +78,7 @@ class _CameraScreenState extends State<CameraScreen>
         // 병렬 처리로 성능 향상
         await Future.wait([
           _cameraService.activateSession(),
-          _loadFirstGalleryImage(), // ✅ 개선된 갤러리 미리보기 로드
+          _loadFirstGalleryImage(), // 개선된 갤러리 미리보기 로드
         ]);
 
         if (mounted) {
@@ -100,7 +99,7 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
-  // ✅ 개선된 갤러리 첫 번째 이미지 로딩
+  // 개선된 갤러리 첫 번째 이미지 로딩
   Future<void> _loadFirstGalleryImage() async {
     if (_isLoadingGallery) return;
 
@@ -137,7 +136,7 @@ class _CameraScreenState extends State<CameraScreen>
     // 앱 라이프사이클 옵저버 해제
     WidgetsBinding.instance.removeObserver(this);
 
-    // ✅ IndexedStack 사용 시 카메라 세션 유지
+    // IndexedStack 사용 시 카메라 세션 유지
     // dispose는 호출되지만 세션은 유지
     debugPrint('📹 IndexedStack 환경 - 카메라 세션 유지');
 
@@ -153,7 +152,7 @@ class _CameraScreenState extends State<CameraScreen>
       if (_isInitialized) {
         _cameraService.resumeCamera();
 
-        // ✅ 갤러리 미리보기 새로고침 (다른 앱에서 사진을 찍었을 수 있음)
+        // 갤러리 미리보기 새로고침 (다른 앱에서 사진을 찍었을 수 있음)
         _loadFirstGalleryImage();
       }
     }
@@ -181,7 +180,7 @@ class _CameraScreenState extends State<CameraScreen>
   // cameraservice에 사진 촬영 요청
   Future<void> _takePicture() async {
     try {
-      // ✅ iOS에서 오디오 세션 충돌 방지를 위한 사전 처리
+      // iOS에서 오디오 세션 충돌 방지를 위한 사전 처리
       if (Theme.of(context).platform == TargetPlatform.iOS) {
         // iOS 플랫폼에서만 실행 - 잠시 대기하여 오디오 세션 정리
         await Future.delayed(const Duration(milliseconds: 100));
@@ -194,22 +193,22 @@ class _CameraScreenState extends State<CameraScreen>
 
       // 사진 촬영 후 처리
       if (result.isNotEmpty) {
-        // ✅ 즉시 편집 화면으로 이동 (갤러리 새로고침과 독립적)
+        // 즉시 편집 화면으로 이동 (갤러리 새로고침과 독립적)
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => PhotoEditorScreen(imagePath: result),
           ),
         );
-        // ✅ 사진 촬영 후 갤러리 미리보기 새로고침 (백그라운드에서)
+        // 사진 촬영 후 갤러리 미리보기 새로고침 (백그라운드에서)
         Future.microtask(() => _loadFirstGalleryImage());
       }
     } on PlatformException catch (e) {
       debugPrint("Error taking picture: ${e.message}");
 
-      // ✅ iOS에서 "Cannot Record" 오류가 발생한 경우 추가 정보 제공
+      // iOS에서 "Cannot Record" 오류가 발생한 경우 추가 정보 제공
       if (e.message?.contains("Cannot Record") == true) {
-        debugPrint("🚨 iOS 오디오 세션 충돌 감지 - 오디오 녹음 중이었을 가능성");
+        debugPrint("iOS 오디오 세션 충돌 감지 - 오디오 녹음 중이었을 가능성");
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -225,7 +224,7 @@ class _CameraScreenState extends State<CameraScreen>
     }
   }
 
-  /// ✅ 개선된 갤러리 미리보기 위젯 (photo_manager 기반) - 반응형
+  /// 개선된 갤러리 미리보기 위젯 (photo_manager 기반) - 반응형
   Widget _buildGalleryPreviewWidget(double screenWidth) {
     // 📱 개선된 반응형 계산
     final gallerySize = (screenWidth * 0.117).clamp(40.0, 55.0);
@@ -241,7 +240,7 @@ class _CameraScreenState extends State<CameraScreen>
     );
   }
 
-  /// ✅ 갤러리 콘텐츠 빌드 (로딩/에러/이미지 상태 처리)
+  /// 갤러리 콘텐츠 빌드 (로딩/에러/이미지 상태 처리)
   Widget _buildGalleryContent(double gallerySize, double borderRadius) {
     // 로딩 중
     if (_isLoadingGallery) {
@@ -301,7 +300,7 @@ class _CameraScreenState extends State<CameraScreen>
     return _buildPlaceholderGallery(gallerySize);
   }
 
-  /// ✅ 갤러리 플레이스홀더 위젯 - 반응형
+  /// 갤러리 플레이스홀더 위젯 - 반응형
   Widget _buildPlaceholderGallery(double gallerySize) {
     return Center(
       child: Icon(
@@ -323,7 +322,7 @@ class _CameraScreenState extends State<CameraScreen>
 
   @override
   Widget build(BuildContext context) {
-    // ✅ AutomaticKeepAliveClientMixin 필수 호출
+    // AutomaticKeepAliveClientMixin 필수 호출
     super.build(context);
 
     // 📱 개선된 반응형: MediaQuery.sizeOf() 사용
@@ -471,18 +470,18 @@ class _CameraScreenState extends State<CameraScreen>
             ),
           ),
           SizedBox(height: 20 / baseHeight * screenHeight), // 📱 반응형
-          // ✅ 수정: 하단 버튼 레이아웃 변경 - 반응형
+          // 수정: 하단 버튼 레이아웃 변경 - 반응형
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // ✅ 갤러리 미리보기 버튼 (Service 상태 사용) - 반응형
+              // 갤러리 미리보기 버튼 (Service 상태 사용) - 반응형
               Expanded(
                 child: Align(
                   alignment: Alignment.center,
                   child: InkWell(
                     onTap: () async {
                       try {
-                        // ✅ Service를 통해 갤러리에서 이미지 선택 (에러 핸들링 개선)
+                        // Service를 통해 갤러리에서 이미지 선택 (에러 핸들링 개선)
                         final result =
                             await _cameraService.pickImageFromGallery();
                         if (result != null && result.isNotEmpty && mounted) {
@@ -533,23 +532,15 @@ class _CameraScreenState extends State<CameraScreen>
                     color: Color(0xffd9d9d9),
                     icon: Image.asset(
                       "assets/switch.png",
-                      width: (screenWidth * 0.170).clamp(
-                        55.0,
-                        80.0,
-                      ), // 📱 개선된 반응형
-                      height: (screenWidth * 0.142).clamp(
-                        45.0,
-                        65.0,
-                      ), // 📱 개선된 반응형
+                      width: (screenWidth * 0.170).clamp(55.0, 80.0),
+                      height: (screenWidth * 0.142).clamp(45.0, 65.0),
                     ),
                   ),
                 ),
               ),
             ],
           ),
-          SizedBox(
-            height: (screenHeight * 0.028).clamp(20.0, 30.0),
-          ), // 📱 개선된 반응형
+          SizedBox(height: (screenHeight * 0.028).clamp(20.0, 30.0)),
         ],
       ),
     );

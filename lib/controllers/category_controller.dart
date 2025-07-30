@@ -25,44 +25,34 @@ class CategoryController extends ChangeNotifier {
       _filteredCategories.isNotEmpty || _searchQuery.isNotEmpty
           ? _filteredCategories
           : _userCategories;
+  List<CategoryDataModel> get userCategoryList => _userCategories;
   String get searchQuery => _searchQuery;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
   // ==================== 카테고리 관리 ====================
 
-  // 사용자의 카테고리 목록을 가져오는 메소드
+  /// 사용자의 카테고리 목록을 로드합니다
+  ///
+  /// [userId] 카테고리를 로드할 사용자 ID
+  /// [forceReload] 캐시를 무시하고 강제로 새로고침할지 여부
   Future<void> loadUserCategories(
     String userId, {
     bool forceReload = false,
   }) async {
-    if (userId.isEmpty) {
-      debugPrint('loadUserCategories: userId가 비어있습니다.');
-      return;
-    }
+    // 유효성 검사
+    if (userId.isEmpty) return;
 
-    debugPrint(
-      '🔍 [CATEGORY_CONTROLLER] loadUserCategories 시작: userId="$userId", forceReload=$forceReload',
-    );
-
-    // 캐시가 유효한지 확인
+    // 캐시 유효성 검사
     final now = DateTime.now();
     final isCacheValid =
         _lastLoadTime != null && now.difference(_lastLoadTime!) < _cacheTimeout;
 
-    debugPrint(
-      '🔍 [CATEGORY_CONTROLLER] 캐시 상태: isLoading=$_isLoading, lastLoadedUserId="$_lastLoadedUserId", isCacheValid=$isCacheValid',
-    );
+    // 중복 로딩 방지
+    if (_isLoading) return;
 
-    // 이미 로딩 중이면 스킵
-    if (_isLoading) {
-      debugPrint('🔍 [CATEGORY_CONTROLLER] 이미 로딩 중이므로 스킵');
-      return;
-    }
-
-    // forceReload가 아니고 캐시가 유효하면 스킵
+    // 캐시된 데이터 사용 가능 여부 확인
     if (!forceReload && _lastLoadedUserId == userId && isCacheValid) {
-      debugPrint('🔍 [CATEGORY_CONTROLLER] 캐시에서 스킵됨');
       return;
     }
 
@@ -71,38 +61,21 @@ class CategoryController extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      debugPrint(
-        '🔍 [CATEGORY_CONTROLLER] CategoryService.getUserCategories 호출 중...',
-      );
+      // 서비스에서 카테고리 목록 가져오기
       _userCategories = await _categoryService.getUserCategories(userId);
-      debugPrint(
-        '🔍 [CATEGORY_CONTROLLER] CategoryService에서 반환된 카테고리 수: ${_userCategories.length}',
-      );
 
-      if (_userCategories.isNotEmpty) {
-        for (var category in _userCategories) {
-          debugPrint(
-            '🔍 [CATEGORY_CONTROLLER] 카테고리: ${category.name} (ID: ${category.id})',
-          );
-        }
-      }
-
+      // 캐시 정보 업데이트
       _lastLoadedUserId = userId;
-      _lastLoadTime = DateTime.now(); // 로드 시간 업데이트
+      _lastLoadTime = DateTime.now();
 
       _isLoading = false;
       notifyListeners();
-
-      debugPrint('loadUserCategories 완료: ${_userCategories.length}개 카테고리 로드됨');
     } catch (e) {
-      debugPrint('사용자 카테고리 로드 오류: $e');
+      // 에러 처리
       _error = '카테고리를 불러오는 중 오류가 발생했습니다.';
       _userCategories = [];
       _isLoading = false;
       notifyListeners();
-
-      // ✅ UI 피드백
-      debugPrint('카테고리를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -116,18 +89,20 @@ class CategoryController extends ChangeNotifier {
     return _categoryService.getCategoryStream(categoryId);
   }
 
-  /// 카테고리 생성
+  /// 새 카테고리를 생성합니다
+  ///
+  /// [name] 카테고리 이름
+  /// [mates] 멤버 목록 (UID 리스트)
   Future<void> createCategory({
     required String name,
     required List<String> mates,
   }) async {
     try {
-      debugPrint('CategoryController: 카테고리 생성 시작... name=$name, mates=$mates');
-
       _isLoading = true;
       _error = null;
       notifyListeners();
 
+      // 카테고리 생성 요청
       final result = await _categoryService.createCategory(
         name: name,
         mates: mates,
@@ -137,30 +112,27 @@ class CategoryController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        debugPrint('CategoryController: 카테고리 생성 성공');
-
-        // 캐시 무효화 후 카테고리 목록 새로고침 (첫 번째 mate의 ID 사용)
+        // 성공 시 캐시 무효화 후 새로고침
         invalidateCache();
         if (mates.isNotEmpty) {
-          debugPrint(
-            'CategoryController: 카테고리 목록 새로고침... userId=${mates.first}',
-          );
           await loadUserCategories(mates.first, forceReload: true);
         }
       } else {
-        debugPrint('CategoryController: 카테고리 생성 실패 - ${result.error}');
-        // ✅ 실패 시 UI 피드백
-        debugPrint(result.error ?? '카테고리 생성에 실패했습니다. 다시 시도해주세요.');
+        _error = result.error;
       }
     } catch (e) {
-      debugPrint('카테고리 생성 오류: $e');
       _isLoading = false;
+      _error = '카테고리 생성 중 오류가 발생했습니다.';
       notifyListeners();
-      debugPrint('카테고리 생성 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
-  /// 카테고리 수정
+  /// 카테고리 정보를 수정합니다
+  ///
+  /// [categoryId] 수정할 카테고리 ID
+  /// [name] 새로운 카테고리 이름 (선택사항)
+  /// [mates] 새로운 멤버 목록 (선택사항)
+  /// [isPinned] 고정 상태 (선택사항)
   Future<void> updateCategory({
     required String categoryId,
     String? name,
@@ -171,6 +143,7 @@ class CategoryController extends ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
+      // 카테고리 업데이트 요청
       final result = await _categoryService.updateCategory(
         categoryId: categoryId,
         name: name,
@@ -182,26 +155,25 @@ class CategoryController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        // ✅ 성공 시 UI 피드백
-        debugPrint('카테고리가 수정되었습니다.');
-        // 현재 사용자의 카테고리 목록 새로고침
+        // 성공 시 현재 사용자의 카테고리 목록 새로고침
         if (_userCategories.isNotEmpty) {
           final firstMate = _userCategories.first.mates.first;
           await loadUserCategories(firstMate);
         }
       } else {
-        // ✅ 실패 시 UI 피드백
-        debugPrint(result.error ?? '카테고리 수정에 실패했습니다. 다시 시도해주세요.');
+        _error = result.error;
       }
     } catch (e) {
-      debugPrint('카테고리 수정 오류: $e');
       _isLoading = false;
+      _error = '카테고리 수정 중 오류가 발생했습니다.';
       notifyListeners();
-      debugPrint('카테고리 수정 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
-  /// 📌 카테고리 고정/해제 토글
+  /// 카테고리 고정/해제를 토글합니다
+  ///
+  /// [categoryId] 토글할 카테고리 ID
+  /// [currentPinStatus] 현재 고정 상태
   Future<void> togglePinCategory(
     String categoryId,
     bool currentPinStatus,
@@ -209,41 +181,35 @@ class CategoryController extends ChangeNotifier {
     try {
       final newPinStatus = !currentPinStatus;
 
-      // 🚀 즉시 UI 업데이트 - 로컬 상태 변경
+      // 즉시 UI 업데이트를 위한 로컬 상태 변경
       final categoryIndex = _userCategories.indexWhere(
         (cat) => cat.id == categoryId,
       );
+
       if (categoryIndex != -1) {
-        // 카테고리 복사 후 isPinned 상태 변경
-        final updatedCategory = CategoryDataModel(
+        // 카테고리 상태 업데이트
+        _userCategories[categoryIndex] = CategoryDataModel(
           id: _userCategories[categoryIndex].id,
           name: _userCategories[categoryIndex].name,
           mates: _userCategories[categoryIndex].mates,
           createdAt: _userCategories[categoryIndex].createdAt,
           categoryPhotoUrl: _userCategories[categoryIndex].categoryPhotoUrl,
-
           isPinned: newPinStatus,
         );
 
-        // 리스트에서 해당 카테고리 업데이트
-        _userCategories[categoryIndex] = updatedCategory;
-
-        // 정렬 다시 적용 (고정된 카테고리를 상단으로)
+        // 고정 상태에 따라 재정렬 (고정된 카테고리가 상단에)
         _userCategories.sort((a, b) {
-          // 고정된 카테고리를 상단으로
           if (a.isPinned && !b.isPinned) return -1;
           if (!a.isPinned && b.isPinned) return 1;
-          // 둘 다 고정되었거나 고정되지 않은 경우 생성일 기준 내림차순
           return b.createdAt.compareTo(a.createdAt);
         });
 
-        // 🎯 즉시 UI 업데이트
         notifyListeners();
       }
 
       _isLoading = true;
-      // 로딩 상태는 별도로 표시하지 않음 (이미 UI가 업데이트되었으므로)
 
+      // 서버에 변경사항 저장
       final result = await _categoryService.updateCategory(
         categoryId: categoryId,
         isPinned: newPinStatus,
@@ -251,26 +217,19 @@ class CategoryController extends ChangeNotifier {
 
       _isLoading = false;
 
-      if (result.isSuccess) {
-        debugPrint('카테고리 고정 상태가 변경되었습니다: $newPinStatus');
-        // 성공 시에는 추가적인 새로고침이 필요하지 않음 (이미 로컬에서 업데이트됨)
-      } else {
-        debugPrint(result.error ?? '카테고리 고정 변경에 실패했습니다.');
+      if (!result.isSuccess) {
         // 실패 시 이전 상태로 롤백
         if (categoryIndex != -1) {
-          final rollbackCategory = CategoryDataModel(
+          _userCategories[categoryIndex] = CategoryDataModel(
             id: _userCategories[categoryIndex].id,
             name: _userCategories[categoryIndex].name,
             mates: _userCategories[categoryIndex].mates,
             createdAt: _userCategories[categoryIndex].createdAt,
             categoryPhotoUrl: _userCategories[categoryIndex].categoryPhotoUrl,
-
-            isPinned: currentPinStatus, // 원래 상태로 롤백
+            isPinned: currentPinStatus,
           );
 
-          _userCategories[categoryIndex] = rollbackCategory;
-
-          // 정렬 다시 적용
+          // 원래 상태로 재정렬
           _userCategories.sort((a, b) {
             if (a.isPinned && !b.isPinned) return -1;
             if (!a.isPinned && b.isPinned) return 1;
@@ -281,27 +240,23 @@ class CategoryController extends ChangeNotifier {
         }
       }
     } catch (e) {
-      debugPrint('카테고리 고정 변경 오류: $e');
       _isLoading = false;
 
-      // 실패 시 이전 상태로 롤백
+      // 에러 발생 시에도 이전 상태로 롤백
       final categoryIndex = _userCategories.indexWhere(
         (cat) => cat.id == categoryId,
       );
+
       if (categoryIndex != -1) {
-        final rollbackCategory = CategoryDataModel(
+        _userCategories[categoryIndex] = CategoryDataModel(
           id: _userCategories[categoryIndex].id,
           name: _userCategories[categoryIndex].name,
           mates: _userCategories[categoryIndex].mates,
           createdAt: _userCategories[categoryIndex].createdAt,
           categoryPhotoUrl: _userCategories[categoryIndex].categoryPhotoUrl,
-
-          isPinned: currentPinStatus, // 원래 상태로 롤백
+          isPinned: currentPinStatus,
         );
 
-        _userCategories[categoryIndex] = rollbackCategory;
-
-        // 정렬 다시 적용
         _userCategories.sort((a, b) {
           if (a.isPinned && !b.isPinned) return -1;
           if (!a.isPinned && b.isPinned) return 1;
@@ -313,12 +268,17 @@ class CategoryController extends ChangeNotifier {
     }
   }
 
-  /// 🚪 카테고리 나가기
+  /// 카테고리에서 나가기를 처리합니다
+  /// 마지막 멤버인 경우 카테고리가 자동으로 삭제됩니다
+  ///
+  /// [categoryId] 나갈 카테고리 ID
+  /// [userId] 나가는 사용자 ID
   Future<void> leaveCategoryByUid(String categoryId, String userId) async {
     try {
       _isLoading = true;
       notifyListeners();
 
+      // 카테고리 나가기 요청
       final result = await _categoryService.removeUidFromCategory(
         categoryId: categoryId,
         uid: userId,
@@ -328,44 +288,45 @@ class CategoryController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        debugPrint('카테고리에서 나가기 성공: ${result.data}');
-        // 카테고리 목록 새로고침
-        await loadUserCategories(userId);
+        // 성공 시 캐시 무효화 후 강제 새로고침
+        invalidateCache();
+        await loadUserCategories(userId, forceReload: true);
       } else {
-        debugPrint(result.error ?? '카테고리 나가기에 실패했습니다.');
+        _error = result.error;
+        notifyListeners();
       }
     } catch (e) {
-      debugPrint('카테고리 나가기 오류: $e');
       _isLoading = false;
+      _error = '카테고리 나가기 중 오류가 발생했습니다: $e';
       notifyListeners();
     }
   }
 
-  /// 카테고리 삭제
+  /// 카테고리를 삭제합니다
+  ///
+  /// [categoryId] 삭제할 카테고리 ID
+  /// [userId] 요청하는 사용자 ID
   Future<void> deleteCategory(String categoryId, String userId) async {
     try {
       _isLoading = true;
       notifyListeners();
 
+      // 카테고리 삭제 요청
       final result = await _categoryService.deleteCategory(categoryId);
 
       _isLoading = false;
       notifyListeners();
 
       if (result.isSuccess) {
-        // ✅ 성공 시 UI 피드백
-        debugPrint('카테고리가 삭제되었습니다.');
-        // 카테고리 목록 새로고침
+        // 성공 시 카테고리 목록 새로고침
         await loadUserCategories(userId);
       } else {
-        // ✅ 실패 시 UI 피드백
-        debugPrint(result.error ?? '카테고리 삭제에 실패했습니다. 다시 시도해주세요.');
+        _error = result.error;
       }
     } catch (e) {
-      debugPrint('카테고리 삭제 오류: $e');
       _isLoading = false;
+      _error = '카테고리 삭제 중 오류가 발생했습니다.';
       notifyListeners();
-      debugPrint('카테고리 삭제 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -418,11 +379,13 @@ class CategoryController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ==================== 기존 호환성 메서드 ====================
-
   // ==================== 표지사진 관리 ====================
 
-  /// 갤러리에서 선택한 이미지로 표지사진 업데이트
+  /// 갤러리에서 선택한 이미지로 표지사진을 업데이트합니다
+  ///
+  /// [categoryId] 카테고리 ID
+  /// [imageFile] 업로드할 이미지 파일
+  /// Returns: 성공 여부
   Future<bool> updateCoverPhotoFromGallery({
     required String categoryId,
     required File imageFile,
@@ -441,16 +404,13 @@ class CategoryController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        // 성공 시 카테고리 목록 새로고침
         invalidateCache();
         return true;
       } else {
         _error = result.error;
-        notifyListeners();
         return false;
       }
     } catch (e) {
-      debugPrint('표지사진 업데이트 오류: $e');
       _isLoading = false;
       _error = '표지사진 업데이트 중 오류가 발생했습니다.';
       notifyListeners();
@@ -458,7 +418,11 @@ class CategoryController extends ChangeNotifier {
     }
   }
 
-  /// 카테고리 내 사진으로 표지사진 업데이트
+  /// 카테고리 내 사진으로 표지사진을 업데이트합니다
+  ///
+  /// [categoryId] 카테고리 ID
+  /// [photoUrl] 사용할 사진 URL
+  /// Returns: 성공 여부
   Future<bool> updateCoverPhotoFromCategory({
     required String categoryId,
     required String photoUrl,
@@ -477,16 +441,13 @@ class CategoryController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        // 성공 시 카테고리 목록 새로고침
         invalidateCache();
         return true;
       } else {
         _error = result.error;
-        notifyListeners();
         return false;
       }
     } catch (e) {
-      debugPrint('표지사진 업데이트 오류: $e');
       _isLoading = false;
       _error = '표지사진 업데이트 중 오류가 발생했습니다.';
       notifyListeners();
@@ -494,7 +455,10 @@ class CategoryController extends ChangeNotifier {
     }
   }
 
-  /// 표지사진 삭제
+  /// 표지사진을 삭제합니다
+  ///
+  /// [categoryId] 카테고리 ID
+  /// Returns: 성공 여부
   Future<bool> deleteCoverPhoto(String categoryId) async {
     try {
       _isLoading = true;
@@ -507,16 +471,13 @@ class CategoryController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        // 성공 시 카테고리 목록 새로고침
         invalidateCache();
         return true;
       } else {
         _error = result.error;
-        notifyListeners();
         return false;
       }
     } catch (e) {
-      debugPrint('표지사진 삭제 오류: $e');
       _isLoading = false;
       _error = '표지사진 삭제 중 오류가 발생했습니다.';
       notifyListeners();
@@ -534,13 +495,15 @@ class CategoryController extends ChangeNotifier {
     );
   }
 
-  /// 카테고리 이름 조회 (기존 호환성)
+  /// 카테고리 이름을 조회합니다 (기존 호환성)
+  ///
+  /// [categoryId] 카테고리 ID
+  /// Returns: 카테고리 이름 또는 기본값
   Future<String> getCategoryName(String categoryId) async {
     try {
       final category = await getCategory(categoryId);
       return category?.name ?? '알 수 없는 카테고리';
     } catch (e) {
-      debugPrint('카테고리 이름 조회 오류: $e');
       return '오류 발생';
     }
   }
@@ -550,45 +513,51 @@ class CategoryController extends ChangeNotifier {
     return _categoryService.getCategoryPhotosStream(categoryId);
   }
 
-  /// 사진 문서 ID 조회 (기존 호환성)
+  /// 사진 문서 ID를 조회합니다 (기존 호환성)
+  ///
+  /// [categoryId] 카테고리 ID
+  /// [imageUrl] 이미지 URL
+  /// Returns: 매칭되는 사진의 문서 ID
   Future<String?> getPhotoDocumentId(String categoryId, String imageUrl) async {
     try {
       final photos = await getCategoryPhotos(categoryId);
       for (final photo in photos) {
         if (photo['imageUrl'] == imageUrl) {
-          return photo['id'];
+          return photo['id'] as String?;
         }
       }
       return null;
     } catch (e) {
-      debugPrint('사진 문서 ID 조회 오류: $e');
       return null;
     }
   }
 
-  /// 카테고리 프로필 이미지들 조회 (기존 호환성)
+  /// 카테고리 프로필 이미지들을 조회합니다 (기존 호환성)
+  ///
+  /// [mates] 멤버 목록
+  /// [authController] 인증 컨트롤러
+  /// Returns: 프로필 이미지 URL 목록
   Future<List<String>> getCategoryProfileImages(
     List<String> mates,
     dynamic authController,
   ) async {
     try {
-      List<String> profileImages = [];
+      final profileImages = <String>[];
 
-      for (String mate in mates) {
+      for (int i = 0; i < mates.length; i++) {
         try {
-          // AuthController를 통해 사용자 프로필 이미지 URL 가져오기
           final profileUrl = await authController.getUserProfileImageUrl();
           if (profileUrl != null && profileUrl.isNotEmpty) {
             profileImages.add(profileUrl);
           }
         } catch (e) {
-          debugPrint('프로필 이미지 로딩 오류 ($mate): $e');
+          // 개별 프로필 이미지 로딩 실패는 무시하고 계속 진행
+          continue;
         }
       }
 
       return profileImages;
     } catch (e) {
-      debugPrint('카테고리 프로필 이미지 조회 오류: $e');
       return [];
     }
   }
@@ -624,7 +593,12 @@ class CategoryController extends ChangeNotifier {
     });
   }
 
-  /// 카테고리에 사용자 추가 (닉네임으로)
+  // ==================== 카테고리 멤버 관리 ====================
+
+  /// 카테고리에 사용자를 추가합니다 (닉네임으로)
+  ///
+  /// [categoryId] 카테고리 ID
+  /// [nickName] 추가할 사용자 닉네임
   Future<void> addUserToCategory(String categoryId, String nickName) async {
     try {
       _isLoading = true;
@@ -639,9 +613,7 @@ class CategoryController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      if (result.isSuccess) {
-        // ✅ 성공 시 UI 피드백 없음 (호출하는 곳에서 처리)
-      } else {
+      if (!result.isSuccess) {
         _error = result.error;
         throw Exception(result.error);
       }
@@ -653,7 +625,10 @@ class CategoryController extends ChangeNotifier {
     }
   }
 
-  /// 카테고리에 사용자 추가 (UID로)
+  /// 카테고리에 사용자를 추가합니다 (UID로)
+  ///
+  /// [categoryId] 카테고리 ID
+  /// [uid] 추가할 사용자 UID
   Future<void> addUidToCategory(String categoryId, String uid) async {
     try {
       _isLoading = true;
@@ -668,9 +643,7 @@ class CategoryController extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
 
-      if (result.isSuccess) {
-        // ✅ 성공 시 UI 피드백 없음 (호출하는 곳에서 처리)
-      } else {
+      if (!result.isSuccess) {
         _error = result.error;
         throw Exception(result.error);
       }
@@ -707,10 +680,12 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 검색 초기화
-  void clearSearch() {
+  void clearSearch({bool notify = true}) {
     _searchQuery = '';
     _filteredCategories = [];
-    notifyListeners();
+    if (notify) {
+      notifyListeners();
+    }
   }
 
   /// 텍스트가 검색어와 매치되는지 확인 (한글 초성 검색, 영어 약어 검색 포함)

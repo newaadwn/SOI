@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
-/// 카테고리 추가 UI 위젯
-///
-/// 새로운 카테고리를 생성하는 인터페이스를 제공합니다.
+// 카테고리 추가 UI 위젯
+// 새로운 카테고리를 생성하는 인터페이스를 제공합니다.
 class AddCategoryWidget extends StatelessWidget {
   final TextEditingController textController;
   final ScrollController scrollController;

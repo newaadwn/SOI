@@ -176,18 +176,21 @@ class _ArchivePopupMenuDialog extends StatelessWidget {
 
   /// ⚡ 메뉴 액션 처리
   void _handleMenuAction(BuildContext context, String action) {
+    // 부모 context 참조 저장 (팝업이 닫히기 전에)
+    final parentContext = Navigator.of(context, rootNavigator: true).context;
+
     // 팝업 먼저 닫기
     Navigator.of(context).pop();
 
-    // 액션 처리
+    // 안전한 부모 context로 액션 처리
     switch (action) {
       case 'edit_name':
         ArchiveCategoryDialogs.showEditNameDialog(
-          context,
+          parentContext,
           category,
           onConfirm: (newName) {
             ArchiveCategoryActions.updateCategoryName(
-              context,
+              parentContext,
               category,
               newName,
             );
@@ -196,14 +199,17 @@ class _ArchivePopupMenuDialog extends StatelessWidget {
         break;
       case 'pin':
       case 'unpin':
-        ArchiveCategoryActions.handleTogglePinCategory(context, category);
+        ArchiveCategoryActions.handleTogglePinCategory(parentContext, category);
         break;
       case 'leave':
         ArchiveCategoryDialogs.showLeaveCategoryDialog(
-          context,
+          parentContext,
           category,
           onConfirm: () {
-            ArchiveCategoryActions.leaveCategoryConfirmed(context, category);
+            ArchiveCategoryActions.leaveCategoryConfirmed(
+              parentContext,
+              category,
+            );
           },
         );
         break;

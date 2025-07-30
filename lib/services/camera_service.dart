@@ -4,20 +4,20 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:photo_manager/photo_manager.dart';
 
-/// 🎯 네이티브 카메라 & 오디오 서비스
-/// Android CameraX와 MediaRecorder를 Flutter MethodChannel로 연동
+// 🎯 네이티브 카메라 & 오디오 서비스
+// Android CameraX와 MediaRecorder를 Flutter MethodChannel로 연동
 class CameraService {
   static const MethodChannel _cameraChannel = MethodChannel('com.soi.camera');
 
-  // ✅ 카메라 세션 상태 추적
+  // 카메라 세션 상태 추적
   bool _isSessionActive = false;
   bool get isSessionActive => _isSessionActive;
 
-  // ✅ 갤러리 미리보기 상태 관리
+  // 갤러리 미리보기 상태 관리
   String? _latestGalleryImagePath;
   bool _isLoadingGalleryImage = false;
 
-  // ✅ 오디오 녹음 상태 관리
+  // 오디오 녹음 상태 관리
   final bool _isRecording = false;
   String? _currentRecordingPath;
 
@@ -27,6 +27,7 @@ class CameraService {
   bool get isRecording => _isRecording;
   String? get currentRecordingPath => _currentRecordingPath;
 
+  // 이미지 선택기 인스턴스
   final ImagePicker _imagePicker = ImagePicker();
 
   // ==================== 갤러리 및 파일 관리 ====================
@@ -39,8 +40,8 @@ class CameraService {
     ),
   );
 
-  /// ✅ 갤러리 미리보기 이미지 로드 (Service 로직)
-  /// 최신 갤러리 이미지를 캐시하여 성능 향상
+  // 갤러리 미리보기 이미지 로드 (Service 로직)
+  // 최신 갤러리 이미지를 캐시하여 성능 향상
   Future<void> loadLatestGalleryImage() async {
     // 이미 로딩 중이면 중복 실행 방지
     if (_isLoadingGalleryImage) {
@@ -86,13 +87,13 @@ class CameraService {
     }
   }
 
-  /// ✅ 갤러리 미리보기 캐시 새로고침 (사진 촬영 후 호출)
+  // ✅ 갤러리 미리보기 캐시 새로고침 (사진 촬영 후 호출)
   Future<void> refreshGalleryPreview() async {
     debugPrint('갤러리 미리보기 새로고침');
     await loadLatestGalleryImage();
   }
 
-  /// ✅ 개선된 갤러리 첫 번째 이미지 로딩 (권한 처리 포함)
+  // ✅ 개선된 갤러리 첫 번째 이미지 로딩 (권한 처리 포함)
   Future<AssetEntity?> getFirstGalleryImage() async {
     try {
       // 1. 갤러리 접근 권한 요청
@@ -136,7 +137,7 @@ class CameraService {
     }
   }
 
-  /// ✅ AssetEntity를 File로 변환
+  // ✅ AssetEntity를 File로 변환
   Future<File?> assetToFile(AssetEntity asset) async {
     try {
       final File? file = await asset.file;
@@ -240,7 +241,7 @@ class CameraService {
     }
   }
 
-  /// ✅ 개선된 세션 활성화 (SurfaceProvider 준비 대기)
+  // ✅ 개선된 세션 활성화 (SurfaceProvider 준비 대기)
   Future<void> activateSession() async {
     try {
       debugPrint('카메라 세션 활성화 시작...');
@@ -397,7 +398,7 @@ class CameraService {
     }
   }
 
-  /// ✅ 개선된 카메라 초기화 (타이밍 이슈 해결)
+  // ✅ 개선된 카메라 초기화 (타이밍 이슈 해결)
   Future<bool> initCamera() async {
     try {
       debugPrint('카메라 초기화 시작...');
@@ -436,7 +437,7 @@ class CameraService {
     }
   }
 
-  /// ✅ 개선된 사진 촬영 (안정성 강화)
+  // ✅ 개선된 사진 촬영 (안정성 강화)
   Future<String> takePicture() async {
     try {
       // 카메라가 초기화되지 않았으면 먼저 초기화
@@ -470,7 +471,7 @@ class CameraService {
     }
   }
 
-  /// ✅ 개선된 카메라 전환 (안정성 강화)
+  // ✅ 개선된 카메라 전환 (안정성 강화)
   Future<void> switchCamera() async {
     try {
       // 카메라가 초기화되지 않았으면 먼저 초기화

@@ -71,6 +71,7 @@ dependencies:
   cloud_functions: ^5.6.1
   flutter_material_design_icons: ^1.1.7447
   bitcoin_icons: ^0.0.4
+  iconoir_flutter: ^7.11.0
 
 dev_dependencies:
   flutter_test:

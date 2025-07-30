@@ -105,12 +105,6 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   @override
-  void initState() {
-    super.initState();
-    // Deep Link 초기화는 첫 번째 화면에서 처리
-  }
-
-  @override
   Widget build(BuildContext context) {
     // Firebase가 초기화되지 않았으면 로딩 화면 표시
     if (!widget.firebaseInitialized) {

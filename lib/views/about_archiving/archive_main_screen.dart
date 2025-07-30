@@ -43,6 +43,11 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
     // 검색 기능 설정
     _searchController.addListener(_onSearchChanged);
+
+    // 화면 진입 시 검색 상태 초기화 (다음 프레임에서 실행)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _categoryController?.clearSearch(notify: false);
+    });
   }
 
   @override
@@ -601,9 +606,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   @override
   void dispose() {
-    // 검색 상태 초기화 (저장된 참조 사용)
-    _categoryController?.clearSearch();
-
+    // 검색 리스너만 제거 (Controller는 Provider에서 관리되므로 건드리지 않음)
     _categoryNameController.dispose();
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
