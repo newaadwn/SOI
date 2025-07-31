@@ -41,7 +41,7 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
         await authViewModel.cleanInvalidProfileImageUrl();
       }
     } catch (e) {
-      debugPrint('프로필 이미지 정리 중 오류 발생: $e');
+      // debugPrint('프로필 이미지 정리 중 오류 발생: $e');
     }
   }
 

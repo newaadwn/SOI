@@ -83,7 +83,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
   /// AuthController 변경 감지 시 프로필 이미지 리프레시
   void _onAuthControllerChanged() async {
-    debugPrint('AuthController 변경 감지 - 프로필 이미지 리프레시');
+    // AuthController has changed - refresh profile images to reflect updates
     setState(() => _profileImageRefreshKey++);
     await _loadUserProfileImage();
     _subscribeToVoiceCommentsForCurrentPhoto();
@@ -92,7 +92,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   // 사용자 프로필 정보 로드
   Future<void> _loadUserProfileImage() async {
     final currentPhoto = widget.photos[_currentIndex];
-    debugPrint('프로필 정보 로딩 시작 - UserID: ${currentPhoto.userID}');
+    // Start loading profile information for the current photo's user
 
     try {
       final authController = Provider.of<AuthController>(
@@ -110,10 +110,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
           _userName = userInfo?.id ?? currentPhoto.userID;
           _isLoadingProfile = false;
         });
-        debugPrint('프로필 이미지 업데이트 완료 - URL: $profileImageUrl');
+        // Profile image URL successfully retrieved and state updated
       }
     } catch (e) {
-      debugPrint('프로필 정보 로드 실패: $e');
+      // Failed to load profile information - will use default user ID
       if (mounted) {
         setState(() {
           _userName = currentPhoto.userID;
@@ -126,7 +126,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   /// 현재 사진의 음성 댓글을 실시간으로 구독하여 위치 동기화
   void _subscribeToVoiceCommentsForCurrentPhoto() {
     final photoId = widget.photos[_currentIndex].id;
-    debugPrint('음성 댓글 실시간 구독 시작 - 사진: $photoId');
+    // Starting real-time subscription for voice comments on this photo
 
     try {
       _commentStreams[photoId]?.cancel();
@@ -136,10 +136,12 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
           .listen(
             (comments) => _handleCommentsUpdate(photoId, comments),
             onError:
-                (error) => debugPrint('실시간 댓글 구독 오류 - 사진 $photoId: $error'),
+                (error) => {
+                  /* Real-time comment subscription error for photo $photoId: $error */
+                },
           );
     } catch (e) {
-      debugPrint('실시간 댓글 구독 시작 실패 - 사진 $photoId: $e');
+      // Failed to start real-time comment subscription for photo: $e
     }
   }
 
@@ -148,7 +150,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     String photoId,
     List<CommentRecordModel> comments,
   ) async {
-    debugPrint('실시간 댓글 업데이트 수신 - 사진: $photoId, 댓글 수: ${comments.length}');
+    // Received real-time comment update - photo: $photoId, comment count: ${comments.length}
 
     if (!mounted) return;
 
@@ -168,7 +170,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         if (comment.profilePosition != null) {
           _profileImagePositions[photoId] = comment.profilePosition!;
           _droppedProfileImageUrls[photoId] = comment.profileImageUrl;
-          debugPrint('실시간 프로필 위치 및 이미지 URL 업데이트 - photoId: $photoId');
+          // Updated profile position and image URL from real-time data
           break;
         }
       }
@@ -181,7 +183,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     Offset position,
   ) async {
     try {
-      debugPrint('Firestore 프로필 위치 업데이트 시작 - 사진: $photoId, 위치: $position');
+      // Starting Firestore update for profile position - photo: $photoId, position: $position
 
       final authController = Provider.of<AuthController>(
         context,
@@ -190,7 +192,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       final currentUserId = authController.getUserId;
 
       if (currentUserId == null) {
-        debugPrint('현재 사용자 ID를 찾을 수 없습니다.');
+        // Current user ID not found - cannot update profile position
         return;
       }
 
@@ -202,21 +204,19 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
               .firstOrNull;
 
       if (userComment == null) {
-        debugPrint('현재 사용자의 음성 댓글을 찾을 수 없습니다.');
+        // Current user's voice comment not found - cannot update position
         return;
       }
 
-      final success = await CommentRecordController().updateProfilePosition(
+      await CommentRecordController().updateProfilePosition(
         commentId: userComment.id,
         photoId: photoId,
         profilePosition: position,
       );
 
-      debugPrint(
-        success ? 'Firestore 프로필 위치 업데이트 성공' : 'Firestore 프로필 위치 업데이트 실패',
-      );
+      // Profile position update result: ${success ? 'successful' : 'failed'}
     } catch (e) {
-      debugPrint('Firestore 프로필 위치 업데이트 중 오류: $e');
+      // Error updating profile position in Firestore: $e
     }
   }
 
@@ -235,7 +235,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   Future<void> _toggleAudio() async {
     final currentPhoto = widget.photos[_currentIndex];
     if (currentPhoto.audioUrl.isEmpty) {
-      debugPrint('오디오 URL이 없습니다');
+      // No audio URL available for this photo
       return;
     }
 
@@ -245,7 +245,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         listen: false,
       ).toggleAudio(currentPhoto.audioUrl);
     } catch (e) {
-      debugPrint('오디오 재생 오류: $e');
+      // Error playing audio: $e
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -340,7 +340,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                   builder: (builderContext) {
                     return DragTarget<String>(
                       onWillAcceptWithDetails: (details) {
-                        debugPrint('DragTarget에 접근 중 - 데이터: ${details.data}');
+                        // DragTarget is being approached with data: ${details.data}
                         return details.data == 'profile_image';
                       },
                       onAcceptWithDetails: (details) {
@@ -351,19 +351,17 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                           details.offset,
                         );
 
-                        debugPrint('프로필 이미지가 사진 영역에 드롭됨');
-                        debugPrint('- 글로벌 좌표: ${details.offset}');
-                        debugPrint('- 로컬 좌표: $localPosition');
-                        debugPrint('- 드래그 데이터: ${details.data}');
+                        // Profile image dropped on photo area
+                        // - Global coordinates: ${details.offset}
+                        // - Local coordinates: $localPosition
+                        // - Drag data: ${details.data}
 
                         // 사진 영역 내 상대 좌표로 저장
                         setState(() {
                           _profileImagePositions[photo.id] = localPosition;
                         });
 
-                        debugPrint(
-                          '로컬 상태 업데이트 완료: ${_profileImagePositions[photo.id]}',
-                        );
+                        // Local state updated with new profile position: ${_profileImagePositions[photo.id]}
 
                         // Firestore에 위치 업데이트
                         _updateProfilePositionInFirestore(
@@ -408,9 +406,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                     String? profileImageUrl =
                                         _droppedProfileImageUrls[photo.id];
 
-                                    debugPrint(
-                                      '드롭된 프로필 이미지 URL: $profileImageUrl (photo: ${photo.id})',
-                                    );
+                                    // Using dropped profile image URL: $profileImageUrl for photo: ${photo.id}
 
                                     return Consumer<AuthController>(
                                       builder: (
@@ -863,18 +859,14 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                         ),
                         onDragEnd: (details) {
                           // DragTarget에서 이미 처리하므로 여기서는 로깅만
-                          debugPrint(
-                            '🚀 프로필 이미지 드래그 종료 - 글로벌 위치: ${details.offset}',
-                          );
-                          debugPrint('📍 DragTarget에서 상대 좌표 변환 처리됨');
+                          // Profile image drag ended at global position: ${details.offset}
+                          // Relative coordinates will be processed by DragTarget
                         },
                         child: GestureDetector(
                           onTap: () async {
                             // 클릭하면 저장된 오디오 재생
                             if (userComment!.audioUrl.isNotEmpty) {
-                              debugPrint(
-                                '🎵 저장된 음성 댓글 재생: ${userComment.audioUrl}',
-                              );
+                              // Playing saved voice comment: ${userComment.audioUrl}
                               try {
                                 final audioController =
                                     Provider.of<AudioController>(
@@ -884,9 +876,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                 await audioController.toggleAudio(
                                   userComment.audioUrl,
                                 );
-                                debugPrint('✅ 음성 재생 시작됨');
+                                // Voice playback started successfully
                               } catch (e) {
-                                debugPrint('❌ 음성 재생 실패: $e');
+                                // Voice playback failed: $e
                               }
                             }
                           },
@@ -923,7 +915,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                   return AudioRecorderWidget(
                     photoId: photo.id,
                     onCommentSaved: (commentRecord) {
-                      debugPrint('새로운 음성 댓글 저장됨: ${commentRecord.id}');
+                      // New voice comment saved with ID: ${commentRecord.id}
                       // 저장 상태 업데이트
                       setState(() {
                         _voiceCommentSavedStates[photo.id] = true;

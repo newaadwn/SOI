@@ -66,7 +66,7 @@ class AuthFinalScreen extends StatelessWidget {
                       userId: currentUser.uid,
                       phoneNumber: finalPhone,
                     );
-                    debugPrint('✅ 회원가입 완료 후 로그인 상태 저장 완료');
+                    // debugPrint('✅ 회원가입 완료 후 로그인 상태 저장 완료');
                   }
 
                   Navigator.pushNamedAndRemoveUntil(
@@ -75,7 +75,7 @@ class AuthFinalScreen extends StatelessWidget {
                     (route) => false,
                   );
                 } catch (e) {
-                  debugPrint('Error creating user in Firestore: $e');
+                  // debugPrint('Error creating user in Firestore: $e');
                 }
               },
               style: ElevatedButton.styleFrom(

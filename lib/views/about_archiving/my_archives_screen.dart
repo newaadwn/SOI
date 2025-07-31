@@ -59,7 +59,6 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
         });
       }
     } catch (e) {
-      debugPrint('프로필 이미지 로딩 오류: $e');
       if (mounted) {
         setState(() {
           _categoryProfileImages[categoryId] = [];

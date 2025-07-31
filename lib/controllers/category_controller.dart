@@ -41,18 +41,23 @@ class CategoryController extends ChangeNotifier {
     bool forceReload = false,
   }) async {
     // 유효성 검사
-    if (userId.isEmpty) return;
+    if (userId.isEmpty) {
+      // debugPrint('[CategoryController] userId가 비어있음 - 로드 중단');
+      return;
+    }
 
     // 캐시 유효성 검사
     final now = DateTime.now();
     final isCacheValid =
         _lastLoadTime != null && now.difference(_lastLoadTime!) < _cacheTimeout;
 
-    // 중복 로딩 방지
-    if (_isLoading) return;
+    // 중복 로딩 방지 제거 - 동시 로딩 허용
+    // 여러 화면에서 동시에 호출할 수 있으므로 제한하지 않음
+    // debugPrint('[CategoryController] 로딩 상태: $_isLoading');
 
     // 캐시된 데이터 사용 가능 여부 확인
     if (!forceReload && _lastLoadedUserId == userId && isCacheValid) {
+      // debugPrint('[CategoryController] 캐시된 데이터 사용 - userId: $userId, 카테고리 수: ${_userCategories.length}');
       return;
     }
 
@@ -61,8 +66,16 @@ class CategoryController extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
+      // debugPrint('[CategoryController] 카테고리 로드 시작 - userId: $userId');
+      // debugPrint('[CategoryController] 현재 _userCategories 수: ${_userCategories.length}');
+      // debugPrint('[CategoryController] _isLoading 상태: $_isLoading');
+
       // 서비스에서 카테고리 목록 가져오기
-      _userCategories = await _categoryService.getUserCategories(userId);
+      final categories = await _categoryService.getUserCategories(userId);
+      // debugPrint('[CategoryController] 서비스에서 받은 카테고리 수: ${categories.length}');
+      
+      _userCategories = categories;
+      // debugPrint('[CategoryController] _userCategories에 할당 후: ${_userCategories.length}');
 
       // 캐시 정보 업데이트
       _lastLoadedUserId = userId;
@@ -70,8 +83,12 @@ class CategoryController extends ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
+      
+      // debugPrint('[CategoryController] 카테고리 로드 완료 - 최종 개수: ${_userCategories.length}');
+      // debugPrint('[CategoryController] _isLoading 최종 상태: $_isLoading');
     } catch (e) {
       // 에러 처리
+      // debugPrint('[CategoryController] 카테고리 로드 오류: $e');
       _error = '카테고리를 불러오는 중 오류가 발생했습니다.';
       _userCategories = [];
       _isLoading = false;

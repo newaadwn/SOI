@@ -93,10 +93,10 @@ class UserMatchingController extends ChangeNotifier {
       }
 
       _isInitialized = true;
-      debugPrint('UserMatchingController 초기화 완료');
+      // debugPrint('UserMatchingController 초기화 완료');
     } catch (e) {
       _setError('사용자 매칭 초기화 실패: $e');
-      debugPrint('UserMatchingController 초기화 실패: $e');
+      // debugPrint('UserMatchingController 초기화 실패: $e');
     } finally {
       _setLoading(false);
     }
@@ -113,19 +113,19 @@ class UserMatchingController extends ChangeNotifier {
       if (await FlutterContacts.requestPermission()) {
         _hasContactPermission = true;
         _contacts = await FlutterContacts.getContacts(withProperties: true);
-        debugPrint('연락처 로드 완료: ${_contacts.length}개');
+        // debugPrint('연락처 로드 완료: ${_contacts.length}개');
 
         // 연락처 로드 후 매칭 시작
         await performContactMatching();
       } else {
         _hasContactPermission = false;
-        debugPrint('연락처 권한 거부됨');
+        // debugPrint('연락처 권한 거부됨');
       }
 
       return _hasContactPermission;
     } catch (e) {
       _setError('연락처 권한 요청 실패: $e');
-      debugPrint('연락처 권한 요청 실패: $e');
+      // debugPrint('연락처 권한 요청 실패: $e');
       return false;
     } finally {
       _isLoadingContacts = false;
@@ -150,15 +150,11 @@ class UserMatchingController extends ChangeNotifier {
       // 매칭 결과에서 추천 친구 추출
       _recommendedFriends = _contactMatches.map((match) => match.user).toList();
 
-      debugPrint(
-        '연락처 매칭 완료: ${_contactMatches.length}명 매칭, ${_recommendedFriends.length}명 추천',
-      );
-
       // 매칭 통계 계산
       await _updateMatchingStats();
     } catch (e) {
       _setError('연락처 매칭 실패: $e');
-      debugPrint('연락처 매칭 실패: $e');
+      // debugPrint('연락처 매칭 실패: $e');
     } finally {
       _isLoadingRecommendations = false;
       notifyListeners();
@@ -180,11 +176,11 @@ class UserMatchingController extends ChangeNotifier {
       } else {
         // UserSearchRepository로 검색
         _searchResults = await _userSearchRepository.searchUsersById(query);
-        debugPrint('사용자 검색 완료: ${_searchResults.length}명 발견');
+        // debugPrint('사용자 검색 완료: ${_searchResults.length}명 발견');
       }
     } catch (e) {
       _setError('사용자 검색 실패: $e');
-      debugPrint('사용자 검색 실패: $e');
+      // debugPrint('사용자 검색 실패: $e');
       _searchResults = [];
     } finally {
       _isSearching = false;
@@ -198,12 +194,12 @@ class UserMatchingController extends ChangeNotifier {
   /// Returns: UserSearchModel 또는 null
   Future<List<UserSearchModel>?> searchUserById(String userId) async {
     try {
-      debugPrint('ID로 사용자 검색 시작: $userId');
+      // debugPrint('ID로 사용자 검색 시작: $userId');
       final result = await _userMatchingService.searchUserById(userId);
-      debugPrint('ID 검색 결과: ${result}');
+      // debugPrint('ID 검색 결과: ${result}');
       return result;
     } catch (e) {
-      debugPrint('ID로 사용자 검색 실패: $e');
+      // debugPrint('ID로 사용자 검색 실패: $e');
       _setError('사용자 검색 실패: $e');
       return null;
     }
@@ -233,11 +229,11 @@ class UserMatchingController extends ChangeNotifier {
       _recommendedFriends.removeWhere((user) => user.uid == userId);
       _contactMatches.removeWhere((match) => match.user.uid == userId);
 
-      debugPrint('추천 친구에게 친구 요청 전송 성공: $userId');
+      // debugPrint('추천 친구에게 친구 요청 전송 성공: $userId');
       return true;
     } catch (e) {
       _setError('친구 요청 전송 실패: $e');
-      debugPrint('친구 요청 전송 실패: $e');
+      // debugPrint('친구 요청 전송 실패: $e');
       return false;
     } finally {
       _processingRecommendations[userId] = false;
@@ -259,11 +255,11 @@ class UserMatchingController extends ChangeNotifier {
         receiverUid: '',
       );
 
-      debugPrint('검색 결과에서 친구 요청 전송 성공: $userId');
+      // debugPrint('검색 결과에서 친구 요청 전송 성공: $userId');
       return true;
     } catch (e) {
       _setError('친구 요청 전송 실패: $e');
-      debugPrint('친구 요청 전송 실패: $e');
+      // debugPrint('친구 요청 전송 실패: $e');
       return false;
     } finally {
       _processingSearchResults[userId] = false;
@@ -283,11 +279,11 @@ class UserMatchingController extends ChangeNotifier {
       _recommendedFriends.removeWhere((user) => user.uid == userId);
       _contactMatches.removeWhere((match) => match.user.uid == userId);
 
-      debugPrint('추천 숨기기 성공: $userId');
+      // debugPrint('추천 숨기기 성공: $userId');
       return true;
     } catch (e) {
       _setError('추천 숨기기 실패: $e');
-      debugPrint('추천 숨기기 실패: $e');
+      // debugPrint('추천 숨기기 실패: $e');
       return false;
     } finally {
       _processingRecommendations[userId] = false;
@@ -305,7 +301,7 @@ class UserMatchingController extends ChangeNotifier {
       notifyListeners();
 
       _contacts = await FlutterContacts.getContacts(withProperties: true);
-      debugPrint('연락처 동기화 완료: ${_contacts.length}개');
+      // debugPrint('연락처 동기화 완료: ${_contacts.length}개');
 
       // 연락처 동기화 후 매칭 업데이트
       await performContactMatching();
@@ -313,7 +309,7 @@ class UserMatchingController extends ChangeNotifier {
       return true;
     } catch (e) {
       _setError('연락처 동기화 실패: $e');
-      debugPrint('연락처 동기화 실패: $e');
+      // debugPrint('연락처 동기화 실패: $e');
       return false;
     } finally {
       _isLoadingContacts = false;
@@ -328,7 +324,7 @@ class UserMatchingController extends ChangeNotifier {
     try {
       return await _userMatchingService.getContactSearchStatus(contact);
     } catch (e) {
-      debugPrint('연락처 검색 상태 확인 실패: $e');
+      // debugPrint('연락처 검색 상태 확인 실패: $e');
       return ContactSearchStatus.error;
     }
   }
@@ -340,7 +336,7 @@ class UserMatchingController extends ChangeNotifier {
     try {
       return await _userMatchingService.findUserForContact(contact);
     } catch (e) {
-      debugPrint('연락처 사용자 찾기 실패: $e');
+      // debugPrint('연락처 사용자 찾기 실패: $e');
       return null;
     }
   }
@@ -354,10 +350,10 @@ class UserMatchingController extends ChangeNotifier {
 
       if (_hasContactPermission) {
         _contacts = await FlutterContacts.getContacts(withProperties: true);
-        debugPrint('기존 연락처 로드 완료: ${_contacts.length}개');
+        // debugPrint('기존 연락처 로드 완료: ${_contacts.length}개');
       }
     } catch (e) {
-      debugPrint('연락처 권한 확인 실패: $e');
+      // debugPrint('연락처 권한 확인 실패: $e');
       _hasContactPermission = false;
     }
   }
@@ -384,7 +380,7 @@ class UserMatchingController extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
-      debugPrint('매칭 통계 업데이트 실패: $e');
+      // debugPrint('매칭 통계 업데이트 실패: $e');
     }
   }
 
@@ -398,7 +394,7 @@ class UserMatchingController extends ChangeNotifier {
         await syncContacts();
       }
 
-      debugPrint('사용자 매칭 정보 새로고침 완료');
+      // debugPrint('사용자 매칭 정보 새로고침 완료');
     } catch (e) {
       _setError('새로고침 실패: $e');
     } finally {

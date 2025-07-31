@@ -27,15 +27,15 @@ class DeepLinkService {
       }
 
       _initialized = true;
-      debugPrint('DeepLinkService 초기화 완료');
+      // debugPrint('DeepLinkService 초기화 완료');
     } catch (e) {
-      debugPrint('DeepLinkService 초기화 실패: $e');
+      // debugPrint('DeepLinkService 초기화 실패: $e');
     }
   }
 
   /// Deep Link 처리
   static void _handleDeepLink(BuildContext context, Uri uri) {
-    debugPrint('Deep Link 수신: $uri');
+    // debugPrint('Deep Link 수신: $uri');
 
     // soi://invite?inviter=친구이름&inviterId=uid&invitee=내이름
     if (uri.scheme == 'soi' && uri.host == 'invite') {
@@ -152,7 +152,7 @@ class DeepLinkService {
         );
       }
     } catch (e) {
-      debugPrint('친구 요청 처리 실패: $e');
+      // debugPrint('친구 요청 처리 실패: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

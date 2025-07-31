@@ -73,7 +73,7 @@ class _CameraScreenState extends State<CameraScreen>
   Future<void> _initializeCameraAsync() async {
     if (!_isInitialized && mounted) {
       try {
-        debugPrint('카메라 초기화 시작...');
+        // Starting camera initialization process
 
         // 병렬 처리로 성능 향상
         await Future.wait([
@@ -86,10 +86,10 @@ class _CameraScreenState extends State<CameraScreen>
             _isLoading = false;
             _isInitialized = true;
           });
-          debugPrint('카메라 및 갤러리 초기화 완료');
+          // Camera and gallery initialization completed successfully
         }
       } catch (e) {
-        debugPrint('카메라 초기화 실패: $e');
+        // Camera initialization failed with error: $e
         if (mounted) {
           setState(() {
             _isLoading = false;
@@ -119,7 +119,7 @@ class _CameraScreenState extends State<CameraScreen>
         });
       }
     } catch (e) {
-      debugPrint('갤러리 이미지 로딩 실패: $e');
+      // Gallery image loading failed with error: $e
       if (mounted) {
         setState(() {
           _galleryError = '갤러리 접근 실패';
@@ -131,17 +131,17 @@ class _CameraScreenState extends State<CameraScreen>
 
   @override
   void dispose() {
-    debugPrint('CameraScreen dispose 시작');
+    // Starting CameraScreen disposal process
 
     // 앱 라이프사이클 옵저버 해제
     WidgetsBinding.instance.removeObserver(this);
 
     // IndexedStack 사용 시 카메라 세션 유지
     // dispose는 호출되지만 세션은 유지
-    debugPrint('📹 IndexedStack 환경 - 카메라 세션 유지');
+    // IndexedStack environment - maintaining camera session
 
     super.dispose();
-    debugPrint('CameraScreen dispose 완료');
+    // CameraScreen disposal completed
   }
 
   // 앱 라이프사이클 상태 변화 감지
@@ -172,8 +172,8 @@ class _CameraScreenState extends State<CameraScreen>
       setState(() {
         isFlashOn = newFlashState;
       });
-    } on PlatformException catch (e) {
-      debugPrint("플래시 전환 오류: ${e.message}");
+    } on PlatformException {
+      // Flash toggle error occurred: ${e.message}
     }
   }
 
@@ -204,11 +204,11 @@ class _CameraScreenState extends State<CameraScreen>
         Future.microtask(() => _loadFirstGalleryImage());
       }
     } on PlatformException catch (e) {
-      debugPrint("Error taking picture: ${e.message}");
+      // Picture taking error occurred: ${e.message}
 
       // iOS에서 "Cannot Record" 오류가 발생한 경우 추가 정보 제공
       if (e.message?.contains("Cannot Record") == true) {
-        debugPrint("iOS 오디오 세션 충돌 감지 - 오디오 녹음 중이었을 가능성");
+        // iOS audio session conflict detected - possible audio recording in progress
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -220,7 +220,7 @@ class _CameraScreenState extends State<CameraScreen>
       }
     } catch (e) {
       // 추가 예외 처리
-      debugPrint("Unexpected error: $e");
+      // Unexpected error occurred during picture taking: $e
     }
   }
 
@@ -272,12 +272,12 @@ class _CameraScreenState extends State<CameraScreen>
                 height: gallerySize,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
-                  debugPrint('갤러리 썸네일 메모리 로드 오류: $error');
+                  // Gallery thumbnail memory load error: $error
                   return _buildPlaceholderGallery(gallerySize);
                 },
               );
             } else if (snapshot.hasError) {
-              debugPrint('갤러리 썸네일 데이터 로드 오류: ${snapshot.error}');
+              // Gallery thumbnail data load error: ${snapshot.error}
               return _buildPlaceholderGallery(gallerySize);
             } else {
               return Center(
@@ -315,8 +315,8 @@ class _CameraScreenState extends State<CameraScreen>
   Future<void> _switchCamera() async {
     try {
       await _cameraService.switchCamera();
-    } on PlatformException catch (e) {
-      debugPrint("Error switching camera: ${e.message}");
+    } on PlatformException {
+      // Camera switching error occurred: ${e.message}
     }
   }
 
@@ -495,10 +495,10 @@ class _CameraScreenState extends State<CameraScreen>
                             ),
                           );
                         } else {
-                          debugPrint('갤러리에서 이미지를 선택하지 않았습니다');
+                          // No image was selected from gallery
                         }
                       } catch (e) {
-                        debugPrint('갤러리 이미지 선택 중 오류 발생: $e');
+                        // Error occurred while selecting image from gallery: $e
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(

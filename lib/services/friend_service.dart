@@ -175,7 +175,7 @@ class FriendService {
           await Future.delayed(const Duration(milliseconds: 100));
         } catch (e) {
           // 개별 친구 동기화 실패는 무시하고 계속 진행
-          print('친구 ${friend.id} 정보 동기화 실패: $e');
+          // print('친구 ${friend.id} 정보 동기화 실패: $e');
         }
       }
     } catch (e) {
@@ -191,7 +191,7 @@ class FriendService {
       await _friendRepository.updateLastInteraction(friendUid);
     } catch (e) {
       // 상호작용 기록 실패는 중요하지 않으므로 로그만 출력
-      print('친구 상호작용 기록 실패: $e');
+      // print('친구 상호작용 기록 실패: $e');
     }
   }
 

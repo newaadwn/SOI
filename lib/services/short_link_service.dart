@@ -37,7 +37,7 @@ class ShortLinkService {
           );
           finalSocialImg = imageResult;
         } catch (e) {
-          print('Failed to generate custom image: $e');
+          // print('Failed to generate custom image: $e');
           // Fall back to default logo
           finalSocialImg = 'https://soi-sns.web.app/SOI_logo.png';
         }

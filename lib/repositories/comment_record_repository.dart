@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/foundation.dart'; // debugPrint를 위한 import
 import 'package:flutter/painting.dart'; // Offset를 위한 import
 import '../models/comment_record_model.dart';
 
@@ -99,7 +98,7 @@ class CommentRecordRepository {
     String photoId,
   ) async {
     try {
-      debugPrint('🔍 Firestore 쿼리 시작 - photoId: $photoId');
+      // debugPrint('🔍 Firestore 쿼리 시작 - photoId: $photoId');
 
       final querySnapshot =
           await _firestore
@@ -109,30 +108,30 @@ class CommentRecordRepository {
               .orderBy('createdAt', descending: false)
               .get();
 
-      debugPrint('✅ Firestore 쿼리 성공 - 문서 수: ${querySnapshot.docs.length}');
+      // debugPrint('✅ Firestore 쿼리 성공 - 문서 수: ${querySnapshot.docs.length}');
 
       final results =
           querySnapshot.docs.map((doc) {
             try {
-              debugPrint('📄 문서 파싱 중 - ID: ${doc.id}');
+              // debugPrint('📄 문서 파싱 중 - ID: ${doc.id}');
               return CommentRecordModel.fromFirestore(doc);
             } catch (e) {
-              debugPrint('❌ 문서 파싱 실패 - ID: ${doc.id}, 오류: $e');
+              // debugPrint('❌ 문서 파싱 실패 - ID: ${doc.id}, 오류: $e');
               rethrow;
             }
           }).toList();
 
-      debugPrint('✅ 모든 문서 파싱 완료 - 결과 수: ${results.length}');
+      // debugPrint('✅ 모든 문서 파싱 완료 - 결과 수: ${results.length}');
       return results;
     } catch (e) {
-      debugPrint('❌ Firestore 쿼리 실패 - photoId: $photoId');
-      debugPrint('🔍 오류 타입: ${e.runtimeType}');
-      debugPrint('🔍 오류 메시지: ${e.toString()}');
+      // debugPrint('❌ Firestore 쿼리 실패 - photoId: $photoId');
+      // debugPrint('🔍 오류 타입: ${e.runtimeType}');
+      // debugPrint('🔍 오류 메시지: ${e.toString()}');
 
       if (e.toString().contains('PERMISSION_DENIED')) {
-        debugPrint('🚫 권한 거부됨 - Firestore 보안 규칙을 확인하세요');
+        // debugPrint('🚫 권한 거부됨 - Firestore 보안 규칙을 확인하세요');
       } else if (e.toString().contains('FAILED_PRECONDITION')) {
-        debugPrint('📊 인덱스 없음 - Firestore 인덱스를 생성하세요');
+        // debugPrint('📊 인덱스 없음 - Firestore 인덱스를 생성하세요');
       }
 
       throw Exception('음성 댓글 조회 실패: $e');
@@ -223,7 +222,7 @@ class CommentRecordRepository {
     required String newProfileImageUrl,
   }) async {
     try {
-      debugPrint('🔄 사용자 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $userId');
+      // debugPrint('🔄 사용자 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $userId');
 
       // 해당 사용자의 모든 음성 댓글 조회
       final querySnapshot =
@@ -234,13 +233,9 @@ class CommentRecordRepository {
               .get();
 
       if (querySnapshot.docs.isEmpty) {
-        debugPrint('📝 업데이트할 음성 댓글이 없습니다 - userId: $userId');
+        // debugPrint('📝 업데이트할 음성 댓글이 없습니다 - userId: $userId');
         return;
       }
-
-      debugPrint(
-        '📝 ${querySnapshot.docs.length}개의 음성 댓글 프로필 이미지 URL 업데이트 중...',
-      );
 
       // 배치 업데이트 사용 (성능 최적화)
       final batch = _firestore.batch();
@@ -251,12 +246,8 @@ class CommentRecordRepository {
 
       // 배치 실행
       await batch.commit();
-
-      debugPrint(
-        '✅ 사용자 음성 댓글 프로필 이미지 URL 업데이트 완료 - ${querySnapshot.docs.length}개 업데이트됨',
-      );
     } catch (e) {
-      debugPrint('❌ 사용자 음성 댓글 프로필 이미지 URL 업데이트 실패: $e');
+      // debugPrint('❌ 사용자 음성 댓글 프로필 이미지 URL 업데이트 실패: $e');
       throw Exception('사용자 음성 댓글 프로필 이미지 URL 업데이트 실패: $e');
     }
   }

@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:audio_waveforms/audio_waveforms.dart';
@@ -21,10 +20,10 @@ class AudioRepository {
       final bool hasPermission = await _channel.invokeMethod(
         'checkMicrophonePermission',
       );
-      debugPrint('🔍 네이티브 마이크 권한 상태: $hasPermission');
+      // debugPrint('🔍 네이티브 마이크 권한 상태: $hasPermission');
       return hasPermission;
     } catch (e) {
-      debugPrint('❌ 네이티브 마이크 권한 확인 오류: $e');
+      // debugPrint('❌ 네이티브 마이크 권한 확인 오류: $e');
       return false;
     }
   }
@@ -32,20 +31,20 @@ class AudioRepository {
   /// 마이크 권한 요청 (네이티브에서 처리)
   static Future<bool> requestMicrophonePermission() async {
     try {
-      debugPrint('🎤 네이티브에서 마이크 권한을 요청합니다...');
+      // debugPrint('🎤 네이티브에서 마이크 권한을 요청합니다...');
       final bool granted = await _channel.invokeMethod(
         'requestMicrophonePermission',
       );
 
       if (granted) {
-        debugPrint('✅ 네이티브 마이크 권한이 허용되었습니다.');
+        // debugPrint('✅ 네이티브 마이크 권한이 허용되었습니다.');
         return true;
       } else {
-        debugPrint('❌ 네이티브 마이크 권한이 거부되었습니다.');
+        // debugPrint('❌ 네이티브 마이크 권한이 거부되었습니다.');
         return false;
       }
     } catch (e) {
-      debugPrint('❌ 네이티브 마이크 권한 요청 중 오류: $e');
+      // debugPrint('❌ 네이티브 마이크 권한 요청 중 오류: $e');
       return false;
     }
   }
@@ -53,7 +52,7 @@ class AudioRepository {
   /// 저장소 권한 요청 (네이티브에서 처리하지 않음)
   Future<bool> requestStoragePermission() async {
     // 저장소 권한은 현재 사용하지 않음 (Firebase Storage 사용)
-    debugPrint('저장소 권한은 Firebase Storage 사용으로 불필요');
+    // debugPrint('저장소 권한은 Firebase Storage 사용으로 불필요');
     return true;
   }
 
@@ -62,13 +61,13 @@ class AudioRepository {
   /// 레코더 초기화 (네이티브만 사용)
   Future<void> initializeRecorder() async {
     // 네이티브 녹음만 사용하므로 초기화 불필요
-    debugPrint('네이티브 녹음 초기화 완료');
+    // debugPrint('네이티브 녹음 초기화 완료');
   }
 
   /// 레코더 종료
   Future<void> disposeRecorder() async {
     // 네이티브 녹음만 사용하므로 종료 작업 불필요
-    debugPrint('네이티브 녹음 종료 완료');
+    // debugPrint('네이티브 녹음 종료 완료');
   }
 
   /// 네이티브 녹음 시작 (메인)
@@ -84,10 +83,10 @@ class AudioRepository {
         'filePath': filePath,
       });
 
-      debugPrint('🎤 네이티브 녹음 시작: $startedPath');
+      // debugPrint('🎤 네이티브 녹음 시작: $startedPath');
       return startedPath; // 실제 생성된 파일 경로 반환
     } catch (e) {
-      debugPrint('❌ 네이티브 녹음 시작 오류: $e');
+      // debugPrint('❌ 네이티브 녹음 시작 오류: $e');
       return '';
     }
   }
@@ -97,10 +96,10 @@ class AudioRepository {
   static Future<String?> stopRecording() async {
     try {
       final String? filePath = await _channel.invokeMethod('stopRecording');
-      debugPrint('🎤 네이티브 녹음 중지: $filePath');
+      // debugPrint('🎤 네이티브 녹음 중지: $filePath');
       return filePath;
     } catch (e) {
-      debugPrint('❌ 네이티브 녹음 중지 오류: $e');
+      // debugPrint('❌ 네이티브 녹음 중지 오류: $e');
       return null;
     }
   }
@@ -111,7 +110,7 @@ class AudioRepository {
       final bool recording = await _channel.invokeMethod('isRecording');
       return recording;
     } catch (e) {
-      debugPrint('❌ 네이티브 녹음 상태 확인 오류: $e');
+      // debugPrint('❌ 네이티브 녹음 상태 확인 오류: $e');
       return false;
     }
   }
@@ -122,41 +121,41 @@ class AudioRepository {
 
   /// 플레이어 초기화 (audioplayers 패키지 사용)
   Future<void> initializePlayer() async {
-    debugPrint('네이티브 플레이어 초기화 완료');
+    // debugPrint('네이티브 플레이어 초기화 완료');
   }
 
   /// 플레이어 종료
   Future<void> disposePlayer() async {
-    debugPrint('네이티브 플레이어 종료 완료');
+    // debugPrint('네이티브 플레이어 종료 완료');
   }
 
   /// 오디오 재생 (URL) - audioplayers 사용
   Future<void> playFromUrl(String url) async {
     // audioplayers 패키지를 사용하여 재생
     // 실제 구현은 AudioController에서 처리
-    debugPrint('URL 재생: $url');
+    // debugPrint('URL 재생: $url');
   }
 
   /// 오디오 재생 (로컬 파일) - audioplayers 사용
   Future<void> playFromFile(String filePath) async {
     // audioplayers 패키지를 사용하여 로컬 파일 재생
     // 실제 구현은 AudioController에서 처리
-    debugPrint('로컬 파일 재생: $filePath');
+    // debugPrint('로컬 파일 재생: $filePath');
   }
 
   /// 재생 중지
   Future<void> stopPlaying() async {
-    debugPrint('재생 중지');
+    // debugPrint('재생 중지');
   }
 
   /// 재생 일시정지
   Future<void> pausePlaying() async {
-    debugPrint('재생 일시정지');
+    // debugPrint('재생 일시정지');
   }
 
   /// 재생 재개
   Future<void> resumePlaying() async {
-    debugPrint('재생 재개');
+    // debugPrint('재생 재개');
   }
 
   /// 재생 상태 확인 (기본값 false)
@@ -211,7 +210,7 @@ class AudioRepository {
       try {
         await file.delete();
       } catch (e) {
-        print('임시 파일 삭제 실패: $e');
+        // print('임시 파일 삭제 실패: $e');
       }
     }
   }
@@ -318,7 +317,7 @@ class AudioRepository {
       final ref = _storage.refFromURL(downloadUrl);
       await ref.delete();
     } catch (e) {
-      print('오디오 파일 삭제 실패: $e');
+      // print('오디오 파일 삭제 실패: $e');
     }
   }
 
@@ -341,7 +340,7 @@ class AudioRepository {
 
   /// 오디오 파일에서 파형 데이터 추출
   Future<List<double>> extractWaveformData(String audioFilePath) async {
-    debugPrint('🌊 파형 데이터 추출 시작 - 파일: $audioFilePath');
+    // debugPrint('🌊 파형 데이터 추출 시작 - 파일: $audioFilePath');
 
     final controller = PlayerController();
 
@@ -356,7 +355,7 @@ class AudioRepository {
       int attempts = 0;
       const maxAttempts = 200; // 20초 대기 (업로드 시에는 더 오래 기다림)
 
-      debugPrint('⏳ 파형 추출 완료 대기 중...');
+      // debugPrint('⏳ 파형 추출 완료 대기 중...');
       while (attempts < maxAttempts && rawData.isEmpty) {
         await Future.delayed(const Duration(milliseconds: 100));
         attempts++;
@@ -365,9 +364,7 @@ class AudioRepository {
           final currentData = controller.waveformData;
           if (currentData.isNotEmpty) {
             rawData = currentData;
-            debugPrint(
-              '✅ 파형 추출 완료: ${rawData.length} samples (${attempts * 100}ms 소요)',
-            );
+
             break;
           }
         } catch (e) {
@@ -376,25 +373,25 @@ class AudioRepository {
 
         // 진행률 로그 (5초마다)
         if (attempts % 50 == 0) {
-          debugPrint('⏳ 파형 추출 대기 중... ${attempts * 100}ms');
+          // debugPrint('⏳ 파형 추출 대기 중... ${attempts * 100}ms');
         }
       }
 
-      debugPrint('📊 원본 파형 데이터 길이: ${rawData.length}');
+      // debugPrint('📊 원본 파형 데이터 길이: ${rawData.length}');
 
       if (rawData.isEmpty) {
-        debugPrint('❌ 파형 데이터 추출 시간 초과 또는 실패');
+        // debugPrint('❌ 파형 데이터 추출 시간 초과 또는 실패');
         return [];
       }
 
       // 데이터 최적화 (100개 포인트로 압축)
       final compressedData = _compressWaveformData(rawData, targetLength: 100);
-      debugPrint('🗜️ 압축된 파형 데이터 길이: ${compressedData.length}');
-      debugPrint('📈 파형 샘플: ${compressedData.take(5).toList()}...');
+      // debugPrint('🗜️ 압축된 파형 데이터 길이: ${compressedData.length}');
+      // debugPrint('📈 파형 샘플: ${compressedData.take(5).toList()}...');
 
       return compressedData;
     } catch (e) {
-      debugPrint('❌ 파형 데이터 추출 실패: $e');
+      // debugPrint('❌ 파형 데이터 추출 실패: $e');
       return [];
     } finally {
       controller.dispose();
@@ -430,7 +427,7 @@ class AudioRepository {
       final duration = controller.maxDuration;
       return duration / 1000.0; // 밀리초를 초로 변환
     } catch (e) {
-      debugPrint('오디오 길이 계산 실패: $e');
+      // debugPrint('오디오 길이 계산 실패: $e');
       return 0.0;
     } finally {
       controller.dispose();

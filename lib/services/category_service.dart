@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
 import '../repositories/category_repository.dart';
 import '../models/category_data_model.dart';
 import '../models/auth_result.dart';
@@ -51,21 +50,16 @@ class CategoryService {
   /// 사용자의 카테고리 목록을 한 번만 가져오기
   Future<List<CategoryDataModel>> getUserCategories(String userId) async {
     if (userId.isEmpty) {
-      debugPrint('CategoryService: userId가 비어있습니다.');
+      // // debugPrint('CategoryService: userId가 비어있습니다.');
       return [];
     }
 
     try {
-      debugPrint(
-        'CategoryService: Repository.getUserCategories 호출 중... userId=$userId',
-      );
       final categories = await _repository.getUserCategories(userId);
-      debugPrint(
-        'CategoryService: Repository에서 반환된 카테고리 수: ${categories.length}',
-      );
+
       return categories;
     } catch (e) {
-      debugPrint('카테고리 목록 조회 오류: $e');
+      // // debugPrint('카테고리 목록 조회 오류: $e');
       return [];
     }
   }
@@ -102,7 +96,7 @@ class CategoryService {
 
       return AuthResult.success(categoryId);
     } catch (e) {
-      debugPrint('카테고리 생성 오류: $e');
+      // // debugPrint('카테고리 생성 오류: $e');
       return AuthResult.failure('카테고리 생성 중 오류가 발생했습니다.');
     }
   }
@@ -146,7 +140,6 @@ class CategoryService {
       await _repository.updateCategory(categoryId, updateData);
       return AuthResult.success();
     } catch (e) {
-      debugPrint('카테고리 수정 오류: $e');
       return AuthResult.failure('카테고리 수정 중 오류가 발생했습니다.');
     }
   }
@@ -161,7 +154,6 @@ class CategoryService {
       await _repository.deleteCategory(categoryId);
       return AuthResult.success();
     } catch (e) {
-      debugPrint('카테고리 삭제 오류: $e');
       return AuthResult.failure('카테고리 삭제 중 오류가 발생했습니다.');
     }
   }
@@ -173,7 +165,6 @@ class CategoryService {
 
       return await _repository.getCategory(categoryId);
     } catch (e) {
-      debugPrint('카테고리 조회 오류: $e');
       return null;
     }
   }
@@ -209,7 +200,6 @@ class CategoryService {
 
       return AuthResult.success(photoId);
     } catch (e) {
-      debugPrint('사진 추가 오류: $e');
       return AuthResult.failure('사진 추가 중 오류가 발생했습니다.');
     }
   }
@@ -233,7 +223,6 @@ class CategoryService {
 
       return AuthResult.success();
     } catch (e) {
-      debugPrint('사진 삭제 오류: $e');
       return AuthResult.failure('사진 삭제 중 오류가 발생했습니다.');
     }
   }
@@ -247,7 +236,6 @@ class CategoryService {
 
       return await _repository.getCategoryPhotos(categoryId);
     } catch (e) {
-      debugPrint('카테고리 사진 조회 오류: $e');
       return [];
     }
   }
@@ -280,7 +268,6 @@ class CategoryService {
 
       return AuthResult.success(photoUrl);
     } catch (e) {
-      debugPrint('표지사진 업데이트 오류: $e');
       return AuthResult.failure('표지사진 업데이트 중 오류가 발생했습니다.');
     }
   }
@@ -302,7 +289,6 @@ class CategoryService {
 
       return AuthResult.success();
     } catch (e) {
-      debugPrint('표지사진 업데이트 오류: $e');
       return AuthResult.failure('표지사진 업데이트 중 오류가 발생했습니다.');
     }
   }
@@ -317,7 +303,6 @@ class CategoryService {
       await _repository.deleteCategoryPhoto(categoryId);
       return AuthResult.success();
     } catch (e) {
-      debugPrint('표지사진 삭제 오류: $e');
       return AuthResult.failure('표지사진 삭제 중 오류가 발생했습니다.');
     }
   }
@@ -395,7 +380,6 @@ class CategoryService {
       await _repository.updateCategory(categoryId, {'mates': updatedMates});
       return AuthResult.success('카테고리에서 나갔습니다.');
     } catch (e) {
-      debugPrint('카테고리에서 사용자 제거 실패: $e');
       return AuthResult.failure('카테고리 나가기 중 오류가 발생했습니다.');
     }
   }

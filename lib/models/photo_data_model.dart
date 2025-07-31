@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 
 /// 사진 데이터 모델 (순수 데이터 클래스)
 class PhotoDataModel {
@@ -27,32 +26,19 @@ class PhotoDataModel {
 
   // Firestore에서 데이터를 가져올 때 사용
   factory PhotoDataModel.fromFirestore(Map<String, dynamic> data, String id) {
-    // 디버그: Firestore 원본 데이터 확인
-    debugPrint('🔍 Firestore 데이터 파싱 시작 - ID: $id');
-    debugPrint('  - waveformData 필드 존재: ${data.containsKey('waveformData')}');
-    debugPrint('  - waveformData 값: ${data['waveformData']}');
-    debugPrint('  - waveformData 타입: ${data['waveformData'].runtimeType}');
-
     // waveformData 타입 캐스팅 처리
     List<double>? waveformData;
     if (data['waveformData'] != null) {
       final dynamic waveformRaw = data['waveformData'];
-      debugPrint('  - waveformRaw 타입: ${waveformRaw.runtimeType}');
+      // debugPrint('  - waveformRaw 타입: ${waveformRaw.runtimeType}');
 
       if (waveformRaw is List) {
         try {
           waveformData = waveformRaw.map((e) => (e as num).toDouble()).toList();
-          debugPrint('  - 파형 데이터 파싱 성공: ${waveformData.length} samples');
-          debugPrint('  - 첫 몇 개 샘플: ${waveformData.take(5).toList()}');
         } catch (e) {
-          debugPrint('  - ❌ 파형 데이터 파싱 실패: $e');
           waveformData = null;
         }
-      } else {
-        debugPrint('  - ⚠️ waveformData가 List 타입이 아님');
       }
-    } else {
-      debugPrint('  - ⚠️ waveformData 필드가 null');
     }
 
     return PhotoDataModel(

@@ -41,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
         _authController = Provider.of<AuthController>(context, listen: false);
       });
     });
-    debugPrint('AuthController 초기화 완료');
+    // debugPrint('AuthController 초기화 완료');
   }
 
   @override

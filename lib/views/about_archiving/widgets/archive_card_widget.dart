@@ -57,7 +57,7 @@ class ArchiveCardWidget extends StatelessWidget {
     final isSmallScreen = ArchiveResponsiveHelper.isSmallScreen(context);
     final isLargeScreen = ArchiveResponsiveHelper.isLargeScreen(context);
 
-    debugPrint('category.categoryPhotoUrl: ${category.categoryPhotoUrl}');
+    // 카테고리 사진 URL 확인
 
     // 화면 크기별 조정값들
     final borderRadius =

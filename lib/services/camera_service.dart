@@ -45,15 +45,12 @@ class CameraService {
   Future<void> loadLatestGalleryImage() async {
     // 이미 로딩 중이면 중복 실행 방지
     if (_isLoadingGalleryImage) {
-      debugPrint('갤러리 이미지 로딩이 이미 진행 중');
       return;
     }
 
     _isLoadingGalleryImage = true;
 
     try {
-      debugPrint('최신 갤러리 이미지 로딩 시작...');
-
       final List<AssetPathEntity> paths = await PhotoManager.getAssetPathList(
         onlyAll: true,
         filterOption: filter,
@@ -69,18 +66,13 @@ class CameraService {
           // 실제 파일 경로를 캐시에 저장
           final File? file = await assets.first.file;
           _latestGalleryImagePath = file?.path;
-
-          debugPrint('갤러리 이미지 로딩 완료: $_latestGalleryImagePath');
         } else {
           _latestGalleryImagePath = null;
-          debugPrint('갤러리에 이미지가 없음');
         }
       } else {
         _latestGalleryImagePath = null;
-        debugPrint('갤러리 접근 불가');
       }
     } catch (e) {
-      debugPrint("갤러리 이미지 로딩 오류: $e");
       _latestGalleryImagePath = null;
     } finally {
       _isLoadingGalleryImage = false;
@@ -89,7 +81,6 @@ class CameraService {
 
   // ✅ 갤러리 미리보기 캐시 새로고침 (사진 촬영 후 호출)
   Future<void> refreshGalleryPreview() async {
-    debugPrint('갤러리 미리보기 새로고침');
     await loadLatestGalleryImage();
   }
 
@@ -99,7 +90,6 @@ class CameraService {
       // 1. 갤러리 접근 권한 요청
       final PermissionState ps = await PhotoManager.requestPermissionExtend();
       if (!ps.hasAccess) {
-        debugPrint('갤러리 접근 권한 없음');
         return null;
       }
 
@@ -114,7 +104,6 @@ class CameraService {
       );
 
       if (paths.isEmpty) {
-        debugPrint('갤러리 경로가 비어있음');
         return null;
       }
 
@@ -125,14 +114,11 @@ class CameraService {
       );
 
       if (assets.isEmpty) {
-        debugPrint('갤러리에 이미지 없음');
         return null;
       }
 
-      debugPrint('갤러리 첫 번째 이미지 로딩 성공: ${assets.first.id}');
       return assets.first;
     } catch (e) {
-      debugPrint('갤러리 첫 번째 이미지 로딩 오류: $e');
       return null;
     }
   }
@@ -143,7 +129,6 @@ class CameraService {
       final File? file = await asset.file;
       return file;
     } catch (e) {
-      debugPrint('AssetEntity 파일 변환 오류: $e');
       return null;
     }
   }
@@ -172,7 +157,6 @@ class CameraService {
         }
       }
     } catch (e) {
-      debugPrint("갤러리에서 이미지 선택 오류: $e");
       return null;
     }
     return null;
@@ -186,15 +170,11 @@ class CameraService {
       );
       return imageFile?.path;
     } catch (e) {
-      debugPrint("갤러리에서 이미지 선택 오류: $e");
       return null;
     }
   }
 
   Widget getCameraView() {
-    // 한 번 생성된 뷰는 절대 재생성하지 않음
-    //debugPrint("isViewCreated: $_isViewCreated");
-
     return _buildCameraView();
   }
 
@@ -207,7 +187,8 @@ class CameraService {
         child: AndroidView(
           viewType: 'com.soi.camera',
           onPlatformViewCreated: (int id) {
-            debugPrint('안드로이드 카메라 뷰 생성됨: $id');
+            // 안드로이드 카메라 뷰 생성됨
+
             // 카메라 뷰 생성 후 충분한 시간을 두고 최적화 실행
             Future.delayed(Duration(milliseconds: 800), () {
               optimizeCamera();
@@ -225,7 +206,7 @@ class CameraService {
       return UiKitView(
         viewType: 'com.soi.camera/preview',
         onPlatformViewCreated: (int id) {
-          debugPrint('iOS 카메라 뷰 생성됨: $id');
+          // iOS 카메라 뷰 생성됨
         },
         creationParams: <String, dynamic>{
           'useSRGBColorSpace': true,
@@ -244,7 +225,7 @@ class CameraService {
   // ✅ 개선된 세션 활성화 (SurfaceProvider 준비 대기)
   Future<void> activateSession() async {
     try {
-      debugPrint('카메라 세션 활성화 시작...');
+      // 카메라 세션 활성화 시작
 
       // ✅ 안전한 세션 상태 확인
       bool needsReactivation = false;
@@ -252,38 +233,31 @@ class CameraService {
       try {
         final result = await _cameraChannel.invokeMethod('isSessionActive');
         bool nativeSessionActive = result ?? false;
-        debugPrint(
-          '네이티브 세션 상태: $nativeSessionActive, 서비스 상태: $_isSessionActive',
-        );
+        // 네이티브 세션 상태와 서비스 상태 확인
 
         needsReactivation = !nativeSessionActive || !_isSessionActive;
       } catch (e) {
         if (e.toString().contains('unimplemented') ||
             e.toString().contains('MissingPluginException')) {
-          debugPrint('네이티브 isSessionActive 메서드 미구현 - 기본 로직 사용');
+          // 네이티브 isSessionActive 메서드 미구현 - 기본 로직 사용
+
           needsReactivation = !_isSessionActive;
         } else {
-          debugPrint('네이티브 세션 상태 확인 실패, 강제 재초기화: $e');
           needsReactivation = true;
         }
       }
 
       // ✅ 재활성화가 필요한 경우에만 실행
       if (needsReactivation) {
-        debugPrint('카메라 세션 재활성화 필요');
-
         // SurfaceProvider 준비를 위한 지연
         await Future.delayed(Duration(milliseconds: 200));
 
         await _cameraChannel.invokeMethod('resumeCamera');
         _isSessionActive = true;
-        debugPrint('카메라 세션 활성화 완료');
       } else {
-        debugPrint('카메라 세션이 이미 정상적으로 활성화되어 있음');
         _isSessionActive = true;
       }
-    } on PlatformException catch (e) {
-      debugPrint("카메라 세션 활성화 오류: ${e.message}");
+    } on PlatformException {
       _isSessionActive = false;
 
       // ✅ 오류 발생 시 세션 상태 강제 리셋
@@ -294,7 +268,6 @@ class CameraService {
   // ✅ 세션 상태 강제 리셋 메서드 추가
   Future<void> _forceResetSession() async {
     try {
-      debugPrint('카메라 세션 강제 리셋 시작');
       _isSessionActive = false;
 
       // 네이티브 세션 완전 종료 후 재시작
@@ -303,9 +276,7 @@ class CameraService {
       await _cameraChannel.invokeMethod('resumeCamera');
 
       _isSessionActive = true;
-      debugPrint('카메라 세션 강제 리셋 완료');
     } catch (e) {
-      debugPrint('카메라 세션 강제 리셋 실패: $e');
       _isSessionActive = false;
     }
   }
@@ -313,43 +284,31 @@ class CameraService {
   Future<void> deactivateSession() async {
     // ✅ 이미 비활성화된 세션은 다시 비활성화하지 않음
     if (!_isSessionActive) {
-      debugPrint('📷 카메라 세션이 이미 비활성화되어 있음');
       return;
     }
 
     try {
-      debugPrint('카메라 세션 비활성화 시작...');
       await _cameraChannel.invokeMethod('pauseCamera');
       _isSessionActive = false;
-      debugPrint('카메라 세션 비활성화 완료');
-    } on PlatformException catch (e) {
-      debugPrint("카메라 세션 비활성화 오류: ${e.message}");
-    }
+    } on PlatformException {}
   }
 
   Future<void> pauseCamera() async {
     // ✅ 이미 비활성화된 세션은 다시 일시중지하지 않음
     if (!_isSessionActive) {
-      debugPrint('📷 카메라 세션이 이미 비활성화되어 있음');
       return;
     }
 
     try {
       await _cameraChannel.invokeMethod('pauseCamera');
-      // ✅ 일시 중지는 완전 비활성화가 아니므로 상태는 유지
-      debugPrint('카메라 세션 일시 중지');
-    } on PlatformException catch (e) {
-      debugPrint("카메라 일시 중지 오류: ${e.message}");
-    }
+    } on PlatformException {}
   }
 
   Future<void> resumeCamera() async {
     try {
       await _cameraChannel.invokeMethod('resumeCamera');
       _isSessionActive = true;
-      debugPrint('카메라 세션 재개');
-    } on PlatformException catch (e) {
-      debugPrint("카메라 재개 오류: ${e.message}");
+    } on PlatformException {
       _isSessionActive = false;
     }
   }
@@ -363,45 +322,41 @@ class CameraService {
         'highQuality': true,
         'stabilization': true,
       });
-      debugPrint('카메라 최적화 완료');
     } on PlatformException catch (e) {
       // optimizeCamera 메서드가 구현되지 않은 경우 무시
       if (e.code == 'unimplemented') {
-        debugPrint('카메라 최적화 메서드가 구현되지 않음 (무시)');
-      } else {
-        debugPrint("카메라 최적화 오류: ${e.message}");
-      }
+      } else {}
     }
   }
 
   Future<void> setFlash(bool isOn) async {
     try {
       await _cameraChannel.invokeMethod('setFlash', {'isOn': isOn});
-    } on PlatformException catch (e) {
-      debugPrint("플래시 설정 오류: ${e.message}");
+    } on PlatformException {
+      // // debugPrint("플래시 설정 오류: ${e.message}");
     }
   }
 
   Future<void> setZoomLevel(String level) async {
     try {
       await _cameraChannel.invokeMethod('setZoomLevel', {'level': level});
-    } on PlatformException catch (e) {
-      debugPrint("줌 레벨 설정 오류: ${e.message}");
+    } on PlatformException {
+      // // debugPrint("줌 레벨 설정 오류: ${e.message}");
     }
   }
 
   Future<void> setBrightness(double value) async {
     try {
       await _cameraChannel.invokeMethod('setBrightness', {'value': value});
-    } on PlatformException catch (e) {
-      debugPrint("밝기 설정 오류: ${e.message}");
+    } on PlatformException {
+      // // debugPrint("밝기 설정 오류: ${e.message}");
     }
   }
 
   // ✅ 개선된 카메라 초기화 (타이밍 이슈 해결)
   Future<bool> initCamera() async {
     try {
-      debugPrint('카메라 초기화 시작...');
+      // // debugPrint('카메라 초기화 시작...');
 
       // SurfaceProvider 준비 확인을 위한 재시도 로직
       bool result = false;
@@ -413,25 +368,25 @@ class CameraService {
         try {
           result = await _cameraChannel.invokeMethod('initCamera');
           if (result) {
-            debugPrint('카메라 초기화 성공 (시도 ${retryCount + 1}/$maxRetries)');
+            // // debugPrint('카메라 초기화 성공 (시도 ${retryCount + 1}/$maxRetries)');
             break;
           }
         } catch (e) {
-          debugPrint('카메라 초기화 실패 (시도 ${retryCount + 1}/$maxRetries): $e');
+          // // debugPrint('카메라 초기화 실패 (시도 ${retryCount + 1}/$maxRetries): $e');
         }
 
         retryCount++;
         if (retryCount < maxRetries) {
-          debugPrint('${retryDelay.inMilliseconds}ms 후 재시도...');
+          // // debugPrint('${retryDelay.inMilliseconds}ms 후 재시도...');
           await Future.delayed(retryDelay);
         }
       }
 
       _isSessionActive = result;
-      debugPrint('카메라 초기화 최종 결과: $result');
+      // // debugPrint('카메라 초기화 최종 결과: $result');
       return result;
-    } on PlatformException catch (e) {
-      debugPrint("카메라 초기화 오류: ${e.message}");
+    } on PlatformException {
+      // // debugPrint("카메라 초기화 오류: ${e.message}");
       _isSessionActive = false;
       return false;
     }
@@ -442,10 +397,10 @@ class CameraService {
     try {
       // 카메라가 초기화되지 않았으면 먼저 초기화
       if (!_isSessionActive) {
-        debugPrint('카메라가 초기화되지 않아 자동 초기화를 시도합니다...');
+        // // debugPrint('카메라가 초기화되지 않아 자동 초기화를 시도합니다...');
         final initialized = await initCamera();
         if (!initialized) {
-          debugPrint('카메라 자동 초기화 실패');
+          // // debugPrint('카메라 자동 초기화 실패');
           return '';
         }
 
@@ -453,20 +408,20 @@ class CameraService {
         await Future.delayed(Duration(milliseconds: 200));
       }
 
-      debugPrint('사진 촬영 시작...');
+      // // debugPrint('사진 촬영 시작...');
       final String result = await _cameraChannel.invokeMethod('takePicture');
 
       if (result.isNotEmpty) {
-        debugPrint('사진 촬영 성공: $result');
+        // // debugPrint('사진 촬영 성공: $result');
         // 갤러리 미리보기 새로고침 (비동기)
         Future.microtask(() => refreshGalleryPreview());
       } else {
-        debugPrint('사진 촬영 실패: 빈 경로 반환');
+        // // debugPrint('사진 촬영 실패: 빈 경로 반환');
       }
 
       return result;
-    } on PlatformException catch (e) {
-      debugPrint("사진 촬영 오류: ${e.message}");
+    } on PlatformException {
+      // // debugPrint("사진 촬영 오류: ${e.message}");
       return '';
     }
   }
@@ -476,10 +431,10 @@ class CameraService {
     try {
       // 카메라가 초기화되지 않았으면 먼저 초기화
       if (!_isSessionActive) {
-        debugPrint('카메라가 초기화되지 않아 자동 초기화를 시도합니다...');
+        // // debugPrint('카메라가 초기화되지 않아 자동 초기화를 시도합니다...');
         final initialized = await initCamera();
         if (!initialized) {
-          debugPrint('카메라 자동 초기화 실패');
+          // // debugPrint('카메라 자동 초기화 실패');
           return;
         }
 
@@ -487,11 +442,11 @@ class CameraService {
         await Future.delayed(Duration(milliseconds: 200));
       }
 
-      debugPrint('카메라 전환 시작...');
+      // // debugPrint('카메라 전환 시작...');
       await _cameraChannel.invokeMethod('switchCamera');
-      debugPrint('카메라 전환 완료');
-    } on PlatformException catch (e) {
-      debugPrint("카메라 전환 오류: ${e.message}");
+      // // debugPrint('카메라 전환 완료');
+    } on PlatformException {
+      // // debugPrint("카메라 전환 오류: ${e.message}");
     }
   }
 
@@ -503,9 +458,9 @@ class CameraService {
       // ✅ 상태 리셋
       _isSessionActive = false;
 
-      debugPrint('카메라 리소스 정리 완료');
-    } on PlatformException catch (e) {
-      debugPrint("카메라 리소스 정리 오류: ${e.message}");
+      // // debugPrint('카메라 리소스 정리 완료');
+    } on PlatformException {
+      // // debugPrint("카메라 리소스 정리 오류: ${e.message}");
       // ✅ 에러가 나도 상태는 리셋
       _isSessionActive = false;
     }

@@ -71,7 +71,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        debugPrint('프로필 이미지 업데이트 오류: $e');
+        // debugPrint('프로필 이미지 업데이트 오류: $e');
       }
     }
   }
@@ -197,7 +197,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     } catch (e) {
       if (mounted) {
-        debugPrint('로그아웃 실패: $e');
+        // debugPrint('로그아웃 실패: $e');
         // 에러 메시지 표시 (옵션)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -366,7 +366,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // 로딩 다이얼로그 닫기
         Navigator.of(context).pop();
 
-        debugPrint('계정 삭제 실패: $e');
+        // debugPrint('계정 삭제 실패: $e');
         // 에러 메시지 표시
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

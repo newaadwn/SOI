@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter_boxicons/flutter_boxicons.dart';
 import 'package:flutter_contacts/contact.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
@@ -53,9 +52,9 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
       // 기존 상태 초기화 후 재초기화
       await friendController.reset();
       await friendController.initialize();
-      debugPrint('FriendController 초기화 완료');
+      // debugPrint('FriendController 초기화 완료');
     } catch (e) {
-      debugPrint('FriendController 초기화 실패: $e');
+      // debugPrint('FriendController 초기화 실패: $e');
     }
   }
 
@@ -72,9 +71,9 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
       // 기존 상태 초기화 후 재초기화
       await friendRequestController.reset();
       await friendRequestController.initialize();
-      debugPrint('FriendRequestController 초기화 완료');
+      // debugPrint('FriendRequestController 초기화 완료');
     } catch (e) {
-      debugPrint('FriendRequestController 초기화 실패: $e');
+      // debugPrint('FriendRequestController 초기화 실패: $e');
     }
   }
 
@@ -101,12 +100,12 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
       if (result.isEnabled && mounted) {
         try {
           _contacts = await contactController.getContacts();
-          debugPrint('연락처 로드 성공: ${_contacts}');
+          // debugPrint('연락처 로드 성공: ${_contacts}');
           if (mounted) {
             setState(() {});
           }
         } catch (e) {
-          debugPrint('연락처 로드 실패: $e');
+          // debugPrint('연락처 로드 실패: $e');
         }
       }
 
@@ -150,7 +149,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
         }
       }
     } catch (e) {
-      debugPrint('연락처 새로고침 실패: $e');
+      // debugPrint('연락처 새로고침 실패: $e');
     }
   }
 
@@ -843,21 +842,21 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
         final receivedRequests = friendRequestController.receivedRequests;
 
         // 디버그 정보 출력
-        debugPrint('=== FriendRequestController 상태 ===');
-        debugPrint('- isLoading: ${friendRequestController.isLoading}');
-        debugPrint('- isInitialized: ${friendRequestController.isInitialized}');
-        debugPrint('- error: ${friendRequestController.error}');
-        debugPrint('- receivedRequests 개수: ${receivedRequests.length}');
-        debugPrint('- 현재 사용자 UID: ${AuthController().currentUser?.uid}');
+        // debugPrint('=== FriendRequestController 상태 ===');
+        // debugPrint('- isLoading: ${friendRequestController.isLoading}');
+        // debugPrint('- isInitialized: ${friendRequestController.isInitialized}');
+        // debugPrint('- error: ${friendRequestController.error}');
+        // debugPrint('- receivedRequests 개수: ${receivedRequests.length}');
+        // debugPrint('- 현재 사용자 UID: ${AuthController().currentUser?.uid}');
         if (receivedRequests.isNotEmpty) {
-          debugPrint('- 첫 번째 요청 정보:');
-          debugPrint('  - ID: ${receivedRequests.first.id}');
-          debugPrint('  - 발신자: ${receivedRequests.first.senderid}');
-          debugPrint('  - 수신자 UID: ${receivedRequests.first.receiverUid}');
-          debugPrint('  - 상태: ${receivedRequests.first.status}');
-          debugPrint('  - 생성일: ${receivedRequests.first.createdAt}');
+          // debugPrint('- 첫 번째 요청 정보:');
+          // debugPrint('  - ID: ${receivedRequests.first.id}');
+          // debugPrint('  - 발신자: ${receivedRequests.first.senderid}');
+          // debugPrint('  - 수신자 UID: ${receivedRequests.first.receiverUid}');
+          // debugPrint('  - 상태: ${receivedRequests.first.status}');
+          // debugPrint('  - 생성일: ${receivedRequests.first.createdAt}');
         }
-        debugPrint('==================================');
+        // debugPrint('==================================');
 
         return SizedBox(
           width: 354 * scale,
@@ -1179,7 +1178,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
                                 ),
                                 onTap: () {
                                   // TODO: 친구 상세 페이지로 이동
-                                  debugPrint('친구 상세 페이지로 이동: ${friend.name}');
+                                  // debugPrint('친구 상세 페이지로 이동: ${friend.name}');
                                 },
                               );
                             },
@@ -1189,7 +1188,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
                           GestureDetector(
                             onTap: () {
                               // TODO: 친구 목록 전체 화면으로 이동
-                              debugPrint('더보기 클릭됨');
+                              // debugPrint('더보기 클릭됨');
                             },
                             child: Column(
                               children: [
@@ -1320,7 +1319,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
                         )
                         : null;
                   } catch (e) {
-                    debugPrint('전화번호 접근 오류: $e');
+                    // debugPrint('전화번호 접근 오류: $e');
                     return null;
                   }
                 }(),
@@ -1400,7 +1399,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
           );
 
           if (matchedUser != null) {
-            debugPrint('매칭된 사용자 찾음: ${matchedUser.uid}, ${matchedUser.id}');
+            // debugPrint('매칭된 사용자 찾음: ${matchedUser.uid}, ${matchedUser.id}');
             final success = await friendRequestController.sendFriendRequest(
               receiverUid: matchedUser.uid,
               message: '${contact.displayName}님과 친구가 되고 싶어요!',
@@ -1416,7 +1415,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
             }
           } else {
             // SOI 사용자이지만 정보를 찾을 수 없는 경우
-            debugPrint('사용자 정보를 찾을 수 없음');
+            // debugPrint('사용자 정보를 찾을 수 없음');
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -1486,7 +1485,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
           break;
       }
     } catch (e) {
-      debugPrint('친구 추가 실패: $e');
+      // debugPrint('친구 추가 실패: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1501,12 +1500,12 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
   /// SMS로 앱 설치 링크 전송
   Future<void> _sendInviteSMS(Contact contact) async {
     try {
-      debugPrint('Contact 정보: ${contact.displayName}');
-      debugPrint('Contact phones 길이: ${contact.phones.length}');
+      // debugPrint('Contact 정보: ${contact.displayName}');
+      // debugPrint('Contact phones 길이: ${contact.phones.length}');
 
       // Contact의 전화번호 확인
       if (contact.phones.isEmpty) {
-        debugPrint('전화번호가 없는 연락처: ${contact.displayName}');
+        // debugPrint('전화번호가 없는 연락처: ${contact.displayName}');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1524,10 +1523,10 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
 
       AuthController authController = AuthController();
 
-      debugPrint('전화번호: $phoneNumber');
+      // debugPrint('전화번호: $phoneNumber');
 
       if (phoneNumber.isEmpty) {
-        debugPrint('빈 전화번호: ${contact.displayName}');
+        // debugPrint('빈 전화번호: ${contact.displayName}');
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1572,7 +1571,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
         throw 'SMS 앱을 열 수 없습니다';
       }
     } catch (e) {
-      debugPrint('SMS 전송 실패: $e');
+      // debugPrint('SMS 전송 실패: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('메시지 전송 실패: $e'), backgroundColor: Colors.red),

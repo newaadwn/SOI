@@ -109,6 +109,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   /// 사용자가 속한 카테고리들과 해당 사진들을 모두 로드 (초기 로드)
   Future<void> _loadUserCategoriesAndPhotos() async {
     try {
+      debugPrint('🔄 [FEED] 사진 로드 시작...');
       setState(() {
         _isLoading = true;
         _allPhotos.clear();
@@ -129,7 +130,10 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       );
 
       final currentUserId = authController.getUserId;
+      debugPrint('👤 [FEED] 현재 사용자 ID 확인: $currentUserId');
+
       if (currentUserId == null || currentUserId.isEmpty) {
+        debugPrint('❌ [FEED] 사용자 ID가 없음!');
         throw Exception('로그인된 사용자를 찾을 수 없습니다.');
       }
 
@@ -138,11 +142,29 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       await _loadCurrentUserProfile(authController, currentUserId);
 
       // 사용자가 속한 카테고리들 가져오기
-      await categoryController.loadUserCategories(currentUserId);
+      debugPrint('📁 [FEED] 카테고리 로드 시작...');
+      debugPrint(
+        '📁 [FEED] 로드 전 카테고리 수: ${categoryController.userCategories.length}',
+      );
+      await categoryController.loadUserCategories(
+        currentUserId,
+        forceReload: true,
+      );
+      debugPrint(
+        '📁 [FEED] 로드 후 즉시 카테고리 수: ${categoryController.userCategories.length}',
+      );
       final userCategories = categoryController.userCategories;
       debugPrint('📁 사용자가 속한 카테고리 수: ${userCategories.length}');
 
+      if (userCategories.isNotEmpty) {
+        debugPrint('📁 카테고리 목록:');
+        for (var cat in userCategories) {
+          debugPrint('  - ${cat.name} (${cat.id})');
+        }
+      }
+
       if (userCategories.isEmpty) {
+        debugPrint('⚠️ [FEED] 카테고리가 없음!');
         setState(() {
           _isLoading = false;
           _hasMoreData = false;
@@ -152,7 +174,12 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
       // PhotoController의 무한 스크롤 초기 로드 사용 (5개)
       final categoryIds = userCategories.map((c) => c.id).toList();
+      debugPrint('🖼️ [FEED] 사진 로드 시작 - 카테고리 ID: $categoryIds');
       await photoController.loadPhotosFromAllCategoriesInitial(categoryIds);
+
+      debugPrint(
+        '🖼️ [FEED] PhotoController에서 로드된 사진 수: ${photoController.photos.length}',
+      );
 
       // PhotoController의 데이터를 UI용 형태로 변환
       final List<Map<String, dynamic>> photoDataList = [];
@@ -166,6 +193,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           'categoryName': category.name,
           'categoryId': category.id,
         });
+        debugPrint('  - 사진 추가: ${photo.id} in ${category.name}');
       }
 
       setState(() {
@@ -182,8 +210,9 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       }
 
       debugPrint('✅ 초기 사진 로드 완료: ${_allPhotos.length}개, 더 있음: $_hasMoreData');
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('❌ 사진 로드 실패: $e');
+      debugPrint('스택 트레이스: $stackTrace');
       setState(() {
         _isLoading = false;
         _hasMoreData = false;
@@ -229,13 +258,18 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
       // PhotoController의 무한 스크롤 추가 로드 사용 (10개)
       final categoryIds = userCategories.map((c) => c.id).toList();
+
+      // 로드 전 현재 사진 개수 저장
+      final previousPhotoCount = photoController.photos.length;
+
       await photoController.loadMorePhotos(categoryIds);
+
+      // 로드 후 새로 추가된 사진만 가져오기
+      final allPhotos = photoController.photos;
+      final newPhotos = allPhotos.sublist(previousPhotoCount);
 
       // 새로 로드된 사진들을 UI용 형태로 변환
       final List<Map<String, dynamic>> newPhotoDataList = [];
-      final startIndex = _allPhotos.length; // 현재까지 로드된 사진 수
-      final newPhotos = photoController.photos.skip(startIndex).toList();
-
       for (PhotoDataModel photo in newPhotos) {
         final category = userCategories.firstWhere(
           (c) => c.id == photo.categoryId,
@@ -834,10 +868,15 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
             scrollDirection: Axis.vertical,
             itemCount: _allPhotos.length + (_hasMoreData ? 1 : 0),
             onPageChanged: (index) {
+              debugPrint('📍 현재 페이지: $index / 전체: ${_allPhotos.length}');
+
               // 마지막에서 2번째 페이지에 도달하면 추가 로드
               if (index >= _allPhotos.length - 2 &&
                   _hasMoreData &&
                   !_isLoadingMore) {
+                debugPrint(
+                  '🔄 추가 로드 트리거 - index: $index, 전체: ${_allPhotos.length}',
+                );
                 _loadMorePhotos();
               }
             },

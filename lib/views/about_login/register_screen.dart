@@ -42,7 +42,7 @@ class _AuthScreenState extends State<AuthScreen> {
       });
     });
 
-    debugPrint('AuthViewModel 초기화 완료');
+    // debugPrint('AuthViewModel 초기화 완료');
   }
 
   @override

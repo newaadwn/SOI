@@ -78,8 +78,6 @@ class _PhotoGridItemState extends State<PhotoGridItem>
 
   /// AuthController 변경 감지 시 프로필 이미지 캐시 무효화
   void _onAuthControllerChanged() async {
-    debugPrint(' AuthController 변경 감지 - 프로필 이미지 리프레시');
-
     // 정적 캐시에서 해당 사용자 제거
     _profileImageCache.remove(widget.photo.userID);
 
@@ -93,7 +91,6 @@ class _PhotoGridItemState extends State<PhotoGridItem>
 
     // 오디오 URL 유효성 검사
     if (audioUrl.isEmpty) {
-      debugPrint('오디오 URL이 비어있습니다.');
       setState(() {
         _hasAudio = false;
       });
@@ -104,14 +101,11 @@ class _PhotoGridItemState extends State<PhotoGridItem>
     final waveformData = widget.photo.waveformData;
 
     if (waveformData != null && waveformData.isNotEmpty) {
-      debugPrint('Firestore 파형 데이터 사용: ${waveformData.length} samples');
       setState(() {
         _hasAudio = true;
         _waveformData = waveformData;
       });
-      debugPrint('파형 데이터 설정 완료');
     } else {
-      debugPrint('Firestore에 파형 데이터가 없습니다');
       setState(() {
         _hasAudio = false;
       });
@@ -119,12 +113,9 @@ class _PhotoGridItemState extends State<PhotoGridItem>
   }
 
   Future<void> _loadUserProfileImage() async {
-    debugPrint('프로필 이미지 로딩 시작 - UserID: ${widget.photo.userID}');
-
     // 캐시 크기 관리
     if (_profileImageCache.length > _maxCacheSize) {
       _profileImageCache.clear();
-      debugPrint('캐시 크기 초과로 초기화');
     }
 
     try {
@@ -133,12 +124,9 @@ class _PhotoGridItemState extends State<PhotoGridItem>
         listen: false,
       );
 
-      debugPrint('AuthController에서 프로필 이미지 요청 중...');
       // AuthController의 캐싱 메서드 사용 (feed_home과 동일)
       final profileImageUrl = await authController
           .getUserProfileImageUrlWithCache(widget.photo.userID);
-
-      debugPrint('프로필 이미지 URL 받음: "$profileImageUrl"');
 
       // 로컬 캐시에도 저장
       _profileImageCache[widget.photo.userID] = profileImageUrl;
@@ -148,12 +136,8 @@ class _PhotoGridItemState extends State<PhotoGridItem>
           _userProfileImageUrl = profileImageUrl;
           _isLoadingProfile = false;
         });
-        debugPrint('✅ 프로필 이미지 상태 업데이트 완료');
-      } else {
-        debugPrint('위젯이 unmounted 상태');
-      }
+      } else {}
     } catch (e) {
-      debugPrint('프로필 이미지 로드 실패: $e');
       if (mounted) {
         setState(() {
           _isLoadingProfile = false;

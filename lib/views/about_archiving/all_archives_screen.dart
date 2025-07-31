@@ -56,7 +56,6 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
 
   /// AuthController 변경 감지 시 프로필 이미지 캐시 무효화
   void _onAuthControllerChanged() {
-    debugPrint(' AuthController 변경 감지 - 아카이브 프로필 이미지 캐시 무효화');
     if (mounted) {
       setState(() {
         _categoryProfileImages.clear(); // 모든 프로필 이미지 캐시 무효화
@@ -78,7 +77,6 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
     );
 
     try {
-      debugPrint(' 카테고리 $categoryId의 프로필 이미지 로드 시작');
       final profileImages = await categoryController.getCategoryProfileImages(
         mates,
         authController,
@@ -88,9 +86,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
           _categoryProfileImages[categoryId] = profileImages;
         });
       }
-      debugPrint('✅ 카테고리 $categoryId의 프로필 이미지 로드 완료: ${profileImages.length}개');
     } catch (e) {
-      debugPrint('❌ 프로필 이미지 로딩 오류: $e');
       if (mounted) {
         setState(() {
           _categoryProfileImages[categoryId] = [];

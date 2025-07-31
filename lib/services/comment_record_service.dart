@@ -53,14 +53,14 @@ class CommentRecordService {
     }
 
     try {
-      debugPrint('🔍 Repository에서 음성 댓글 조회 시작 - photoId: $photoId');
+      // // debugPrint('🔍 Repository에서 음성 댓글 조회 시작 - photoId: $photoId');
       final result = await _repository.getCommentRecordsByPhotoId(photoId);
-      debugPrint('✅ Repository에서 댓글 조회 성공 - 댓글 수: ${result.length}');
+      // // debugPrint('✅ Repository에서 댓글 조회 성공 - 댓글 수: ${result.length}');
       return result;
     } catch (e) {
-      debugPrint('❌ Repository에서 댓글 조회 실패 - photoId: $photoId, 오류: $e');
-      debugPrint('🔍 오류 타입: ${e.runtimeType}');
-      debugPrint('🔍 오류 세부사항: ${e.toString()}');
+      // // debugPrint('❌ Repository에서 댓글 조회 실패 - photoId: $photoId, 오류: $e');
+      // // debugPrint('🔍 오류 타입: ${e.runtimeType}');
+      // // debugPrint('🔍 오류 세부사항: ${e.toString()}');
       throw ServiceException('음성 댓글 조회 실패', originalError: e);
     }
   }

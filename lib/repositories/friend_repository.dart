@@ -379,7 +379,7 @@ class FriendRepository {
           .update({'lastInteraction': Timestamp.now()});
     } catch (e) {
       // 상호작용 시간 업데이트 실패는 중요하지 않으므로 로그만 출력
-      print('친구 상호작용 시간 업데이트 실패: $e');
+// print('친구 상호작용 시간 업데이트 실패: $e');
     }
   }
 }

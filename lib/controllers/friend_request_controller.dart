@@ -18,7 +18,7 @@ class FriendRequestController extends ChangeNotifier {
 
   // 요청 전송 상태
   bool _isSendingRequest = false;
-  Map<String, bool> _processingRequests = {}; // requestId -> isProcessing
+  final Map<String, bool> _processingRequests = {}; // requestId -> isProcessing
 
   // 통계 정보
   Map<String, int> _requestStats = {'received': 0, 'sent': 0};
@@ -60,10 +60,8 @@ class FriendRequestController extends ChangeNotifier {
       await _loadRequestStats();
 
       _isInitialized = true;
-      debugPrint('FriendRequestController 초기화 완료');
     } catch (e) {
       _setError('친구 요청 초기화 실패: $e');
-      debugPrint('FriendRequestController 초기화 실패: $e');
     } finally {
       _setLoading(false);
     }
@@ -95,7 +93,7 @@ class FriendRequestController extends ChangeNotifier {
     _error = null;
 
     notifyListeners();
-    debugPrint('FriendRequestController 상태 초기화 완료');
+    // // debugPrint('FriendRequestController 상태 초기화 완료');
   }
 
   /// 친구 요청 전송
@@ -111,12 +109,10 @@ class FriendRequestController extends ChangeNotifier {
       _clearError();
       notifyListeners();
 
-      final requestId = await _friendRequestService.sendFriendRequest(
+      await _friendRequestService.sendFriendRequest(
         receiverUid: receiverUid,
         message: message,
       );
-
-      debugPrint('친구 요청 전송 성공: $requestId');
 
       // 통계 업데이트
       await _loadRequestStats();
@@ -124,7 +120,7 @@ class FriendRequestController extends ChangeNotifier {
       return true;
     } catch (e) {
       _setError('친구 요청 전송 실패: $e');
-      debugPrint('친구 요청 전송 실패: $e');
+      // // debugPrint('친구 요청 전송 실패: $e');
       return false;
     } finally {
       _isSendingRequest = false;
@@ -143,15 +139,13 @@ class FriendRequestController extends ChangeNotifier {
 
       await _friendRequestService.acceptFriendRequest(requestId);
 
-      debugPrint('친구 요청 수락 성공: $requestId');
-
       // 통계 업데이트
       await _loadRequestStats();
 
       return true;
     } catch (e) {
       _setError('친구 요청 수락 실패: $e');
-      debugPrint('친구 요청 수락 실패: $e');
+
       return false;
     } finally {
       _processingRequests[requestId] = false;
@@ -170,15 +164,13 @@ class FriendRequestController extends ChangeNotifier {
 
       await _friendRequestService.rejectFriendRequest(requestId);
 
-      debugPrint('친구 요청 거절 성공: $requestId');
-
       // 통계 업데이트
       await _loadRequestStats();
 
       return true;
     } catch (e) {
       _setError('친구 요청 거절 실패: $e');
-      debugPrint('친구 요청 거절 실패: $e');
+
       return false;
     } finally {
       _processingRequests[requestId] = false;
@@ -197,15 +189,13 @@ class FriendRequestController extends ChangeNotifier {
 
       await _friendRequestService.cancelFriendRequest(requestId);
 
-      debugPrint('친구 요청 취소 성공: $requestId');
-
       // 통계 업데이트
       await _loadRequestStats();
 
       return true;
     } catch (e) {
       _setError('친구 요청 취소 실패: $e');
-      debugPrint('친구 요청 취소 실패: $e');
+
       return false;
     } finally {
       _processingRequests[requestId] = false;
@@ -220,7 +210,6 @@ class FriendRequestController extends ChangeNotifier {
     try {
       return await _friendRequestService.getFriendshipStatus(userId);
     } catch (e) {
-      debugPrint('친구 관계 상태 확인 실패: $e');
       return 'none';
     }
   }
@@ -234,7 +223,6 @@ class FriendRequestController extends ChangeNotifier {
     try {
       return await _friendRequestService.getBatchFriendshipStatus(userIds);
     } catch (e) {
-      debugPrint('배치 친구 관계 상태 확인 실패: $e');
       return {};
     }
   }
@@ -277,9 +265,7 @@ class FriendRequestController extends ChangeNotifier {
     try {
       _requestStats = await _friendRequestService.getFriendRequestStats();
       notifyListeners();
-    } catch (e) {
-      debugPrint('요청 통계 로드 실패: $e');
-    }
+    } catch (e) {}
   }
 
   /// 새로고침
@@ -289,8 +275,6 @@ class FriendRequestController extends ChangeNotifier {
       _clearError();
 
       await _loadRequestStats();
-
-      debugPrint('친구 요청 정보 새로고침 완료');
     } catch (e) {
       _setError('새로고침 실패: $e');
     } finally {

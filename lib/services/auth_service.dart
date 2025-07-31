@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../repositories/auth_repository.dart';
@@ -19,20 +18,20 @@ class AuthService {
 
   Future<String> getUserProfileImageUrlById(String userId) async {
     try {
-      debugPrint('👤 프로필 이미지 URL 조회 시작 - UserId: $userId');
+      // debugPrint('👤 프로필 이미지 URL 조회 시작 - UserId: $userId');
       return await _repository.getUserProfileImageUrlById(userId);
     } catch (e) {
-      debugPrint('사용자 프로필 이미지 가져오기 실패: $e');
+      // debugPrint('사용자 프로필 이미지 가져오기 실패: $e');
       return '';
     }
   }
 
   Future<AuthModel?> getUserInfo(String userId) async {
     try {
-      debugPrint('👤 사용자 정보 조회 시작 - UserId: $userId');
+      // debugPrint('👤 사용자 정보 조회 시작 - UserId: $userId');
       return await _repository.getUserInfo(userId);
     } catch (e) {
-      debugPrint('사용자 정보 가져오기 실패: $e');
+      // debugPrint('사용자 정보 가져오기 실패: $e');
       return null;
     }
   }
@@ -63,12 +62,12 @@ class AuthService {
 
       return AuthResult.success();
     } catch (e) {
-      debugPrint('전화번호 인증 오류: $e');
+      // debugPrint('전화번호 인증 오류: $e');
 
       // reCAPTCHA 관련 에러는 사용자에게 친숙한 메시지로 변경
       if (e.toString().contains('web-internal-error') ||
           e.toString().contains('reCAPTCHA')) {
-        debugPrint('reCAPTCHA 관련 에러 발생, 사용자에게는 일반적인 메시지 표시');
+        // debugPrint('reCAPTCHA 관련 에러 발생, 사용자에게는 일반적인 메시지 표시');
         return AuthResult.success(); // 실제로는 성공으로 처리 (백그라운드 에러이므로)
       }
 
@@ -108,7 +107,7 @@ class AuthService {
         return AuthResult.failure('로그인에 실패했습니다.');
       }
     } catch (e) {
-      debugPrint('SMS 로그인 오류: $e');
+      // debugPrint('SMS 로그인 오류: $e');
       return AuthResult.failure('인증 코드 확인 중 오류가 발생했습니다: $e');
     }
   }
@@ -165,7 +164,7 @@ class AuthService {
 
       return AuthResult.success(user);
     } catch (e) {
-      debugPrint('사용자 생성 오류: $e');
+      // debugPrint('사용자 생성 오류: $e');
       return AuthResult.failure('사용자 정보 저장 중 오류가 발생했습니다: $e');
     }
   }
@@ -176,7 +175,7 @@ class AuthService {
       await _repository.signOut();
       return AuthResult.success();
     } catch (e) {
-      debugPrint('로그아웃 오류: $e');
+      // debugPrint('로그아웃 오류: $e');
       return AuthResult.failure('로그아웃 중 오류가 발생했습니다.');
     }
   }
@@ -242,7 +241,7 @@ class AuthService {
     try {
       return await _repository.searchUsersByNickname(nickname);
     } catch (e) {
-      debugPrint('사용자 검색 오류: $e');
+      // debugPrint('사용자 검색 오류: $e');
       return [];
     }
   }
@@ -275,7 +274,7 @@ class AuthService {
 
       return AuthResult.success(downloadUrl);
     } catch (e) {
-      debugPrint('프로필 이미지 업데이트 오류: $e');
+      // debugPrint('프로필 이미지 업데이트 오류: $e');
       return AuthResult.failure('프로필 이미지 업데이트 중 오류가 발생했습니다.');
     }
   }
@@ -296,7 +295,7 @@ class AuthService {
 
       return AuthResult.success();
     } catch (e) {
-      debugPrint('계정 삭제 오류: $e');
+      // debugPrint('계정 삭제 오류: $e');
       return AuthResult.failure('계정 삭제 중 오류가 발생했습니다.');
     }
   }

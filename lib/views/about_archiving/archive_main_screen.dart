@@ -158,9 +158,6 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                           exception,
                                           stackTrace,
                                         ) {
-                                          debugPrint(
-                                            '프로필 이미지 로드 오류: $exception',
-                                          );
                                           Future.microtask(
                                             () =>
                                                 authController
@@ -597,7 +594,6 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         context,
       ).showSnackBar(SnackBar(content: Text('카테고리가 생성되었습니다!')));
     } catch (e) {
-      debugPrint('카테고리 생성 중 오류: $e');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('카테고리 생성 중 오류가 발생했습니다')));

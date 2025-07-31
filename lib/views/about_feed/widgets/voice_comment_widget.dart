@@ -66,7 +66,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     // 저장된 상태로 시작해야 하는 경우
     if (widget.startAsSaved) {
       _currentState = VoiceCommentState.saved;
-      debugPrint('🖼️ VoiceCommentWidget이 저장된 상태로 시작됨');
+      // debugPrint('🖼️ VoiceCommentWidget이 저장된 상태로 시작됨');
       return; // 컨트롤러 초기화 없이 리턴
     }
 
@@ -92,7 +92,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
           ..sampleRate = 44100;
 
     _playerController = PlayerController();
-    debugPrint('🎛️ 음성 댓글 컨트롤러 초기화 완료');
+    // debugPrint('🎛️ 음성 댓글 컨트롤러 초기화 완료');
   }
 
   @override
@@ -108,7 +108,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
   /// 녹음 시작
   Future<void> _startRecording() async {
     try {
-      debugPrint('🎤 음성 댓글 녹음 시작');
+      // debugPrint('🎤 음성 댓글 녹음 시작');
 
       // 녹음 시작 시간 기록
       _recordingStartTime = DateTime.now();
@@ -120,9 +120,9 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
         _currentState = VoiceCommentState.recording;
       });
 
-      debugPrint('✅ 음성 댓글 녹음 시작 완료');
+      // debugPrint('✅ 음성 댓글 녹음 시작 완료');
     } catch (e) {
-      debugPrint('❌ 녹음 시작 오류: $e');
+      // debugPrint('❌ 녹음 시작 오류: $e');
       setState(() {
         _currentState = VoiceCommentState.idle;
       });
@@ -132,7 +132,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
   /// 녹음 중지 및 재생 준비
   Future<void> _stopAndPreparePlayback() async {
     try {
-      debugPrint('🛑 음성 댓글 녹음 중지');
+      // debugPrint('🛑 음성 댓글 녹음 중지');
 
       // 파형 데이터 추출
       List<double> waveformData = List<double>.from(
@@ -172,10 +172,10 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
           recordingDuration,
         );
 
-        debugPrint('✅ 음성 댓글 녹음 완료: $filePath, 시간: ${recordingDuration}ms');
+        // debugPrint('✅ 음성 댓글 녹음 완료: $filePath, 시간: ${recordingDuration}ms');
       }
     } catch (e) {
-      debugPrint('❌ 녹음 중지 오류: $e');
+      // debugPrint('❌ 녹음 중지 오류: $e');
     }
   }
 
@@ -196,9 +196,9 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
       // 삭제 콜백 호출
       widget.onRecordingDeleted?.call();
 
-      debugPrint('음성 댓글 녹음 삭제 완료');
+      // debugPrint('음성 댓글 녹음 삭제 완료');
     } catch (e) {
-      debugPrint('녹음 삭제 오류: $e');
+      // debugPrint('녹음 삭제 오류: $e');
     }
   }
 
@@ -207,20 +207,20 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     try {
       if (_playerController?.playerState.isPlaying == true) {
         await _playerController!.pausePlayer();
-        debugPrint('재생 일시정지');
+        // debugPrint('재생 일시정지');
       } else {
         // 재생이 끝났다면 처음부터 다시 시작
         if (_playerController!.playerState.isStopped) {
           await _playerController!.startPlayer();
-          debugPrint('재생 시작 (처음부터)');
+          // debugPrint('재생 시작 (처음부터)');
         } else {
           await _playerController!.startPlayer();
-          debugPrint('재생 시작');
+          // debugPrint('재생 시작');
         }
       }
       setState(() {}); // UI 갱신
     } catch (e) {
-      debugPrint('재생/일시정지 오류: $e');
+      // debugPrint('재생/일시정지 오류: $e');
     }
   }
 
@@ -423,7 +423,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
   /// 저장 완료 상태로 변경
   void _markAsSaved() {
-    debugPrint(' 음성 댓글 상태 변경: ${_currentState.toString()} → saved');
+    // debugPrint(' 음성 댓글 상태 변경: ${_currentState.toString()} → saved');
 
     // 컨트롤러들을 완전히 정리하고 초기화
     _cleanupControllers();
@@ -436,7 +436,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     // 저장 완료 콜백 호출
     widget.onSaved?.call();
 
-    debugPrint('✅ 음성 댓글이 저장 완료 상태로 변경됨 - 컨트롤러 정리 완료');
+    // debugPrint('✅ 음성 댓글이 저장 완료 상태로 변경됨 - 컨트롤러 정리 완료');
   }
 
   /// 컨트롤러들을 정리하는 메서드
@@ -456,15 +456,15 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
       _playerController?.dispose();
       _playerController = null;
 
-      debugPrint('🧹 컨트롤러 정리 완료');
+      // debugPrint('🧹 컨트롤러 정리 완료');
     } catch (e) {
-      debugPrint('❌ 컨트롤러 정리 중 오류: $e');
+      // debugPrint('❌ 컨트롤러 정리 중 오류: $e');
     }
   }
 
   /// 저장된 프로필 이미지 UI
   Widget _buildSavedProfileUI() {
-    debugPrint('🖼️ 저장된 프로필 이미지 UI 빌드 중: ${widget.profileImageUrl}');
+    // debugPrint('🖼️ 저장된 프로필 이미지 UI 빌드 중: ${widget.profileImageUrl}');
 
     final profileWidget = Container(
       width: 27,

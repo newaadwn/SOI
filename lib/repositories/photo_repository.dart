@@ -3,7 +3,6 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:flutter/foundation.dart';
 import '../models/photo_data_model.dart';
 
 /// Photo Repository - Firebase와 관련된 모든 데이터 액세스 로직을 담당
@@ -35,7 +34,7 @@ class PhotoRepository {
       final uploadTask = await storageRef.putFile(imageFile);
       return await uploadTask.ref.getDownloadURL();
     } catch (e) {
-      debugPrint('이미지 업로드 오류: $e');
+      // debugPrint('이미지 업로드 오류: $e');
       return null;
     }
   }
@@ -48,25 +47,17 @@ class PhotoRepository {
     String? customFileName,
   }) async {
     try {
-      debugPrint('🎵 오디오 파일 업로드 시작');
-      debugPrint('  - 파일 경로: ${audioFile.path}');
-      debugPrint('  - 카테고리 ID: $categoryId');
-      debugPrint('  - 사용자 ID: $userId');
-
       // 파일 존재 확인
       if (!await audioFile.exists()) {
-        debugPrint('❌ 오디오 파일이 존재하지 않습니다: ${audioFile.path}');
+        // debugPrint('❌ 오디오 파일이 존재하지 않습니다: ${audioFile.path}');
         return null;
       }
 
       // 파일 크기 확인
       final fileSize = await audioFile.length();
-      debugPrint(
-        '📊 오디오 파일 크기: ${fileSize} bytes (${(fileSize / 1024 / 1024).toStringAsFixed(2)} MB)',
-      );
 
       if (fileSize == 0) {
-        debugPrint('❌ 오디오 파일 크기가 0입니다');
+        // debugPrint('❌ 오디오 파일 크기가 0입니다');
         return null;
       }
 
@@ -75,7 +66,7 @@ class PhotoRepository {
           customFileName ??
           '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
-      debugPrint('📁 Storage 경로: audio/$categoryId/$fileName');
+      // debugPrint('📁 Storage 경로: audio/$categoryId/$fileName');
 
       // Storage 참조 생성
       final storageRef = _storage
@@ -84,31 +75,25 @@ class PhotoRepository {
           .child(categoryId)
           .child(fileName);
 
-      debugPrint('☁️ Firebase Storage에 업로드 시작...');
+      // debugPrint('☁️ Firebase Storage에 업로드 시작...');
 
       // 파일 업로드
       final uploadTask = storageRef.putFile(audioFile);
 
       // 업로드 진행률 모니터링
-      uploadTask.snapshotEvents.listen((snapshot) {
-        final progress =
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        debugPrint(
-          '📤 업로드 진행률: ${progress.toStringAsFixed(1)}% (${snapshot.bytesTransferred}/${snapshot.totalBytes} bytes)',
-        );
-      });
+      uploadTask.snapshotEvents.listen((snapshot) {});
 
       final taskSnapshot = await uploadTask;
-      debugPrint('✅ Firebase Storage 업로드 완료');
+      // debugPrint('✅ Firebase Storage 업로드 완료');
 
       // 다운로드 URL 가져오기
       final downloadUrl = await taskSnapshot.ref.getDownloadURL();
-      debugPrint('🔗 다운로드 URL: $downloadUrl');
+      // debugPrint('🔗 다운로드 URL: $downloadUrl');
 
       return downloadUrl;
-    } catch (e, stackTrace) {
-      debugPrint('❌ 오디오 업로드 오류: $e');
-      debugPrint('📍 스택 트레이스: $stackTrace');
+    } catch (e) {
+      // debugPrint('❌ 오디오 업로드 오류: $e');
+      // debugPrint('📍 스택 트레이스: $stackTrace');
       return null;
     }
   }
@@ -136,13 +121,13 @@ class PhotoRepository {
           await _firestore.collection('categories').doc(categoryId).update({
             'categoryPhotoUrl': photo.imageUrl,
           });
-          debugPrint('✅ 첫 번째 사진을 카테고리 표지사진으로 자동 설정');
+          // debugPrint('✅ 첫 번째 사진을 카테고리 표지사진으로 자동 설정');
         }
       }
 
       return docRef.id;
     } catch (e) {
-      debugPrint('사진 메타데이터 저장 오류: $e');
+      // debugPrint('사진 메타데이터 저장 오류: $e');
       return null;
     }
   }
@@ -157,23 +142,6 @@ class PhotoRepository {
     List<double>? waveformData, // 파형 데이터 파라미터 추가
   }) async {
     try {
-      debugPrint('🔄 파형 데이터와 함께 사진 저장 시작');
-      debugPrint('📂 CategoryId: $categoryId');
-      debugPrint('👤 UserID: $userID');
-      debugPrint('🖼️ ImageUrl: $imageUrl');
-      debugPrint('🎵 AudioUrl: $audioUrl');
-      debugPrint('🌊 파형 데이터 상세 정보:');
-      debugPrint('  - null 여부: ${waveformData == null}');
-      debugPrint('  - 길이: ${waveformData?.length ?? 0}');
-      if (waveformData != null && waveformData.isNotEmpty) {
-        debugPrint('  - 첫 5개 값: ${waveformData.take(5).toList()}');
-        debugPrint(
-          '  - 마지막 5개 값: ${waveformData.length > 5 ? waveformData.sublist(waveformData.length - 5) : waveformData}',
-        );
-        debugPrint('  - 최대값: ${waveformData.reduce((a, b) => a > b ? a : b)}');
-        debugPrint('  - 최소값: ${waveformData.reduce((a, b) => a < b ? a : b)}');
-      }
-
       // 기본 데이터 구성
       final Map<String, dynamic> photoData = {
         'imageUrl': imageUrl,
@@ -189,17 +157,17 @@ class PhotoRepository {
       if (waveformData != null && waveformData.isNotEmpty) {
         // 유효한 파형 데이터가 있는 경우
         photoData['waveformData'] = waveformData;
-        debugPrint('✅ 유효한 파형 데이터를 Firestore에 저장');
-        debugPrint('  - 저장할 데이터 타입: ${waveformData.runtimeType}');
-        debugPrint('  - 저장할 데이터 길이: ${waveformData.length}');
+        // debugPrint('✅ 유효한 파형 데이터를 Firestore에 저장');
+        // debugPrint('  - 저장할 데이터 타입: ${waveformData.runtimeType}');
+        // debugPrint('  - 저장할 데이터 길이: ${waveformData.length}');
       } else {
         // 파형 데이터가 없는 경우 빈 배열로 저장
         photoData['waveformData'] = [];
-        debugPrint('⚠️ 파형 데이터가 없어서 빈 배열로 저장');
+        // debugPrint('⚠️ 파형 데이터가 없어서 빈 배열로 저장');
       }
 
-      debugPrint('💾 Firestore에 사진 데이터 저장 시작...');
-      debugPrint('  - 저장할 필드들: ${photoData.keys.toList()}');
+      // debugPrint('💾 Firestore에 사진 데이터 저장 시작...');
+      // debugPrint('  - 저장할 필드들: ${photoData.keys.toList()}');
 
       final docRef = await _firestore
           .collection('categories')
@@ -207,22 +175,22 @@ class PhotoRepository {
           .collection('photos')
           .add(photoData);
 
-      debugPrint('✅ 사진 저장 완료 - PhotoId: ${docRef.id}');
+      // debugPrint('✅ 사진 저장 완료 - PhotoId: ${docRef.id}');
 
       // 카테고리의 firstPhotoUrl 업데이트
       try {
         await _firestore.collection('categories').doc(categoryId).update({
           'firstPhotoUrl': imageUrl,
         });
-        debugPrint('✅ 카테고리 firstPhotoUrl 업데이트 완료');
+        // debugPrint('✅ 카테고리 firstPhotoUrl 업데이트 완료');
       } catch (e) {
-        debugPrint('⚠️ 카테고리 firstPhotoUrl 업데이트 실패: $e');
+        // debugPrint('⚠️ 카테고리 firstPhotoUrl 업데이트 실패: $e');
       }
 
       return docRef.id;
-    } catch (e, stackTrace) {
-      debugPrint('❌ 사진 저장 실패: $e');
-      debugPrint('📍 스택 트레이스: $stackTrace');
+    } catch (e) {
+      // debugPrint('❌ 사진 저장 실패: $e');
+      // debugPrint('📍 스택 트레이스: $stackTrace');
       rethrow;
     }
   }
@@ -232,7 +200,7 @@ class PhotoRepository {
   /// 카테고리별 사진 목록 조회
   Future<List<PhotoDataModel>> getPhotosByCategory(String categoryId) async {
     try {
-      debugPrint('🔍 카테고리별 사진 조회 시작 - CategoryId: $categoryId');
+      // debugPrint('🔍 카테고리별 사진 조회 시작 - CategoryId: $categoryId');
 
       final querySnapshot =
           await _firestore
@@ -243,36 +211,19 @@ class PhotoRepository {
               .orderBy('createdAt', descending: true)
               .get();
 
-      debugPrint('📊 조회된 사진 개수: ${querySnapshot.docs.length}');
+      // debugPrint('📊 조회된 사진 개수: ${querySnapshot.docs.length}');
 
       final photos =
           querySnapshot.docs.map((doc) {
             final data = doc.data();
-            debugPrint('Firestore 원본 데이터 - ID: ${doc.id}');
-            debugPrint('  - UserID: ${data['userID']}');
-            debugPrint(
-              '  - waveformData 필드 존재: ${data.containsKey('waveformData')}',
-            );
-            debugPrint('  - waveformData 값: ${data['waveformData']}');
-            debugPrint(
-              '  - waveformData 타입: ${data['waveformData'].runtimeType}',
-            );
-            if (data['waveformData'] is List) {
-              debugPrint(
-                '  - waveformData 길이: ${(data['waveformData'] as List).length}',
-              );
-            }
-            debugPrint(
-              '  - AudioUrl 존재: ${data['audioUrl']?.isNotEmpty ?? false}',
-            );
 
             return PhotoDataModel.fromFirestore(data, doc.id);
           }).toList();
 
-      debugPrint('사진 조회 완료');
+      // debugPrint('사진 조회 완료');
       return photos;
     } catch (e) {
-      debugPrint('❌ 카테고리별 사진 조회 오류: $e');
+      // debugPrint('❌ 카테고리별 사진 조회 오류: $e');
       return [];
     }
   }
@@ -285,10 +236,10 @@ class PhotoRepository {
     String? startAfterPhotoId,
   }) async {
     try {
-      debugPrint('🔍 페이지네이션 사진 조회 시작');
-      debugPrint('  - 카테고리 개수: ${categoryIds.length}');
-      debugPrint('  - 제한: $limit');
-      debugPrint('  - 시작점: ${startAfterPhotoId ?? 'null'}');
+      // debugPrint('🔍 페이지네이션 사진 조회 시작');
+      // debugPrint('  - 카테고리 개수: ${categoryIds.length}');
+      // debugPrint('  - 제한: $limit');
+      // debugPrint('  - 시작점: ${startAfterPhotoId ?? 'null'}');
 
       List<PhotoDataModel> allPhotos = [];
 
@@ -321,11 +272,11 @@ class PhotoRepository {
         lastPhotoId = paginatedPhotos.last.id;
       }
 
-      debugPrint('📊 페이지네이션 결과:');
-      debugPrint('  - 전체 사진: ${allPhotos.length}개');
-      debugPrint('  - 반환 사진: ${paginatedPhotos.length}개');
-      debugPrint('  - 마지막 ID: $lastPhotoId');
-      debugPrint('  - 더 있음: $hasMore');
+      // debugPrint('📊 페이지네이션 결과:');
+      // debugPrint('  - 전체 사진: ${allPhotos.length}개');
+      // debugPrint('  - 반환 사진: ${paginatedPhotos.length}개');
+      // debugPrint('  - 마지막 ID: $lastPhotoId');
+      // debugPrint('  - 더 있음: $hasMore');
 
       return (
         photos: paginatedPhotos,
@@ -333,7 +284,7 @@ class PhotoRepository {
         hasMore: hasMore,
       );
     } catch (e) {
-      debugPrint('❌ 페이지네이션 사진 조회 오류: $e');
+      // debugPrint('❌ 페이지네이션 사진 조회 오류: $e');
       return (photos: <PhotoDataModel>[], lastPhotoId: null, hasMore: false);
     }
   }
@@ -343,21 +294,41 @@ class PhotoRepository {
     String categoryId,
   ) async {
     try {
+      // debugPrint('🔍 단일 카테고리 사진 조회 시작 - categoryId: $categoryId');
+
+      // 먼저 가장 간단한 쿼리로 시도 (인덱스 문제 회피)
       final querySnapshot =
           await _firestore
               .collection('categories')
               .doc(categoryId)
               .collection('photos')
-              .where('status', isEqualTo: PhotoStatus.active.name)
-              .orderBy('createdAt', descending: true)
               .get();
 
-      return querySnapshot.docs.map((doc) {
-        final data = doc.data();
-        return PhotoDataModel.fromFirestore(data, doc.id);
-      }).toList();
+      // debugPrint('✅ 카테고리 $categoryId에서 ${querySnapshot.docs.length}개 문서 조회');
+
+      if (querySnapshot.docs.isEmpty) {
+        // debugPrint('⚠️ 카테고리 $categoryId에 사진이 없습니다');
+        return [];
+      }
+
+      // 문서를 PhotoDataModel로 변환하고 필터링/정렬
+      final photos =
+          querySnapshot.docs
+              .map((doc) {
+                final data = doc.data();
+                // debugPrint('  - 사진 문서: ${doc.id}, 데이터: $data');
+                return PhotoDataModel.fromFirestore(data, doc.id);
+              })
+              .where((photo) => photo.status == PhotoStatus.active)
+              .toList();
+
+      // 메모리에서 정렬
+      photos.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      // debugPrint('✅ active 상태 사진: ${photos.length}개');
+      return photos;
     } catch (e) {
-      debugPrint('❌ 카테고리 $categoryId 사진 조회 오류: $e');
+      // debugPrint('❌ 카테고리 $categoryId 사진 조회 오류: $e');
       return [];
     }
   }
@@ -367,7 +338,7 @@ class PhotoRepository {
     String categoryId,
   ) async {
     try {
-      debugPrint('🔍 카테고리별 사진 조회 시작 - CategoryId: $categoryId');
+      // debugPrint('🔍 카테고리별 사진 조회 시작 - CategoryId: $categoryId');
 
       final querySnapshot =
           await _firestore
@@ -378,43 +349,26 @@ class PhotoRepository {
               .orderBy('createdAt', descending: true)
               .get();
 
-      debugPrint('📊 조회된 사진 개수: ${querySnapshot.docs.length}');
+      // debugPrint('📊 조회된 사진 개수: ${querySnapshot.docs.length}');
 
       final photos =
           querySnapshot.docs.map((doc) {
             final data = doc.data();
-            debugPrint('Firestore 원본 데이터 - ID: ${doc.id}');
-            debugPrint('  - UserID: ${data['userID']}');
-            debugPrint(
-              '  - waveformData 필드 존재: ${data.containsKey('waveformData')}',
-            );
-            debugPrint('  - waveformData 값: ${data['waveformData']}');
-            debugPrint(
-              '  - waveformData 타입: ${data['waveformData'].runtimeType}',
-            );
-            if (data['waveformData'] is List) {
-              debugPrint(
-                '  - waveformData 길이: ${(data['waveformData'] as List).length}',
-              );
-            }
-            debugPrint(
-              '  - AudioUrl 존재: ${data['audioUrl']?.isNotEmpty ?? false}',
-            );
 
             return PhotoDataModel.fromFirestore(data, doc.id);
           }).toList();
 
-      debugPrint('사진 조회 완료');
+      // debugPrint('사진 조회 완료');
       return photos;
     } catch (e) {
-      debugPrint('❌ 카테고리별 사진 조회 오류: $e');
+      // debugPrint('❌ 카테고리별 사진 조회 오류: $e');
       return [];
     }
   }
 
   /// 카테고리별 사진 목록 스트림
   Stream<List<PhotoDataModel>> getPhotosByCategoryStream(String categoryId) {
-    debugPrint('🔄 카테고리별 사진 스트림 시작 - CategoryId: $categoryId');
+    // debugPrint('🔄 카테고리별 사진 스트림 시작 - CategoryId: $categoryId');
 
     return _firestore
         .collection('categories')
@@ -424,18 +378,10 @@ class PhotoRepository {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          debugPrint('📺 스트림 업데이트 - 사진 개수: ${snapshot.docs.length}');
+          // debugPrint('📺 스트림 업데이트 - 사진 개수: ${snapshot.docs.length}');
 
           return snapshot.docs.map((doc) {
             final data = doc.data();
-            debugPrint('📸 스트림 사진: ${doc.id}');
-            debugPrint('  - UserID: ${data['userID']}');
-            debugPrint(
-              '  - WaveformData: ${data['waveformData']?.length ?? 0} samples',
-            );
-            debugPrint(
-              '  - AudioUrl: ${data['audioUrl']?.isNotEmpty ?? false}',
-            );
 
             return PhotoDataModel.fromFirestore(data, doc.id);
           }).toList();
@@ -457,7 +403,7 @@ class PhotoRepository {
           .map((doc) => PhotoDataModel.fromFirestore(doc.data(), doc.id))
           .toList();
     } catch (e) {
-      debugPrint('사용자별 사진 조회 오류: $e');
+      // debugPrint('사용자별 사진 조회 오류: $e');
       return [];
     }
   }
@@ -481,7 +427,7 @@ class PhotoRepository {
       }
       return null;
     } catch (e) {
-      debugPrint('사진 조회 오류: $e');
+      // debugPrint('사진 조회 오류: $e');
       return null;
     }
   }
@@ -506,7 +452,7 @@ class PhotoRepository {
 
       return true;
     } catch (e) {
-      debugPrint('사진 삭제 오류: $e');
+      // debugPrint('사진 삭제 오류: $e');
       return false;
     }
   }
@@ -537,7 +483,7 @@ class PhotoRepository {
 
       return true;
     } catch (e) {
-      debugPrint('사진 완전 삭제 오류: $e');
+      // debugPrint('사진 완전 삭제 오류: $e');
       return false;
     }
   }
@@ -548,7 +494,7 @@ class PhotoRepository {
   Stream<List<Map<String, dynamic>>> getCategoryPhotosStreamAsMap(
     String categoryId,
   ) {
-    debugPrint('🔄 [호환성] 카테고리별 사진 Map 스트림 시작 - CategoryId: $categoryId');
+    // debugPrint('🔄 [호환성] 카테고리별 사진 Map 스트림 시작 - CategoryId: $categoryId');
 
     return _firestore
         .collection('categories')
@@ -558,20 +504,11 @@ class PhotoRepository {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          debugPrint('📺 [호환성] 스트림 업데이트 - 사진 개수: ${snapshot.docs.length}');
+          // debugPrint('📺 [호환성] 스트림 업데이트 - 사진 개수: ${snapshot.docs.length}');
 
           return snapshot.docs.map((doc) {
             final data = doc.data();
             data['id'] = doc.id;
-
-            debugPrint('📸 [호환성] 스트림 사진: ${doc.id}');
-            debugPrint('  - UserID: ${data['userID']}');
-            debugPrint(
-              '  - WaveformData: ${data['waveformData']?.length ?? 0} samples',
-            );
-            debugPrint(
-              '  - AudioUrl: ${data['audioUrl']?.isNotEmpty ?? false}',
-            );
 
             return data;
           }).toList();
@@ -586,7 +523,7 @@ class PhotoRepository {
       final ref = _storage.refFromURL(downloadUrl);
       await ref.delete();
     } catch (e) {
-      debugPrint('Storage 파일 삭제 오류: $e');
+      // debugPrint('Storage 파일 삭제 오류: $e');
     }
   }
 
@@ -625,7 +562,7 @@ class PhotoRepository {
         'deleted': deletedPhotos,
       };
     } catch (e) {
-      debugPrint('사진 통계 조회 오류: $e');
+      // debugPrint('사진 통계 조회 오류: $e');
       return {'total': 0, 'active': 0, 'deleted': 0};
     }
   }
@@ -636,7 +573,7 @@ class PhotoRepository {
     required Function(String audioUrl) extractWaveformData,
   }) async {
     try {
-      debugPrint('🔧 기존 사진들에 파형 데이터 추가 시작 - CategoryId: $categoryId');
+      // debugPrint('🔧 기존 사진들에 파형 데이터 추가 시작 - CategoryId: $categoryId');
 
       final querySnapshot =
           await _firestore
@@ -647,7 +584,7 @@ class PhotoRepository {
               .where('audioUrl', isNotEqualTo: '')
               .get();
 
-      debugPrint('🎵 오디오가 있는 사진 개수: ${querySnapshot.docs.length}');
+      // debugPrint('🎵 오디오가 있는 사진 개수: ${querySnapshot.docs.length}');
 
       for (final doc in querySnapshot.docs) {
         final data = doc.data();
@@ -656,12 +593,12 @@ class PhotoRepository {
 
         // 이미 파형 데이터가 있으면 스킵
         if (existingWaveform != null && existingWaveform.isNotEmpty) {
-          debugPrint('⏭️ 파형 데이터 이미 존재: ${doc.id}');
+          // debugPrint('⏭️ 파형 데이터 이미 존재: ${doc.id}');
           continue;
         }
 
         if (audioUrl != null && audioUrl.isNotEmpty) {
-          debugPrint('🌊 파형 데이터 추출 중: ${doc.id}');
+          // debugPrint('🌊 파형 데이터 추출 중: ${doc.id}');
 
           try {
             // 파형 데이터 추출 (외부에서 전달받은 함수 사용)
@@ -673,22 +610,18 @@ class PhotoRepository {
                 'waveformData': waveformData,
                 'updatedAt': FieldValue.serverTimestamp(),
               });
-
-              debugPrint(
-                '✅ 파형 데이터 추가 완료: ${doc.id} (${waveformData.length} samples)',
-              );
             } else {
-              debugPrint('⚠️ 파형 데이터 추출 실패: ${doc.id}');
+              // debugPrint('⚠️ 파형 데이터 추출 실패: ${doc.id}');
             }
           } catch (e) {
-            debugPrint('❌ 파형 데이터 추출 오류 (${doc.id}): $e');
+            // debugPrint('❌ 파형 데이터 추출 오류 (${doc.id}): $e');
           }
         }
       }
 
-      debugPrint('🎉 기존 사진들에 파형 데이터 추가 완료');
+      // debugPrint('🎉 기존 사진들에 파형 데이터 추가 완료');
     } catch (e) {
-      debugPrint('❌ 파형 데이터 일괄 추가 실패: $e');
+      // debugPrint('❌ 파형 데이터 일괄 추가 실패: $e');
       rethrow;
     }
   }
@@ -701,7 +634,7 @@ class PhotoRepository {
     double? audioDuration,
   }) async {
     try {
-      debugPrint('🌊 사진에 파형 데이터 추가: $photoId');
+      // debugPrint('🌊 사진에 파형 데이터 추가: $photoId');
 
       final updateData = <String, dynamic>{
         'waveformData': waveformData,
@@ -719,10 +652,10 @@ class PhotoRepository {
           .doc(photoId)
           .update(updateData);
 
-      debugPrint('✅ 파형 데이터 추가 완료: $photoId (${waveformData.length} samples)');
+      // debugPrint('✅ 파형 데이터 추가 완료: $photoId (${waveformData.length} samples)');
       return true;
     } catch (e) {
-      debugPrint('❌ 파형 데이터 추가 실패: $e');
+      // debugPrint('❌ 파형 데이터 추가 실패: $e');
       return false;
     }
   }

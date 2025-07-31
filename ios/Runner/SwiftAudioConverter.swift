@@ -67,24 +67,24 @@ public class SwiftAudioConverter: NSObject, FlutterPlugin {
         exportSession.outputFileType = AVFileType.m4a
         
         // 오류 확인 및 디버깅
-        print("Input file exists: \(FileManager.default.fileExists(atPath: inputPath))")
-        print("Input file path: \(inputPath)")
-        print("Output file path: \(outputURL.path)")
+        // print("Input file exists: \(FileManager.default.fileExists(atPath: inputPath))")
+        // print("Input file path: \(inputPath)")
+        // print("Output file path: \(outputURL.path)")
         
         // 비동기 내보내기 시작
         exportSession.exportAsynchronously {
             DispatchQueue.main.async {
                 if let error = exportSession.error {
-                    print("Export error: \(error.localizedDescription)")
+                    // print("Export error: \(error.localizedDescription)")
                 }
                 
                 switch exportSession.status {
                 case .completed:
-                    print("Export completed successfully: \(outputURL.path)")
+                    // print("Export completed successfully: \(outputURL.path)")
                     result(outputURL.path)
                 case .failed:
                     let errorMsg = exportSession.error?.localizedDescription ?? "Export failed without error"
-                    print("Export failed: \(errorMsg)")
+                    // print("Export failed: \(errorMsg)")
                     result(FlutterError(code: "EXPORT_ERROR",
                                         message: errorMsg,
                                         details: nil))
@@ -94,7 +94,7 @@ public class SwiftAudioConverter: NSObject, FlutterPlugin {
                                         details: nil))
                 default:
                     let statusStr = "\(exportSession.status.rawValue)"
-                    print("Unknown export status: \(statusStr)")
+                    // print("Unknown export status: \(statusStr)")
                     result(FlutterError(code: "EXPORT_UNKNOWN",
                                         message: "Unknown export status: \(statusStr)",
                                         details: nil))

@@ -33,7 +33,7 @@ class CommentRecordController extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      debugPrint('🎤 음성 댓글 생성 시작 - 사진: $photoId, 녹음자: $recorderUser');
+      // // debugPrint('🎤 음성 댓글 생성 시작 - 사진: $photoId, 녹음자: $recorderUser');
 
       // 파형 데이터 정규화
       final normalizedWaveform = _service.normalizeWaveformData(waveformData);
@@ -51,12 +51,12 @@ class CommentRecordController extends ChangeNotifier {
       // 캐시 업데이트
       _updateCache(photoId, commentRecord);
 
-      debugPrint('✅ 음성 댓글 생성 완료 - ID: ${commentRecord.id}');
+      // // debugPrint('✅ 음성 댓글 생성 완료 - ID: ${commentRecord.id}');
 
       notifyListeners();
       return commentRecord;
     } catch (e) {
-      debugPrint('❌ 음성 댓글 생성 실패: $e');
+      // // debugPrint('❌ 음성 댓글 생성 실패: $e');
       _setError('음성 댓글을 저장할 수 없습니다: $e');
       return null;
     } finally {
@@ -74,7 +74,7 @@ class CommentRecordController extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      debugPrint('📍 프로필 위치 업데이트 시작 - 댓글: $commentId, 위치: $profilePosition');
+      // // debugPrint('📍 프로필 위치 업데이트 시작 - 댓글: $commentId, 위치: $profilePosition');
 
       await _service.updateProfilePosition(
         commentId: commentId,
@@ -94,11 +94,11 @@ class CommentRecordController extends ChangeNotifier {
         }
       }
 
-      debugPrint('✅ 프로필 위치 업데이트 완료');
+      // // debugPrint('✅ 프로필 위치 업데이트 완료');
       notifyListeners();
       return true;
     } catch (e) {
-      debugPrint('❌ 프로필 위치 업데이트 실패: $e');
+      // // debugPrint('❌ 프로필 위치 업데이트 실패: $e');
       _setError('프로필 위치를 업데이트할 수 없습니다: $e');
       return false;
     } finally {
@@ -115,7 +115,7 @@ class CommentRecordController extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      debugPrint(' 사용자 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $userId');
+      // // debugPrint(' 사용자 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $userId');
 
       await _service.updateUserProfileImageUrl(
         userId: userId,
@@ -125,11 +125,11 @@ class CommentRecordController extends ChangeNotifier {
       // 캐시된 데이터의 프로필 이미지 URL도 업데이트
       _updateCachedProfileImageUrls(userId, newProfileImageUrl);
 
-      debugPrint('✅ 사용자 음성 댓글 프로필 이미지 URL 업데이트 완료');
+      // // debugPrint('✅ 사용자 음성 댓글 프로필 이미지 URL 업데이트 완료');
       notifyListeners();
       return true;
     } catch (e) {
-      debugPrint('❌ 사용자 음성 댓글 프로필 이미지 URL 업데이트 실패: $e');
+      // // debugPrint('❌ 사용자 음성 댓글 프로필 이미지 URL 업데이트 실패: $e');
       _setError('프로필 이미지 URL을 업데이트할 수 없습니다: $e');
       return false;
     } finally {
@@ -169,9 +169,9 @@ class CommentRecordController extends ChangeNotifier {
       _commentRecords = comments;
       _commentCache[photoId] = comments;
 
-      debugPrint('📥 음성 댓글 로드 완료 - 사진: $photoId, 댓글 수: ${comments.length}');
+      // // debugPrint('📥 음성 댓글 로드 완료 - 사진: $photoId, 댓글 수: ${comments.length}');
     } catch (e) {
-      debugPrint('❌ 음성 댓글 로드 실패: $e');
+      // // debugPrint('❌ 음성 댓글 로드 실패: $e');
       _setError('음성 댓글을 불러올 수 없습니다: $e');
     } finally {
       _setLoading(false);
@@ -196,12 +196,12 @@ class CommentRecordController extends ChangeNotifier {
         );
       }
 
-      debugPrint('🗑️ 음성 댓글 삭제 완료 - ID: $commentId');
+      // // debugPrint('🗑️ 음성 댓글 삭제 완료 - ID: $commentId');
 
       notifyListeners();
       return true;
     } catch (e) {
-      debugPrint('❌ 음성 댓글 삭제 실패: $e');
+      // // debugPrint('❌ 음성 댓글 삭제 실패: $e');
       _setError('음성 댓글을 삭제할 수 없습니다: $e');
       return false;
     } finally {
@@ -233,9 +233,9 @@ class CommentRecordController extends ChangeNotifier {
       final comments = await _service.getCommentRecordsByUser(userId);
       _commentRecords = comments;
 
-      debugPrint('👤 사용자 음성 댓글 로드 완료 - 사용자: $userId, 댓글 수: ${comments.length}');
+      // // debugPrint('👤 사용자 음성 댓글 로드 완료 - 사용자: $userId, 댓글 수: ${comments.length}');
     } catch (e) {
-      debugPrint('❌ 사용자 음성 댓글 로드 실패: $e');
+      // // debugPrint('❌ 사용자 음성 댓글 로드 실패: $e');
       _setError('사용자 음성 댓글을 불러올 수 없습니다: $e');
     } finally {
       _setLoading(false);

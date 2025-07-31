@@ -26,7 +26,7 @@ class ContactController extends ChangeNotifier {
       _isInitialized = true;
       notifyListeners();
     } catch (e) {
-      debugPrint('ContactController 초기화 실패: $e');
+      // debugPrint('ContactController 초기화 실패: $e');
     }
   }
 

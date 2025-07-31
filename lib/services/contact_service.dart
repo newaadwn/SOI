@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import '../repositories/contact_repository.dart';
 
@@ -31,7 +30,7 @@ class ContactService {
       await _loadContactSyncSetting();
       _isInitialized = true;
     } catch (e) {
-      debugPrint('ContactService 초기화 실패: $e');
+      // // debugPrint('ContactService 초기화 실패: $e');
     }
   }
 

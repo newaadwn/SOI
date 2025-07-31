@@ -70,19 +70,19 @@ class AuthController extends ChangeNotifier {
     // 캐시 크기 관리
     if (_profileImageCache.length > _maxCacheSize) {
       _profileImageCache.clear();
-      debugPrint('프로필 이미지 캐시 크기 초과로 초기화');
+      // debugPrint('프로필 이미지 캐시 크기 초과로 초기화');
     }
 
     // 캐시 확인
     if (_profileImageCache.containsKey(userId)) {
-      debugPrint('캐시에서 프로필 이미지 발견 - UserID: $userId');
+      // debugPrint('캐시에서 프로필 이미지 발견 - UserID: $userId');
       return _profileImageCache[userId]!;
     }
 
     // 네트워크에서 로드
     try {
       _loadingStates[userId] = true;
-      debugPrint('네트워크에서 프로필 이미지 로딩 시작 - UserID: $userId');
+      // debugPrint('네트워크에서 프로필 이미지 로딩 시작 - UserID: $userId');
 
       final profileImageUrl = await _authService.getUserProfileImageUrlById(
         userId,
@@ -92,11 +92,11 @@ class AuthController extends ChangeNotifier {
       _profileImageCache[userId] = profileImageUrl;
       _loadingStates[userId] = false;
 
-      debugPrint('프로필 이미지 로딩 완료 - UserID: $userId');
+      // debugPrint('프로필 이미지 로딩 완료 - UserID: $userId');
       return profileImageUrl;
     } catch (e) {
       _loadingStates[userId] = false;
-      debugPrint('프로필 이미지 로드 실패 - UserID: $userId, Error: $e');
+      // debugPrint('프로필 이미지 로드 실패 - UserID: $userId, Error: $e');
 
       // 빈 문자열 반환하여 에러 상태 표시
       _profileImageCache[userId] = '';
@@ -112,7 +112,7 @@ class AuthController extends ChangeNotifier {
       _searchResults = await _authService.searchUsersByNickname(userNickName);
       notifyListeners();
     } catch (e) {
-      debugPrint('Error searching users: $e');
+      // debugPrint('Error searching users: $e');
     }
   }
 
@@ -128,13 +128,13 @@ class AuthController extends ChangeNotifier {
     Function(String) codeAutoRetrievalTimeout,
   ) async {
     try {
-      debugPrint('전화번호 인증 시작: $phoneNumber');
+      // debugPrint('전화번호 인증 시작: $phoneNumber');
 
       final result = await _authService.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         onCodeSent: (String verificationId, int? token) {
           _verificationId = verificationId;
-          debugPrint('인증 ID 설정 완료: $verificationId');
+          // debugPrint('인증 ID 설정 완료: $verificationId');
           onCodeSent(verificationId, token);
         },
         onTimeout: codeAutoRetrievalTimeout,
@@ -142,12 +142,12 @@ class AuthController extends ChangeNotifier {
 
       // ✅ 결과에 따른 UI 처리
       if (!result.isSuccess) {
-        debugPrint(result.error ?? "전화번호 인증에 실패했습니다.");
+        // debugPrint(result.error ?? "전화번호 인증에 실패했습니다.");
       }
     } catch (e) {
-      debugPrint('전화번호 인증 오류: $e');
+      // debugPrint('전화번호 인증 오류: $e');
       // ✅ 에러 시 UI 처리
-      debugPrint("전화번호 인증 중 오류가 발생했습니다.");
+      // debugPrint("전화번호 인증 중 오류가 발생했습니다.");
     }
   }
 
@@ -160,11 +160,11 @@ class AuthController extends ChangeNotifier {
 
     if (result.isSuccess) {
       // ✅ 성공 시 UI 처리
-      debugPrint("로그인 성공!");
+      // debugPrint("로그인 성공!");
       onSuccess();
     } else {
       // ✅ 실패 시 UI 처리 (에러 메시지 표시)
-      debugPrint(result.error ?? "로그인에 실패했습니다.");
+      // debugPrint(result.error ?? "로그인에 실패했습니다.");
     }
   }
 
@@ -199,9 +199,9 @@ class AuthController extends ChangeNotifier {
     if (result.isSuccess) {
       // ✅ 로그아웃 성공 시 저장된 로그인 상태 삭제
       await clearLoginState();
-      debugPrint("로그아웃되었습니다.");
+      // debugPrint("로그아웃되었습니다.");
     } else {
-      debugPrint(result.error ?? "로그아웃 중 오류가 발생했습니다.");
+      // debugPrint(result.error ?? "로그아웃 중 오류가 발생했습니다.");
     }
   }
 
@@ -224,19 +224,19 @@ class AuthController extends ChangeNotifier {
       notifyListeners();
 
       if (result.isSuccess) {
-        debugPrint('프로필 이미지가 업데이트되었습니다');
+        // debugPrint('프로필 이미지가 업데이트되었습니다');
 
         // 프로필 이미지 업데이트 성공 시, 음성 댓글들의 프로필 이미지 URL도 업데이트
         await _updateVoiceCommentsProfileImage(result.data);
 
         return true;
       } else {
-        debugPrint(result.error ?? '프로필 이미지 업데이트에 실패했습니다');
+        // debugPrint(result.error ?? '프로필 이미지 업데이트에 실패했습니다');
         return false;
       }
     } catch (e) {
-      debugPrint('프로필 이미지 업데이트 중 오류 발생: $e');
-      debugPrint('프로필 이미지를 업데이트하는 중 오류가 발생했습니다');
+      // debugPrint('프로필 이미지 업데이트 중 오류 발생: $e');
+      // debugPrint('프로필 이미지를 업데이트하는 중 오류가 발생했습니다');
       _isUploading = false;
       notifyListeners();
       return false;
@@ -250,12 +250,12 @@ class AuthController extends ChangeNotifier {
     try {
       final currentUserId = getUserId;
       if (currentUserId == null || currentUserId.isEmpty) {
-        debugPrint('⚠️ 현재 사용자 ID를 찾을 수 없어 음성 댓글 프로필 이미지 업데이트를 건너뜁니다');
+        // debugPrint('⚠️ 현재 사용자 ID를 찾을 수 없어 음성 댓글 프로필 이미지 업데이트를 건너뜁니다');
         return;
       }
 
-      debugPrint('🔄 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $currentUserId');
-      debugPrint('🔄 새 프로필 이미지 URL: $newProfileImageUrl');
+      // debugPrint('🔄 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $currentUserId');
+      // debugPrint('🔄 새 프로필 이미지 URL: $newProfileImageUrl');
 
       // CommentRecordController를 사용하여 업데이트
       final commentRecordController = CommentRecordController();
@@ -265,7 +265,7 @@ class AuthController extends ChangeNotifier {
       );
 
       if (success) {
-        debugPrint('✅ 음성 댓글 프로필 이미지 URL 업데이트 완료');
+        // debugPrint('✅ 음성 댓글 프로필 이미지 URL 업데이트 완료');
 
         // 프로필 이미지 캐시 클리어 (새 이미지로 갱신)
         _profileImageCache.remove(currentUserId);
@@ -273,10 +273,10 @@ class AuthController extends ChangeNotifier {
         // UI 갱신을 위해 notifyListeners 호출
         notifyListeners();
       } else {
-        debugPrint('❌ 음성 댓글 프로필 이미지 URL 업데이트 실패');
+        // debugPrint('❌ 음성 댓글 프로필 이미지 URL 업데이트 실패');
       }
     } catch (e) {
-      debugPrint('❌ 음성 댓글 프로필 이미지 URL 업데이트 중 오류 발생: $e');
+      // debugPrint('❌ 음성 댓글 프로필 이미지 URL 업데이트 중 오류 발생: $e');
     }
   }
 
@@ -285,9 +285,9 @@ class AuthController extends ChangeNotifier {
     final result = await _authService.deleteAccount();
 
     if (result.isSuccess) {
-      debugPrint("계정이 삭제되었습니다.");
+      // debugPrint("계정이 삭제되었습니다.");
     } else {
-      debugPrint(result.error ?? "계정 삭제 중 오류가 발생했습니다.");
+      // debugPrint(result.error ?? "계정 삭제 중 오류가 발생했습니다.");
     }
   }
 
@@ -308,9 +308,9 @@ class AuthController extends ChangeNotifier {
       await prefs.setBool(_keyIsLoggedIn, true);
       await prefs.setString(_keyUserId, userId);
       await prefs.setString(_keyPhoneNumber, phoneNumber);
-      debugPrint('🔐 로그인 상태 저장 완료: $userId');
+      // debugPrint('🔐 로그인 상태 저장 완료: $userId');
     } catch (e) {
-      debugPrint('❌ 로그인 상태 저장 실패: $e');
+      // debugPrint('❌ 로그인 상태 저장 실패: $e');
     }
   }
 
@@ -319,10 +319,10 @@ class AuthController extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool(_keyIsLoggedIn) ?? false;
-      debugPrint('🔍 저장된 로그인 상태: $isLoggedIn');
+      // debugPrint('🔍 저장된 로그인 상태: $isLoggedIn');
       return isLoggedIn;
     } catch (e) {
-      debugPrint('❌ 로그인 상태 확인 실패: $e');
+      // debugPrint('❌ 로그인 상태 확인 실패: $e');
       return false;
     }
   }
@@ -336,7 +336,7 @@ class AuthController extends ChangeNotifier {
         'phoneNumber': prefs.getString(_keyPhoneNumber),
       };
     } catch (e) {
-      debugPrint('❌ 저장된 사용자 정보 가져오기 실패: $e');
+      // debugPrint('❌ 저장된 사용자 정보 가져오기 실패: $e');
       return {'userId': null, 'phoneNumber': null};
     }
   }
@@ -348,7 +348,7 @@ class AuthController extends ChangeNotifier {
       final userId = savedInfo['userId'];
 
       if (userId == null) {
-        debugPrint('❌ 저장된 사용자 ID 없음');
+        // debugPrint('❌ 저장된 사용자 ID 없음');
         return null;
       }
 
@@ -363,10 +363,10 @@ class AuthController extends ChangeNotifier {
         };
       }
 
-      debugPrint('❌ Firestore에서 사용자 정보를 찾을 수 없음');
+      // debugPrint('❌ Firestore에서 사용자 정보를 찾을 수 없음');
       return null;
     } catch (e) {
-      debugPrint('❌ 사용자 Firestore 정보 가져오기 실패: $e');
+      // debugPrint('❌ 사용자 Firestore 정보 가져오기 실패: $e');
       return null;
     }
   }
@@ -374,27 +374,27 @@ class AuthController extends ChangeNotifier {
   /// 자동 로그인 시도
   Future<bool> tryAutoLogin() async {
     try {
-      debugPrint('🔄 자동 로그인 시도 중...');
+      // debugPrint('🔄 자동 로그인 시도 중...');
 
       // 저장된 로그인 상태 확인
       final isUserLoggedIn = await isLoggedIn();
       if (!isUserLoggedIn) {
-        debugPrint('❌ 저장된 로그인 정보 없음');
+        // debugPrint('❌ 저장된 로그인 정보 없음');
         return false;
       }
 
       // Firebase Auth 현재 사용자 확인
       final currentUser = _authService.currentUser;
       if (currentUser == null) {
-        debugPrint('❌ Firebase Auth 사용자 없음 - 로그인 상태 초기화');
+        // debugPrint('❌ Firebase Auth 사용자 없음 - 로그인 상태 초기화');
         await clearLoginState();
         return false;
       }
 
-      debugPrint('✅ 자동 로그인 성공: ${currentUser.uid}');
+      // debugPrint('✅ 자동 로그인 성공: ${currentUser.uid}');
       return true;
     } catch (e) {
-      debugPrint('❌ 자동 로그인 실패: $e');
+      // debugPrint('❌ 자동 로그인 실패: $e');
       await clearLoginState();
       return false;
     }
@@ -407,9 +407,9 @@ class AuthController extends ChangeNotifier {
       await prefs.remove(_keyIsLoggedIn);
       await prefs.remove(_keyUserId);
       await prefs.remove(_keyPhoneNumber);
-      debugPrint('🗑️ 로그인 상태 삭제 완료');
+      // debugPrint('🗑️ 로그인 상태 삭제 완료');
     } catch (e) {
-      debugPrint('❌ 로그인 상태 삭제 실패: $e');
+      // debugPrint('❌ 로그인 상태 삭제 실패: $e');
     }
   }
 
@@ -429,11 +429,11 @@ class AuthController extends ChangeNotifier {
       final currentUser = _authService.currentUser;
       if (currentUser != null) {
         await saveLoginState(userId: currentUser.uid, phoneNumber: phoneNumber);
-        debugPrint("✅ 로그인 성공 및 상태 저장 완료!");
+        // debugPrint("✅ 로그인 성공 및 상태 저장 완료!");
         onSuccess();
       }
     } else {
-      debugPrint(result.error ?? "로그인에 실패했습니다.");
+      // debugPrint(result.error ?? "로그인에 실패했습니다.");
     }
   }
 }

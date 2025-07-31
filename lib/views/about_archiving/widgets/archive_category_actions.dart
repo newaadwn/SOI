@@ -35,7 +35,7 @@ class ArchiveCategoryActions {
         );
       }
     } catch (e) {
-      debugPrint('카테고리 고정 변경 실패: $e');
+      // 카테고리 고정 변경 실패
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -78,7 +78,7 @@ class ArchiveCategoryActions {
         );
       }
     } catch (e) {
-      debugPrint('카테고리 이름 변경 실패: $e');
+      // 카테고리 이름 변경 실패
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -99,7 +99,7 @@ class ArchiveCategoryActions {
   ) async {
     // 🔧 위젯이 여전히 활성 상태인지 확인
     if (!context.mounted) {
-      debugPrint('위젯이 이미 dispose되어 카테고리 나가기를 중단합니다.hhhh');
+      // 위젯이 이미 dispose되어 카테고리 나가기 중단
       return;
     }
 
@@ -142,7 +142,7 @@ class ArchiveCategoryActions {
         );
       }
     } catch (e) {
-      debugPrint('카테고리 나가기 실패: $e');
+      // 카테고리 나가기 실패
 
       // 🔧 에러 처리 시에도 mounted 체크
       if (context.mounted) {

@@ -40,6 +40,12 @@ class AudioRecorderWidget extends StatefulWidget {
   // 저장된 댓글 데이터 (프로필 모드로 시작할 때 사용)
   final CommentRecordModel? savedComment;
 
+  // 현재 프로필 이미지 위치 (외부에서 관리되는 위치)
+  final Offset? profileImagePosition;
+
+  // 프로필 위치를 동적으로 가져오기 위한 콜백
+  final Offset? Function()? getProfileImagePosition;
+
   const AudioRecorderWidget({
     super.key,
     this.onRecordingCompleted,
@@ -48,6 +54,8 @@ class AudioRecorderWidget extends StatefulWidget {
     this.photoId, // 선택적 파라미터
     this.onProfileImageDragged,
     this.savedComment,
+    this.profileImagePosition,
+    this.getProfileImagePosition,
   });
 
   @override
@@ -373,12 +381,14 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         playerController?.stopPlayer();
       }
 
-      // 상태 초기화
-      setState(() {
-        _currentState = RecordingState.idle;
-        _recordedFilePath = null;
-        _waveformData = null;
-      });
+      // ✅ mounted 체크 후 상태 초기화
+      if (mounted) {
+        setState(() {
+          _currentState = RecordingState.idle;
+          _recordedFilePath = null;
+          _waveformData = null;
+        });
+      }
 
       debugPrint('녹음 파일 삭제 완료');
     } catch (e) {
@@ -414,6 +424,12 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       // CommentRecordController를 사용하여 저장
       final commentRecordController = CommentRecordController();
 
+      // 현재 프로필 위치 사용 (피드와 동일한 방식)
+      // getProfileImagePosition 콜백이 있으면 최신 위치를 가져오고, 없으면 profileImagePosition 사용
+      final currentProfilePosition =
+          widget.getProfileImagePosition?.call() ?? widget.profileImagePosition;
+      debugPrint('🔍 음성 댓글 저장 시 현재 프로필 위치: $currentProfilePosition');
+
       final commentRecord = await commentRecordController.createCommentRecord(
         audioFilePath: audioFilePath,
         photoId: widget.photoId!,
@@ -421,8 +437,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         waveformData: waveformData,
         duration: duration,
         profileImageUrl: profileImageUrl,
-        // profilePosition은 나중에 드래그로 설정할 수 있으므로 null로 시작
-        profilePosition: null,
+        profilePosition: currentProfilePosition,
       );
 
       if (commentRecord != null) {
@@ -431,10 +446,12 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         // 프로필 이미지 URL 설정
         _userProfileImageUrl = profileImageUrl;
 
-        // 저장 성공 시 자동으로 프로필 모드로 전환
-        setState(() {
-          _isProfileMode = true;
-        });
+        // ✅ mounted 체크 후 저장 성공 시 자동으로 프로필 모드로 전환
+        if (mounted) {
+          setState(() {
+            _isProfileMode = true;
+          });
+        }
 
         // 저장 완료 콜백 호출
         if (widget.onCommentSaved != null) {
@@ -761,6 +778,13 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     _audioControllerTimer = Timer.periodic(Duration(milliseconds: 100), (
       timer,
     ) {
+      // ✅ mounted 체크 - 위젯이 dispose된 경우 타이머 취소
+      if (!mounted) {
+        timer.cancel();
+        _audioControllerTimer = null;
+        return;
+      }
+
       // AudioController의 녹음 상태가 변경되었는지 확인
       final isCurrentlyRecording = _audioController.isRecording;
 
@@ -785,6 +809,12 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     debugPrint('🛑🛑🛑 AudioController 중지 감지 - 저장 로직 시작!!! 🛑🛑🛑');
 
     try {
+      // ✅ mounted 체크 - 위젯이 dispose된 경우 early return
+      if (!mounted) {
+        debugPrint('⚠️ 위젯이 이미 dispose됨 - AudioController 중지 처리 취소');
+        return;
+      }
+
       // ✅ RecorderController 중지하기 전에 파형 데이터 먼저 추출
       List<double> waveformData = List<double>.from(
         recorderController.waveData,
@@ -834,9 +864,16 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       } else {
         debugPrint('❌ CommentRecord 저장 조건 불충족');
         if (widget.photoId == null) debugPrint('  - photoId가 null');
-        if (_recordedFilePath == null || _recordedFilePath!.isEmpty)
+        if (_recordedFilePath == null || _recordedFilePath!.isEmpty) {
           debugPrint('  - recordedFilePath 문제');
+        }
         if (waveformData.isEmpty) debugPrint('  - waveformData 비어있음');
+      }
+
+      // ✅ setState() 호출 전 mounted 체크
+      if (!mounted) {
+        debugPrint('⚠️ 위젯이 dispose됨 - setState() 호출 취소');
+        return;
       }
 
       // 상태 변경
@@ -853,9 +890,13 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       debugPrint('🎉 AudioController 중지 처리 완료');
     } catch (e) {
       debugPrint('❌ AudioController 중지 처리 오류: $e');
-      setState(() {
-        _currentState = RecordingState.idle;
-      });
+
+      // ✅ setState() 호출 전 mounted 체크
+      if (mounted) {
+        setState(() {
+          _currentState = RecordingState.idle;
+        });
+      }
     }
   }
 
@@ -925,9 +966,12 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     // 사용자 프로필 이미지 로드
     await _loadUserProfileImage();
 
-    setState(() {
-      _isProfileMode = true;
-    });
+    // ✅ mounted 체크 후 상태 변경
+    if (mounted) {
+      setState(() {
+        _isProfileMode = true;
+      });
+    }
   }
 
   /// 👤 프로필 이미지 클릭 시 호출되는 메서드
@@ -958,9 +1002,12 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       }
     } else {
       debugPrint('🔄 재생할 음성이 없어 파형 모드로 전환');
-      setState(() {
-        _isProfileMode = false;
-      });
+      // ✅ mounted 체크 후 상태 변경
+      if (mounted) {
+        setState(() {
+          _isProfileMode = false;
+        });
+      }
     }
   }
 

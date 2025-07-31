@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import '../models/category_data_model.dart';
@@ -77,11 +76,9 @@ class CategoryRepository {
 
           // 사용자가 설정한 커버 사진이 있는지 확인
           String? categoryPhotoUrl = data['categoryPhotoUrl'] as String?;
-          debugPrint('[STREAM] 카테고리 $categoryId의 커버사진 URL: $categoryPhotoUrl');
 
           // 커버 사진이 없다면 가장 최근 사진을 가져오기
           if (categoryPhotoUrl == null || categoryPhotoUrl.isEmpty) {
-            debugPrint('[STREAM] 커버사진이 없어서 최신 사진을 찾는 중...');
             final photosSnapshot =
                 await _firestore
                     .collection('categories')
@@ -94,10 +91,7 @@ class CategoryRepository {
             if (photosSnapshot.docs.isNotEmpty) {
               categoryPhotoUrl =
                   photosSnapshot.docs.first.data()['imageUrl'] as String?;
-              debugPrint('[STREAM] 최신 사진 URL: $categoryPhotoUrl');
-            } else {
-              debugPrint('[STREAM] 사진이 없음 - 기본 아이콘 표시');
-            }
+            } else {}
           }
 
           final result = CategoryDataModel.fromFirestore(
@@ -105,84 +99,61 @@ class CategoryRepository {
             doc.id,
           ).copyWith(categoryPhotoUrl: categoryPhotoUrl);
 
-          debugPrint(
-            '[STREAM] 최종 결과 - categoryPhotoUrl: ${result.categoryPhotoUrl}',
-          );
           return result;
         });
   }
 
   /// 사용자의 카테고리 목록을 한 번만 가져오기
   Future<List<CategoryDataModel>> getUserCategories(String userId) async {
-    debugPrint('CategoryRepository: Firestore 쿼리 시작... userId=$userId');
-    debugPrint('사용자 ID 길이: ${userId.length}, 비어있음: ${userId.isEmpty}');
-
-    // 먼저 Firebase Auth UID로 검색
-    debugPrint('1단계: UID로 카테고리 검색 시작...');
+    // Firebase Auth UID로 카테고리 검색
     var querySnapshot =
         await _firestore
             .collection('categories')
             .where('mates', arrayContains: userId)
             .get();
 
-    debugPrint('1단계 결과: UID로 검색된 문서 수: ${querySnapshot.docs.length}');
-
     // 쿼리 결과가 있으면 각 문서의 mates 배열을 확인
     if (querySnapshot.docs.isNotEmpty) {
-      for (var doc in querySnapshot.docs) {
-        final data = doc.data();
-        debugPrint('문서 ${doc.id}의 mates: ${data['mates']}');
-      }
+      // 문서의 mates 배열 확인 완료
     }
 
     // 만약 UID로 찾은 결과가 없다면, 사용자 닉네임으로도 검색해보기
     if (querySnapshot.docs.isEmpty) {
       try {
-        debugPrint('2단계: 닉네임으로 추가 검색 시작...');
         // 사용자 문서에서 닉네임 가져오기
         final userDoc = await _firestore.collection('users').doc(userId).get();
-        debugPrint('사용자 문서 존재 여부: ${userDoc.exists}');
 
         if (userDoc.exists) {
           final userData = userDoc.data() as Map<String, dynamic>;
-          debugPrint('사용자 문서 데이터: $userData');
+          // 사용자 문서 데이터 확인
           final nickName = userData['id'] as String?; // 'id' 필드에 닉네임이 저장됨
 
           if (nickName != null && nickName.isNotEmpty) {
-            debugPrint('닉네임으로 추가 검색... nickName=$nickName');
-
             querySnapshot =
                 await _firestore
                     .collection('categories')
                     .where('mates', arrayContains: nickName)
                     .get();
 
-            debugPrint('2단계 결과: 닉네임으로 검색된 문서 수: ${querySnapshot.docs.length}');
-
             // 닉네임 검색 결과도 확인
             if (querySnapshot.docs.isNotEmpty) {
-              for (var doc in querySnapshot.docs) {
-                final data = doc.data();
-                debugPrint('문서 ${doc.id}의 mates: ${data['mates']}');
-              }
+              // 문서의 mates 배열 확인 완료
             }
           } else {
-            debugPrint('사용자 문서에서 닉네임을 찾을 수 없음');
+            // 닉네임이 없거나 비어있는 경우
           }
         }
       } catch (e) {
-        debugPrint('닉네임 검색 중 오류: $e');
+        // 사용자 문서가 없거나 닉네임을 찾을 수 없는 경우
       }
     } else {
-      debugPrint('UID 검색에서 결과를 찾았으므로 닉네임 검색 생략');
+      // 닉네임 검색은 생략
     }
 
     final categories = <CategoryDataModel>[];
 
     for (final doc in querySnapshot.docs) {
-      debugPrint('CategoryRepository: 문서 처리 중... docId=${doc.id}');
       final data = doc.data();
-      debugPrint('CategoryRepository: 문서 데이터: $data');
 
       // 사용자가 설정한 커버 사진이 있는지 확인
       String? categoryPhotoUrl = data['categoryPhotoUrl'] as String?;
@@ -221,11 +192,6 @@ class CategoryRepository {
       // 2. 같은 고정 상태 내에서는 생성일시 최신순
       return b.createdAt.compareTo(a.createdAt);
     });
-
-    debugPrint('CategoryRepository: 정렬 완료 - 총 ${categories.length}개 카테고리');
-    debugPrint(
-      'CategoryRepository: 고정된 카테고리 수: ${categories.where((c) => c.isPinned).length}',
-    );
 
     return categories;
   }
@@ -364,8 +330,7 @@ class CategoryRepository {
       final ref = _storage.refFromURL(imageUrl);
       await ref.delete();
     } catch (e) {
-      // 이미지가 이미 삭제되었거나 존재하지 않는 경우 무시
-      print('이미지 삭제 실패: $e');
+      throw Exception('이미지 삭제에 실패했습니다.');
     }
   }
 
