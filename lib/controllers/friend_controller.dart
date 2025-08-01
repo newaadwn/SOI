@@ -54,6 +54,9 @@ class FriendController extends ChangeNotifier {
 
   /// 초기화 (앱 시작 시 호출)
   Future<void> initialize() async {
+    if (_isInitialized) {
+      return; // 이미 초기화된 경우 넘어감
+    }
     try {
       _setLoading(true);
       _clearError();
@@ -70,8 +73,8 @@ class FriendController extends ChangeNotifier {
       // 카테고리별 친구 분류 로드
       await _loadCategorizedFriends();
 
+      // 이 변수를 true로 설정하여서 초기화가 완료되었음을 알림
       _isInitialized = true;
-      // // debugPrint('FriendController 초기화 완료');
     } catch (e) {
       _setError('친구 관리 초기화 실패: $e');
       // // debugPrint('FriendController 초기화 실패: $e');

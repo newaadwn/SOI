@@ -95,7 +95,8 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
         index: _currentPageIndex,
         children: [
           const FeedHomeScreen(),
-          const CameraScreen(),
+          // ✅ 카메라 화면은 선택될 때만 초기화 (성능 최적화)
+          _currentPageIndex == 1 ? const CameraScreen() : Container(),
           const ArchiveMainScreen(),
         ],
       ),

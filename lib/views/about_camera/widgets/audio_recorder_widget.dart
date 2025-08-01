@@ -34,6 +34,9 @@ class AudioRecorderWidget extends StatefulWidget {
   // 사진 ID (comment_records에 저장하기 위해 필요)
   final String? photoId;
 
+  // ✅ 사용 컨텍스트 구분: true=댓글 모드, false=사진 편집 모드
+  final bool isCommentMode;
+
   // 프로필 이미지 드래그 콜백
   final Function(Offset)? onProfileImageDragged;
 
@@ -52,6 +55,7 @@ class AudioRecorderWidget extends StatefulWidget {
     this.onCommentSaved,
     this.autoStart = false, // 기본값은 false
     this.photoId, // 선택적 파라미터
+    this.isCommentMode = true, // ✅ 기본값은 댓글 모드 (기존 동작 유지)
     this.onProfileImageDragged,
     this.savedComment,
     this.profileImagePosition,
@@ -843,14 +847,16 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         }
       }
 
-      // 🎯 CommentRecord 저장 (photoId가 있는 경우에만)
+      // 🎯 CommentRecord 저장 (댓글 모드이고 photoId가 있는 경우에만)
       debugPrint('🔍 CommentRecord 저장 조건 체크:');
+      debugPrint('  - widget.isCommentMode: ${widget.isCommentMode}');
       debugPrint('  - widget.photoId: ${widget.photoId}');
       debugPrint('  - _recordedFilePath: $_recordedFilePath');
       debugPrint('  - waveformData.isNotEmpty: ${waveformData.isNotEmpty}');
       debugPrint('  - waveformData.length: ${waveformData.length}');
 
-      if (widget.photoId != null &&
+      if (widget.isCommentMode && // ✅ 댓글 모드인 경우에만
+          widget.photoId != null &&
           _recordedFilePath != null &&
           _recordedFilePath!.isNotEmpty &&
           waveformData.isNotEmpty) {
@@ -863,6 +869,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         debugPrint('✅ CommentRecord 저장 완료!');
       } else {
         debugPrint('❌ CommentRecord 저장 조건 불충족');
+        if (!widget.isCommentMode) debugPrint('  - 사진 편집 모드 (댓글 저장 안함)');
         if (widget.photoId == null) debugPrint('  - photoId가 null');
         if (_recordedFilePath == null || _recordedFilePath!.isEmpty) {
           debugPrint('  - recordedFilePath 문제');
@@ -962,6 +969,12 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
   /// 🎵 파형 클릭 시 호출되는 메서드
   void _onWaveformTapped() async {
     debugPrint('🎵 파형 클릭됨 - 프로필 모드로 전환');
+
+    // ✅ 댓글 모드가 아닌 경우 프로필 모드로 전환하지 않음
+    if (!widget.isCommentMode) {
+      debugPrint('📸 사진 편집 모드 - 프로필 모드 전환 비활성화');
+      return;
+    }
 
     // 사용자 프로필 이미지 로드
     await _loadUserProfileImage();

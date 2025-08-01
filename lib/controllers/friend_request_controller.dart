@@ -9,7 +9,11 @@ class FriendRequestController extends ChangeNotifier {
 
   // 상태 변수들
   bool _isLoading = false;
+
+  // 초기화 완료 여부를 체크하기 위해 추가한 변수
   bool _isInitialized = false;
+
+  // 에러 메시지
   String? _error;
 
   // 친구 요청 목록
@@ -30,7 +34,7 @@ class FriendRequestController extends ChangeNotifier {
   FriendRequestController({required FriendRequestService friendRequestService})
     : _friendRequestService = friendRequestService;
 
-  // Getters
+  // Getters 함수
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
   String? get error => _error;
@@ -46,6 +50,9 @@ class FriendRequestController extends ChangeNotifier {
 
   /// 초기화 (앱 시작 시 호출)
   Future<void> initialize() async {
+    if (_isInitialized) {
+      return; // 이미 초기화된 경우 넘어감
+    }
     try {
       _setLoading(true);
       _clearError();

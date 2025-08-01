@@ -11,6 +11,7 @@ import 'widgets/photo_display_widget.dart';
 import 'widgets/audio_recorder_widget.dart';
 import 'widgets/category_list_widget.dart';
 import 'widgets/add_category_widget.dart';
+import 'widgets/loading_popup_widget.dart';
 
 class PhotoEditorScreen extends StatefulWidget {
   final String? downloadUrl;
@@ -157,7 +158,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   Future<void> _loadUserCategories({bool forceReload = false}) async {
     if (!forceReload && _categoriesLoaded) return; // 이미 로드된 경우 스킵
 
-    // ✅ UI 로딩 상태를 별도로 관리하여 화면 전환 속도 향상
+    // UI 로딩 상태를 별도로 관리하여 화면 전환 속도 향상
     if (!forceReload) {
       // 첫 로드시에는 로딩 UI를 최소화
       setState(() {
@@ -202,84 +203,12 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     }
   }
 
-  // Phase 4: 초경량 업로드 실행 (최소한의 작업만 수행)
-  Future<void> _executeUltraLightUpload({
-    required String categoryId,
-    required String imagePath,
-    required String userId,
-    required String? audioPath,
-    required List<double>? waveformData,
-  }) async {
-    try {
-      // 파일 존재 여부만 빠르게 확인 (읽기 없음)
-      final imageFile = File(imagePath);
-      if (!await imageFile.exists()) {
-        return;
-      }
-
-      // 오디오 파일 빠른 검증 (읽기 없음)
-      File? audioFile;
-      if (audioPath != null && audioPath.isNotEmpty) {
-        audioFile = File(audioPath);
-        if (!await audioFile.exists()) {
-          audioFile = null; // 오디오 없이 진행
-        }
-      }
-
-      // 직접 업로드 실행 (중간 처리 과정 생략)
-      if (audioFile != null &&
-          waveformData != null &&
-          waveformData.isNotEmpty) {
-        // 오디오와 함께 업로드
-        await _photoController.uploadPhotoWithAudio(
-          imageFilePath: imagePath,
-          audioFilePath: audioFile.path,
-          userID: userId,
-          userIds: [userId],
-          categoryId: categoryId,
-          waveformData: waveformData,
-        );
-      } else {
-        // 이미지만 업로드
-        await _photoController.uploadPhoto(
-          imageFile: imageFile,
-          categoryId: categoryId,
-          userId: userId,
-          userIds: [userId],
-          audioFile: null,
-        );
-      }
-    } catch (e) {
-      // 실패 시 조용히 무시 (UI에 영향 없음)
-    }
-  }
-
   // 카테고리 선택 처리 함수
   void _handleCategorySelection(String categoryId) {
     // 이미 선택된 카테고리를 다시 클릭했을 때 (전송 실행)
     if (_selectedCategoryId == categoryId) {
-      // DraggableScrollController 즉시 정리
-      try {
-        if (_draggableScrollController.isAttached) {
-          _draggableScrollController.dispose();
-        }
-      } catch (e) {
-        // 에러 무시
-      }
-
-      // Phase 4: 완전한 즉시 전환 - 어떤 작업도 수행하지 않음
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
-          settings: RouteSettings(name: '/home'),
-        ),
-        (route) => false,
-      );
-
-      // Phase 4: Navigator 호출 후 완전히 독립적인 백그라운드 작업
-      Future.microtask(() {
-        _startUltraLightBackgroundUpload(categoryId);
-      });
+      // 방안 1: 데이터 우선 추출 + 순차 실행
+      _uploadThenNavigate(categoryId);
     } else {
       // 새로운 카테고리 선택 (선택 모드로 변경)
       if (mounted) {
@@ -290,32 +219,146 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     }
   }
 
-  // Phase 4: 초경량 백그라운드 업로드 (데이터 복사 최소화)
-  void _startUltraLightBackgroundUpload(String categoryId) {
-    // 필요한 데이터만 즉시 복사 (파일 I/O 없음)
+  // 업로드 후 화면 전환 메서드
+  Future<void> _uploadThenNavigate(String categoryId) async {
+    // 로딩 팝업 표시
+    LoadingPopupWidget.show(context, message: '사진을 업로드하고 있습니다\n잠시만 기다려주세요');
+
+    try {
+      // 1. 데이터 추출 (동기적)
+      final uploadData = _extractUploadData(categoryId);
+      if (uploadData == null) {
+        debugPrint('❌ 업로드 데이터가 없어 화면 전환만 실행');
+        // 로딩 팝업 닫기
+        LoadingPopupWidget.hide(context);
+        _navigateToHome();
+        return;
+      }
+
+      debugPrint('📤 업로드 시작 - categoryId: $categoryId');
+
+      // 2. 업로드 실행 (완료될 때까지 대기)
+      await _executeUploadWithExtractedData(uploadData);
+
+      debugPrint('✅ 업로드 완료 - 화면 전환 시작');
+
+      // 로딩 팝업 닫기
+      LoadingPopupWidget.hide(context);
+
+      // 3. 업로드 완료 후 화면 전환
+      if (mounted) {
+        _navigateToHome();
+      }
+    } catch (e) {
+      debugPrint('❌ 업로드 오류: $e');
+
+      // 로딩 팝업 닫기
+      LoadingPopupWidget.hide(context);
+
+      // 오류가 발생해도 화면 전환은 실행
+      if (mounted) {
+        _navigateToHome();
+      }
+    }
+  }
+
+  // 업로드 데이터 추출 메서드 (동기적)
+  Map<String, dynamic>? _extractUploadData(String categoryId) {
+    // 현재 상태에서 모든 필요한 데이터를 즉시 추출
     final imagePath = widget.imagePath;
     final userId = _authController.getUserId;
     final audioPath = _audioController.currentRecordingPath;
     final waveformData = _recordedWaveformData;
 
-    // 빠른 검증 후 즉시 반환
+    // 필수 데이터 검증
     if (imagePath == null || userId == null) {
-      return;
+      debugPrint('❌ 업로드 데이터 추출 실패 - imagePath: $imagePath, userId: $userId');
+      return null;
     }
 
-    // 완전히 독립적인 Future 실행 (microtask로 즉시 스케줄링)
-    Future.microtask(() async {
-      await _executeUltraLightUpload(
-        categoryId: categoryId,
-        imagePath: imagePath,
-        userId: userId,
-        audioPath: audioPath,
-        waveformData: waveformData,
-      );
-    });
+    return {
+      'categoryId': categoryId,
+      'imagePath': imagePath,
+      'userId': userId,
+      'audioPath': audioPath,
+      'waveformData': waveformData,
+    };
   }
 
-  // Phase 4: 초경량 업로드 실행 (최소한의 작업만 수행)
+  // 추출된 데이터로 업로드 실행
+  Future<void> _executeUploadWithExtractedData(
+    Map<String, dynamic> data,
+  ) async {
+    final categoryId = data['categoryId'] as String;
+    final imagePath = data['imagePath'] as String;
+    final userId = data['userId'] as String;
+    final audioPath = data['audioPath'] as String?;
+    final waveformData = data['waveformData'] as List<double>?;
+
+    // 파일 존재 여부 확인
+    final imageFile = File(imagePath);
+    if (!await imageFile.exists()) {
+      throw Exception('이미지 파일을 찾을 수 없습니다: $imagePath');
+    }
+
+    // 오디오 파일 확인
+    File? audioFile;
+    if (audioPath != null && audioPath.isNotEmpty) {
+      audioFile = File(audioPath);
+      if (!await audioFile.exists()) {
+        debugPrint('⚠️ 오디오 파일 없음, 이미지만 업로드: $audioPath');
+        audioFile = null;
+      }
+    }
+
+    // 업로드 실행
+    if (audioFile != null && waveformData != null && waveformData.isNotEmpty) {
+      // 오디오와 함께 업로드
+      await _photoController.uploadPhotoWithAudio(
+        imageFilePath: imagePath,
+        audioFilePath: audioFile.path,
+        userID: userId,
+        userIds: [userId],
+        categoryId: categoryId,
+        waveformData: waveformData,
+      );
+      debugPrint('📤 오디오와 함께 업로드 완료');
+    } else {
+      // 이미지만 업로드
+      await _photoController.uploadPhoto(
+        imageFile: imageFile,
+        categoryId: categoryId,
+        userId: userId,
+        userIds: [userId],
+        audioFile: null,
+      );
+      debugPrint('📤 이미지만 업로드 완료');
+    }
+  }
+
+  // 화면 전환 메서드 (분리)
+  void _navigateToHome() {
+    // 기존 HomePageNavigationBar를 찾아서 돌아가기
+    Navigator.of(context).popUntil((route) {
+      return route.settings.name == '/home' || route.isFirst;
+    });
+
+    // 만약 HomePageNavigationBar가 스택에 없다면 새로 생성 (fallback)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final currentRoute = ModalRoute.of(context);
+        if (currentRoute?.settings.name != '/home') {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(
+              builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
+              settings: RouteSettings(name: '/home'),
+            ),
+            (route) => false,
+          );
+        }
+      }
+    });
+  }
 
   // 카테고리 생성 처리 함수
   Future<void> _createNewCategory(String categoryName) async {
@@ -451,6 +494,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                           AudioRecorderWidget(
                             photoId:
                                 widget.imagePath?.split('/').last ?? 'unknown',
+                            isCommentMode:
+                                false, // 사진 편집 모드: CommentRecord로 저장하지 않음
                             profileImagePosition:
                                 _profileImagePosition, // 현재 저장된 위치 전달
                             getProfileImagePosition:

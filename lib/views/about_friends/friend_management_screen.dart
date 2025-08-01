@@ -21,7 +21,8 @@ class FriendManagementScreen extends StatefulWidget {
   State<FriendManagementScreen> createState() => _FriendManagementScreenState();
 }
 
-class _FriendManagementScreenState extends State<FriendManagementScreen> {
+class _FriendManagementScreenState extends State<FriendManagementScreen>
+    with AutomaticKeepAliveClientMixin {
   List<Contact> _contacts = [];
 
   // ✅ 백그라운드 로딩을 위한 상태 변수들 추가
@@ -29,14 +30,67 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
   bool _hasInitialized = false;
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   void initState() {
     super.initState();
     // ✅ 화면을 즉시 표시하고 백그라운드에서 초기화 시작
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeContactPermissionInBackground();
-      _initializeFriendController();
-      _initializeFriendRequestController();
+      _initializeControllers();
+      // 페이지 진입 시 동기화 재개
+      _resumeSyncIfNeeded();
     });
+  }
+
+  @override
+  void dispose() {
+    // 페이지를 벗어날 때 동기화 일시 중지
+    _pauseSyncIfNeeded();
+    super.dispose();
+  }
+
+  /// 동기화 재개 (필요한 경우)
+  void _resumeSyncIfNeeded() {
+    final contactController = Provider.of<ContactController>(
+      context,
+      listen: false,
+    );
+    contactController.resumeSync();
+  }
+
+  /// 동기화 일시 중지 (필요한 경우)
+  void _pauseSyncIfNeeded() {
+    if (!mounted) return;
+    final contactController = Provider.of<ContactController>(
+      context,
+      listen: false,
+    );
+    contactController.pauseSync();
+  }
+
+  Future<void> _initializeControllers() async {
+    // 백그라운드에서 순차적으로 초기화
+    Future.microtask(() async {
+      await _initializeFriendController();
+      await _initializeFriendRequestController();
+
+      // 연락처는 필요할 때만 로드
+      if (_shouldLoadContacts()) {
+        await _initializeContactPermissionInBackground();
+      }
+    });
+  }
+
+  bool _shouldLoadContacts() {
+    // 이미 로드했거나 권한이 없으면 스킵
+    if (!mounted) return false;
+    final contactController = Provider.of<ContactController>(
+      context,
+      listen: false,
+    );
+    // 활성 동기화 상태일 때만 연락처 로드
+    return contactController.isActivelySyncing && _contacts.isEmpty;
   }
 
   /// FriendController 초기화
@@ -49,8 +103,9 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
         listen: false,
       );
 
-      // 기존 상태 초기화 후 재초기화
-      await friendController.reset();
+      // 이미 초기화되어 있으면 스킵
+      if (friendController.isInitialized) return;
+
       await friendController.initialize();
       // debugPrint('FriendController 초기화 완료');
     } catch (e) {
@@ -68,8 +123,9 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
         listen: false,
       );
 
-      // 기존 상태 초기화 후 재초기화
-      await friendRequestController.reset();
+      // 이미 초기화되어 있으면 스킵
+      if (friendRequestController.isInitialized) return;
+
       await friendRequestController.initialize();
       // debugPrint('FriendRequestController 초기화 완료');
     } catch (e) {
@@ -97,9 +153,9 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
       final result = await contactController.initializeContactPermission();
 
       // ✅ 2단계: 권한이 허용된 경우에만 연락처 로드 (느린 처리)
-      if (result.isEnabled && mounted) {
+      if (result.isEnabled && mounted && contactController.isActivelySyncing) {
         try {
-          _contacts = await contactController.getContacts();
+          _contacts = await contactController.getContacts(forceRefresh: false);
           // debugPrint('연락처 로드 성공: ${_contacts}');
           if (mounted) {
             setState(() {});
@@ -143,13 +199,13 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
         listen: false,
       );
       if (contactController.contactSyncEnabled) {
-        _contacts = await contactController.getContacts();
+        _contacts = await contactController.getContacts(forceRefresh: true);
         if (mounted) {
           setState(() {});
         }
       }
     } catch (e) {
-      // debugPrint('연락처 새로고침 실패: $e');
+      rethrow;
     }
   }
 
@@ -495,6 +551,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin 필수
     // 반응형 UI를 위한 화면 너비 및 스케일 팩터 계산
     final screenWidth = MediaQuery.of(context).size.width;
     const double referenceWidth = 393;
@@ -659,30 +716,43 @@ class _FriendManagementScreenState extends State<FriendManagementScreen> {
                 ),
 
                 // 토글 스위치 또는 로딩 스피너
-                Transform.scale(
-                  scale: scale,
-                  child:
-                      contactController.isLoading
-                          ? SizedBox(
-                            width: 24 * scale,
-                            height: 24 * scale,
-                            child: const CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                          : Switch(
-                            value: contactController.contactSyncEnabled,
-                            onChanged: (value) {
-                              _handleToggleChange(
-                                contactController,
-                              ); // ContactController 전달
-                            },
-                            activeColor: Colors.white,
-                            activeTrackColor: const Color(0xff404040),
-                            inactiveThumbColor: const Color(0xff666666),
-                            inactiveTrackColor: const Color(0xff2a2a2a),
-                          ),
+                Row(
+                  children: [
+                    // 일시중지 상태 표시
+                    if (contactController.isSyncPaused) ...[
+                      Icon(
+                        Icons.pause_circle_filled,
+                        color: Colors.orange,
+                        size: 20 * scale,
+                      ),
+                      SizedBox(width: 8 * scale),
+                    ],
+                    Transform.scale(
+                      scale: scale,
+                      child:
+                          contactController.isLoading
+                              ? SizedBox(
+                                width: 24 * scale,
+                                height: 24 * scale,
+                                child: const CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : Switch(
+                                value: contactController.contactSyncEnabled,
+                                onChanged: (value) {
+                                  _handleToggleChange(
+                                    contactController,
+                                  ); // ContactController 전달
+                                },
+                                activeColor: Colors.white,
+                                activeTrackColor: const Color(0xff404040),
+                                inactiveThumbColor: const Color(0xff666666),
+                                inactiveTrackColor: const Color(0xff2a2a2a),
+                              ),
+                    ),
+                  ],
                 ),
               ],
             ),

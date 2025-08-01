@@ -914,6 +914,22 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                   // 댓글이 없으면 AudioRecorderWidget 표시
                   return AudioRecorderWidget(
                     photoId: photo.id,
+                    isCommentMode: true, // ✅ 명시적으로 댓글 모드 설정
+                    profileImagePosition:
+                        _profileImagePositions[photo.id], // ✅ 현재 저장된 프로필 위치 전달
+                    getProfileImagePosition:
+                        () =>
+                            _profileImagePositions[photo
+                                .id], // ✅ 최신 위치를 가져오는 콜백
+                    onProfileImageDragged: (Offset position) {
+                      // ✅ 프로필 이미지 드래그 처리
+                      setState(() {
+                        _profileImagePositions[photo.id] = position;
+                      });
+
+                      // Firestore에 위치 업데이트
+                      _updateProfilePositionInFirestore(photo.id, position);
+                    },
                     onCommentSaved: (commentRecord) {
                       // New voice comment saved with ID: ${commentRecord.id}
                       // 저장 상태 업데이트

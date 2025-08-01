@@ -22,6 +22,10 @@ class ContactService {
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
+  // ContactService에 캐싱 추가
+  List<Contact>? _cachedContacts;
+  DateTime? _lastFetchTime;
+
   /// 초기화 (앱 시작 시 호출)
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -158,13 +162,21 @@ class ContactService {
   }
 
   /// 연락처 목록 가져오기 (권한이 있을 때)
-  Future<List<Contact>> getContacts() async {
+  Future<List<Contact>> getContacts({bool forceRefresh = false}) async {
     if (!_contactSyncEnabled) {
       throw Exception('연락처 동기화가 비활성화되어 있습니다');
     }
 
+    // 가져온 데이터가 있으면 캐시 사용
+    if (!forceRefresh && _cachedContacts != null && _lastFetchTime != null) {
+      return _cachedContacts!;
+    }
+
     try {
-      return await _repository.getContacts();
+      // 새로 가져오기
+      _cachedContacts = await _repository.getContacts();
+      _lastFetchTime = DateTime.now();
+      return _cachedContacts!;
     } catch (e) {
       throw Exception('연락처 목록을 가져오는데 실패했습니다: $e');
     }

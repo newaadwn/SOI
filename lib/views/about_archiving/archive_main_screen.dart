@@ -44,9 +44,12 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     // 검색 기능 설정
     _searchController.addListener(_onSearchChanged);
 
-    // 화면 진입 시 검색 상태 초기화 (다음 프레임에서 실행)
+    // ✅ 최적화: 초기화 작업을 지연시켜 UI 블로킹 방지
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _categoryController?.clearSearch(notify: false);
+      // 다음 프레임에서 실행하여 UI 렌더링을 먼저 완료
+      Future.delayed(Duration.zero, () {
+        _categoryController?.clearSearch(notify: false);
+      });
     });
   }
 

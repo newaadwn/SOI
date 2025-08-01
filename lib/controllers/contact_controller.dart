@@ -10,11 +10,13 @@ class ContactController extends ChangeNotifier {
   bool _contactSyncEnabled = false;
   bool _isLoading = false;
   bool _isInitialized = false;
+  bool _isSyncPaused = false;
 
   // Getters
   bool get contactSyncEnabled => _contactSyncEnabled;
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
+  bool get isSyncPaused => _isSyncPaused;
 
   /// 초기화 (앱 시작 시 호출)
   Future<void> initialize() async {
@@ -134,8 +136,8 @@ class ContactController extends ChangeNotifier {
   }
 
   /// 연락처 목록 가져오기 (권한이 있을 때)
-  Future<List<Contact>> getContacts() async {
-    return await _contactService.getContacts();
+  Future<List<Contact>> getContacts({bool forceRefresh = false}) async {
+    return await _contactService.getContacts(forceRefresh: forceRefresh);
   }
 
   /// 특정 연락처 정보 가져오기
@@ -147,4 +149,23 @@ class ContactController extends ChangeNotifier {
   Future<List<Contact>> searchContacts(String query) async {
     return await _contactService.searchContacts(query);
   }
+
+  /// 동기화 일시 중지
+  void pauseSync() {
+    if (_contactSyncEnabled && !_isSyncPaused) {
+      _isSyncPaused = true;
+      notifyListeners();
+    }
+  }
+
+  /// 동기화 재개
+  void resumeSync() {
+    if (_contactSyncEnabled && _isSyncPaused) {
+      _isSyncPaused = false;
+      notifyListeners();
+    }
+  }
+
+  /// 동기화가 활성 상태인지 확인 (일시중지가 아닌 경우)
+  bool get isActivelySyncing => _contactSyncEnabled && !_isSyncPaused;
 }

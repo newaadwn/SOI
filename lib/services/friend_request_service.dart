@@ -111,6 +111,8 @@ class FriendRequestService {
       final currentUser = _authController.currentUser!;
       final currentUserId = await _authController.getUserID();
       final currentUserName = currentUser.displayName ?? currentUserId;
+      final currentProfileImageUrl =
+          await _authController.getUserProfileImageUrl();
 
       // 3. 요청 발신자 정보 가져오기
       final senderInfo = await _userSearchRepository.searchUserById(
@@ -128,6 +130,7 @@ class FriendRequestService {
         friendName: senderName, // 실제 발신자 이름 사용
         currentUserid: currentUserId,
         currentUserName: currentUserName, // 실제 현재 사용자 이름 사용
+        currentUserProfileImageUrl: currentProfileImageUrl,
       );
 
       // 6. 처리 완료된 친구 요청 삭제 (선택적)

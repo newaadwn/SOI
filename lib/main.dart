@@ -61,11 +61,7 @@ void main() async {
     } catch (authError) {
       // debugPrint('Firebase Auth 설정 실패: $authError');
     }
-  } catch (e) {
-    // debugPrint('Firebase 초기화 실패: $e');
-    // debugPrint('앱은 Firebase 없이 계속 실행됩니다');
-    // Firebase 없이도 앱이 실행되도록 처리
-  }
+  } catch (e) {}
 
   // 에러 핸들링 추가
   FlutterError.onError = (FlutterErrorDetails details) {
