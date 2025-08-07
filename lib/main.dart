@@ -173,7 +173,7 @@ class _MyAppState extends State<MyApp> {
             '/camera': (context) => const CameraScreen(),
             '/archiving': (context) => const ArchiveMainScreen(),
             '/start': (context) => const StartScreen(),
-            '/auth': (context) => const AuthScreen(),
+            '/auth': (context) => AuthScreen(),
             '/login': (context) => const LoginScreen(),
 
             // 아카이빙 관련 라우트

@@ -5,9 +5,10 @@ import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
 import '../../controllers/auth_controller.dart';
 import 'auth_final_screen.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  AuthScreen({super.key});
 
   @override
   _AuthScreenState createState() => _AuthScreenState();
@@ -71,7 +72,7 @@ class _AuthScreenState extends State<AuthScreen> {
           // 다음 버튼을 상단 우측에 배치
           if (currentPage < 4 && currentPage != 2) // 마지막 페이지가 아닐 때만 다음 버튼 표시
             Padding(
-              padding: const EdgeInsets.only(right: 16.0),
+              padding: EdgeInsets.only(right: 16.w),
               child: TextButton(
                 onPressed: () {
                   _handleNextButtonPressed();
@@ -81,7 +82,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     Text(
                       "다음",
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
                       ),
@@ -98,9 +99,9 @@ class _AuthScreenState extends State<AuthScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(5, (index) {
             return Container(
-              width: 8,
-              height: 8,
-              margin: EdgeInsets.symmetric(horizontal: 3),
+              width: 8.w,
+              height: 8.h,
+              margin: EdgeInsets.symmetric(horizontal: 3.w),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color:
@@ -162,23 +163,23 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 24),
+          SizedBox(height: 24.h),
           Container(
-            width: 239,
-            height: 44,
+            width: 239.w,
+            height: 44.h,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
-                const SizedBox(width: 17),
+                SizedBox(width: 17.w),
                 Icon(
                   SolarIconsOutline.phone,
-                  color: const Color(0xffC0C0C0),
-                  size: 24,
+                  color: Color(0xffC0C0C0),
+                  size: 24.sp,
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10.w),
                 Expanded(
                   child: TextField(
                     controller: controller,
@@ -187,8 +188,8 @@ class _AuthScreenState extends State<AuthScreen> {
                       border: InputBorder.none,
                       hintText: '전화번호',
                       hintStyle: TextStyle(
-                        fontSize: 16,
-                        color: const Color(0xffC0C0C0),
+                        fontSize: 16.sp,
+                        color: Color(0xffC0C0C0),
                       ),
                       contentPadding: EdgeInsets.only(bottom: 6),
                     ),
@@ -276,13 +277,9 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
             child: Row(
               children: [
-                const SizedBox(width: 17),
-                Icon(
-                  SolarIconsOutline.key,
-                  color: const Color(0xffC0C0C0),
-                  size: 24,
-                ),
-                const SizedBox(width: 10),
+                SizedBox(width: 17),
+                Icon(SolarIconsOutline.key, color: Color(0xffC0C0C0), size: 24),
+                SizedBox(width: 10),
                 Expanded(
                   child: TextField(
                     controller: controller,
@@ -292,7 +289,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       hintText: '인증번호',
                       hintStyle: TextStyle(
                         fontSize: 16,
-                        color: const Color(0xffC0C0C0),
+                        color: Color(0xffC0C0C0),
                       ),
                       contentPadding: EdgeInsets.only(bottom: 6),
                     ),
@@ -517,11 +514,11 @@ class _AuthScreenState extends State<AuthScreen> {
           child: Row(
             children: [
               if (icon != null) ...[
-                const SizedBox(width: 17),
+                SizedBox(width: 17),
                 icon,
-                const SizedBox(width: 10),
+                SizedBox(width: 10),
               ],
-              const SizedBox(width: 10),
+              SizedBox(width: 10),
               Expanded(
                 child: TextField(
                   controller: controller,
@@ -531,7 +528,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     hintText: hintText,
                     hintStyle: TextStyle(
                       fontSize: 16,
-                      color: const Color(0xffC0C0C0),
+                      color: Color(0xffC0C0C0),
                     ),
                     contentPadding: EdgeInsets.only(bottom: 6),
                   ),
@@ -619,7 +616,7 @@ class _AuthScreenState extends State<AuthScreen> {
   // -------------------------
   void _goToNextPage() {
     _pageController.nextPage(
-      duration: const Duration(milliseconds: 300),
+      duration: Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
   }
@@ -629,7 +626,7 @@ class _AuthScreenState extends State<AuthScreen> {
   // -------------------------
   void _goToPreviousPage() {
     _pageController.previousPage(
-      duration: const Duration(milliseconds: 300),
+      duration: Duration(milliseconds: 300),
       curve: Curves.easeInOut,
     );
   }
