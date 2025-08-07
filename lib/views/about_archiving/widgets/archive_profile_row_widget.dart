@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/auth_controller.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// 🧑‍🤝‍🧑 프로필 이미지 행 위젯 (Figma 디자인 기준)
 class ArchiveProfileRowWidget extends StatelessWidget {
@@ -20,31 +21,15 @@ class ArchiveProfileRowWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return Consumer<AuthController>(
       builder: (context, authController, child) {
-        // 반응형 프로필 이미지 크기
-        final profileSize =
-            isSmallScreen
-                ? 16.0
-                : isLargeScreen
-                ? 22.0
-                : 19.0;
-        final iconSize =
-            isSmallScreen
-                ? 10.0
-                : isLargeScreen
-                ? 14.0
-                : 12.0;
-        final borderWidth = isSmallScreen ? 0.3 : 0.5;
-        final margin = isSmallScreen ? 3.0 : 4.0;
-
         // 이미지가 없거나 비어있으면 기본 이미지 하나만 표시
         if (profileImages.isEmpty) {
           return SizedBox(
-            width: profileSize,
-            height: profileSize,
+            width: 19.w,
+            height: 19.h,
             child: CircleAvatar(
-              radius: profileSize / 2,
+              radius: 19.0 / 2,
               backgroundColor: Colors.grey[400],
-              child: Icon(Icons.person, color: Colors.white, size: iconSize),
+              child: Icon(Icons.person, color: Colors.white, size: 12.0),
             ),
           );
         }
@@ -53,61 +38,49 @@ class ArchiveProfileRowWidget extends StatelessWidget {
         final displayImages = profileImages.take(3).toList();
 
         return SizedBox(
-          height: profileSize,
+          height: 19.h,
           child: Row(
             children:
                 displayImages.asMap().entries.map<Widget>((entry) {
-                  final index = entry.key;
                   final imageUrl = entry.value;
 
                   return Container(
-                    margin: EdgeInsets.only(
-                      right: index < displayImages.length - 1 ? margin : 0.0,
-                    ),
-                    child: Container(
-                      width: profileSize,
-                      height: profileSize,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: Colors.white,
-                          width: borderWidth,
-                        ),
-                      ),
-                      child: ClipOval(
-                        child:
-                            imageUrl.isNotEmpty
-                                ? CachedNetworkImage(
-                                  imageUrl: imageUrl,
-                                  fit: BoxFit.cover,
-                                  placeholder:
-                                      (context, url) => Container(
-                                        color: Colors.grey[400],
-                                        child: Icon(
-                                          Icons.person,
-                                          color: Colors.white,
-                                          size: iconSize,
-                                        ),
+                    width: 19.w,
+                    height: 19.h,
+                    decoration: BoxDecoration(shape: BoxShape.circle),
+                    child: ClipOval(
+                      child:
+                          imageUrl.isNotEmpty
+                              ? CachedNetworkImage(
+                                imageUrl: imageUrl,
+                                fit: BoxFit.cover,
+                                placeholder:
+                                    (context, url) => Container(
+                                      color: Colors.grey[400],
+                                      child: Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                        size: 12.sp,
                                       ),
-                                  errorWidget:
-                                      (context, url, error) => Container(
-                                        color: Colors.grey[400],
-                                        child: Icon(
-                                          Icons.person,
-                                          color: Colors.white,
-                                          size: iconSize,
-                                        ),
+                                    ),
+                                errorWidget:
+                                    (context, url, error) => Container(
+                                      color: Colors.grey[400],
+                                      child: Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                        size: 12.sp,
                                       ),
-                                )
-                                : Container(
-                                  color: Colors.grey[400],
-                                  child: Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: iconSize,
-                                  ),
+                                    ),
+                              )
+                              : Container(
+                                color: Colors.grey[400],
+                                child: Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 12.sp,
                                 ),
-                      ),
+                              ),
                     ),
                   );
                 }).toList(),

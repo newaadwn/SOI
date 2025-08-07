@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../controllers/category_controller.dart';
 import '../theme/theme.dart';
@@ -20,9 +21,6 @@ class _HomeScreenState extends State<HomeScreen> {
       listen: false,
     );
 
-    double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
-
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
 
@@ -32,7 +30,7 @@ class _HomeScreenState extends State<HomeScreen> {
           style: TextStyle(color: AppTheme.lightTheme.colorScheme.secondary),
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        toolbarHeight: 70 / 852 * screenHeight,
+        toolbarHeight: 70.h,
 
         actions: [
           // 테스트 버튼 (개발용)
@@ -40,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
             onPressed: () {
               Navigator.pushNamed(context, '/invite_test');
             },
-            icon: const Icon(Icons.share, size: 30, color: Colors.blue),
+            icon: Icon(Icons.share, size: 30.sp, color: Colors.blue),
             tooltip: '초대 링크 테스트',
           ),
           IconButton(
@@ -49,7 +47,7 @@ class _HomeScreenState extends State<HomeScreen> {
             },
             icon: Icon(
               Icons.add,
-              size: 35,
+              size: 35.sp,
               color: AppTheme.lightTheme.colorScheme.secondary,
             ),
           ),
@@ -86,10 +84,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // 전체 페이지를 SingleChildScrollView로 감싸서 스크롤 가능하게 함.
               return SingleChildScrollView(
                 child: Padding(
-                  padding: EdgeInsets.only(
-                    left: (17 / 393) * screenWidth,
-                    right: (17 / 393) * screenWidth,
-                  ),
+                  padding: EdgeInsets.only(left: 17.w, right: 17.w),
                   child: Column(
                     children: [
                       // 필요한 다른 위젯도 여기에 추가할 수 있음.
@@ -102,12 +97,12 @@ class _HomeScreenState extends State<HomeScreen> {
                             '최근 카테고리',
                             style: TextStyle(
                               color: Color(0xFFC4C4C4),
-                              fontSize: 20 / 393 * screenWidth,
+                              fontSize: 20.sp,
                               fontFamily: 'Pretendard Variable',
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          SizedBox(height: 8),
+                          SizedBox(height: 8.h),
                           GridView.builder(
                             physics: const NeverScrollableScrollPhysics(),
                             shrinkWrap: true,
@@ -115,8 +110,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                 SliverGridDelegateWithFixedCrossAxisCount(
                                   crossAxisCount: 2,
                                   childAspectRatio: 2.9,
-                                  mainAxisSpacing: 8,
-                                  crossAxisSpacing: 8,
+                                  mainAxisSpacing: 8.h,
+                                  crossAxisSpacing: 8.w,
                                 ),
                             itemCount: categories.length,
                             itemBuilder: (context, index) {
@@ -141,8 +136,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                           if (snapshot.connectionState ==
                                               ConnectionState.waiting) {
                                             return SizedBox(
-                                              width: 56 / 393 * screenWidth,
-                                              height: 56 / 852 * screenHeight,
+                                              width: 56.w,
+                                              height: 56.h,
                                               child: CircularProgressIndicator(
                                                 strokeWidth: 2,
                                               ),
@@ -153,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                               snapshot.data == null) {
                                             return Icon(
                                               Icons.photo,
-                                              size: 56 / 393 * screenWidth,
+                                              size: 56.sp,
                                             );
                                           }
                                           return ClipRRect(
@@ -162,14 +157,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                             ),
                                             child: Image.network(
                                               snapshot.data!,
-                                              width: 56,
-                                              height: 56,
+                                              width: 56.w,
+                                              height: 56.h,
                                               fit: BoxFit.cover,
                                             ),
                                           );
                                         },
                                       ),
-                                      SizedBox(width: 14 / 393 * screenWidth),
+                                      SizedBox(width: 14.w),
                                       Flexible(
                                         child: Text(
                                           category['name'],
@@ -179,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                                     .lightTheme
                                                     .colorScheme
                                                     .secondary,
-                                            fontSize: 16 / 393 * screenWidth,
+                                            fontSize: 16.sp,
                                           ),
                                         ),
                                       ),

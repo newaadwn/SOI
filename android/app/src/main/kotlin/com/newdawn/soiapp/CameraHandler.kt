@@ -9,6 +9,10 @@ import androidx.lifecycle.LifecycleOwner
 import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import java.io.FileOutputStream
 
 class CameraHandler(private val context: Context) {
     companion object {
@@ -23,6 +27,9 @@ class CameraHandler(private val context: Context) {
     
     // 카메라 세션 상태
     private var isSessionActive = false
+    
+    // 현재 카메라 타입 추적
+    private var isUsingFrontCamera = false
     
     /**
      * 카메라 초기화
@@ -68,6 +75,7 @@ class CameraHandler(private val context: Context) {
             
             // 카메라 선택 (후면 카메라)
             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+            isUsingFrontCamera = false
             
             // 기존 바인딩 해제
             cameraProvider?.unbindAll()
@@ -118,8 +126,20 @@ class CameraHandler(private val context: Context) {
                 cameraExecutor,
                 object : ImageCapture.OnImageSavedCallback {
                     override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                        // 현재 카메라 상태 확인
+                        val currentLensFacing = camera?.cameraInfo?.lensFacing
+                        Log.d(TAG, "🔍 현재 카메라 lensFacing: $currentLensFacing")
+                        Log.d(TAG, "🔍 isUsingFrontCamera 변수: $isUsingFrontCamera")
+                        Log.d(TAG, "🔍 LENS_FACING_FRONT 값: ${CameraSelector.LENS_FACING_FRONT}")
+                        
+                        // 모든 카메라에서 원본 이미지 그대로 사용 (좌우반전 처리 안함)
                         result = photoFile.absolutePath
-                        Log.d(TAG, "✅ 사진 저장 성공: $result")
+                        
+                        if (isUsingFrontCamera) {
+                            Log.d(TAG, "✅ 전면 카메라 사진 저장 성공 (좌우반전 없음): $result")
+                        } else {
+                            Log.d(TAG, "✅ 후면 카메라 사진 저장 성공: $result")
+                        }
                         countDownLatch.countDown()
                     }
                     
@@ -156,8 +176,10 @@ class CameraHandler(private val context: Context) {
     fun switchCamera(): Boolean {
         return try {
             val currentSelector = if (camera?.cameraInfo?.lensFacing == CameraSelector.LENS_FACING_BACK) {
+                isUsingFrontCamera = true
                 CameraSelector.DEFAULT_FRONT_CAMERA
             } else {
+                isUsingFrontCamera = false
                 CameraSelector.DEFAULT_BACK_CAMERA
             }
             
@@ -169,7 +191,7 @@ class CameraHandler(private val context: Context) {
                 imageCapture
             )
             
-            Log.d(TAG, "✅ 카메라 전환 성공")
+            Log.d(TAG, "✅ 카메라 전환 성공 - 현재: ${if (isUsingFrontCamera) "전면" else "후면"}")
             true
         } catch (e: Exception) {
             Log.e(TAG, "❌ 카메라 전환 실패", e)
@@ -199,5 +221,43 @@ class CameraHandler(private val context: Context) {
             File(it, "SOI_Photos").apply { mkdirs() }
         }
         return if (mediaDir != null && mediaDir.exists()) mediaDir else context.filesDir
+    }
+    
+    /**
+     * 이미지를 좌우반전시키는 메서드
+     */
+    private fun flipImageHorizontally(imagePath: String): String? {
+        return try {
+            // 원본 이미지 로드
+            val bitmap = BitmapFactory.decodeFile(imagePath)
+            
+            // 좌우반전 변환 매트릭스 생성
+            val matrix = Matrix().apply {
+                setScale(-1f, 1f) // X축 기준으로 뒤집기
+                postTranslate(bitmap.width.toFloat(), 0f)
+            }
+            
+            // 변환된 비트맵 생성
+            val flippedBitmap = Bitmap.createBitmap(
+                bitmap, 0, 0, 
+                bitmap.width, bitmap.height, 
+                matrix, true
+            )
+            
+            // 원본 파일에 덮어쓰기
+            FileOutputStream(imagePath).use { out ->
+                flippedBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out)
+            }
+            
+            // 메모리 해제
+            bitmap.recycle()
+            flippedBitmap.recycle()
+            
+            Log.d(TAG, "✅ 이미지 좌우반전 처리 완료")
+            imagePath
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ 이미지 좌우반전 처리 실패", e)
+            null
+        }
     }
 }

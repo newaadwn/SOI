@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../services/camera_service.dart';
+import '../../theme/theme.dart';
 import 'photo_editor_screen.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -227,16 +229,12 @@ class _CameraScreenState extends State<CameraScreen>
   /// 개선된 갤러리 미리보기 위젯 (photo_manager 기반) - 반응형
   Widget _buildGalleryPreviewWidget(double screenWidth) {
     // 📱 개선된 반응형 계산
-    final gallerySize = (screenWidth * 0.117).clamp(40.0, 55.0);
-    final borderRadius = (screenWidth * 0.022).clamp(6.0, 12.0);
 
     return Container(
-      width: gallerySize,
-      height: gallerySize,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(borderRadius),
-      ),
-      child: _buildGalleryContent(gallerySize, borderRadius),
+      width: 46.w,
+      height: 46.h,
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.76)),
+      child: _buildGalleryContent(46, 8.76),
     );
   }
 
@@ -246,8 +244,8 @@ class _CameraScreenState extends State<CameraScreen>
     if (_isLoadingGallery) {
       return Center(
         child: SizedBox(
-          width: gallerySize * 0.43, // 20/46 비율
-          height: gallerySize * 0.43,
+          width: 46.w,
+          height: 46.h,
           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
         ),
       );
@@ -255,7 +253,7 @@ class _CameraScreenState extends State<CameraScreen>
 
     // 에러 상태
     if (_galleryError != null) {
-      return _buildPlaceholderGallery(gallerySize);
+      return _buildPlaceholderGallery(46);
     }
 
     // 갤러리 이미지 표시
@@ -268,8 +266,8 @@ class _CameraScreenState extends State<CameraScreen>
             if (snapshot.hasData && snapshot.data != null) {
               return Image.memory(
                 snapshot.data!,
-                width: gallerySize,
-                height: gallerySize,
+                width: 46.w,
+                height: 46.h,
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   // Gallery thumbnail memory load error: $error
@@ -282,8 +280,8 @@ class _CameraScreenState extends State<CameraScreen>
             } else {
               return Center(
                 child: SizedBox(
-                  width: gallerySize * 0.3,
-                  height: gallerySize * 0.3,
+                  width: 46.w,
+                  height: 46.h,
                   child: CircularProgressIndicator(
                     strokeWidth: 1,
                     color: Colors.white.withValues(alpha: 0.7),
@@ -306,7 +304,7 @@ class _CameraScreenState extends State<CameraScreen>
       child: Icon(
         Icons.photo_library,
         color: Colors.white.withValues(alpha: 0.7),
-        size: gallerySize * 0.52, // 24/46 비율
+        size: 46.sp, // 24/46 비율
       ),
     );
   }
@@ -328,48 +326,41 @@ class _CameraScreenState extends State<CameraScreen>
     // 📱 개선된 반응형: MediaQuery.sizeOf() 사용
     final screenSize = MediaQuery.sizeOf(context);
     final screenWidth = screenSize.width;
-    final screenHeight = screenSize.height;
-
-    // 📱 반응형: 기준 해상도 설정 (393 x 852 기준)
-    const double baseWidth = 393;
-    const double baseHeight = 852;
 
     return Scaffold(
       backgroundColor: Color(0xff000000), // 배경을 검정색으로 설정
 
       appBar: AppBar(
-        title: Row(
+        title: Column(
           children: [
-            IconButton(
-              onPressed: () => Navigator.pushNamed(context, '/contact_manager'),
-              icon: Image.asset(
-                "assets/contacts.png",
-                width: (screenWidth * 0.089).clamp(30.0, 40.0), // 📱 개선된 반응형
-                height: (screenWidth * 0.089).clamp(30.0, 40.0), // 📱 개선된 반응형
+            Text(
+              'SOI',
+              style: TextStyle(
+                color: AppTheme.lightTheme.colorScheme.secondary,
+                fontSize: 20.sp,
               ),
             ),
-
-            Expanded(
-              child: Center(
-                child: Text(
-                  'SOI',
-                  style: TextStyle(
-                    color: Color(0xfff8f8f8),
-                    fontSize: (screenWidth * 0.051).clamp(
-                      16.0,
-                      24.0,
-                    ), // 📱 개선된 반응형
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ),
-
-            IconButton(onPressed: () {}, icon: Text('')),
+            SizedBox(height: 30.h),
           ],
         ),
-
-        backgroundColor: Color(0xff000000),
+        backgroundColor: AppTheme.lightTheme.colorScheme.surface,
+        toolbarHeight: 90.h,
+        leading: IconButton(
+          onPressed: () => Navigator.pushNamed(context, '/contact_manager'),
+          icon: Image.asset(
+            "assets/contacts.png",
+            width: 38.w, // 📱 개선된 반응형
+            height: 38.h, // 📱 개선된 반응형
+          ),
+        ),
+        actions: [
+          Center(
+            child: IconButton(
+              onPressed: () {},
+              icon: Icon(Icons.notifications, color: Colors.white, size: 25.sp),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -378,22 +369,17 @@ class _CameraScreenState extends State<CameraScreen>
             child: Center(
               child: FutureBuilder<void>(
                 future: _cameraInitialization,
-                builder: (context, snapshot) {
+                builder: (contezxt, snapshot) {
                   // 카메라 초기화 중이면 로딩 인디케이터 표시
                   if (_isLoading) {
                     return Container(
-                      width: (screenWidth * 0.903).clamp(
-                        300.0,
-                        400.0,
-                      ), // 📱 개선된 반응형
+                      width: 400.w,
                       constraints: BoxConstraints(
                         maxHeight: double.infinity, // 📱 유연한 높이
                       ),
                       decoration: BoxDecoration(
                         color: Colors.black,
-                        borderRadius: BorderRadius.circular(
-                          (screenWidth * 0.041).clamp(12.0, 20.0), // 📱 개선된 반응형
-                        ),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: Center(
                         child: Column(
@@ -409,28 +395,19 @@ class _CameraScreenState extends State<CameraScreen>
                   // 초기화 실패 시 오류 메시지 표시
                   if (snapshot.hasError) {
                     return Container(
-                      width: (screenWidth * 0.903).clamp(
-                        300.0,
-                        400.0,
-                      ), // 📱 개선된 반응형
                       constraints: BoxConstraints(
                         maxHeight: double.infinity, // 📱 유연한 높이
                       ),
                       decoration: BoxDecoration(
                         color: Colors.black,
-                        borderRadius: BorderRadius.circular(
-                          (screenWidth * 0.041).clamp(12.0, 20.0), // 📱 개선된 반응형
-                        ),
+                        borderRadius: BorderRadius.circular(20),
                       ),
                       child: Center(
                         child: Text(
                           '카메라를 초기화할 수 없습니다.\n앱을 다시 시작해 주세요.',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: (screenWidth * 0.041).clamp(
-                              14.0,
-                              18.0,
-                            ), // 📱 개선된 반응형
+                            fontSize: 18.sp,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -443,12 +420,10 @@ class _CameraScreenState extends State<CameraScreen>
                     alignment: Alignment.topCenter,
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(
-                          16 / baseWidth * screenWidth,
-                        ), // 📱 반응형
+                        borderRadius: BorderRadius.circular(16), // 📱 반응형
                         child: SizedBox(
-                          width: 354 / baseWidth * screenWidth, // 📱 반응형
-                          height: 500 / baseHeight * screenHeight, // 📱 반응형
+                          width: 354.w, // 📱 반응형
+                          height: 500.h, // 📱 반응형
                           child: _cameraService.getCameraView(),
                         ),
                       ),
@@ -459,7 +434,7 @@ class _CameraScreenState extends State<CameraScreen>
                         icon: Icon(
                           isFlashOn ? EvaIcons.flash : EvaIcons.flashOff,
                           color: Colors.white,
-                          size: 28 / baseWidth * screenWidth, // 📱 반응형
+                          size: 28.sp, // 📱 반응형
                         ),
                         padding: EdgeInsets.zero,
                       ),
@@ -469,7 +444,7 @@ class _CameraScreenState extends State<CameraScreen>
               ),
             ),
           ),
-          SizedBox(height: 20 / baseHeight * screenHeight), // 📱 반응형
+          SizedBox(height: 20.h), // 📱 반응형
           // 수정: 하단 버튼 레이아웃 변경 - 반응형
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -519,8 +494,8 @@ class _CameraScreenState extends State<CameraScreen>
                 onPressed: _takePicture,
                 icon: Image.asset(
                   "assets/take_picture.png",
-                  width: (screenWidth * 0.165).clamp(55.0, 75.0), // 📱 개선된 반응형
-                  height: (screenWidth * 0.165).clamp(55.0, 75.0), // 📱 개선된 반응형
+                  width: 75.w, // 📱 개선된 반응형
+                  height: 75.h, // 📱 개선된 반응형
                 ),
               ),
 
@@ -532,15 +507,15 @@ class _CameraScreenState extends State<CameraScreen>
                     color: Color(0xffd9d9d9),
                     icon: Image.asset(
                       "assets/switch.png",
-                      width: (screenWidth * 0.170).clamp(55.0, 80.0),
-                      height: (screenWidth * 0.142).clamp(45.0, 65.0),
+                      width: 80.w,
+                      height: 65.h,
                     ),
                   ),
                 ),
               ),
             ],
           ),
-          SizedBox(height: (screenHeight * 0.028).clamp(20.0, 30.0)),
+          SizedBox(height: 30.h),
         ],
       ),
     );

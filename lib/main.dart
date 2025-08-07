@@ -35,6 +35,7 @@ import 'package:flutter/rendering.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'views/home_navigator_screen.dart';
 import 'views/home_screen.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -159,36 +160,39 @@ class _MyAppState extends State<MyApp> {
               ),
         ),
       ],
-      child: MaterialApp(
-        initialRoute: '/',
-        debugShowCheckedModeBanner: false,
-        routes: {
-          '/': (context) => const StartScreen(),
-          '/home': (context) => const HomeScreen(),
-          '/home_navigation_screen':
-              (context) => HomePageNavigationBar(currentPageIndex: 1),
-          '/camera': (context) => const CameraScreen(),
-          '/archiving': (context) => const ArchiveMainScreen(),
-          '/start': (context) => const StartScreen(),
-          '/auth': (context) => const AuthScreen(),
-          '/login': (context) => const LoginScreen(),
+      child: ScreenUtilInit(
+        designSize: const Size(393, 852),
+        child: MaterialApp(
+          initialRoute: '/',
+          debugShowCheckedModeBanner: false,
+          routes: {
+            '/': (context) => const StartScreen(),
+            '/home': (context) => const HomeScreen(),
+            '/home_navigation_screen':
+                (context) => HomePageNavigationBar(currentPageIndex: 1),
+            '/camera': (context) => const CameraScreen(),
+            '/archiving': (context) => const ArchiveMainScreen(),
+            '/start': (context) => const StartScreen(),
+            '/auth': (context) => const AuthScreen(),
+            '/login': (context) => const LoginScreen(),
 
-          // 아카이빙 관련 라우트
-          '/share_record': (context) => const SharedArchivesScreen(),
-          '/my_record': (context) => const MyArchivesScreen(),
-          '/all_category': (context) => const AllArchivesScreen(),
-          '/privacy_policy': (context) => const PrivacyPolicyScreen(),
+            // 아카이빙 관련 라우트
+            '/share_record': (context) => const SharedArchivesScreen(),
+            '/my_record': (context) => const MyArchivesScreen(),
+            '/all_category': (context) => const AllArchivesScreen(),
+            '/privacy_policy': (context) => const PrivacyPolicyScreen(),
 
-          // 친구 관리 라우트
-          '/contact_manager': (context) => const FriendManagementScreen(),
+            // 친구 관리 라우트
+            '/contact_manager': (context) => const FriendManagementScreen(),
 
-          // 피드 홈 라우트
-          '/feed_home': (context) => const FeedHomeScreen(),
+            // 피드 홈 라우트
+            '/feed_home': (context) => const FeedHomeScreen(),
 
-          // 프로필 페이지 라우트
-          '/profile_screen': (context) => const ProfileScreen(),
-        },
-        theme: ThemeData(iconTheme: IconThemeData(color: Colors.white)),
+            // 프로필 페이지 라우트
+            '/profile_screen': (context) => const ProfileScreen(),
+          },
+          theme: ThemeData(iconTheme: IconThemeData(color: Colors.white)),
+        ),
       ),
     );
   }

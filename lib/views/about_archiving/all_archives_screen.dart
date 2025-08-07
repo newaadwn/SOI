@@ -103,8 +103,6 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
     );
     final aspectRatio = ArchiveResponsiveHelper.getGridAspectRatio();
     final cardDimensions = ArchiveResponsiveHelper.getCardDimensions(context);
-    final isSmallScreen = ArchiveResponsiveHelper.isSmallScreen(context);
-    final isLargeScreen = ArchiveResponsiveHelper.isLargeScreen(context);
 
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
     if (nickName == null) {
@@ -113,7 +111,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
         body: Center(
           child: CircularProgressIndicator(
             color: Colors.white,
-            strokeWidth: isSmallScreen ? 2.0 : 3.0,
+            strokeWidth: 3.0,
           ),
         ),
       );
@@ -134,7 +132,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
             return Center(
               child: CircularProgressIndicator(
                 color: Colors.white,
-                strokeWidth: isSmallScreen ? 2.0 : 3.0,
+                strokeWidth: 3.0,
               ),
             );
           }
@@ -143,15 +141,10 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
           if (categoryController.error != null) {
             return Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 20.0 : 40.0,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 40.0),
                 child: Text(
                   categoryController.error!,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isSmallScreen ? 14.0 : 16.0,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 16.0),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -165,17 +158,12 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
           if (categories.isEmpty) {
             return Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 20.0 : 40.0,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 40.0),
                 child: Text(
                   categoryController.searchQuery.isNotEmpty
                       ? '검색 결과가 없습니다.'
                       : '등록된 카테고리가 없습니다.',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isSmallScreen ? 14.0 : 16.0,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 16.0),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -226,14 +214,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
                     },
                   ),
                   // 하단 여백 추가 (화면 크기별)
-                  SizedBox(
-                    height:
-                        isSmallScreen
-                            ? 16.0
-                            : isLargeScreen
-                            ? 24.0
-                            : 20.0,
-                  ),
+                  SizedBox(height: 20.0),
                 ],
               ),
             ),

@@ -13,6 +13,10 @@ class CameraService {
   bool _isSessionActive = false;
   bool get isSessionActive => _isSessionActive;
 
+  // 현재 카메라 타입 추적 (전면/후면)
+  bool _isFrontCamera = false;
+  bool get isFrontCamera => _isFrontCamera;
+
   // 갤러리 미리보기 상태 관리
   String? _latestGalleryImagePath;
   bool _isLoadingGalleryImage = false;
@@ -392,7 +396,7 @@ class CameraService {
     }
   }
 
-  // ✅ 개선된 사진 촬영 (안정성 강화)
+  // ✅ 개선된 사진 촬영 (안정성 강화 + 전면 카메라 좌우반전은 네이티브에서 처리)
   Future<String> takePicture() async {
     try {
       // 카메라가 초기화되지 않았으면 먼저 초기화
@@ -413,8 +417,14 @@ class CameraService {
 
       if (result.isNotEmpty) {
         // // debugPrint('사진 촬영 성공: $result');
+
+        // 전면 카메라 좌우반전은 iOS/Android 네이티브 코드에서 처리됨
+        // Flutter에서는 추가 처리 없이 바로 결과 반환
+
         // 갤러리 미리보기 새로고침 (비동기)
         Future.microtask(() => refreshGalleryPreview());
+
+        return result;
       } else {
         // // debugPrint('사진 촬영 실패: 빈 경로 반환');
       }
@@ -424,9 +434,8 @@ class CameraService {
       // // debugPrint("사진 촬영 오류: ${e.message}");
       return '';
     }
-  }
+  } // ✅ 개선된 카메라 전환 (안정성 강화 + 전면/후면 상태 추적)
 
-  // ✅ 개선된 카메라 전환 (안정성 강화)
   Future<void> switchCamera() async {
     try {
       // 카메라가 초기화되지 않았으면 먼저 초기화
@@ -444,7 +453,11 @@ class CameraService {
 
       // // debugPrint('카메라 전환 시작...');
       await _cameraChannel.invokeMethod('switchCamera');
-      // // debugPrint('카메라 전환 완료');
+
+      // 카메라 전환 후 상태 토글
+      _isFrontCamera = !_isFrontCamera;
+
+      // // debugPrint('카메라 전환 완료 - 현재: ${_isFrontCamera ? "전면" : "후면"}');
     } on PlatformException {
       // // debugPrint("카메라 전환 오류: ${e.message}");
     }
@@ -457,12 +470,14 @@ class CameraService {
 
       // ✅ 상태 리셋
       _isSessionActive = false;
+      _isFrontCamera = false;
 
       // // debugPrint('카메라 리소스 정리 완료');
     } on PlatformException {
       // // debugPrint("카메라 리소스 정리 오류: ${e.message}");
       // ✅ 에러가 나도 상태는 리셋
       _isSessionActive = false;
+      _isFrontCamera = false;
     }
   }
 }

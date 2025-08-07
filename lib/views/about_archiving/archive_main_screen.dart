@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
 import 'package:provider/provider.dart';
@@ -71,17 +72,10 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final screenHeight = MediaQuery.of(context).size.height;
     final isSmallScreen = screenWidth < 375;
     final isLargeScreen = screenWidth > 414;
 
     // 화면 크기에 따른 조정값들
-    final toolbarHeight =
-        isSmallScreen
-            ? 60 / 852 * screenHeight
-            : isLargeScreen
-            ? 80 / 852 * screenHeight
-            : 70 / 852 * screenHeight;
 
     final profileImageSize =
         isSmallScreen
@@ -95,18 +89,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
             : isLargeScreen
             ? 28.0
             : 24.0;
-    final addIconSize =
-        isSmallScreen
-            ? 20.0
-            : isLargeScreen
-            ? 28.0
-            : 24.0;
-    final titleFontSize =
-        isSmallScreen
-            ? 18.0
-            : isLargeScreen
-            ? 24.0
-            : 20.0;
+    final addIconSize = 24.0;
     final appBarPadding = isSmallScreen ? 6.0 : 8.0;
 
     return Scaffold(
@@ -115,15 +98,20 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
       appBar: AppBar(
         centerTitle: true,
-        title: Text(
-          'SOI',
-          style: TextStyle(
-            color: AppTheme.lightTheme.colorScheme.secondary,
-            fontSize: titleFontSize,
-          ),
+        title: Column(
+          children: [
+            Text(
+              'SOI',
+              style: TextStyle(
+                color: AppTheme.lightTheme.colorScheme.secondary,
+                fontSize: 20.sp,
+              ),
+            ),
+            SizedBox(height: 30.h),
+          ],
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        toolbarHeight: toolbarHeight,
+        toolbarHeight: 90.h,
         leading: Consumer<AuthController>(
           builder: (context, authController, _) {
             return FutureBuilder(
@@ -134,10 +122,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                 return Padding(
                   padding: EdgeInsets.all(appBarPadding),
                   child: Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 1),
-                    ),
+                    decoration: BoxDecoration(shape: BoxShape.circle),
                     child: Builder(
                       builder:
                           (context) =>

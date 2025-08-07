@@ -3,6 +3,7 @@ import 'package:bitcoin_icons/bitcoin_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../models/category_data_model.dart';
@@ -48,14 +49,14 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
               '수정하기',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 20,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w600,
                 fontFamily: 'Pretendard Variable',
               ),
             ),
           ),
           body: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -67,7 +68,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                   },
                   child: Container(
                     width: double.infinity,
-                    height: 173,
+                    height: 173.h,
                     decoration: BoxDecoration(
                       // 기존 색상을 유지하면서 이미지를 배경으로 추가
                       color: const Color(0xFF5A5A5A),
@@ -93,8 +94,8 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.image, color: Colors.white, size: 51),
-                            SizedBox(height: 8),
+                            Icon(Icons.image, color: Colors.white, size: 51.sp),
+                            SizedBox(height: 8.h),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
@@ -102,16 +103,16 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                                   '표지사진 수정',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 16,
+                                    fontSize: 16.sp,
                                     fontWeight: FontWeight.w400,
                                     fontFamily: 'Pretendard Variable',
                                   ),
                                 ),
-                                SizedBox(width: 4),
+                                SizedBox(width: 4.w),
                                 Image.asset(
                                   'assets/edit.png',
-                                  width: 18,
-                                  height: 18,
+                                  width: 18.w,
+                                  height: 18.h,
                                 ),
                               ],
                             ),
@@ -122,13 +123,16 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                   ),
                 ),
 
-                SizedBox(height: 24),
+                SizedBox(height: 24.h),
 
                 // 카테고리 이름 섹션
                 Container(
                   width: double.infinity,
-                  height: 75,
-                  padding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  height: 75.h,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 20.w,
+                    vertical: 16.h,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2A2A2A),
                     borderRadius: BorderRadius.circular(12),
@@ -141,7 +145,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                         '카테고리 이름',
                         style: TextStyle(
                           color: const Color(0xFFAAAAAA),
-                          fontSize: 13,
+                          fontSize: 13.sp,
                           fontWeight: FontWeight.w400,
                           fontFamily: 'Pretendard Variable',
                         ),
@@ -152,7 +156,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                           currentCategory.name,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'Pretendard Variable',
                           ),
@@ -169,8 +173,8 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                 // 알림설정 섹션
                 Container(
                   width: double.infinity,
-                  height: 62,
-                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  height: 62.h,
+                  padding: EdgeInsets.symmetric(horizontal: 20.w),
                   decoration: BoxDecoration(
                     color: const Color(0xFF2A2A2A),
                     borderRadius: BorderRadius.circular(12),
@@ -182,7 +186,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                           '알림설정',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.w400,
                             fontFamily: 'Pretendard Variable',
                           ),
@@ -203,11 +207,11 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                     ],
                   ),
                 ),
-                SizedBox(height: 24),
+                SizedBox(height: 24.h),
                 // 나가기 버튼
                 SizedBox(
                   width: double.infinity,
-                  height: 62,
+                  height: 62.h,
                   child: ElevatedButton(
                     onPressed: () {
                       // 카테고리 나가기 확인 다이얼로그
@@ -226,14 +230,14 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                       children: [
                         Image.asset(
                           'assets/log_out.png',
-                          width: 24,
-                          height: 24,
+                          width: 24.w,
+                          height: 24.h,
                         ),
-                        SizedBox(width: 12),
+                        SizedBox(width: 12.w),
                         Text(
                           '나가기',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.w600,
                             fontFamily: 'Pretendard Variable',
                           ),
@@ -269,40 +273,40 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
             children: [
               // 핸들바
               Container(
-                margin: EdgeInsets.only(top: 12),
-                width: 56,
-                height: 3,
+                margin: EdgeInsets.only(top: 12.w),
+                width: 56.w,
+                height: 3.h,
                 decoration: BoxDecoration(
                   color: const Color(0xFFcccccc),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              SizedBox(height: 9),
+              SizedBox(height: 9.h),
               Text(
                 '표지 사진 수정',
                 style: TextStyle(
                   color: const Color(0xFFF8F8F8),
-                  fontSize: 18,
+                  fontSize: 18.sp,
                   fontFamily: 'Pretendard Variable',
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 9),
+              SizedBox(height: 9.h),
               Divider(color: const Color(0xFF5A5A5A)),
-              SizedBox(height: 9),
+              SizedBox(height: 9.h),
 
               // 카메라로 촬영
               ListTile(
                 leading: Icon(
                   BitcoinIcons.photo_outline,
                   color: Colors.white,
-                  size: 26,
+                  size: 26.sp,
                 ),
                 title: Text(
                   '사진찍기',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w500,
                     fontFamily: 'Pretendard Variable',
                   ),
@@ -318,13 +322,13 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                 leading: Icon(
                   BitcoinIcons.photo_outline,
                   color: Colors.white,
-                  size: 24,
+                  size: 24.sp,
                 ),
                 title: Text(
                   '라이브러리에서 선택',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w500,
                     fontFamily: 'Pretendard Variable',
                   ),
@@ -340,13 +344,13 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                 leading: Icon(
                   MdiIcons.cameraOutline,
                   color: Colors.white,
-                  size: 24,
+                  size: 24.sp,
                 ),
                 title: Text(
                   '카테고리에서 선택',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w500,
                     fontFamily: 'Pretendard Variable',
                   ),
@@ -360,8 +364,8 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
               // 표지삭제
               ListTile(
                 leading: Container(
-                  width: 21,
-                  height: 21,
+                  width: 21.w,
+                  height: 21.h,
                   alignment: Alignment.center,
                   child: Image.asset('assets/delete.png'),
                 ),
@@ -369,7 +373,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                   '표지삭제',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w500,
                     fontFamily: 'Pretendard Variable',
                   ),
@@ -380,7 +384,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                 },
               ),
 
-              SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
+              //SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
             ],
           ),
         );
@@ -523,8 +527,6 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
 
   // 나가기 확인 다이얼로그
   void _showExitDialog(BuildContext context) {
-    final isSmallScreen = MediaQuery.of(context).size.width < 375;
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -537,7 +539,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
             '카테고리 나가기',
             style: TextStyle(
               color: Colors.white,
-              fontSize: isSmallScreen ? 18 : 20,
+              fontSize: 20.sp,
               fontWeight: FontWeight.w600,
               fontFamily: 'Pretendard Variable',
             ),
@@ -546,7 +548,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
             '정말로 이 카테고리에서 나가시겠습니까?\n나가면 이 카테고리의 사진들을 더 이상 볼 수 없습니다.',
             style: TextStyle(
               color: const Color(0xFFCCCCCC),
-              fontSize: isSmallScreen ? 14 : 16,
+              fontSize: 14.sp,
               fontFamily: 'Pretendard Variable',
             ),
           ),
@@ -556,31 +558,60 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
               child: Text(
                 '취소',
                 style: TextStyle(
-                  color: const Color(0xFF007AFF),
-                  fontSize: isSmallScreen ? 14 : 16,
+                  color: const Color(0xFFcccccc),
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w400,
                   fontFamily: 'Pretendard Variable',
                 ),
               ),
             ),
             TextButton(
-              onPressed: () {
-                Navigator.pop(context); // 다이얼로그 닫기
-                Navigator.pop(context); // 카테고리 설정 화면 닫기
-                Navigator.pop(context); // 카테고리 사진 화면 닫기
-                // 실제로는 카테고리에서 사용자를 제거하는 로직 필요
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('카테고리에서 나갔습니다.'),
-                    backgroundColor: Color(0xFFFF3B30),
-                  ),
-                );
+              onPressed: () async {
+                // 다이얼로그 닫기 전에 BuildContext를 저장
+                final navigator = Navigator.of(context);
+                final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+                navigator.pop(); // 다이얼로그 닫기
+
+                // 실제 카테고리 나가기 로직 수행
+                final categoryController = context.read<CategoryController>();
+                final authController = context.read<AuthController>();
+                final userId = authController.getUserId;
+
+                if (userId != null) {
+                  await categoryController.leaveCategoryByUid(
+                    widget.category.id,
+                    userId,
+                  );
+
+                  debugPrint(
+                    '카테고리 나가기 결과 - error: ${categoryController.error}',
+                  );
+
+                  if (categoryController.error == null) {
+                    debugPrint('카테고리 나가기 성공 - 페이지 이동 시작');
+
+                    // 성공 시 홈 화면의 아카이브 탭으로 이동
+
+                    navigator.popUntil((route) => route.isFirst);
+                    debugPrint('네비게이션 완료');
+                  } else {
+                    debugPrint('카테고리 나가기 실패: ${categoryController.error}');
+                  }
+                } else {
+                  scaffoldMessenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('사용자 정보를 확인할 수 없습니다.'),
+                      backgroundColor: Color(0xFFcccccc),
+                    ),
+                  );
+                }
               },
               child: Text(
                 '나가기',
                 style: TextStyle(
-                  color: const Color(0xFFFF3B30),
-                  fontSize: isSmallScreen ? 14 : 16,
+                  color: const Color(0xff000000),
+                  fontSize: 16.sp,
                   fontWeight: FontWeight.w600,
                   fontFamily: 'Pretendard Variable',
                 ),

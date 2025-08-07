@@ -110,9 +110,15 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
             return
         }
         
-        // 기본 설정으로 사진 촬영
+        // 사진 촬영 설정
         let settings = AVCapturePhotoSettings()
         settings.flashMode = flashMode
+        
+        // 전면 카메라인 경우 특별한 설정 추가
+        if currentDevice?.position == .front {
+            print("🔧 전면 카메라 설정 적용")
+            // 필요시 전면 카메라 전용 설정 추가
+        }
         
         photoCaptureResult = result
         photoOutput.capturePhoto(with: settings, delegate: self)
@@ -131,14 +137,42 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
             return
         }
         
+        // 현재 카메라 위치 직접 확인 (상태 변수 대신)
+        let isFrontCamera = currentDevice?.position == .front
+        print("🔍 현재 카메라 위치: \(currentDevice?.position == .front ? "전면" : "후면")")
+        print("🔍 isUsingFrontCamera 변수: \(isUsingFrontCamera)")
+        print("🔍 실제 디바이스 position: \(currentDevice?.position.rawValue ?? -1)")
+        
+        // UIImage로 변환
+        guard let originalImage = UIImage(data: imageData) else {
+            photoCaptureResult?(FlutterError(code: "IMAGE_CONVERSION_ERROR", message: "Could not convert image data to UIImage", details: nil))
+            return
+        }
+        
+        // 모든 카메라에서 원본 이미지 그대로 사용 (좌우반전 처리 안함)
+        let finalImage: UIImage = originalImage
+        
+        if isFrontCamera {
+            print("📸 전면 카메라 촬영 - 원본 이미지 사용 (좌우반전 없음)")
+        } else {
+            print("📸 후면 카메라 촬영 - 원본 이미지 사용")
+        }
+        
+        // 처리된 이미지를 JPEG 데이터로 변환
+        guard let processedImageData = finalImage.jpegData(compressionQuality: 0.9) else {
+            photoCaptureResult?(FlutterError(code: "IMAGE_PROCESSING_ERROR", message: "Could not convert processed image to JPEG", details: nil))
+            return
+        }
+        
         // 임시 파일로 저장
         let tempDir = NSTemporaryDirectory()
         let filePath = tempDir + "/\(UUID().uuidString).jpg"
         let fileURL = URL(fileURLWithPath: filePath)
         
         do {
-            try imageData.write(to: fileURL)
+            try processedImageData.write(to: fileURL)
             photoCaptureResult?(filePath)
+            print("✅ 이미지 저장 완료: \(filePath)")
         } catch {
             photoCaptureResult?(FlutterError(code: "FILE_SAVE_ERROR", message: error.localizedDescription, details: nil))
         }
@@ -256,6 +290,61 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
             result(FlutterError(code: "OPTIMIZATION_ERROR", message: error.localizedDescription, details: nil))
         }
     }
+    
+    // MARK: - 이미지 처리 헬퍼 메서드
+    
+    /// 이미지를 좌우반전시키는 메서드 (전면 카메라 미리보기와 일치시키기 위함)
+    private func flipImageHorizontally(_ image: UIImage) -> UIImage {
+        // Core Graphics를 사용한 이미지 좌우반전
+        guard let cgImage = image.cgImage else {
+            print("⚠️ CGImage 변환 실패 - 원본 이미지 반환")
+            return image
+        }
+        
+        let width = cgImage.width
+        let height = cgImage.height
+        let bytesPerPixel = 4
+        let bytesPerRow = bytesPerPixel * width
+        let bitsPerComponent = 8
+        
+        // 색상 공간 및 비트맵 컨텍스트 생성
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: bitsPerComponent,
+            bytesPerRow: bytesPerRow,
+            space: colorSpace,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            print("⚠️ CGContext 생성 실패 - 원본 이미지 반환")
+            return image
+        }
+        
+        // 좌우반전 변환 적용
+        context.scaleBy(x: -1.0, y: 1.0)
+        context.translateBy(x: -CGFloat(width), y: 0)
+        
+        // 이미지 그리기
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        
+        // 새로운 CGImage 생성
+        guard let flippedCGImage = context.makeImage() else {
+            print("⚠️ 좌우반전된 CGImage 생성 실패 - 원본 이미지 반환")
+            return image
+        }
+        
+        // UIImage로 변환하여 반환
+        let flippedImage = UIImage(
+            cgImage: flippedCGImage,
+            scale: image.scale,
+            orientation: image.imageOrientation
+        )
+        
+        print("✅ 이미지 좌우반전 처리 완료 - 미리보기와 일치")
+        return flippedImage
+    }
 }
 
 // 카메라 미리보기를 위한 플랫폼 뷰 팩토리
@@ -288,6 +377,24 @@ class PreviewView: UIView {
         if let layer = layer as? AVCaptureVideoPreviewLayer {
             layer.videoGravity = .resizeAspectFill
             layer.connection?.videoOrientation = .portrait
+            
+            // 전면 카메라일 때 거울 모드 설정
+            if let connection = layer.connection {
+                // 전면 카메라일 때 거울 모드 활성화 (자연스러운 셀피 미리보기)
+                if connection.isVideoMirroringSupported {
+                    // 자동 거울 모드를 먼저 비활성화
+                    if connection.automaticallyAdjustsVideoMirroring {
+                        connection.automaticallyAdjustsVideoMirroring = false
+                    }
+                    
+                    // 카메라 위치 확인
+                    if let inputs = (layer.session?.inputs as? [AVCaptureDeviceInput]) {
+                        let isFront = inputs.first?.device.position == .front
+                        connection.isVideoMirrored = isFront
+                        print("🔧 미리보기 거울 모드: \(isFront ? "활성화" : "비활성화")")
+                    }
+                }
+            }
         }
     }
     
@@ -309,6 +416,21 @@ class CameraPreviewView: NSObject, FlutterPlatformView {
             previewLayer.session = captureSession
             previewLayer.videoGravity = .resizeAspectFill
             previewLayer.connection?.videoOrientation = .portrait
+            
+            // 전면 카메라일 때 거울 모드 활성화
+            if let connection = previewLayer.connection, connection.isVideoMirroringSupported {
+                // 자동 거울 모드를 먼저 비활성화
+                if connection.automaticallyAdjustsVideoMirroring {
+                    connection.automaticallyAdjustsVideoMirroring = false
+                }
+                
+                // 카메라 위치 확인 후 거울 모드 설정
+                if let inputs = captureSession.inputs as? [AVCaptureDeviceInput] {
+                    let isFront = inputs.first?.device.position == .front
+                    connection.isVideoMirrored = isFront
+                    print("🔧 카메라 미리보기 거울 모드: \(isFront ? "활성화" : "비활성화")")
+                }
+            }
         }
         
         _view.frame = frame

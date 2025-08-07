@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:solar_icons/solar_icons.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
@@ -54,10 +55,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 화면 크기 정보
-    final double screenHeight = MediaQuery.of(context).size.height;
-    //final double screenWidth = MediaQuery.of(context).size.width;
-
     // Provider에서 AuthViewModel을 가져옴
     if (!mounted) return Container(); // 안전 검사
 
@@ -95,9 +92,9 @@ class _LoginScreenState extends State<LoginScreen> {
         },
         children: [
           // 1. 전화번호 입력 페이지
-          _buildPhoneNumberPage(screenHeight),
+          _buildPhoneNumberPage(),
           // 2. 인증번호 입력 페이지
-          _buildSmsCodePage(screenHeight),
+          _buildSmsCodePage(),
         ],
       ),
     );
@@ -106,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // -------------------------
   // 1. 전화번호 입력 페이지
   // -------------------------
-  Widget _buildPhoneNumberPage(double screenHeight) {
+  Widget _buildPhoneNumberPage() {
     final controller = TextEditingController();
     // 전화번호 입력 여부를 확인하는 상태 변수
     final ValueNotifier<bool> hasPhone = ValueNotifier<bool>(false);
@@ -116,50 +113,50 @@ class _LoginScreenState extends State<LoginScreen> {
     final keyboardHeight = MediaQuery.of(context).viewInsets.top;
 
     return Container(
-      height: screenHeight,
+      height: 1.sh,
       alignment: Alignment.center,
-      padding: EdgeInsets.only(bottom: (keyboardHeight)),
+      padding: EdgeInsets.only(bottom: keyboardHeight),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Text(
             'SOI 접속을 위해 전화번호를 입력해주세요.',
             style: TextStyle(
-              fontSize: 18,
+              fontSize: 18.sp,
               fontWeight: FontWeight.w600,
               color: AppTheme.lightTheme.colorScheme.onSecondary,
             ),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 24),
+          SizedBox(height: 24.h),
           Container(
-            width: 239,
-            height: 44,
+            width: 239.w,
+            height: 44.h,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
-                const SizedBox(width: 17),
+                SizedBox(width: 17.w),
                 Icon(
                   SolarIconsOutline.phone,
                   color: const Color(0xffC0C0C0),
-                  size: 24,
+                  size: 24.sp,
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10.w),
                 Expanded(
                   child: TextField(
                     controller: controller,
                     keyboardType: TextInputType.phone,
+
                     decoration: InputDecoration(
                       border: InputBorder.none,
                       hintText: '전화번호',
                       hintStyle: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         color: const Color(0xffC0C0C0),
                       ),
-                      contentPadding: EdgeInsets.only(bottom: 6),
                     ),
                     onChanged: (value) {
                       // 전화번호 입력 여부에 따라 버튼 표시 상태 변경
@@ -170,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
-          SizedBox(height: 24),
+          SizedBox(height: 24.h),
           // 전화번호가 입력되면 버튼 표시
           ValueListenableBuilder<bool>(
             valueListenable: hasPhone,
@@ -179,7 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ? ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xff323232),
-                      minimumSize: Size(239, 44),
+                      minimumSize: Size(239.w, 44.h),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -202,7 +199,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: Text(
                       '인증번호 받기',
                       style: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         color: Colors.white,
                         fontWeight: FontWeight.w600,
                       ),
@@ -219,7 +216,7 @@ class _LoginScreenState extends State<LoginScreen> {
   // -------------------------
   // 2. 인증번호 입력 페이지
   // -------------------------
-  Widget _buildSmsCodePage(double screenHeight) {
+  Widget _buildSmsCodePage() {
     final ValueNotifier<bool> hasCode = ValueNotifier<bool>(false);
     final controller = TextEditingController();
 
@@ -228,9 +225,9 @@ class _LoginScreenState extends State<LoginScreen> {
     final keyboardHeight = MediaQuery.of(context).viewInsets.top;
 
     return Container(
-      height: screenHeight,
+      height: 1.sh,
       alignment: Alignment.center,
-      padding: EdgeInsets.only(bottom: (keyboardHeight + 20)),
+      padding: EdgeInsets.only(bottom: keyboardHeight + 20.h),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -243,35 +240,36 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             textAlign: TextAlign.center,
           ),
-          SizedBox(height: 24),
+          SizedBox(height: 24.h),
           Container(
-            width: 239,
-            height: 44,
+            width: 239.w,
+            height: 44.h,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
-                const SizedBox(width: 17),
+                SizedBox(width: 17.w),
                 Icon(
                   SolarIconsOutline.key,
                   color: const Color(0xffC0C0C0),
-                  size: 24,
+                  size: 24.sp,
                 ),
-                const SizedBox(width: 10),
+                SizedBox(width: 10.w),
                 Expanded(
                   child: TextField(
                     controller: controller,
                     keyboardType: TextInputType.number,
+                    textAlign: TextAlign.center,
+                    textAlignVertical: TextAlignVertical.center,
                     decoration: InputDecoration(
                       border: InputBorder.none,
                       hintText: '인증번호',
                       hintStyle: TextStyle(
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         color: const Color(0xffC0C0C0),
                       ),
-                      contentPadding: EdgeInsets.only(bottom: 6),
                     ),
                     onChanged: (value) {
                       // 인증번호 입력 여부에 따라 버튼 표시 상태 변경
@@ -288,7 +286,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
-          SizedBox(height: 24),
+          SizedBox(height: 24.h),
           ValueListenableBuilder<bool>(
             valueListenable: hasCode,
             builder: (context, hasCodeValue, child) {
@@ -300,15 +298,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
                               AppTheme.lightTheme.colorScheme.primary,
-                          minimumSize: Size(239, 44),
+                          minimumSize: Size(239.w, 44.h),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
                         onPressed: null, // 로딩 중에는 버튼 비활성화
                         child: SizedBox(
-                          width: 20,
-                          height: 20,
+                          width: 20.w,
+                          height: 20.h,
                           child: CircularProgressIndicator(
                             color: Colors.white,
                             strokeWidth: 2,
@@ -321,7 +319,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor:
                               AppTheme.lightTheme.colorScheme.primary,
-                          minimumSize: Size(239, 44),
+                          minimumSize: Size(239.w, 44.h),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -333,7 +331,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Text(
                           '회원가입하기',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
@@ -343,7 +341,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       : ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Color(0xff323232),
-                          minimumSize: Size(239, 44),
+                          minimumSize: Size(239.w, 44.h),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
@@ -390,7 +388,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: Text(
                           '인증하기',
                           style: TextStyle(
-                            fontSize: 16,
+                            fontSize: 16.sp,
                             color: Colors.white,
                             fontWeight: FontWeight.w600,
                           ),
