@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/category_controller.dart';
 import '../../theme/theme.dart';
 import '../../controllers/auth_controller.dart';
 import 'widgets/archive_card_widget.dart';
-import 'widgets/archive_responsive_helper.dart';
 
 class SharedArchivesScreen extends StatefulWidget {
   const SharedArchivesScreen({super.key});
@@ -66,13 +66,6 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 반응형 값들 계산 (헬퍼 클래스 사용)
-    final crossAxisCount = ArchiveResponsiveHelper.getGridCrossAxisCount(
-      context,
-    );
-    final aspectRatio = ArchiveResponsiveHelper.getGridAspectRatio();
-    final cardDimensions = ArchiveResponsiveHelper.getCardDimensions(context);
-
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
     if (nickName == null) {
       return Scaffold(
@@ -120,13 +113,18 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
                   )
                   .toList();
 
-          if (sharedCategories.isEmpty) {
+          // 데이터 없으면
+          if (allCategories.isEmpty) {
             return Center(
-              child: Text(
-                categoryController.searchQuery.isNotEmpty
-                    ? '검색 결과가 없습니다.'
-                    : '등록된 카테고리가 없습니다.',
-                style: const TextStyle(color: Colors.white),
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 40.h),
+                child: Text(
+                  categoryController.searchQuery.isNotEmpty
+                      ? '검색 결과가 없습니다.'
+                      : '등록된 카테고리가 없습니다.',
+                  style: TextStyle(color: Colors.white, fontSize: 16.sp),
+                  textAlign: TextAlign.center,
+                ),
               ),
             );
           }
@@ -139,26 +137,19 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
           }
 
           return Padding(
-            padding: ArchiveResponsiveHelper.getGridPadding(context),
+            padding: EdgeInsets.only(left: 15.65.w, right: 10.65.w),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    height:
-                        ArchiveResponsiveHelper.getResponsiveHeight(context) *
-                        0.01,
-                  ),
                   GridView.builder(
                     physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      childAspectRatio: aspectRatio,
-                      mainAxisSpacing:
-                          ArchiveResponsiveHelper.getMainAxisSpacing(context),
-                      crossAxisSpacing:
-                          ArchiveResponsiveHelper.getCrossAxisSpacing(context),
+                      crossAxisCount: 2,
+                      childAspectRatio: 168.0 / 229.0,
+                      mainAxisSpacing: 15.h, // 세로 간격
+                      crossAxisSpacing: 15.w, // 가로 간격
                     ),
                     itemCount: sharedCategories.length,
                     itemBuilder: (context, index) {
@@ -166,15 +157,15 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
                       final categoryId = category.id;
                       final profileImages =
                           _categoryProfileImages[categoryId] ?? [];
-                      final imageSize = cardDimensions['imageSize']!;
 
                       return ArchiveCardWidget(
                         categoryId: categoryId,
                         profileImages: profileImages,
-                        imageSize: imageSize,
                       );
                     },
                   ),
+                  // 하단 여백 추가 (화면 크기별)
+                  SizedBox(height: 20.h),
                 ],
               ),
             ),

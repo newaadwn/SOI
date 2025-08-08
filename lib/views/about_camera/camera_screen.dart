@@ -231,8 +231,8 @@ class _CameraScreenState extends State<CameraScreen>
     // 📱 개선된 반응형 계산
 
     return Container(
-      width: 46.w,
-      height: 46.h,
+      width: 46,
+      height: 46,
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.76)),
       child: _buildGalleryContent(46, 8.76),
     );

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/comment_record_model.dart';
@@ -319,7 +321,12 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         backgroundColor: Colors.black,
         title: Text(
           widget.categoryName,
-          style: const TextStyle(color: Colors.white),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20.sp,
+            fontFamily: "Pretendard",
+            fontWeight: FontWeight.w700,
+          ),
         ),
       ),
       body: PageView.builder(
@@ -333,9 +340,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
             children: [
               // 사진 이미지 + 오디오 오버레이
               ClipRRect(
-                borderRadius: BorderRadius.circular(
-                  screenWidth * 0.043,
-                ), // 반응형 반지름
+                borderRadius: BorderRadius.circular(16), // 반응형 반지름
                 child: Builder(
                   builder: (builderContext) {
                     return DragTarget<String>(
@@ -351,17 +356,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                           details.offset,
                         );
 
-                        // Profile image dropped on photo area
-                        // - Global coordinates: ${details.offset}
-                        // - Local coordinates: $localPosition
-                        // - Drag data: ${details.data}
-
                         // 사진 영역 내 상대 좌표로 저장
                         setState(() {
                           _profileImagePositions[photo.id] = localPosition;
                         });
-
-                        // Local state updated with new profile position: ${_profileImagePositions[photo.id]}
 
                         // Firestore에 위치 업데이트
                         _updateProfilePositionInFirestore(
@@ -371,15 +369,15 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                       },
                       builder: (context, candidateData, rejectedData) {
                         return Stack(
-                          alignment: Alignment.center,
+                          alignment: Alignment.bottomCenter,
                           children: [
                             // 사진 이미지
                             SizedBox(
-                              width: screenWidth * 0.9, // 반응형 너비
-                              height: screenHeight * 0.65, // 반응형 높이
+                              width: 354.w, // 반응형 너비
+                              height: 500.h, // 반응형 높이
                               child: CachedNetworkImage(
                                 imageUrl: photo.imageUrl,
-                                fit: BoxFit.fill, // 비율 유지하면서 영역을 채움
+                                fit: BoxFit.cover,
                                 placeholder:
                                     (context, url) =>
                                         Container(color: Colors.grey[900]),
@@ -405,8 +403,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                     // 간단한 플로우: 캐시된 URL 직접 사용
                                     String? profileImageUrl =
                                         _droppedProfileImageUrls[photo.id];
-
-                                    // Using dropped profile image URL: $profileImageUrl for photo: ${photo.id}
 
                                     return Consumer<AuthController>(
                                       builder: (
@@ -437,16 +433,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                               }
                                             }
                                           },
-                                          child: Container(
+                                          child: SizedBox(
                                             width: 27,
                                             height: 27,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                              border: Border.all(
-                                                color: Colors.white,
-                                                width: 2,
-                                              ),
-                                            ),
                                             child:
                                                 profileImageUrl != null &&
                                                         profileImageUrl
@@ -455,6 +444,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                       child: CachedNetworkImage(
                                                         imageUrl:
                                                             profileImageUrl,
+                                                        width: 27,
+                                                        height: 27,
                                                         key: ValueKey(
                                                           'detail_profile_${profileImageUrl}_$_profileImageRefreshKey',
                                                         ), // 리프레시 키를 사용한 캐시 무효화
@@ -464,6 +455,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                               context,
                                                               url,
                                                             ) => Container(
+                                                              width: 27,
+                                                              height: 27,
                                                               decoration: BoxDecoration(
                                                                 color:
                                                                     Colors
@@ -477,7 +470,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                                 color:
                                                                     Colors
                                                                         .white,
-                                                                size: 14,
+                                                                size: 14.sp,
                                                               ),
                                                             ),
                                                         errorWidget:
@@ -486,6 +479,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                               error,
                                                               stackTrace,
                                                             ) => Container(
+                                                              width: 27,
+                                                              height: 27,
                                                               decoration: BoxDecoration(
                                                                 color:
                                                                     Colors
@@ -499,12 +494,14 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                                 color:
                                                                     Colors
                                                                         .white,
-                                                                size: 14,
+                                                                size: 14.sp,
                                                               ),
                                                             ),
                                                       ),
                                                     )
                                                     : Container(
+                                                      width: 27,
+                                                      height: 27,
                                                       decoration: BoxDecoration(
                                                         color: Colors.grey[700],
                                                         shape: BoxShape.circle,
@@ -512,7 +509,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                       child: Icon(
                                                         Icons.person,
                                                         color: Colors.white,
-                                                        size: 14,
+                                                        size: 14.sp,
                                                       ),
                                                     ),
                                           ),
@@ -526,37 +523,29 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                             // 오디오 컨트롤 오버레이 (하단에 배치)
                             if (photo.audioUrl.isNotEmpty)
                               Positioned(
-                                bottom: (screenWidth * 0.054), // 반응형 하단 여백
-                                left: (screenWidth * 0.054), // 반응형 좌측 여백
-                                right: (screenWidth * 0.054), // 반응형 우측 여백
+                                bottom: 14.h,
+                                left: 20.w,
+                                right: 56.w,
                                 child: Container(
                                   padding: EdgeInsets.symmetric(
-                                    horizontal: (screenWidth * 0.032), // 반응형 패딩
-                                    vertical: (screenWidth * 0.021), // 반응형 패딩
+                                    horizontal: 5.w,
+                                    vertical: 5.h,
                                   ),
                                   decoration: BoxDecoration(
                                     color: Color(
                                       0xff000000,
                                     ).withValues(alpha: 0.4),
-                                    borderRadius: BorderRadius.circular(
-                                      (screenWidth * 0.067),
-                                    ), // 반응형 반지름
+                                    borderRadius: BorderRadius.circular(13.6),
                                   ),
                                   // 사진을 찍은 사용자가 녹음한 오디오의 파형을 비롯한 여러가지 정보를 표시하는 부분
                                   child: Row(
                                     children: [
                                       // 왼쪽 프로필 이미지
                                       Container(
-                                        width: (screenWidth * 0.086), // 반응형 너비
-                                        height: (screenWidth * 0.086), // 반응형 높이
+                                        width: 27, // 반응형 너비
+                                        height: 27, // 반응형 높이
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
-                                          border: Border.all(
-                                            color: Colors.white,
-                                            width:
-                                                (screenWidth *
-                                                    0.004), // 반응형 테두리
-                                          ),
                                         ),
                                         child: Builder(
                                           builder: (context) {
@@ -566,23 +555,16 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
                                             return _isLoadingProfile
                                                 ? CircleAvatar(
-                                                  radius:
-                                                      (screenWidth *
-                                                          0.038), // 반응형 반지름
+                                                  radius: (screenWidth * 0.038),
                                                   backgroundColor: Colors.grey,
                                                   child: SizedBox(
-                                                    width:
-                                                        (screenWidth *
-                                                            0.043), // 반응형 너비
-                                                    height:
-                                                        (screenWidth *
-                                                            0.043), // 반응형 높이
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth:
-                                                          (screenWidth *
-                                                              0.0054), // 반응형 선 두께
-                                                      color: Colors.white,
-                                                    ),
+                                                    width: 27,
+                                                    height: 27,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2,
+                                                          color: Colors.white,
+                                                        ),
                                                   ),
                                                 )
                                                 : profileImageToShow.isNotEmpty
@@ -603,9 +585,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                             context,
                                                             imageProvider,
                                                           ) => CircleAvatar(
-                                                            radius:
-                                                                (screenWidth *
-                                                                    0.038), // 반응형 반지름
+                                                            radius: 16,
                                                             backgroundImage:
                                                                 imageProvider,
                                                           ),
@@ -614,22 +594,14 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                             context,
                                                             url,
                                                           ) => CircleAvatar(
-                                                            radius:
-                                                                (screenWidth *
-                                                                    0.038), // 반응형 반지름
+                                                            radius: 16,
                                                             backgroundColor:
                                                                 Colors.grey,
                                                             child: SizedBox(
-                                                              width:
-                                                                  (screenWidth *
-                                                                      0.043), // 반응형 너비
-                                                              height:
-                                                                  (screenWidth *
-                                                                      0.043), // 반응형 높이
+                                                              width: 27,
+                                                              height: 27,
                                                               child: CircularProgressIndicator(
-                                                                strokeWidth:
-                                                                    (screenWidth *
-                                                                        0.0054), // 반응형 선 두께
+                                                                strokeWidth: 2,
                                                                 color:
                                                                     Colors
                                                                         .white,
@@ -642,47 +614,43 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                             url,
                                                             error,
                                                           ) => CircleAvatar(
-                                                            radius:
-                                                                (screenWidth *
-                                                                    0.038), // 반응형 반지름
+                                                            radius: 16,
                                                             backgroundColor:
                                                                 Colors.grey,
-                                                            child: Icon(
-                                                              Icons.person,
-                                                              color:
-                                                                  Colors.white,
-                                                              size:
-                                                                  (screenWidth *
-                                                                      0.043), // 반응형 아이콘 크기
+                                                            child: SizedBox(
+                                                              width: 27,
+                                                              height: 27,
+                                                              child: Icon(
+                                                                Icons.person,
+                                                                color:
+                                                                    Colors
+                                                                        .white,
+                                                              ),
                                                             ),
                                                           ),
                                                     );
                                                   },
                                                 )
                                                 : CircleAvatar(
-                                                  radius:
-                                                      (screenWidth *
-                                                          0.038), // 반응형 반지름
+                                                  radius: 16,
                                                   backgroundColor: Colors.grey,
-                                                  child: Icon(
-                                                    Icons.person,
-                                                    color: Colors.white,
-                                                    size:
-                                                        (screenWidth *
-                                                            0.043), // 반응형 아이콘 크기
+                                                  child: SizedBox(
+                                                    width: 27,
+                                                    height: 27,
+                                                    child: Icon(
+                                                      Icons.person,
+                                                      color: Colors.white,
+                                                    ),
                                                   ),
                                                 );
                                           },
                                         ),
                                       ),
-                                      SizedBox(
-                                        width: (screenWidth * 0.032),
-                                      ), // 반응형 간격
+                                      SizedBox(width: (13.79).w),
                                       // 가운데 파형 (progress 포함)
                                       Expanded(
                                         child: SizedBox(
-                                          height:
-                                              (screenWidth * 0.086), // 반응형 높이
+                                          height: 35.h, // 반응형 높이
                                           child:
                                               _buildWaveformWidgetWithProgress(
                                                 photo,
@@ -690,9 +658,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                         ),
                                       ),
 
-                                      SizedBox(
-                                        width: (screenWidth * 0.032),
-                                      ), // 반응형 간격
                                       // 오른쪽 재생 시간 (실시간 업데이트)
                                       Consumer<AudioController>(
                                         builder: (
@@ -721,8 +686,11 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                             ),
                                             style: TextStyle(
                                               color: Colors.white,
-                                              fontSize: (screenWidth * 0.032),
+                                              fontSize: (11.86).sp,
                                               fontWeight: FontWeight.w500,
+                                              fontFamily:
+                                                  GoogleFonts.inter()
+                                                      .fontFamily,
                                             ),
                                           );
                                         },
@@ -738,39 +706,45 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                   },
                 ),
               ),
-              SizedBox(height: (screenHeight * (11.5 / 852))), // 반응형 간격
+              SizedBox(height: (11.5).h), // 반응형 간격
               // 사진 아래 정보 섹션 (닉네임과 날짜만)
               Row(
                 mainAxisAlignment: MainAxisAlignment.start,
 
                 children: [
-                  SizedBox(width: (screenWidth * (45 / 852))), // 반응형 간격
+                  SizedBox(width: 25.w), // 반응형 간격
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+
                     children: [
                       // 사용자 닉네임
                       Text(
                         '@${_userName.isNotEmpty ? _userName : photo.userID}',
                         style: TextStyle(
-                          color: Color(0xfff9f9f9),
-                          fontSize: 16,
+                          color: Colors.white,
+                          fontSize: 16.sp,
+                          fontFamily: "Pretendard",
                           fontWeight: FontWeight.w600,
+                          height: (0.5).sp, // line height 조정
                         ),
                       ),
-
+                      SizedBox(height: (4.4).h), // 반응형 간격
                       // 날짜
                       Text(
                         FormatUtils.formatDate(photo.createdAt),
                         style: TextStyle(
                           color: Color(0xffcccccc),
-                          fontSize: 14, // 반응형 폰트 크기
+                          fontSize: 14.sp,
+                          fontFamily: "Pretendard",
+                          fontWeight: FontWeight.w400,
+                          height: (0.5).sp, // line height 조정
                         ),
                       ),
                     ],
                   ),
                 ],
               ),
-              SizedBox(height: (screenHeight * (29.6 / 852))), // 반응형 간격
+              SizedBox(height: (31.6).h),
               Consumer<AuthController>(
                 builder: (context, authController, child) {
                   // 이미 저장된 상태인지 확인
@@ -804,18 +778,12 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                             child: Container(
                               width: 27,
                               height: 27,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: Colors.white,
-                                  width: 3,
-                                ),
-                              ),
+                              decoration: BoxDecoration(shape: BoxShape.circle),
                               child: ClipOval(
                                 child:
                                     currentUserProfileImage.isNotEmpty
-                                        ? Image.network(
-                                          currentUserProfileImage,
+                                        ? CachedNetworkImage(
+                                          imageUrl: currentUserProfileImage,
                                           fit: BoxFit.cover,
                                         )
                                         : Container(
@@ -835,10 +803,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                           child: Container(
                             width: 27,
                             height: 27,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                            ),
+                            decoration: BoxDecoration(shape: BoxShape.circle),
                             child: ClipOval(
                               child:
                                   currentUserProfileImage.isNotEmpty
@@ -851,17 +816,12 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                         child: Icon(
                                           Icons.person,
                                           color: Colors.white,
-                                          size: 14,
                                         ),
                                       ),
                             ),
                           ),
                         ),
-                        onDragEnd: (details) {
-                          // DragTarget에서 이미 처리하므로 여기서는 로깅만
-                          // Profile image drag ended at global position: ${details.offset}
-                          // Relative coordinates will be processed by DragTarget
-                        },
+
                         child: GestureDetector(
                           onTap: () async {
                             // 클릭하면 저장된 오디오 재생
@@ -885,10 +845,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                           child: Container(
                             width: 27,
                             height: 27,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 3),
-                            ),
+                            decoration: BoxDecoration(shape: BoxShape.circle),
                             child: ClipOval(
                               child:
                                   currentUserProfileImage.isNotEmpty
@@ -901,7 +858,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                         child: Icon(
                                           Icons.person,
                                           color: Colors.white,
-                                          size: 14,
+                                          size: 14.sp,
                                         ),
                                       ),
                             ),
@@ -914,15 +871,14 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                   // 댓글이 없으면 AudioRecorderWidget 표시
                   return AudioRecorderWidget(
                     photoId: photo.id,
-                    isCommentMode: true, // ✅ 명시적으로 댓글 모드 설정
+                    isCommentMode: true, // 명시적으로 댓글 모드 설정
                     profileImagePosition:
-                        _profileImagePositions[photo.id], // ✅ 현재 저장된 프로필 위치 전달
+                        _profileImagePositions[photo.id], // 현재 저장된 프로필 위치 전달
                     getProfileImagePosition:
                         () =>
-                            _profileImagePositions[photo
-                                .id], // ✅ 최신 위치를 가져오는 콜백
+                            _profileImagePositions[photo.id], // 최신 위치를 가져오는 콜백
                     onProfileImageDragged: (Offset position) {
-                      // ✅ 프로필 이미지 드래그 처리
+                      // 프로필 이미지 드래그 처리
                       setState(() {
                         _profileImagePositions[photo.id] = position;
                       });

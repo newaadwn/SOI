@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/category_controller.dart';
 import 'category_item_widget.dart';
@@ -25,8 +26,6 @@ class CategoryListWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-
     if (isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -40,13 +39,15 @@ class CategoryListWidget extends StatelessWidget {
           controller: scrollController,
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 4,
-            childAspectRatio: 0.8,
-            crossAxisSpacing: (screenWidth * 0.025).clamp(8.0, 12.0), // 반응형 간격
-            mainAxisSpacing: (screenWidth * 0.025).clamp(8.0, 12.0), // 반응형 간격
+            childAspectRatio: 0.85, // 높이를 조금 더 줘서 텍스트 공간 확보
+            crossAxisSpacing: 8.w, // 아이템 간 좌우 간격 추가
+            mainAxisSpacing: 15.h, // 세로 간격만 유지
           ),
-          padding: EdgeInsets.all(
-            (screenWidth * 0.041).clamp(14.0, 20.0),
-          ), // 반응형 패딩
+          padding: EdgeInsets.symmetric(
+            horizontal: 18.h, // 좌우 패딩 추가
+            vertical: 12.w, // 상하 패딩 추가
+          ),
+
           itemCount: categories.isEmpty ? 1 : categories.length + 1,
           itemBuilder: (context, index) {
             // 첫 번째 아이템은 항상 '추가하기' 버튼
@@ -63,7 +64,7 @@ class CategoryListWidget extends StatelessWidget {
                 child: Text(
                   '카테고리가 없습니다.\n추가해 보세요!',
                   textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                  style: TextStyle(color: Colors.grey, fontSize: 14.sp),
                 ),
               );
             }

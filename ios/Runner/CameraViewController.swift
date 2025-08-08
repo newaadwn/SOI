@@ -41,6 +41,12 @@ class CameraViewController: UIViewController, AVCapturePhotoCaptureDelegate {
             previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
             previewLayer?.videoGravity = .resizeAspectFill
             previewLayer?.frame = view.bounds
+            
+            // 후면 카메라는 미러링 비활성화
+            if let connection = previewLayer?.connection {
+                connection.isVideoMirrored = false
+            }
+            
             if let layer = previewLayer {
                 view.layer.addSublayer(layer)
             }

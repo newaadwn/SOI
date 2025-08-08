@@ -175,7 +175,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       // AudioController 상태 감지를 위한 periodic check 시작
       _startAudioControllerListener();
 
-      debugPrint('녹음 시작 완료 - 상태: ${_currentState}');
+      debugPrint('녹음 시작 완료 - 상태: $_currentState');
     } catch (e) {
       debugPrint('녹음 시작 오류: $e');
       setState(() {
@@ -479,7 +479,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       case RecordingState.idle:
         // 저장된 댓글이 있으면 녹음 버튼 비활성화
         if (widget.savedComment != null) {
-          return Container(
+          return SizedBox(
             width: 64,
             height: 64,
             child: Center(

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:iconoir_flutter/iconoir_flutter.dart' hide Text;
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// 카테고리 아이템 위젯
 /// 각 카테고리를 표현하는 UI 요소입니다.
@@ -34,7 +34,7 @@ class CategoryItemWidget extends StatelessWidget {
       child: AnimatedContainer(
         duration: Duration(milliseconds: 200), // ✅ 선택 시 부드러운 애니메이션
         width: dimensions.itemWidth,
-        margin: EdgeInsets.symmetric(horizontal: dimensions.margin),
+        // margin 제거 - GridView의 spacing이 이미 간격을 관리하고 있음
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -54,16 +54,22 @@ class CategoryItemWidget extends StatelessWidget {
 
   /// 화면 크기에 따른 반응형 치수 계산
   _CategoryDimensions _calculateDimensions(double screenWidth) {
+    // GridView가 4열이고 패딩과 간격을 고려한 실제 아이템 너비 계산
+    final totalPadding = (screenWidth * 0.08).clamp(24.0, 36.0); // 좌우 패딩 총합
+    final totalSpacing = 8.0 * 3; // crossAxisSpacing * (열 수 - 1)
+    final availableWidth = screenWidth - totalPadding - totalSpacing;
+    final itemWidth = availableWidth / 4;
+
     return _CategoryDimensions(
-      itemWidth: (screenWidth * 0.204).clamp(70.0, 90.0),
-      containerSize: (screenWidth * 0.153).clamp(55.0, 70.0),
-      margin: (screenWidth * 0.020).clamp(6.0, 10.0),
-      spacing: (screenWidth * 0.020).clamp(6.0, 10.0),
+      itemWidth: itemWidth,
+      containerSize: (itemWidth * 0.75).clamp(50.0, 65.0), // 아이템 너비의 75%
+      margin: 0, // margin 제거
+      spacing: (screenWidth * 0.015).clamp(5.0, 8.0), // 이미지와 텍스트 간 간격 줄임
       borderWidth: (screenWidth * 0.005).clamp(2.0, 3.0),
-      iconSize: (screenWidth * 0.102).clamp(35.0, 45.0),
-      smallIconSize: (screenWidth * 0.076).clamp(26.0, 34.0),
+      iconSize: (itemWidth * 0.4).clamp(25.0, 32.0), // 컨테이너 크기에 비례
+      smallIconSize: (itemWidth * 0.3).clamp(20.0, 26.0),
       strokeWidth: (screenWidth * 0.005).clamp(1.5, 2.5),
-      fontSize: (screenWidth * 0.031).clamp(10.0, 14.0),
+      fontSize: (screenWidth * 0.032).clamp(11.0, 14.0), // 텍스트 크기 약간 증가
     );
   }
 
@@ -76,9 +82,9 @@ class CategoryItemWidget extends StatelessWidget {
       width: dimensions.containerSize,
       height: dimensions.containerSize,
       decoration: BoxDecoration(
-        color: (icon != null) ? Colors.grey.shade200 : Colors.transparent,
+        color:
+            (icon != null) ? Colors.white : Colors.transparent, // 추가 버튼은 흰색 배경
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white),
       ),
       child: ClipOval(
         child: Stack(
@@ -96,49 +102,55 @@ class CategoryItemWidget extends StatelessWidget {
 
   /// 컨테이너 내부 위젯 빌드
   Widget _buildContainerChild(_CategoryDimensions dimensions) {
-    // 기본 아이콘이 있는 경우
+    // 기본 아이콘이 있는 경우 (추가하기 버튼)
     if (icon != null) {
-      return Icon(icon!, size: dimensions.iconSize, color: Colors.black);
+      return Icon(
+        icon!,
+        color: Colors.black, // 검은색 + 아이콘
+        size: 40.sp,
+        weight: 2.0, // 아이콘 두께
+      );
     }
 
     // 이미지 URL이 있는 경우
     if (imageUrl != null && imageUrl!.isNotEmpty) {
-      return CachedNetworkImage(
-        imageUrl: imageUrl!,
-        fit: BoxFit.cover,
-        placeholder: (context, url) => _buildLoadingIndicator(dimensions),
-        errorWidget: (context, url, error) => _buildErrorIcon(dimensions),
+      return SizedBox(
+        width: 60,
+        height: 60,
+        child: CachedNetworkImage(
+          imageUrl: imageUrl!,
+          fit: BoxFit.cover, // 이미지가 원형 컨테이너를 완전히 채우도록
+          width: 60.w,
+          height: 60.h,
+          placeholder: (context, url) => _buildLoadingIndicator(dimensions),
+          errorWidget: (context, url, error) => _buildErrorIcon(dimensions),
+        ),
       );
     }
 
     // 기본 이미지 아이콘
-    return Icon(
-      Icons.image,
-      size: dimensions.smallIconSize,
-      color: Colors.grey.shade400,
+    return Container(
+      decoration: BoxDecoration(color: Color(0xffc3c1c1)),
+      width: 60,
+      height: 60,
+      child: Icon(Icons.image_outlined, size: 35.sp, color: Color(0xff656565)),
     );
   }
 
   /// 선택된 상태의 오버레이 빌드 (피그마 디자인 반영)
   Widget _buildSelectionOverlay(_CategoryDimensions dimensions) {
     return Container(
-      width: dimensions.containerSize,
-      height: dimensions.containerSize,
+      width: (63.1),
+      height: (63.1),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.78), // 피그마와 동일한 투명도
+        color: Color(0xff404040).withValues(alpha: 0.7), // 피그마와 동일한 투명도
         shape: BoxShape.circle,
       ),
       child: Center(
         child: SizedBox(
-          width: dimensions.containerSize * 0.71, // 44.89/63.14 ≈ 0.71
-          height: dimensions.containerSize * 0.71,
-          child: Center(
-            child: SendDiagonalSolid(
-              width: dimensions.containerSize * 0.565, // 35.69/63.14 ≈ 0.565
-              height: dimensions.containerSize * 0.56, // 35.38/63.14 ≈ 0.56
-              color: Colors.black,
-            ),
-          ),
+          width: 32,
+          height: 32,
+          child: Center(child: Image.asset('assets/send_imoji.png')),
         ),
       ),
     );
@@ -147,19 +159,17 @@ class CategoryItemWidget extends StatelessWidget {
   /// 로딩 인디케이터 빌드
   Widget _buildLoadingIndicator(_CategoryDimensions dimensions) {
     return Center(
-      child: CircularProgressIndicator(
-        strokeWidth: dimensions.strokeWidth,
-        color: Colors.white,
-      ),
+      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
     );
   }
 
   /// 에러 아이콘 빌드
   Widget _buildErrorIcon(_CategoryDimensions dimensions) {
-    return Icon(
-      Icons.image,
-      size: dimensions.smallIconSize,
-      color: Colors.grey.shade400,
+    return Container(
+      decoration: BoxDecoration(color: Color(0xffc3c1c1)),
+      width: 60,
+      height: 60,
+      child: Icon(Icons.image_outlined, size: 35.sp, color: Color(0xff656565)),
     );
   }
 
@@ -171,9 +181,12 @@ class CategoryItemWidget extends StatelessWidget {
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
-        fontSize: dimensions.fontSize,
-        fontWeight: FontWeight.w500,
+        fontSize: 12.sp,
+        fontWeight: FontWeight.w500, // 피그마 디자인에 맞춘 폰트 웨이트
+        fontFamily: 'Pretendard',
         color: Colors.white,
+        height: 1.0, // 줄 간격 조정
+        letterSpacing: -0.4,
       ),
     );
   }

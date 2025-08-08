@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../controllers/auth_controller.dart';
@@ -327,8 +328,10 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
   /// 특정 사용자의 프로필 정보를 로드하는 메서드
   Future<void> _loadUserProfileForPhoto(String userId) async {
-    if (_profileLoadingStates[userId] == true || _userNames.containsKey(userId))
+    if (_profileLoadingStates[userId] == true ||
+        _userNames.containsKey(userId)) {
       return;
+    }
 
     setState(() => _profileLoadingStates[userId] = true);
 
@@ -913,7 +916,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                 child: Container(
                   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.8),
+                    color: Colors.black.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(
@@ -989,8 +992,8 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                   child: CachedNetworkImage(
                     imageUrl: photo.imageUrl,
                     fit: BoxFit.cover,
-                    width: cardWidth,
-                    height: cardHeight,
+                    width: 354.w, // 반응형 너비
+                    height: 500.h, // 반응형 높이
                     placeholder: (context, url) {
                       return Container(
                         width: cardWidth,

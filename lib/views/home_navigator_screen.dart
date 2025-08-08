@@ -11,7 +11,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 class HomePageNavigationBar extends StatefulWidget {
   final int currentPageIndex;
 
-  HomePageNavigationBar({super.key, required this.currentPageIndex});
+  const HomePageNavigationBar({super.key, required this.currentPageIndex});
 
   @override
   State<HomePageNavigationBar> createState() => _HomePageNavigationBarState();

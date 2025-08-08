@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../theme/theme.dart';
 import 'widgets/archive_card_widget.dart';
-import 'widgets/archive_responsive_helper.dart';
 
 // 전체 아카이브 화면
 // 모든 사용자의 아카이브 목록을 표시
@@ -97,13 +97,6 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 반응형 값들 계산 (개선된 헬퍼 클래스 사용)
-    final crossAxisCount = ArchiveResponsiveHelper.getGridCrossAxisCount(
-      context,
-    );
-    final aspectRatio = ArchiveResponsiveHelper.getGridAspectRatio();
-    final cardDimensions = ArchiveResponsiveHelper.getCardDimensions(context);
-
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
     if (nickName == null) {
       return Scaffold(
@@ -141,10 +134,10 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
           if (categoryController.error != null) {
             return Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 40.0),
+                padding: EdgeInsets.symmetric(horizontal: 40.h),
                 child: Text(
                   categoryController.error!,
-                  style: TextStyle(color: Colors.white, fontSize: 16.0),
+                  style: TextStyle(color: Colors.white, fontSize: 16.sp),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -158,12 +151,12 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
           if (categories.isEmpty) {
             return Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 40.0),
+                padding: EdgeInsets.symmetric(horizontal: 40.h),
                 child: Text(
                   categoryController.searchQuery.isNotEmpty
                       ? '검색 결과가 없습니다.'
                       : '등록된 카테고리가 없습니다.',
-                  style: TextStyle(color: Colors.white, fontSize: 16.0),
+                  style: TextStyle(color: Colors.white, fontSize: 16.sp),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -179,24 +172,19 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
 
           // 데이터가 있으면 화면을 스크롤할 수 있도록 만듭니다.
           return Padding(
-            padding: ArchiveResponsiveHelper.getGridPadding(context),
+            padding: EdgeInsets.only(left: 15.65.w, right: 10.65.w),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    height: ArchiveResponsiveHelper.getTopSpacing(context),
-                  ),
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      childAspectRatio: aspectRatio, // Figma 비율 사용
-                      mainAxisSpacing:
-                          ArchiveResponsiveHelper.getMainAxisSpacing(context),
-                      crossAxisSpacing:
-                          ArchiveResponsiveHelper.getCrossAxisSpacing(context),
+                      crossAxisCount: 2,
+                      childAspectRatio: 168.0 / 229.0,
+                      mainAxisSpacing: 15.h, // 세로 간격
+                      crossAxisSpacing: 15.w, // 가로 간격
                     ),
                     itemCount: categories.length,
                     itemBuilder: (context, index) {
@@ -204,17 +192,15 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
                       final categoryId = category.id;
                       final profileImages =
                           _categoryProfileImages[categoryId] ?? [];
-                      final imageSize = cardDimensions['imageSize']!;
 
                       return ArchiveCardWidget(
                         categoryId: categoryId,
                         profileImages: profileImages,
-                        imageSize: imageSize,
                       );
                     },
                   ),
                   // 하단 여백 추가 (화면 크기별)
-                  SizedBox(height: 20.0),
+                  SizedBox(height: 20.h),
                 ],
               ),
             ),

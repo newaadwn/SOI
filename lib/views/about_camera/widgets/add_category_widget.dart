@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // 카테고리 추가 UI 위젯
 // 새로운 카테고리를 생성하는 인터페이스를 제공합니다.
@@ -21,12 +22,12 @@ class AddCategoryWidget extends StatelessWidget {
     final screenHeight = MediaQuery.of(context).size.height;
 
     return Container(
-      color: Color(0xFF171717), // 피그마 배경색
+      color: Color(0xFF171717),
       child: Column(
         children: [
           // 네비게이션 헤더
           Container(
-            padding: EdgeInsets.only(left: 12, right: 20),
+            padding: EdgeInsets.only(left: 12.w, right: 20.w),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -35,7 +36,7 @@ class AddCategoryWidget extends StatelessWidget {
                   icon: Icon(
                     Icons.arrow_back_ios,
                     color: Color(0xFFD9D9D9),
-                    size: 20,
+                    size: 20.sp,
                   ),
                   onPressed: onBackPressed,
                 ),
@@ -44,7 +45,7 @@ class AddCategoryWidget extends StatelessWidget {
                 Text(
                   '새 카테고리 만들기',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                     fontFamily: 'Pretendard',
@@ -54,8 +55,8 @@ class AddCategoryWidget extends StatelessWidget {
 
                 // 저장 버튼
                 SizedBox(
-                  width: 51,
-                  height: 25,
+                  width: 51.w,
+                  height: 25.h,
                   child: ElevatedButton(
                     onPressed: onSavePressed,
                     style: ElevatedButton.styleFrom(
@@ -70,7 +71,7 @@ class AddCategoryWidget extends StatelessWidget {
                       '저장',
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 14.sp,
                         fontWeight: FontWeight.w600,
                         fontFamily: 'Pretendard',
                         letterSpacing: -0.4,
@@ -83,24 +84,21 @@ class AddCategoryWidget extends StatelessWidget {
           ),
 
           // 구분선
-          Divider(
-            height: 1,
-            color: Color(0xFF323232), // 피그마 구분선 색상
-          ),
+          Divider(height: 1, color: Color(0xFF323232)),
 
           // 메인 컨텐츠 영역
           Expanded(
             child: SingleChildScrollView(
               controller: scrollController,
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 친구 추가하기 버튼
                     SizedBox(
-                      width: 109,
-                      height: 35,
+                      width: 109.w,
+                      height: 40.h,
                       child: ElevatedButton.icon(
                         onPressed: () {
                           // 친구 추가하기 로직
@@ -115,8 +113,9 @@ class AddCategoryWidget extends StatelessWidget {
                           '친구 추가하기',
                           style: TextStyle(
                             color: Color(0xFFE2E2E2),
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             fontWeight: FontWeight.w500,
+                            fontFamily: 'Pretendard',
                           ),
                         ),
                         style: ElevatedButton.styleFrom(
@@ -126,8 +125,8 @@ class AddCategoryWidget extends StatelessWidget {
                           ),
                           elevation: 0,
                           padding: EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 6,
+                            horizontal: 8.w,
+                            vertical: 6.h,
                           ),
                         ),
                       ),
@@ -144,7 +143,7 @@ class AddCategoryWidget extends StatelessWidget {
                           cursorColor: Color(0xFFCCCCCC),
                           style: TextStyle(
                             color: Color(0xFFCCCCCC),
-                            fontSize: 16,
+                            fontSize: 16.sp,
                           ),
 
                           decoration: InputDecoration(
@@ -155,7 +154,8 @@ class AddCategoryWidget extends StatelessWidget {
                             hintText: '카테고리 이름을 입력하세요',
                             hintStyle: TextStyle(
                               color: Color(0xFFCCCCCC),
-                              fontSize: 16,
+                              fontSize: 16.sp,
+                              fontFamily: 'Pretendard',
                             ),
                           ),
                           maxLength: 20,
@@ -169,7 +169,7 @@ class AddCategoryWidget extends StatelessWidget {
                           },
                         ),
 
-                        SizedBox(height: 8),
+                        SizedBox(height: 8.h),
 
                         // 글자 수 카운터
                         Row(
@@ -182,10 +182,9 @@ class AddCategoryWidget extends StatelessWidget {
                                   '${value.text.length}/20자',
                                   style: TextStyle(
                                     color: Color(0xFFCCCCCC),
-                                    fontSize: 12,
+                                    fontSize: 12.sp,
                                     fontWeight: FontWeight.w500,
                                     fontFamily: 'Pretendard',
-                                    letterSpacing: -0.4,
                                   ),
                                 );
                               },

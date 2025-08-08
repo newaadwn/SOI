@@ -5,7 +5,6 @@ import '../../../controllers/category_controller.dart';
 import '../../../models/category_data_model.dart';
 import '../category_photos_screen.dart';
 import 'archive_profile_row_widget.dart';
-import 'archive_responsive_helper.dart';
 import 'archive_popup_menu_widget.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
@@ -14,13 +13,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 class ArchiveCardWidget extends StatelessWidget {
   final String categoryId;
   final List<String> profileImages;
-  final double imageSize;
 
   const ArchiveCardWidget({
     super.key,
     required this.categoryId,
     required this.profileImages,
-    required this.imageSize,
   });
 
   @override
@@ -55,8 +52,8 @@ class ArchiveCardWidget extends StatelessWidget {
   /// 실제 카테고리 카드 빌드
   Widget _buildCategoryCard(BuildContext context, CategoryDataModel category) {
     // 반응형 값들 계산
-    final isSmallScreen = ArchiveResponsiveHelper.isSmallScreen(context);
-    final isLargeScreen = ArchiveResponsiveHelper.isLargeScreen(context);
+    //final isSmallScreen = ArchiveResponsiveHelper.isSmallScreen(context);
+    //final isLargeScreen = ArchiveResponsiveHelper.isLargeScreen(context);
 
     return Container(
       decoration: ShapeDecoration(
@@ -86,8 +83,8 @@ class ArchiveCardWidget extends StatelessWidget {
             children: [
               // 🖼️ 메인 이미지 (실시간 업데이트)
               Container(
-                width: imageSize,
-                height: imageSize,
+                width: 146,
+                height: 146,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(6.61),
                   color: Colors.grey[300],
@@ -107,8 +104,8 @@ class ArchiveCardWidget extends StatelessWidget {
                                 imageUrl: category.categoryPhotoUrl!,
                                 cacheKey:
                                     '${category.id}_${category.categoryPhotoUrl}', // 캐시 키도 동일하게 설정
-                                width: imageSize,
-                                height: imageSize,
+                                width: 146,
+                                height: 146,
                                 fit: BoxFit.cover,
                                 placeholder:
                                     (context, url) => Container(
@@ -132,8 +129,8 @@ class ArchiveCardWidget extends StatelessWidget {
                               )
                               : Container(
                                 color: Colors.grey[300],
-                                width: imageSize,
-                                height: imageSize,
+                                width: 146,
+                                height: 146,
                                 child: Icon(
                                   Icons.image,
                                   color: Colors.grey,
@@ -215,11 +212,7 @@ class ArchiveCardWidget extends StatelessWidget {
               SizedBox(height: 8.h),
 
               // 👥 프로필 이미지들 (반응형으로 업데이트)
-              ArchiveProfileRowWidget(
-                profileImages: profileImages,
-                isSmallScreen: isSmallScreen,
-                isLargeScreen: isLargeScreen,
-              ),
+              ArchiveProfileRowWidget(profileImages: profileImages),
             ],
           ),
         ),

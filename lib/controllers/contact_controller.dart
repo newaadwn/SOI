@@ -130,11 +130,6 @@ class ContactController extends ChangeNotifier {
     }
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   /// 연락처 목록 가져오기 (권한이 있을 때)
   Future<List<Contact>> getContacts({bool forceRefresh = false}) async {
     return await _contactService.getContacts(forceRefresh: forceRefresh);

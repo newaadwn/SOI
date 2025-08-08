@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_swift_camera/theme/theme.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
@@ -44,9 +45,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   final _draggableScrollController = DraggableScrollableController();
   final _categoryNameController = TextEditingController();
   bool _isDisposing = false; // dispose 상태 추적
-
-  // 진행 중인 애니메이션들을 추적
-  final List<Future<void>> _activeAnimations = [];
 
   // Controller 인스턴스
   late AudioController _audioController;
@@ -272,7 +270,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
     // 필수 데이터 검증
     if (imagePath == null || userId == null) {
-      debugPrint('❌ 업로드 데이터 추출 실패 - imagePath: $imagePath, userId: $userId');
+      debugPrint('업로드 데이터 추출 실패 - imagePath: $imagePath, userId: $userId');
       return null;
     }
 
@@ -306,7 +304,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     if (audioPath != null && audioPath.isNotEmpty) {
       audioFile = File(audioPath);
       if (!await audioFile.exists()) {
-        debugPrint('⚠️ 오디오 파일 없음, 이미지만 업로드: $audioPath');
+        debugPrint('오디오 파일 없음, 이미지만 업로드: $audioPath');
         audioFile = null;
       }
     }
@@ -322,7 +320,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         categoryId: categoryId,
         waveformData: waveformData,
       );
-      debugPrint('📤 오디오와 함께 업로드 완료');
+      debugPrint('오디오와 함께 업로드 완료');
     } else {
       // 이미지만 업로드
       await _photoController.uploadPhoto(
@@ -332,7 +330,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         userIds: [userId],
         audioFile: null,
       );
-      debugPrint('📤 이미지만 업로드 완료');
+      debugPrint('이미지만 업로드 완료');
     }
   }
 
@@ -356,6 +354,32 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
             (route) => false,
           );
         }
+      }
+    });
+  }
+
+  // 안전한 시트 애니메이션 메서드
+  void _animateSheetTo(double size) {
+    if (!mounted || _isDisposing) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _isDisposing || !_draggableScrollController.isAttached) {
+        return;
+      }
+
+      try {
+        _draggableScrollController
+            .animateTo(
+              size,
+              duration: Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            )
+            .catchError((error) {
+              // 애니메이션 에러 무시
+              return;
+            });
+      } catch (e) {
+        // 애니메이션 실행 에러 무시
       }
     });
   }
@@ -417,15 +441,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
   @override
   Widget build(BuildContext context) {
-    // 개선된 반응형: MediaQuery.sizeOf() 사용
-    final screenSize = MediaQuery.sizeOf(context);
-    final screenWidth = screenSize.width;
-    final screenHeight = screenSize.height;
-
-    // 반응형: 기준 해상도 설정 (393 x 852 기준)
-    const double baseWidth = 393;
-    const double baseHeight = 852;
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -434,7 +449,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
           'SOI',
           style: TextStyle(
             color: AppTheme.lightTheme.colorScheme.secondary,
-            fontSize: 20,
+            fontSize: 20.sp,
           ),
           textAlign: TextAlign.center,
         ),
@@ -473,8 +488,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                               setState(() {
                                 _profileImagePosition = localPosition;
                               });
-
-                              // 프로필 위치가 저장됨
                             },
                             builder: (context, candidateData, rejectedData) {
                               return PhotoDisplayWidget(
@@ -482,24 +495,20 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                 downloadUrl: widget.downloadUrl,
                                 useLocalImage: _useLocalImage,
                                 useDownloadUrl: _useDownloadUrl,
-                                width: 354 / baseWidth * screenWidth,
-                                height: 500 / baseHeight * screenHeight,
+                                width: 354.w,
+                                height: 500.h,
                               );
                             },
                           ),
-                          SizedBox(
-                            height: (screenHeight * (19 / 852)),
-                          ), // 개선된 반응형
+                          SizedBox(height: (19.h)),
                           // 오디오 녹음 위젯
                           AudioRecorderWidget(
                             photoId:
                                 widget.imagePath?.split('/').last ?? 'unknown',
-                            isCommentMode:
-                                false, // 사진 편집 모드: CommentRecord로 저장하지 않음
-                            profileImagePosition:
-                                _profileImagePosition, // 현재 저장된 위치 전달
+                            isCommentMode: false,
+                            profileImagePosition: _profileImagePosition,
                             getProfileImagePosition:
-                                () => _profileImagePosition, // 최신 위치를 가져오는 콜백
+                                () => _profileImagePosition,
                             onRecordingCompleted: (
                               String? audioPath,
                               List<double>? waveformData,
@@ -508,10 +517,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                               setState(() {
                                 _recordedWaveformData = waveformData;
                               });
-                            },
-                            onProfileImageDragged: (Offset position) {
-                              // 피드와 동일한 방식: 이미 DragTarget에서 처리하므로 여기서는 로깅만
-                              // 드래그 이벤트 수신됨
                             },
                           ),
                         ],
@@ -522,28 +527,15 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       ),
       bottomSheet: DraggableScrollableSheet(
         controller: _draggableScrollController,
-        initialChildSize: (screenHeight * 0.195 / screenHeight).clamp(
-          0.15,
-          0.25,
-        ), // 반응형 초기 크기
-        minChildSize: (screenHeight * 0.195 / screenHeight).clamp(
-          0.15,
-          0.25,
-        ), // 반응형 최소 크기
-        maxChildSize: (screenHeight * 0.8 / screenHeight).clamp(
-          0.7,
-          0.9,
-        ), // 반응형 최대 크기
+        initialChildSize: 0.195,
+        minChildSize: 0.195,
+        maxChildSize: 0.8,
         expand: false,
         builder: (context, scrollController) {
           return Container(
             decoration: BoxDecoration(
               color: Color(0xff171717),
-              borderRadius: BorderRadius.vertical(
-                top: Radius.circular(
-                  (screenWidth * 0.041).clamp(12.0, 20.0),
-                ), // 개선된 반응형
-              ),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -551,26 +543,15 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                 // 드래그 핸들
                 Center(
                   child: Container(
-                    height: (screenHeight * 0.006).clamp(4.0, 8.0), // 개선된 반응형
-                    width: (screenWidth * 0.277).clamp(80.0, 120.0), // 개선된 반응형
-                    margin: EdgeInsets.only(
-                      top: (screenHeight * 0.009).clamp(6.0, 10.0), // 개선된 반응형
-                      bottom: (screenHeight * 0.019).clamp(
-                        12.0,
-                        20.0,
-                      ), // 개선된 반응형
-                    ),
+                    height: 5.h,
+                    width: 109.w,
+                    margin: EdgeInsets.only(top: 10.h, bottom: 12.h),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(
-                        (screenWidth * 0.005).clamp(2.0, 4.0),
-                      ), // 개선된 반응형
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
                 ),
-
-                // 헤더 영역: 카테고리 추가 UI를 표시할 때 필요한 헤더
-                // (이제 AddCategoryWidget 내부에서 처리됨)
 
                 // 콘텐츠 영역: 조건에 따라 카테고리 목록 또는 카테고리 추가 UI 표시
                 Expanded(
@@ -588,37 +569,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
                                   _categoryNameController.clear();
                                 });
-                                // 시트를 0.195크기(초기 크기)로 애니메이션
-                                if (mounted) {
-                                  // 위젯이 아직 살아있는지 확인
-                                  Future.delayed(
-                                    Duration(milliseconds: 50),
-                                    () {
-                                      if (mounted &&
-                                          !_isDisposing &&
-                                          _draggableScrollController
-                                              .isAttached) {
-                                        try {
-                                          final animation =
-                                              _draggableScrollController
-                                                  .animateTo(
-                                                    0.195,
-                                                    duration: Duration(
-                                                      milliseconds: 10,
-                                                    ),
-                                                    curve: Curves.fastOutSlowIn,
-                                                  );
-                                          _activeAnimations.add(animation);
-                                          animation.whenComplete(() {
-                                            _activeAnimations.remove(animation);
-                                          });
-                                        } catch (e) {
-                                          return;
-                                        }
-                                      }
-                                    },
-                                  );
-                                }
+                                _animateSheetTo(0.195);
                               },
                               onSavePressed:
                                   () => _createNewCategory(
@@ -634,35 +585,31 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                   _showAddCategoryUI = true;
                                 });
                                 // 시트를 0.7 크기로 애니메이션
-                                if (mounted) {
+                                if (mounted && !_isDisposing) {
                                   // 위젯이 아직 살아있는지 확인
-                                  Future.delayed(
-                                    Duration(milliseconds: 50),
-                                    () {
-                                      if (mounted &&
-                                          !_isDisposing &&
-                                          _draggableScrollController
-                                              .isAttached) {
-                                        try {
-                                          final animation =
-                                              _draggableScrollController
-                                                  .animateTo(
-                                                    0.65,
-                                                    duration: Duration(
-                                                      milliseconds: 10,
-                                                    ),
-                                                    curve: Curves.fastOutSlowIn,
-                                                  );
-                                          _activeAnimations.add(animation);
-                                          animation.whenComplete(() {
-                                            _activeAnimations.remove(animation);
-                                          });
-                                        } catch (e) {
-                                          return;
-                                        }
+                                  WidgetsBinding.instance.addPostFrameCallback((
+                                    _,
+                                  ) {
+                                    if (mounted &&
+                                        !_isDisposing &&
+                                        _draggableScrollController.isAttached) {
+                                      try {
+                                        _draggableScrollController
+                                            .animateTo(
+                                              0.65,
+                                              duration: Duration(
+                                                milliseconds: 300,
+                                              ),
+                                              curve: Curves.easeInOut,
+                                            )
+                                            .catchError((error) {
+                                              return;
+                                            });
+                                      } catch (e) {
+                                        return;
                                       }
-                                    },
-                                  );
+                                    }
+                                  });
                                 }
                               },
                               isLoading: _categoryController.isLoading,
@@ -679,35 +626,43 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
   @override
   void dispose() {
-    _isDisposing = true; // dispose 시작 플래그 설정
+    _isDisposing = true;
 
-    // 진행 중인 애니메이션들을 모두 정리
-    try {
-      _activeAnimations.clear(); // Future는 취소할 수 없으므로 리스트만 클리어
-    } catch (e) {
-      // 애니메이션 정리 오류 무시
-    }
-
-    // DraggableScrollController를 dispose
+    // DraggableScrollController의 모든 애니메이션을 강제 정지
     try {
       if (_draggableScrollController.isAttached) {
-        _draggableScrollController.dispose();
+        // 1. 현재 실행 중인 애니메이션을 즉시 정지
+        _draggableScrollController.reset();
+
+        // 2. 애니메이션을 현재 위치로 점프 (추가 안전장치)
+        _draggableScrollController.jumpTo(_draggableScrollController.size);
       }
     } catch (e) {
-      // DraggableScrollController dispose 오류 무시
+      return;
     }
+
+    // 짧은 지연 후 dispose (애니메이션 완전 정리를 위해)
+    Future.microtask(() {
+      try {
+        if (_draggableScrollController.isAttached) {
+          _draggableScrollController.dispose();
+        }
+      } catch (e) {
+        return;
+      }
+    });
 
     // 다른 리소스들 정리
     try {
       _categoryNameController.dispose();
     } catch (e) {
-      // CategoryNameController dispose 오류 무시
+      return;
     }
 
     try {
       WidgetsBinding.instance.removeObserver(this);
     } catch (e) {
-      // WidgetsBinding observer 제거 오류 무시
+      return;
     }
 
     super.dispose();

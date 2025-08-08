@@ -272,20 +272,25 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                   ),
                   SizedBox(width: 7.w), // 반응형 간격
                   Expanded(
-                    child: Container(
-                      width: 140.w, // 반응형 너비
-                      height: 21.h,
-                      decoration: BoxDecoration(
-                        color: Color(0xff171717).withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      child: _buildWaveformWidget(),
-                    ),
+                    child:
+                        (!_hasAudio ||
+                                _waveformData == null ||
+                                _waveformData!.isEmpty)
+                            ? Container()
+                            : Container(
+                              width: 140.w,
+                              height: 21.h,
+                              decoration: BoxDecoration(
+                                color: Color(0xff171717).withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              child: _buildWaveformWidget(),
+                            ),
                   ),
-                  SizedBox(width: 5 / 393 * MediaQuery.of(context).size.width),
+                  SizedBox(width: 5.w),
                 ],
               ),
-              SizedBox(height: 5 / 852 * MediaQuery.of(context).size.height),
+              SizedBox(height: 5.h),
             ],
           ),
         ],
@@ -295,18 +300,6 @@ class _PhotoGridItemState extends State<PhotoGridItem>
 
   /// 커스텀 파형 위젯을 빌드하는 메서드
   Widget _buildWaveformWidget() {
-    // 오디오가 없는 경우
-    if (!_hasAudio || _waveformData == null || _waveformData!.isEmpty) {
-      return Container(
-        height: 60.h,
-        alignment: Alignment.center,
-        child: Text(
-          '오디오 없음',
-          style: TextStyle(color: Colors.white70, fontSize: 10.sp),
-        ),
-      );
-    }
-
     // 커스텀 파형 표시
     return Container(
       height: 21,

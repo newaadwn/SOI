@@ -11,7 +11,7 @@ class FriendRequestService {
   final FriendRequestRepository _friendRequestRepository;
   final FriendRepository _friendRepository;
   final UserSearchRepository _userSearchRepository;
-  AuthController _authController = AuthController();
+  final AuthController _authController = AuthController();
 
   FriendRequestService({
     required FriendRequestRepository friendRequestRepository,

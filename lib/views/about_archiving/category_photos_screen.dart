@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../controllers/photo_controller.dart';
 import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
@@ -7,52 +8,11 @@ import '../../models/category_data_model.dart';
 import 'photo_grid_item.dart';
 import 'category_editor_screen.dart';
 
+// 카테고리 사진 화면
 class CategoryPhotosScreen extends StatelessWidget {
   final CategoryDataModel category;
 
   const CategoryPhotosScreen({super.key, required this.category});
-
-  /// 화면 크기 구분 메서드들
-  bool _isSmallScreen(BuildContext context) {
-    return MediaQuery.of(context).size.width < 375;
-  }
-
-  bool _isLargeScreen(BuildContext context) {
-    return MediaQuery.of(context).size.width > 414;
-  }
-
-  /// AppBar 높이 계산 (화면 크기별)
-  double _getAppBarHeight(BuildContext context) {
-    if (_isSmallScreen(context)) {
-      return 50.0; // 작은 화면: 작은 AppBar
-    } else if (_isLargeScreen(context)) {
-      return 60.0; // 큰 화면: 큰 AppBar
-    } else {
-      return 56.0; // 일반 화면: 기본 AppBar
-    }
-  }
-
-  /// 타이틀 폰트 크기 계산 (화면 크기별)
-  double _getTitleFontSize(BuildContext context) {
-    if (_isSmallScreen(context)) {
-      return 18.0; // 작은 화면: 작은 폰트
-    } else if (_isLargeScreen(context)) {
-      return 22.0; // 큰 화면: 큰 폰트
-    } else {
-      return 20.0; // 일반 화면: 일반 폰트
-    }
-  }
-
-  /// 아이콘 크기 계산 (화면 크기별)
-  double _getIconSize(BuildContext context) {
-    if (_isSmallScreen(context)) {
-      return 20.0; // 작은 화면: 작은 아이콘
-    } else if (_isLargeScreen(context)) {
-      return 28.0; // 큰 화면: 큰 아이콘
-    } else {
-      return 24.0; // 일반 화면: 일반 아이콘
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,17 +21,11 @@ class CategoryPhotosScreen extends StatelessWidget {
       listen: false,
     );
 
-    // 반응형 값들 계산
-    final titleFontSize = _getTitleFontSize(context);
-    final iconSize = _getIconSize(context);
-    final appBarHeight = _getAppBarHeight(context);
-    final isSmallScreen = _isSmallScreen(context);
-
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       appBar: AppBar(
-        toolbarHeight: appBarHeight,
-        iconTheme: IconThemeData(color: Colors.white, size: iconSize),
+        toolbarHeight: 90.h,
+        iconTheme: IconThemeData(color: Colors.white),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -79,7 +33,7 @@ class CategoryPhotosScreen extends StatelessWidget {
               category.name,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: titleFontSize,
+                fontSize: 20.sp,
                 fontWeight: FontWeight.w600,
               ),
               maxLines: 1,
@@ -108,22 +62,17 @@ class CategoryPhotosScreen extends StatelessWidget {
             return Center(
               child: CircularProgressIndicator(
                 color: Colors.white,
-                strokeWidth: isSmallScreen ? 2.0 : 3.0,
+                strokeWidth: 3.0,
               ),
             );
           }
           if (snapshot.hasError) {
             return Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 20.0 : 40.0,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 40.w),
                 child: Text(
                   'Error: ${snapshot.error}',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isSmallScreen ? 14.0 : 16.0,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 16.sp),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -135,15 +84,10 @@ class CategoryPhotosScreen extends StatelessWidget {
           if (photos.isEmpty) {
             return Center(
               child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 20.0 : 40.0,
-                ),
+                padding: EdgeInsets.symmetric(horizontal: 40.w),
                 child: Text(
                   '사진이 없습니다.',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isSmallScreen ? 14.0 : 16.0,
-                  ),
+                  style: TextStyle(color: Colors.white, fontSize: 16.sp),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -153,12 +97,11 @@ class CategoryPhotosScreen extends StatelessWidget {
           return GridView.builder(
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              crossAxisSpacing: 12, // 피그마 디자인에 맞춤: 수평 간격
+              crossAxisSpacing: 12.w, // 피그마 디자인에 맞춤: 수평 간격
+              mainAxisSpacing: 15.h, // 피그마 디자인에 맞춤: 수직 간격
               childAspectRatio: 175 / 233, // 피그마 디자인 비율: 175x233
             ),
-            padding: EdgeInsets.symmetric(
-              horizontal: 15.0, // 피그마 디자인에 맞춤: 좌우 15px
-            ),
+            padding: EdgeInsets.only(left: 15.w, right: 15.w, top: 20.h),
             itemCount: photos.length,
             itemBuilder: (context, index) {
               final photo = photos[index];

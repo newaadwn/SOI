@@ -29,6 +29,9 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
   bool _isInitializing = false;
   bool _hasInitialized = false;
 
+  // ContactController 참조 저장
+  ContactController? _contactController;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -44,29 +47,39 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // ContactController 참조를 안전하게 저장
+    _contactController ??= Provider.of<ContactController>(
+      context,
+      listen: false,
+    );
+  }
+
+  @override
   void dispose() {
-    // 페이지를 벗어날 때 동기화 일시 중지
-    _pauseSyncIfNeeded();
+    // 페이지를 벗어날 때 동기화 일시 중지 (비동기로 처리)
+    _pauseSyncIfNeededAsync();
     super.dispose();
   }
 
   /// 동기화 재개 (필요한 경우)
   void _resumeSyncIfNeeded() {
-    final contactController = Provider.of<ContactController>(
-      context,
-      listen: false,
-    );
-    contactController.resumeSync();
+    if (_contactController != null) {
+      _contactController!.resumeSync();
+    }
   }
 
-  /// 동기화 일시 중지 (필요한 경우)
-  void _pauseSyncIfNeeded() {
-    if (!mounted) return;
-    final contactController = Provider.of<ContactController>(
-      context,
-      listen: false,
-    );
-    contactController.pauseSync();
+  /// 동기화 일시 중지 (필요한 경우) - 비동기 버전
+  void _pauseSyncIfNeededAsync() {
+    if (_contactController != null) {
+      // 다음 프레임에서 실행하여 위젯 트리 lock 문제 방지
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_contactController != null) {
+          _contactController!.pauseSync();
+        }
+      });
+    }
   }
 
   Future<void> _initializeControllers() async {
@@ -84,13 +97,10 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
 
   bool _shouldLoadContacts() {
     // 이미 로드했거나 권한이 없으면 스킵
-    if (!mounted) return false;
-    final contactController = Provider.of<ContactController>(
-      context,
-      listen: false,
-    );
+    if (!mounted || _contactController == null) return false;
+
     // 활성 동기화 상태일 때만 연락처 로드
-    return contactController.isActivelySyncing && _contacts.isEmpty;
+    return _contactController!.isActivelySyncing && _contacts.isEmpty;
   }
 
   /// FriendController 초기화
@@ -142,20 +152,19 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
     });
 
     try {
-      if (!mounted) return;
-
-      final contactController = Provider.of<ContactController>(
-        context,
-        listen: false,
-      );
+      if (!mounted || _contactController == null) return;
 
       // ✅ 1단계: 권한 확인 (빠른 처리)
-      final result = await contactController.initializeContactPermission();
+      final result = await _contactController!.initializeContactPermission();
 
       // ✅ 2단계: 권한이 허용된 경우에만 연락처 로드 (느린 처리)
-      if (result.isEnabled && mounted && contactController.isActivelySyncing) {
+      if (result.isEnabled &&
+          mounted &&
+          _contactController!.isActivelySyncing) {
         try {
-          _contacts = await contactController.getContacts(forceRefresh: false);
+          _contacts = await _contactController!.getContacts(
+            forceRefresh: false,
+          );
           // debugPrint('연락처 로드 성공: ${_contacts}');
           if (mounted) {
             setState(() {});
@@ -192,14 +201,10 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
   /// 연락처 목록 새로고침
   Future<void> _refreshContacts() async {
     try {
-      if (!mounted) return;
+      if (!mounted || _contactController == null) return;
 
-      final contactController = Provider.of<ContactController>(
-        context,
-        listen: false,
-      );
-      if (contactController.contactSyncEnabled) {
-        _contacts = await contactController.getContacts(forceRefresh: true);
+      if (_contactController!.contactSyncEnabled) {
+        _contacts = await _contactController!.getContacts(forceRefresh: true);
         if (mounted) {
           setState(() {});
         }
@@ -526,13 +531,9 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
 
       // 설정에서 돌아왔을 때 권한 상태 재확인
       Future.delayed(const Duration(seconds: 1), () async {
-        if (!mounted) return;
+        if (!mounted || _contactController == null) return;
 
-        final contactController = Provider.of<ContactController>(
-          context,
-          listen: false,
-        );
-        final result = await contactController.checkPermissionAfterSettings();
+        final result = await _contactController!.checkPermissionAfterSettings();
         if (mounted) {
           _showSnackBar(result.message, result.type);
         }

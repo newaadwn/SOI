@@ -71,27 +71,6 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 375;
-    final isLargeScreen = screenWidth > 414;
-
-    // 화면 크기에 따른 조정값들
-
-    final profileImageSize =
-        isSmallScreen
-            ? 28.0
-            : isLargeScreen
-            ? 40.0
-            : 34.0;
-    final profileIconSize =
-        isSmallScreen
-            ? 20.0
-            : isLargeScreen
-            ? 28.0
-            : 24.0;
-    final addIconSize = 24.0;
-    final appBarPadding = isSmallScreen ? 6.0 : 8.0;
-
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       resizeToAvoidBottomInset: true,
@@ -120,7 +99,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                 String profileImageUrl = imageSnapshot.data ?? '';
 
                 return Padding(
-                  padding: EdgeInsets.all(appBarPadding),
+                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
                   child: Container(
                     decoration: BoxDecoration(shape: BoxShape.circle),
                     child: Builder(
@@ -135,8 +114,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                       );
                                     },
                                     child: SizedBox(
-                                      width: profileImageSize,
-                                      height: profileImageSize,
+                                      width: 34,
+                                      height: 34,
                                       child: CircleAvatar(
                                         backgroundImage:
                                             CachedNetworkImageProvider(
@@ -157,7 +136,6 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                                 ? Icon(
                                                   Icons.person,
                                                   color: Colors.white,
-                                                  size: profileIconSize,
                                                 )
                                                 : null,
                                       ),
@@ -170,13 +148,16 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                         '/profile_screen',
                                       );
                                     },
-                                    child: CircleAvatar(
-                                      backgroundColor: Colors.grey,
-                                      radius: profileImageSize / 2,
-                                      child: Icon(
-                                        Icons.person,
-                                        color: Colors.white,
-                                        size: profileIconSize,
+                                    child: SizedBox(
+                                      width: 34.w,
+                                      height: 34.h,
+                                      child: CircleAvatar(
+                                        backgroundColor: Colors.grey,
+
+                                        child: Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -190,26 +171,25 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         actions: [
           IconButton(
             onPressed: _showCategoryBottomSheet,
-            icon: Icon(Icons.add, color: Colors.white, size: addIconSize),
+            icon: SizedBox(
+              child: Icon(Icons.add, color: Colors.white, size: 33.sp),
+            ),
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(isSmallScreen ? 50 : 60),
+          preferredSize: Size.fromHeight(60.sp),
           child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: isSmallScreen ? 12.0 : 16.0,
-              vertical: isSmallScreen ? 6.0 : 8.0,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 8.w),
             child: Column(
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
-                    _buildChip('전체', 0, screenWidth, isSmallScreen),
-                    SizedBox(width: isSmallScreen ? 6 : 8),
-                    _buildChip('나의 기록', 1, screenWidth, isSmallScreen),
-                    SizedBox(width: isSmallScreen ? 6 : 8),
-                    _buildChip('공유 기록', 2, screenWidth, isSmallScreen),
+                    _buildChip('전체', 0),
+                    SizedBox(width: 8.w),
+                    _buildChip('개인앨범', 1),
+                    SizedBox(width: 8.w),
+                    _buildChip('공유앨범', 2),
                   ],
                 ),
               ],
@@ -222,35 +202,37 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
           // 검색 바
           Padding(
             padding: EdgeInsets.only(
-              left: 20,
-              right: 20,
-              top: 15.0,
-              bottom: 15.0,
+              left: 20.w,
+              right: 20.w,
+              top: 15.h,
+              bottom: 15.h,
             ),
             child: Container(
-              height: 41,
+              height: 41.h,
               decoration: BoxDecoration(
                 color: const Color(0xFF1C1C1C),
                 borderRadius: BorderRadius.circular(16.6),
               ),
               child: Row(
                 children: [
-                  SizedBox(width: 10),
-                  Icon(Icons.search, color: const Color(0xFFCCCCCC), size: 34),
-                  SizedBox(width: 10),
+                  SizedBox(width: 10.w),
+                  Icon(
+                    Icons.search,
+                    color: const Color(0xFFCCCCCC),
+                    size: 24.sp,
+                  ),
+                  SizedBox(width: 10.w),
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.only(bottom: 10),
+                      padding: EdgeInsets.only(bottom: 12.h),
                       child: TextField(
                         controller: _searchController,
                         textAlignVertical: TextAlignVertical.center,
                         cursorColor: const Color(0xFFCCCCCC),
-                        style: TextStyle(color: Colors.white, fontSize: 14),
+                        style: TextStyle(color: Colors.white, fontSize: 14.sp),
                         decoration: InputDecoration(
                           border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(
-                            vertical: isSmallScreen ? 8.0 : 10.0,
-                          ),
+                          contentPadding: EdgeInsets.symmetric(vertical: 10.w),
                         ),
                       ),
                     ),
@@ -266,17 +248,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   }
 
   // 선택 가능한 Chip 위젯 생성
-  Widget _buildChip(
-    String label,
-    int index,
-    double screenWidth,
-    bool isSmallScreen,
-  ) {
+  Widget _buildChip(String label, int index) {
     final isSelected = _selectedIndex == index;
-    final horizontalPadding = isSmallScreen ? 12.0 : 16.0;
-    final verticalPadding = isSmallScreen ? 6.0 : 8.0;
-    final fontSize = isSmallScreen ? 13.0 : 14.0;
-    final borderRadius = isSmallScreen ? 16.0 : 20.0;
 
     return Expanded(
       child: GestureDetector(
@@ -286,13 +259,10 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
           });
         },
         child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding,
-            vertical: verticalPadding,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xff292929) : Colors.transparent,
-            borderRadius: BorderRadius.circular(borderRadius),
+            borderRadius: BorderRadius.circular(20),
           ),
           child: Center(
             child: Text(
@@ -300,7 +270,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: fontSize,
+                fontSize: 14.sp,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -314,33 +284,6 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   // 카테고리 추가 bottom sheet 표시
   void _showCategoryBottomSheet() {
     final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 375;
-    final isLargeScreen = screenWidth > 414;
-
-    // 반응형 값들
-    final bottomSheetHeight =
-        isSmallScreen
-            ? 0.25
-            : isLargeScreen
-            ? 0.35
-            : 0.3;
-    final headerPadding =
-        isSmallScreen
-            ? const EdgeInsets.fromLTRB(10, 14, 16, 6)
-            : const EdgeInsets.fromLTRB(12, 17, 20, 8);
-    final backButtonSize =
-        isSmallScreen ? const Size(28, 32) : const Size(34, 38);
-    final titleFontSize = isSmallScreen ? 14.0 : 16.0;
-    final saveButtonSize =
-        isSmallScreen ? const Size(45, 22) : const Size(51, 25);
-    final saveFontSize = isSmallScreen ? 12.0 : 14.0;
-    final addButtonSize =
-        isSmallScreen ? const Size(105, 26) : const Size(117, 30);
-    final addButtonFontSize = isSmallScreen ? 12.0 : 14.0;
-    final addIconSize = isSmallScreen ? 15.0 : 17.0;
-    final textFieldPadding = isSmallScreen ? 18.0 : 22.0;
-    final textFieldFontSize = isSmallScreen ? 12.0 : 14.0;
-    final counterFontSize = isSmallScreen ? 10.0 : 12.0;
 
     showModalBottomSheet(
       context: context,
@@ -352,7 +295,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               bottom: MediaQuery.of(context).viewInsets.bottom,
             ),
             child: Container(
-              height: MediaQuery.of(context).size.height * bottomSheetHeight,
+              height: 200.h,
               decoration: const BoxDecoration(
                 color: Color(0xFF171717),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(24.8)),
@@ -362,14 +305,14 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                 children: [
                   // 헤더 영역
                   Padding(
-                    padding: headerPadding,
+                    padding: EdgeInsets.fromLTRB(12.w, 17.h, 20.w, 8.h),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         // 뒤로가기 버튼
                         SizedBox(
-                          width: backButtonSize.width,
-                          height: backButtonSize.height,
+                          width: 34.w,
+                          height: 38.h,
                           child: IconButton(
                             onPressed: () {
                               Navigator.pop(context);
@@ -378,7 +321,6 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                             icon: Icon(
                               Icons.arrow_back_ios,
                               color: const Color(0xFFD9D9D9),
-                              size: isSmallScreen ? 12 : 15,
                             ),
                             padding: EdgeInsets.zero,
                           ),
@@ -389,17 +331,17 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                           '새 카테고리 만들기',
                           style: TextStyle(
                             color: const Color(0xFFFFFFFF),
-                            fontSize: titleFontSize,
+                            fontSize: 16.sp,
                             fontWeight: FontWeight.w600,
-                            fontFamily: 'Pretendard Variable',
-                            letterSpacing: -0.5 * titleFontSize / 100,
+                            fontFamily: 'Pretendard',
+                            letterSpacing: -0.5,
                           ),
                         ),
 
                         // 저장 버튼
                         Container(
-                          width: saveButtonSize.width,
-                          height: saveButtonSize.height,
+                          width: 51.w,
+                          height: 35.h,
                           decoration: BoxDecoration(
                             color: const Color(0xFF323232),
                             borderRadius: BorderRadius.circular(16.5),
@@ -417,9 +359,9 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                               '저장',
                               style: TextStyle(
                                 color: const Color(0xFFFFFFFF),
-                                fontSize: saveFontSize,
+                                fontSize: 14.sp,
                                 fontWeight: FontWeight.w600,
-                                fontFamily: 'Pretendard Variable',
+                                fontFamily: 'Pretendard',
                                 letterSpacing: -0.4,
                               ),
                             ),
@@ -434,18 +376,15 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                     width: screenWidth,
                     height: 1,
                     color: const Color(0xFF3D3D3D),
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                    margin: EdgeInsets.symmetric(horizontal: 2.w),
                   ),
 
                   // 친구 추가 섹션
                   Padding(
-                    padding: EdgeInsets.only(
-                      top: isSmallScreen ? 8 : 10,
-                      left: isSmallScreen ? 10 : 12,
-                    ),
+                    padding: EdgeInsets.only(top: 10.h, left: 12.w),
                     child: Container(
-                      width: addButtonSize.width,
-                      height: addButtonSize.height,
+                      width: 117.w,
+                      height: 35.h,
                       decoration: BoxDecoration(
                         color: const Color(0xFF323232),
                         borderRadius: BorderRadius.circular(16.5),
@@ -453,19 +392,19 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
-                            Icons.add,
-                            color: const Color(0xFFE2E2E2),
-                            size: addIconSize,
+                          Image.asset(
+                            'assets/category_add.png',
+                            width: 17.sp,
+                            height: 17.sp,
                           ),
-                          const SizedBox(width: 6),
+                          SizedBox(width: 6.w),
                           Text(
                             '친구 추가하기',
                             style: TextStyle(
                               color: const Color(0xFFE2E2E2),
-                              fontSize: addButtonFontSize,
+                              fontSize: 14.sp,
                               fontWeight: FontWeight.w400,
-                              fontFamily: 'Pretendard Variable',
+                              fontFamily: 'Pretendard',
                               letterSpacing: -0.4,
                             ),
                           ),
@@ -476,25 +415,26 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
                   // 입력 필드 영역
                   Padding(
-                    padding: EdgeInsets.only(left: textFieldPadding),
+                    padding: EdgeInsets.only(left: 22.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         TextField(
                           controller: _categoryNameController,
                           maxLength: 20,
+                          cursorColor: const Color(0xFFCCCCCC),
                           style: TextStyle(
                             color: const Color(0xFFFFFFFF),
-                            fontSize: textFieldFontSize,
-                            fontFamily: 'Pretendard Variable',
+                            fontSize: 14.sp,
+                            fontFamily: 'Pretendard',
                           ),
                           decoration: InputDecoration(
                             hintText: '카테고리의 이름을 입력해 주세요.',
                             hintStyle: TextStyle(
                               color: const Color(0xFFCCCCCC),
-                              fontSize: textFieldFontSize,
+                              fontSize: 14.sp,
                               fontWeight: FontWeight.w400,
-                              fontFamily: 'Pretendard Variable',
+                              fontFamily: 'Pretendard',
                               letterSpacing: -0.4,
                             ),
                             border: InputBorder.none,
@@ -504,7 +444,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
                         // 커스텀 글자 수 표시
                         Padding(
-                          padding: const EdgeInsets.only(right: 11),
+                          padding: EdgeInsets.only(right: 11.w),
                           child: Align(
                             alignment: Alignment.centerRight,
                             child: ValueListenableBuilder<TextEditingValue>(
@@ -514,9 +454,9 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                   '${value.text.length}/20자',
                                   style: TextStyle(
                                     color: const Color(0xFFCCCCCC),
-                                    fontSize: counterFontSize,
+                                    fontSize: 12.sp,
                                     fontWeight: FontWeight.w500,
-                                    fontFamily: 'Pretendard Variable',
+                                    fontFamily: 'Pretendard',
                                     letterSpacing: -0.4,
                                   ),
                                 );
@@ -537,9 +477,15 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   // 카테고리 생성 처리 함수
   Future<void> _createNewCategory() async {
     if (_categoryNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('카테고리 이름을 입력해주세요')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '카테고리 이름을 입력해주세요',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Color(0xff1c1c1c),
+        ),
+      );
       return;
     }
 
@@ -558,9 +504,15 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
       final String? userId = authController.getUserId;
 
       if (userId == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('로그인이 필요합니다. 다시 로그인해주세요.')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '로그인이 필요합니다. 다시 로그인해주세요.',
+              style: TextStyle(color: Colors.white),
+            ),
+            backgroundColor: Color(0xff1c1c1c),
+          ),
+        );
         return;
       }
 
@@ -576,15 +528,16 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
       // bottom sheet 닫기
       Navigator.pop(context);
       _categoryNameController.clear();
-
-      // 성공 메시지
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('카테고리가 생성되었습니다!')));
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('카테고리 생성 중 오류가 발생했습니다')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '카테고리 생성 중 오류가 발생했습니다',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Color(0xff1c1c1c),
+        ),
+      );
     }
   }
 

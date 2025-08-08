@@ -1,8 +1,6 @@
 import 'dart:io';
-import 'package:bitcoin_icons/bitcoin_icons.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_material_design_icons/flutter_material_design_icons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -134,7 +132,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                     vertical: 16.h,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A2A),
+                    color: const Color(0xFF1c1c1c),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Column(
@@ -176,7 +174,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                   height: 62.h,
                   padding: EdgeInsets.symmetric(horizontal: 20.w),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2A2A2A),
+                    color: const Color(0xFF1c1c1c),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -218,7 +216,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                       _showExitDialog(context);
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2A2A2A),
+                      backgroundColor: const Color(0xFF1c1c1c),
                       foregroundColor: Color(0xffff0000),
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -262,7 +260,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
       builder: (BuildContext context) {
         return Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF2A2A2A),
+            color: const Color(0xFF1c1c1c),
             borderRadius: BorderRadius.only(
               topLeft: Radius.circular(20),
               topRight: Radius.circular(20),
@@ -297,10 +295,10 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
 
               // 카메라로 촬영
               ListTile(
-                leading: Icon(
-                  BitcoinIcons.photo_outline,
-                  color: Colors.white,
-                  size: 26.sp,
+                leading: Image.asset(
+                  'assets/camera_archive_edit.png',
+                  width: 24.w,
+                  height: 24.h,
                 ),
                 title: Text(
                   '사진찍기',
@@ -319,10 +317,10 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
 
               // 갤러리에서 선택
               ListTile(
-                leading: Icon(
-                  BitcoinIcons.photo_outline,
-                  color: Colors.white,
-                  size: 24.sp,
+                leading: Image.asset(
+                  'assets/library_archive_edit.png',
+                  width: 24.w,
+                  height: 24.h,
                 ),
                 title: Text(
                   '라이브러리에서 선택',
@@ -341,10 +339,10 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
 
               // 카테고리에서 선택
               ListTile(
-                leading: Icon(
-                  MdiIcons.cameraOutline,
-                  color: Colors.white,
-                  size: 24.sp,
+                leading: Image.asset(
+                  'assets/archiving_archive.png',
+                  width: 24.w,
+                  height: 24.h,
                 ),
                 title: Text(
                   '카테고리에서 선택',
@@ -363,11 +361,10 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
 
               // 표지삭제
               ListTile(
-                leading: Container(
-                  width: 21.w,
-                  height: 21.h,
-                  alignment: Alignment.center,
-                  child: Image.asset('assets/delete.png'),
+                leading: Image.asset(
+                  'assets/trash_archive_edit.png',
+                  width: 24.w,
+                  height: 24.h,
                 ),
                 title: Text(
                   '표지삭제',
@@ -478,9 +475,12 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('표지사진이 변경되었습니다.'),
-          backgroundColor: Color(0xFF007AFF),
+        SnackBar(
+          content: Text(
+            '표지사진이 변경되었습니다.',
+            style: TextStyle(color: Colors.white),
+          ),
+          backgroundColor: Color(0xFF1c1c1c),
         ),
       );
     } else {
@@ -512,7 +512,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('표지사진이 삭제되었습니다.'),
-          backgroundColor: Color(0xFF007AFF),
+          backgroundColor: Color(0xFF1c1c1c),
         ),
       );
     } else {
@@ -531,7 +531,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          backgroundColor: const Color(0xFF2A2A2A),
+          backgroundColor: const Color(0xFF1c1c1c),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),

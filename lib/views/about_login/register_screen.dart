@@ -8,7 +8,7 @@ import 'auth_final_screen.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class AuthScreen extends StatefulWidget {
-  AuthScreen({super.key});
+  const AuthScreen({super.key});
 
   @override
   _AuthScreenState createState() => _AuthScreenState();
