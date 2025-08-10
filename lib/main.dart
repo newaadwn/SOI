@@ -22,6 +22,7 @@ import 'views/about_archiving/my_archives_screen.dart';
 import 'views/about_archiving/shared_archives_screen.dart';
 import 'views/about_camera/camera_screen.dart';
 import 'views/about_feed/feed_home.dart';
+import 'views/about_friends/friend_list_screen.dart';
 import 'views/about_login/register_screen.dart';
 import 'views/about_login/login_screen.dart';
 import 'views/about_login/start_screen.dart';
@@ -34,7 +35,6 @@ import 'controllers/audio_controller.dart';
 import 'package:flutter/rendering.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'views/home_navigator_screen.dart';
-import 'views/home_screen.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 void main() async {
@@ -167,7 +167,7 @@ class _MyAppState extends State<MyApp> {
           debugShowCheckedModeBanner: false,
           routes: {
             '/': (context) => const StartScreen(),
-            '/home': (context) => const HomeScreen(),
+
             '/home_navigation_screen':
                 (context) => HomePageNavigationBar(currentPageIndex: 1),
             '/camera': (context) => const CameraScreen(),
@@ -184,6 +184,7 @@ class _MyAppState extends State<MyApp> {
 
             // 친구 관리 라우트
             '/contact_manager': (context) => const FriendManagementScreen(),
+            '/friend_list': (context) => const FriendListScreen(),
 
             // 피드 홈 라우트
             '/feed_home': (context) => const FeedHomeScreen(),

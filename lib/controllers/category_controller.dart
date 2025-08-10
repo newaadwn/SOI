@@ -73,7 +73,7 @@ class CategoryController extends ChangeNotifier {
       // 서비스에서 카테고리 목록 가져오기
       final categories = await _categoryService.getUserCategories(userId);
       // debugPrint('[CategoryController] 서비스에서 받은 카테고리 수: ${categories.length}');
-      
+
       _userCategories = categories;
       // debugPrint('[CategoryController] _userCategories에 할당 후: ${_userCategories.length}');
 
@@ -83,7 +83,7 @@ class CategoryController extends ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
-      
+
       // debugPrint('[CategoryController] 카테고리 로드 완료 - 최종 개수: ${_userCategories.length}');
       // debugPrint('[CategoryController] _isLoading 최종 상태: $_isLoading');
     } catch (e) {
@@ -561,20 +561,25 @@ class CategoryController extends ChangeNotifier {
     try {
       final profileImages = <String>[];
 
-      for (int i = 0; i < mates.length; i++) {
+      for (final mateUid in mates) {
         try {
-          final profileUrl = await authController.getUserProfileImageUrl();
+          // 각 mate의 UID로 해당 사용자의 프로필 이미지 URL을 가져옴
+          final profileUrl = await authController.getUserProfileImageUrlById(
+            mateUid,
+          );
           if (profileUrl != null && profileUrl.isNotEmpty) {
             profileImages.add(profileUrl);
           }
         } catch (e) {
           // 개별 프로필 이미지 로딩 실패는 무시하고 계속 진행
+          debugPrint('사용자 $mateUid의 프로필 이미지 로딩 실패: $e');
           continue;
         }
       }
 
       return profileImages;
     } catch (e) {
+      debugPrint('카테고리 프로필 이미지 로딩 전체 실패: $e');
       return [];
     }
   }

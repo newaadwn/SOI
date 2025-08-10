@@ -288,4 +288,17 @@ class FriendService {
       return {'favorites': [], 'recent': [], 'frequent': [], 'others': []};
     }
   }
+
+  /// 현재 사용자 프로필 이미지 변경 시 모든 친구 문서에 반영
+  Future<void> propagateCurrentUserProfileImage(
+    String newProfileImageUrl,
+  ) async {
+    try {
+      await _friendRepository.propagateCurrentUserProfileImage(
+        newProfileImageUrl,
+      );
+    } catch (e) {
+      // print('프로필 이미지 전파 실패: $e');
+    }
+  }
 }

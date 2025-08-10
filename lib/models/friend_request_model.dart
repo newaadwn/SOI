@@ -62,6 +62,9 @@ class FriendRequestModel {
   /// 요청을 보낸 사용자 닉네임
   final String senderid;
 
+  /// 요청을 보낸 사용자 프로필 이미지 URL (선택사항)
+  final String? senderProfileImageUrl;
+
   /// 요청을 받은 사용자 닉네임
   final String receiverid;
 
@@ -82,6 +85,7 @@ class FriendRequestModel {
     required this.senderUid,
     required this.receiverUid,
     required this.senderid,
+    this.senderProfileImageUrl,
     required this.receiverid,
     required this.status,
     this.message,
@@ -108,6 +112,7 @@ class FriendRequestModel {
       senderUid: json['senderUid'] as String,
       receiverUid: json['receiverUid'] as String,
       senderid: json['senderid'] as String,
+      senderProfileImageUrl: json['senderProfileImageUrl'] as String?,
       receiverid: json['receiverid'] as String,
       status: FriendRequestStatusExtension.fromString(json['status'] as String),
       message: json['message'] as String?,
@@ -125,6 +130,7 @@ class FriendRequestModel {
       'senderUid': senderUid,
       'receiverUid': receiverUid,
       'senderid': senderid,
+      'senderProfileImageUrl': senderProfileImageUrl,
       'receiverid': receiverid,
       'status': status.value,
       'message': message,
@@ -139,6 +145,7 @@ class FriendRequestModel {
     String? senderUid,
     String? receiverUid,
     String? senderid,
+    String? senderProfileImageUrl,
     String? receiverid,
     FriendRequestStatus? status,
     String? message,
@@ -150,6 +157,8 @@ class FriendRequestModel {
       senderUid: senderUid ?? this.senderUid,
       receiverUid: receiverUid ?? this.receiverUid,
       senderid: senderid ?? this.senderid,
+      senderProfileImageUrl:
+          senderProfileImageUrl ?? this.senderProfileImageUrl,
       receiverid: receiverid ?? this.receiverid,
       status: status ?? this.status,
       message: message ?? this.message,
@@ -168,6 +177,7 @@ class FriendRequestModel {
         other.senderUid == senderUid &&
         other.receiverUid == receiverUid &&
         other.senderid == senderid &&
+        other.senderProfileImageUrl == senderProfileImageUrl &&
         other.receiverid == receiverid &&
         other.status == status &&
         other.message == message &&
@@ -182,6 +192,7 @@ class FriendRequestModel {
         senderUid.hashCode ^
         receiverUid.hashCode ^
         senderid.hashCode ^
+        senderProfileImageUrl.hashCode ^
         receiverid.hashCode ^
         status.hashCode ^
         message.hashCode ^
@@ -192,6 +203,6 @@ class FriendRequestModel {
   /// 디버그용 문자열 표현
   @override
   String toString() {
-    return 'FriendRequestModel(id: $id, senderUid: $senderUid, receiverUid: $receiverUid, senderid: $senderid, receiverid: $receiverid, status: $status, message: $message, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'FriendRequestModel(id: $id, senderUid: $senderUid, receiverUid: $receiverUid, senderid: $senderid, senderProfileImageUrl: $senderProfileImageUrl, receiverid: $receiverid, status: $status, message: $message, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }

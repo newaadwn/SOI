@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 import '../models/category_data_model.dart';
 
 /// Firebase에서 category 관련 데이터를 가져오고, 저장하고, 업데이트하고 삭제하는 등의 로직들
@@ -405,8 +406,35 @@ class CategoryRepository {
     required String categoryId,
     required String uid,
   }) async {
-    await _firestore.collection('categories').doc(categoryId).update({
-      'mates': FieldValue.arrayUnion([uid]),
-    });
+    debugPrint('CategoryRepository.addUidToCategory 호출');
+    debugPrint('- categoryId: $categoryId');
+    debugPrint('- uid: $uid');
+
+    try {
+      // 먼저 카테고리가 존재하는지 확인
+      final categoryDoc =
+          await _firestore.collection('categories').doc(categoryId).get();
+      if (!categoryDoc.exists) {
+        throw Exception('카테고리가 존재하지 않습니다: $categoryId');
+      }
+
+      // 현재 mates 목록 확인
+      final data = categoryDoc.data();
+      final currentMates = (data?['mates'] as List?)?.cast<String>() ?? [];
+
+      if (currentMates.contains(uid)) {
+        debugPrint('이미 카테고리에 포함된 사용자입니다: $uid');
+        return; // 이미 포함되어 있으면 아무 작업하지 않음
+      }
+
+      // arrayUnion을 사용하여 중복 없이 추가
+      await _firestore.collection('categories').doc(categoryId).update({
+        'mates': FieldValue.arrayUnion([uid]),
+      });
+      debugPrint('Firestore 업데이트 성공 - 사용자 추가됨: $uid');
+    } catch (e) {
+      debugPrint('Firestore 업데이트 실패: $e');
+      rethrow;
+    }
   }
 }

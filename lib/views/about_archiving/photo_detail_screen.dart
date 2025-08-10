@@ -45,8 +45,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
   // 음성 댓글 관련 맵들
   final Map<String, List<CommentRecordModel>> _photoComments = {};
-  final Map<String, Offset?> _profileImagePositions = {};
-  final Map<String, String> _droppedProfileImageUrls = {};
+  final Map<String, Offset?> _profileImagePositions =
+      {}; // 현재 사용자의 드래그 위치만 임시 저장
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
   _commentStreams = {};
   final Map<String, bool> _voiceCommentSavedStates = {};
@@ -159,7 +159,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     setState(() {
       _photoComments[photoId] = comments;
 
-      // 현재 사용자 댓글 존재 여부 확인
+      // 현재 사용자가 댓글을 올렸는지만 확인 (다른 사용자 댓글과 무관)
       final currentUserId = _authController?.getUserId;
       if (currentUserId != null) {
         _voiceCommentSavedStates[photoId] = comments.any(
@@ -167,15 +167,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         );
       }
 
-      // 프로필 위치가 있는 댓글 처리
-      for (var comment in comments) {
-        if (comment.profilePosition != null) {
-          _profileImagePositions[photoId] = comment.profilePosition!;
-          _droppedProfileImageUrls[photoId] = comment.profileImageUrl;
-          // Updated profile position and image URL from real-time data
-          break;
-        }
-      }
+      // 댓글에서 프로필 위치는 각 댓글 객체에서 직접 사용하므로 별도 저장 불필요
     });
   }
 
@@ -389,22 +381,18 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                               ),
                             ),
 
-                            // 드롭된 프로필 이미지 표시
-                            if (_profileImagePositions[photo.id] != null)
-                              Positioned(
-                                left: (_profileImagePositions[photo.id]!.dx -
-                                        13.5)
-                                    .clamp(0, (screenWidth * 0.9) - 27),
-                                top: (_profileImagePositions[photo.id]!.dy -
-                                        13.5)
-                                    .clamp(0, (screenHeight * 0.65) - 27),
-                                child: Consumer<AuthController>(
-                                  builder: (context, authController, child) {
-                                    // 간단한 플로우: 캐시된 URL 직접 사용
-                                    String? profileImageUrl =
-                                        _droppedProfileImageUrls[photo.id];
-
-                                    return Consumer<AuthController>(
+                            // 모든 댓글의 드롭된 프로필 이미지들 표시
+                            ...(_photoComments[photo.id] ?? [])
+                                .where(
+                                  (comment) => comment.profilePosition != null,
+                                )
+                                .map(
+                                  (comment) => Positioned(
+                                    left: (comment.profilePosition!.dx - 13.5)
+                                        .clamp(0, (screenWidth * 0.9) - 27),
+                                    top: (comment.profilePosition!.dy - 13.5)
+                                        .clamp(0, (screenHeight * 0.65) - 27),
+                                    child: Consumer<AuthController>(
                                       builder: (
                                         context,
                                         authController,
@@ -417,38 +405,31 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                   context,
                                                   listen: false,
                                                 );
-                                            // 프로필 위치를 가진 댓글 찾기
-                                            final comments =
-                                                _photoComments[photo.id] ?? [];
-                                            for (var comment in comments) {
-                                              if (comment.profilePosition !=
-                                                      null &&
-                                                  comment.audioUrl.isNotEmpty) {
-                                                // AudioController로 재생
-                                                await _audioController!
-                                                    .toggleAudio(
-                                                      comment.audioUrl,
-                                                    );
-                                                break;
-                                              }
+                                            // 해당 댓글의 오디오 재생
+                                            if (comment.audioUrl.isNotEmpty) {
+                                              await _audioController!
+                                                  .toggleAudio(
+                                                    comment.audioUrl,
+                                                  );
                                             }
                                           },
                                           child: SizedBox(
                                             width: 27,
                                             height: 27,
                                             child:
-                                                profileImageUrl != null &&
-                                                        profileImageUrl
-                                                            .isNotEmpty
+                                                comment
+                                                        .profileImageUrl
+                                                        .isNotEmpty
                                                     ? ClipOval(
                                                       child: CachedNetworkImage(
                                                         imageUrl:
-                                                            profileImageUrl,
+                                                            comment
+                                                                .profileImageUrl,
                                                         width: 27,
                                                         height: 27,
                                                         key: ValueKey(
-                                                          'detail_profile_${profileImageUrl}_$_profileImageRefreshKey',
-                                                        ), // 리프레시 키를 사용한 캐시 무효화
+                                                          'detail_profile_${comment.profileImageUrl}_$_profileImageRefreshKey',
+                                                        ),
                                                         fit: BoxFit.cover,
                                                         placeholder:
                                                             (
@@ -515,10 +496,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                           ),
                                         );
                                       },
-                                    );
-                                  },
+                                    ),
+                                  ),
                                 ),
-                              ),
 
                             // 오디오 컨트롤 오버레이 (하단에 배치)
                             if (photo.audioUrl.isNotEmpty)
@@ -725,10 +705,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                           fontSize: 16.sp,
                           fontFamily: "Pretendard",
                           fontWeight: FontWeight.w600,
-                          height: (0.5).sp, // line height 조정
+                          height: (1.3).h,
                         ),
                       ),
-                      SizedBox(height: (4.4).h), // 반응형 간격
+
                       // 날짜
                       Text(
                         FormatUtils.formatDate(photo.createdAt),
@@ -737,7 +717,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                           fontSize: 14.sp,
                           fontFamily: "Pretendard",
                           fontWeight: FontWeight.w400,
-                          height: (0.5).sp, // line height 조정
                         ),
                       ),
                     ],
@@ -747,11 +726,12 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
               SizedBox(height: (31.6).h),
               Consumer<AuthController>(
                 builder: (context, authController, child) {
-                  // 이미 저장된 상태인지 확인
-                  final isSaved = _voiceCommentSavedStates[photo.id] == true;
+                  // 현재 사용자가 이미 댓글을 올렸는지 확인
+                  final currentUserHasComment =
+                      _voiceCommentSavedStates[photo.id] == true;
 
-                  // 이미 댓글이 있으면 저장된 프로필 이미지 표시
-                  if (isSaved) {
+                  // 현재 사용자가 이미 댓글을 올렸으면 프로필 이미지 표시
+                  if (currentUserHasComment) {
                     final comments = _photoComments[photo.id] ?? [];
                     final currentUserId = authController.currentUser?.uid;
 
@@ -868,7 +848,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     }
                   }
 
-                  // 댓글이 없으면 AudioRecorderWidget 표시
+                  // 현재 사용자가 댓글을 올리지 않았으면 AudioRecorderWidget 표시
                   return AudioRecorderWidget(
                     photoId: photo.id,
                     isCommentMode: true, // 명시적으로 댓글 모드 설정

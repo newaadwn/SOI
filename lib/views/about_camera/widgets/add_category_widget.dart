@@ -56,7 +56,7 @@ class AddCategoryWidget extends StatelessWidget {
                 // 저장 버튼
                 SizedBox(
                   width: 51.w,
-                  height: 25.h,
+                  height: 35.h,
                   child: ElevatedButton(
                     onPressed: onSavePressed,
                     style: ElevatedButton.styleFrom(
@@ -97,16 +97,21 @@ class AddCategoryWidget extends StatelessWidget {
                   children: [
                     // 친구 추가하기 버튼
                     SizedBox(
-                      width: 109.w,
-                      height: 40.h,
+                      width: 129.w,
+                      height: 30.h,
                       child: ElevatedButton.icon(
                         onPressed: () {
-                          // 친구 추가하기 로직
+                          // Navigator 호출을 안전하게 처리
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (context.mounted) {
+                              Navigator.pushNamed(context, '/friend_list');
+                            }
+                          });
                         },
                         icon: Image.asset(
                           'assets/person_add.png',
-                          width: 17,
-                          height: 17,
+                          width: 17.w,
+                          height: 17.h,
                           color: Color(0xFFE2E2E2),
                         ),
                         label: Text(

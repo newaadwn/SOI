@@ -1223,22 +1223,28 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+
                       children: [
+                        // 사용자 닉네임
                         Text(
-                          '@${_userNames[photo.userID] ?? photo.userID}', // @ 형식으로 표시
+                          '@${_userNames[photo.userID] ?? photo.userID}',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: screenWidth * 0.037,
+                            fontSize: 16.sp,
+                            fontFamily: "Pretendard",
                             fontWeight: FontWeight.w600,
+                            height: (1.3).h,
                           ),
                         ),
+
+                        // 날짜
                         Text(
-                          _formatTimestamp(
-                            photo.createdAt,
-                          ), // PhotoDataModel의 실제 필드명 사용
+                          _formatTimestamp(photo.createdAt),
                           style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: screenWidth * 0.032,
+                            color: Color(0xffcccccc),
+                            fontSize: 14.sp,
+                            fontFamily: "Pretendard",
+                            fontWeight: FontWeight.w400,
                           ),
                         ),
                       ],

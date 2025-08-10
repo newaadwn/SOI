@@ -6,16 +6,16 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// 🧑‍🤝‍🧑 프로필 이미지 행 위젯 (Figma 디자인 기준)
 class ArchiveProfileRowWidget extends StatelessWidget {
-  final List<String> profileImages;
+  final List<String> mates; // UID 리스트
 
-  const ArchiveProfileRowWidget({super.key, required this.profileImages});
+  const ArchiveProfileRowWidget({super.key, required this.mates});
 
   @override
   Widget build(BuildContext context) {
     return Consumer<AuthController>(
       builder: (context, authController, child) {
-        // 이미지가 없거나 비어있으면 기본 이미지 하나만 표시
-        if (profileImages.isEmpty) {
+        // mates가 없거나 비어있으면 기본 이미지 하나만 표시
+        if (mates.isEmpty) {
           return SizedBox(
             width: 19,
             height: 19,
@@ -28,53 +28,64 @@ class ArchiveProfileRowWidget extends StatelessWidget {
         }
 
         // 최대 3개까지만 표시하도록 제한
-        final displayImages = profileImages.take(3).toList();
+        final displayMates = mates.take(3).toList();
 
         return SizedBox(
           height: 19.sp,
-
           child: Row(
             children:
-                displayImages.asMap().entries.map<Widget>((entry) {
-                  final imageUrl = entry.value;
+                displayMates.map<Widget>((mateUid) {
+                  return FutureBuilder<String>(
+                    future: authController.getUserProfileImageUrlById(mateUid),
+                    builder: (context, snapshot) {
+                      String? imageUrl;
+                      if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                        imageUrl = snapshot.data;
+                      }
 
-                  return imageUrl.isNotEmpty
-                      ? SizedBox(
+                      return SizedBox(
                         width: 19,
                         height: 19,
-                        child: ClipOval(
-                          child: CachedNetworkImage(
-                            imageUrl: imageUrl,
-                            fit: BoxFit.cover,
-                            placeholder:
-                                (context, url) => Container(
-                                  color: Colors.grey[400],
+                        child:
+                            imageUrl != null && imageUrl.isNotEmpty
+                                ? ClipOval(
+                                  child: CachedNetworkImage(
+                                    imageUrl: imageUrl,
+                                    fit: BoxFit.cover,
+                                    placeholder:
+                                        (context, url) => Container(
+                                          color: Colors.grey[400],
+                                          child: Icon(
+                                            Icons.person,
+                                            color: Colors.white,
+                                            size: 12.sp,
+                                          ),
+                                        ),
+                                    errorWidget:
+                                        (context, url, error) => Container(
+                                          color: Colors.grey[400],
+                                          child: Icon(
+                                            Icons.person,
+                                            color: Colors.white,
+                                            size: 12.sp,
+                                          ),
+                                        ),
+                                  ),
+                                )
+                                : Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[400],
+                                    shape: BoxShape.circle,
+                                  ),
                                   child: Icon(
                                     Icons.person,
                                     color: Colors.white,
                                     size: 12.sp,
                                   ),
                                 ),
-                            errorWidget:
-                                (context, url, error) => Container(
-                                  color: Colors.grey[400],
-                                  child: Icon(
-                                    Icons.person,
-                                    color: Colors.white,
-                                    size: 12.sp,
-                                  ),
-                                ),
-                          ),
-                        ),
-                      )
-                      : Container(
-                        color: Colors.grey[400],
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.white,
-                          size: 12.sp,
-                        ),
                       );
+                    },
+                  );
                 }).toList(),
           ),
         );

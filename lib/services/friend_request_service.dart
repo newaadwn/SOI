@@ -64,6 +64,15 @@ class FriendRequestService {
 
       final currentUser = _authController.currentUser!;
       final currentUserId = await _authController.getUserID();
+      final currentUserProfileImageUrl =
+          await _authController.getUserProfileImageUrl();
+      // 빈 문자열이면 null 처리 (Firestore 저장/표시 시 오류 방지)
+      final sanitizedProfileImageUrl =
+          (currentUserProfileImageUrl.isNotEmpty &&
+                  (currentUserProfileImageUrl.startsWith('http://') ||
+                      currentUserProfileImageUrl.startsWith('https://')))
+              ? currentUserProfileImageUrl
+              : null;
 
       // displayName이 null인 경우 기본값 사용
       final displayName = currentUser.displayName ?? '사용자';
@@ -81,6 +90,7 @@ class FriendRequestService {
         receiverUid: receiverUid,
         receiverId: receiverInfo.id,
         senderid: currentUserInfo.id,
+        senderProfileImageUrl: sanitizedProfileImageUrl,
         message: message,
       );
 
@@ -114,6 +124,22 @@ class FriendRequestService {
       final currentProfileImageUrl =
           await _authController.getUserProfileImageUrl();
 
+      // 발신자(친구) 프로필 이미지 URL도 조회 (수락 후 상대 기기에서 현재 사용자 이미지 표시, 내 기기에서 친구 이미지 표시)
+      final senderProfileImageUrl = await _authController
+          .getUserProfileImageUrlById(request.senderUid);
+      final sanitizedSenderProfileImageUrl =
+          senderProfileImageUrl.isNotEmpty &&
+                  (senderProfileImageUrl.startsWith('http://') ||
+                      senderProfileImageUrl.startsWith('https://'))
+              ? senderProfileImageUrl
+              : null;
+      final sanitizedCurrentProfileImageUrl =
+          currentProfileImageUrl.isNotEmpty &&
+                  (currentProfileImageUrl.startsWith('http://') ||
+                      currentProfileImageUrl.startsWith('https://'))
+              ? currentProfileImageUrl
+              : null;
+
       // 3. 요청 발신자 정보 가져오기
       final senderInfo = await _userSearchRepository.searchUserById(
         request.senderUid,
@@ -130,7 +156,8 @@ class FriendRequestService {
         friendName: senderName, // 실제 발신자 이름 사용
         currentUserid: currentUserId,
         currentUserName: currentUserName, // 실제 현재 사용자 이름 사용
-        currentUserProfileImageUrl: currentProfileImageUrl,
+        friendProfileImageUrl: sanitizedSenderProfileImageUrl,
+        currentUserProfileImageUrl: sanitizedCurrentProfileImageUrl,
       );
 
       // 6. 처리 완료된 친구 요청 삭제 (선택적)

@@ -148,21 +148,16 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
                     shrinkWrap: true,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      childAspectRatio: 168.0 / 229.0,
-                      mainAxisSpacing: 15.h, // 세로 간격
+                      childAspectRatio: 0.77,
+                      mainAxisSpacing: 10.h, // 세로 간격
                       crossAxisSpacing: 15.w, // 가로 간격
                     ),
                     itemCount: userCategories.length,
                     itemBuilder: (context, index) {
                       final category = userCategories[index];
                       final categoryId = category.id;
-                      final profileImages =
-                          _categoryProfileImages[categoryId] ?? [];
 
-                      return ArchiveCardWidget(
-                        categoryId: categoryId,
-                        profileImages: profileImages,
-                      );
+                      return ArchiveCardWidget(categoryId: categoryId);
                     },
                   ),
                   // 하단 여백 추가 (화면 크기별)

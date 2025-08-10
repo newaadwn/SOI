@@ -338,18 +338,18 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   void _navigateToHome() {
     // 기존 HomePageNavigationBar를 찾아서 돌아가기
     Navigator.of(context).popUntil((route) {
-      return route.settings.name == '/home' || route.isFirst;
+      return route.settings.name == '/home_navigation_screen' || route.isFirst;
     });
 
     // 만약 HomePageNavigationBar가 스택에 없다면 새로 생성 (fallback)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final currentRoute = ModalRoute.of(context);
-        if (currentRoute?.settings.name != '/home') {
+        if (currentRoute?.settings.name != '/home_navigation_screen') {
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(
               builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
-              settings: RouteSettings(name: '/home'),
+              settings: RouteSettings(name: '/home_navigation_screen'),
             ),
             (route) => false,
           );

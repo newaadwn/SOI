@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
 import 'package:provider/provider.dart';
@@ -84,13 +85,15 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               style: TextStyle(
                 color: AppTheme.lightTheme.colorScheme.secondary,
                 fontSize: 20.sp,
+                fontWeight: FontWeight.w600,
+                fontFamily: GoogleFonts.inter().fontFamily,
               ),
             ),
             SizedBox(height: 30.h),
           ],
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        toolbarHeight: 90.h,
+        toolbarHeight: 55.h,
         leading: Consumer<AuthController>(
           builder: (context, authController, _) {
             return FutureBuilder(

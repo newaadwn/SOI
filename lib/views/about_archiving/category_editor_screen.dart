@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../models/category_data_model.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/auth_controller.dart';
+import '../about_friends/friend_list_screen.dart';
 import 'category_cover_photo_selector_screen.dart';
 
 class CategoryEditorScreen extends StatefulWidget {
@@ -206,6 +207,67 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                   ),
                 ),
                 SizedBox(height: 24.h),
+
+                // 친구 추가 섹션
+                Container(
+                  width: double.infinity,
+                  height: 62.h,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1c1c1c),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // 친구 목록 화면으로 이동하여 친구 선택
+                      debugPrint('친구 추가하기 버튼 클릭됨');
+                      debugPrint('currentCategory.id: ${currentCategory.id}');
+
+                      // Navigator 호출을 안전하게 처리
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted) {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => FriendListScreen(
+                                    categoryId: currentCategory.id,
+                                  ),
+                            ),
+                          );
+                        }
+                      });
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1c1c1c),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Image.asset(
+                          'assets/person_add.png',
+                          width: 24.w,
+                          height: 24.h,
+                          color: Colors.white,
+                        ),
+                        SizedBox(width: 12.w),
+                        Text(
+                          '친구 추가하기',
+                          style: TextStyle(
+                            fontSize: 16.sp,
+                            fontWeight: FontWeight.w600,
+                            fontFamily: 'Pretendard Variable',
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: 24.h),
+
                 // 나가기 버튼
                 SizedBox(
                   width: double.infinity,

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_swift_camera/models/auth_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import '../repositories/friend_repository.dart';
 import '../controllers/comment_record_controller.dart';
 
 /// AuthController는 인증 관련 UI와 비즈니스 로직 사이의 중개 역할을 합니다.
@@ -20,6 +21,7 @@ class AuthController extends ChangeNotifier {
 
   // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
   final AuthService _authService = AuthService();
+  final FriendRepository _friendRepository = FriendRepository();
 
   // 프로필 이미지 캐싱을 위한 변수들 추가
   static final Map<String, String> _profileImageCache = {};
@@ -229,6 +231,9 @@ class AuthController extends ChangeNotifier {
         // 프로필 이미지 업데이트 성공 시, 음성 댓글들의 프로필 이미지 URL도 업데이트
         await _updateVoiceCommentsProfileImage(result.data);
 
+        // 모든 친구들의 friends 서브컬렉션에 새 프로필 이미지 URL 전파
+        await _propagateProfileImageToFriends(result.data);
+
         return true;
       } else {
         // debugPrint(result.error ?? '프로필 이미지 업데이트에 실패했습니다');
@@ -277,6 +282,21 @@ class AuthController extends ChangeNotifier {
       }
     } catch (e) {
       // debugPrint('❌ 음성 댓글 프로필 이미지 URL 업데이트 중 오류 발생: $e');
+    }
+  }
+
+  /// 친구들의 friends 서브컬렉션에 새 프로필 이미지 URL 전파
+  Future<void> _propagateProfileImageToFriends(
+    String newProfileImageUrl,
+  ) async {
+    try {
+      // debugPrint('🔄 친구들에게 프로필 이미지 전파 시작');
+      await _friendRepository.propagateCurrentUserProfileImage(
+        newProfileImageUrl,
+      );
+      // debugPrint('✅ 친구들에게 프로필 이미지 전파 완료');
+    } catch (e) {
+      // debugPrint('❌ 친구들에게 프로필 이미지 전파 실패: $e');
     }
   }
 

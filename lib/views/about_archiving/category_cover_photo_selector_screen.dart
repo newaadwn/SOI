@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../controllers/category_controller.dart';
@@ -88,10 +89,10 @@ class _CategoryCoverPhotoSelectorScreenState
               return Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
+                    crossAxisSpacing: 8.w, // 가로 간격
+                    mainAxisSpacing: 8.h, // 세로 간격
                     childAspectRatio: 175 / 232,
                   ),
                   itemCount: photoController.photos.length,
@@ -148,8 +149,8 @@ class _CategoryCoverPhotoSelectorScreenState
                               // 선택 표시 - 체크 이모지
                               if (isSelected)
                                 Positioned(
-                                  top: 8,
-                                  left: 8, // 왼쪽 위로 변경
+                                  top: 8.h,
+                                  left: 8.w,
                                   child: Container(
                                     width: 24,
                                     height: 24,
@@ -187,31 +188,40 @@ class _CategoryCoverPhotoSelectorScreenState
               );
             },
           ),
-          SizedBox(
-            width: 349,
-            height: 50,
-            child: ElevatedButton(
-              onPressed: _updateCoverPhoto,
-              style: ElevatedButton.styleFrom(
-                backgroundColor:
-                    (selectedPhotoUrl == null)
-                        ? const Color(0xFF5a5a5a)
-                        : const Color(0xFFf9f9f9),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(26.9),
+          Column(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              SizedBox(
+                width: 349.w,
+                height: 50.h,
+
+                child: ElevatedButton(
+                  onPressed: _updateCoverPhoto,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        (selectedPhotoUrl == null)
+                            ? const Color(0xFF5a5a5a)
+                            : const Color(0xFFf9f9f9),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(26.9),
+                    ),
+                  ),
+                  child: Text(
+                    '확인',
+                    style: TextStyle(
+                      color:
+                          (selectedPhotoUrl == null)
+                              ? Colors.white
+                              : Colors.black,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      fontFamily: 'Pretendard Variable',
+                    ),
+                  ),
                 ),
               ),
-              child: Text(
-                '확인',
-                style: TextStyle(
-                  color:
-                      (selectedPhotoUrl == null) ? Colors.white : Colors.black,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Pretendard Variable',
-                ),
-              ),
-            ),
+              SizedBox(height: 30.h),
+            ],
           ),
         ],
       ),

@@ -12,13 +12,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 /// 168x229 비율의 카드 UI를 제공하며, 화면 크기에 따라 적응합니다.
 class ArchiveCardWidget extends StatelessWidget {
   final String categoryId;
-  final List<String> profileImages;
 
-  const ArchiveCardWidget({
-    super.key,
-    required this.categoryId,
-    required this.profileImages,
-  });
+  const ArchiveCardWidget({super.key, required this.categoryId});
 
   @override
   Widget build(BuildContext context) {
@@ -54,14 +49,11 @@ class ArchiveCardWidget extends StatelessWidget {
     // 반응형 값들 계산
     //final isSmallScreen = ArchiveResponsiveHelper.isSmallScreen(context);
     //final isLargeScreen = ArchiveResponsiveHelper.isLargeScreen(context);
-
-    return Container(
-      decoration: ShapeDecoration(
-        color: const Color(0xFF1C1C1C), // Figma 배경색
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6.61),
-        ),
-      ),
+    // GridView 가 childAspectRatio 로 셀 비율을 결정하므로 내부 고정 width/height 제거
+    // (168x229) 비율을 명시적으로 유지하기 위해 AspectRatio 사용
+    return Card(
+      color: const Color(0xFF1C1C1C), // Figma 배경색
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.61)),
       child: InkWell(
         onTap: () {
           Navigator.push(
@@ -71,150 +63,136 @@ class ArchiveCardWidget extends StatelessWidget {
             ),
           );
         },
-        child: Padding(
-          padding: EdgeInsets.only(
-            top: 10.57.h,
-            bottom: 10.0.h,
-            left: 10.65.w,
-            right: 10.65.w,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // 🖼️ 메인 이미지 (실시간 업데이트)
-              Container(
-                width: 146,
-                height: 146,
-                decoration: BoxDecoration(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 🖼️ 메인 이미지 (실시간 업데이트)
+            Stack(
+              children: [
+                // 메인 이미지
+                ClipRRect(
                   borderRadius: BorderRadius.circular(6.61),
-                  color: Colors.grey[300],
-                ),
-                child: Stack(
-                  children: [
-                    // 메인 이미지
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6.61),
-                      child:
-                          (category.categoryPhotoUrl != null &&
-                                  category.categoryPhotoUrl!.isNotEmpty)
-                              ? CachedNetworkImage(
-                                key: ValueKey(
-                                  '${category.id}_${category.categoryPhotoUrl}',
-                                ), // 카테고리ID + URL로 고유 키 생성
-                                imageUrl: category.categoryPhotoUrl!,
-                                cacheKey:
-                                    '${category.id}_${category.categoryPhotoUrl}', // 캐시 키도 동일하게 설정
-                                width: 146,
-                                height: 146,
-                                fit: BoxFit.cover,
-                                placeholder:
-                                    (context, url) => Container(
-                                      color: Colors.grey[300],
-                                      child: Center(
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2.0,
-                                          color: Colors.grey,
-                                        ),
-                                      ),
+                  child:
+                      (category.categoryPhotoUrl != null &&
+                              category.categoryPhotoUrl!.isNotEmpty)
+                          ? CachedNetworkImage(
+                            key: ValueKey(
+                              '${category.id}_${category.categoryPhotoUrl}',
+                            ), // 카테고리ID + URL로 고유 키 생성
+                            imageUrl: category.categoryPhotoUrl!,
+                            cacheKey:
+                                '${category.id}_${category.categoryPhotoUrl}', // 캐시 키도 동일하게 설정
+                            width: (146.7).w,
+                            height: (146.8).h,
+                            fit: BoxFit.cover,
+                            placeholder:
+                                (context, url) => Container(
+                                  color: Colors.grey[300],
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2.0,
+                                      color: Colors.grey,
                                     ),
-                                errorWidget:
-                                    (context, url, error) => Container(
-                                      color: Colors.grey[300],
-                                      child: Icon(
-                                        Icons.error,
-                                        color: Colors.grey,
-                                        size: 24.sp,
-                                      ),
-                                    ),
-                              )
-                              : Container(
-                                color: Colors.grey[300],
-                                width: 146,
-                                height: 146,
-                                child: Icon(
-                                  Icons.image,
-                                  color: Colors.grey,
-                                  size: 40.sp,
+                                  ),
                                 ),
-                              ),
-                    ),
-
-                    // 📌 고정 아이콘 (고정된 경우에만 표시)
-                    if (category.isPinned)
-                      Positioned(
-                        top: 8.0.h,
-                        left: 8.0.w,
-                        child: Container(
-                          padding: const EdgeInsets.all(4.0),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(12.0),
+                            errorWidget:
+                                (context, url, error) => Container(
+                                  color: Colors.grey[300],
+                                  child: Icon(
+                                    Icons.error,
+                                    color: Colors.grey,
+                                    size: 24.sp,
+                                  ),
+                                ),
+                          )
+                          : Container(
+                            color: Colors.grey[300],
+                            width: (146.7).w,
+                            height: (146.8).h,
+                            child: Icon(
+                              Icons.image,
+                              color: Colors.grey,
+                              size: 40.sp,
+                            ),
                           ),
-                          child: Icon(
-                            Icons.push_pin,
-                            color: Colors.white,
-                            size: 14.sp,
-                          ),
-                        ),
-                      ),
-                  ],
                 ),
-              ),
 
-              const Spacer(),
-
-              // 📝 카테고리 이름과 더보기 버튼 행
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // 카테고리 이름 (반응형 폰트 크기)
-                  Expanded(
-                    child: Text(
-                      category.name,
-                      style: TextStyle(
-                        color: const Color(0xFFF9F9F9), // Figma 텍스트 색상
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: -0.4, // Figma letter spacing
+                // 📌 고정 아이콘 (고정된 경우에만 표시)
+                if (category.isPinned)
+                  Positioned(
+                    top: (8.0).h,
+                    left: (8.0).w,
+                    child: Container(
+                      padding: const EdgeInsets.all(4.0),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.7),
+                        borderRadius: BorderRadius.circular(12.0),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      child: Icon(
+                        Icons.push_pin,
+                        color: Colors.white,
+                        size: 14.sp,
+                      ),
                     ),
                   ),
+              ],
+            ),
 
-                  // 더보기 버튼 (반응형 크기)
-                  Builder(
-                    builder: (buttonContext) {
-                      return InkWell(
-                        onTap: () {
-                          ArchivePopupMenuWidget.showArchivePopupMenu(
-                            buttonContext,
-                            category,
-                          );
-                        },
-                        child: Container(
-                          width: 30.w,
-                          height: 30.h,
-                          alignment: Alignment.center,
-                          child: Icon(
-                            Icons.more_vert,
-                            color: Colors.white,
-                            size: 22.sp,
-                          ),
-                        ),
-                      );
-                    },
+            // 📝 카테고리 이름과 더보기 버튼 행
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // 카테고리 이름 (반응형 폰트 크기)
+                Padding(
+                  padding: EdgeInsets.only(left: 14.w),
+                  child: Text(
+                    category.name,
+                    style: TextStyle(
+                      color: const Color(0xFFF9F9F9), // Figma 텍스트 색상
+                      fontSize: 14.sp,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: -0.4,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ],
-              ),
+                ),
 
-              SizedBox(height: 8.h),
+                // 더보기 버튼 (반응형 크기)
+                Builder(
+                  builder: (buttonContext) {
+                    return InkWell(
+                      onTap: () {
+                        ArchivePopupMenuWidget.showArchivePopupMenu(
+                          buttonContext,
+                          category,
+                        );
+                      },
+                      child: Container(
+                        width: 30.w,
+                        height: 30.h,
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.more_vert,
+                          color: Colors.white,
+                          size: 22.sp,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
 
-              // 👥 프로필 이미지들 (반응형으로 업데이트)
-              ArchiveProfileRowWidget(profileImages: profileImages),
-            ],
-          ),
+            SizedBox(height: 8.h),
+
+            // 👥 프로필 이미지들 (카테고리의 mates를 직접 사용)
+            Padding(
+              padding: EdgeInsets.only(left: 14.w),
+              child: ArchiveProfileRowWidget(mates: category.mates),
+            ),
+          ],
         ),
       ),
     );

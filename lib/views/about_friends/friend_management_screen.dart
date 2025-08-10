@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_boxicons/flutter_boxicons.dart';
 import 'package:flutter_contacts/contact.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_swift_camera/controllers/auth_controller.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
@@ -13,6 +14,7 @@ import '../../controllers/friend_controller.dart';
 import '../../models/friend_request_model.dart';
 import '../../services/contact_service.dart';
 import '../../services/user_matching_service.dart';
+import 'friend_list_screen.dart';
 
 class FriendManagementScreen extends StatefulWidget {
   const FriendManagementScreen({super.key});
@@ -912,23 +914,6 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
       builder: (context, friendRequestController, child) {
         final receivedRequests = friendRequestController.receivedRequests;
 
-        // 디버그 정보 출력
-        // debugPrint('=== FriendRequestController 상태 ===');
-        // debugPrint('- isLoading: ${friendRequestController.isLoading}');
-        // debugPrint('- isInitialized: ${friendRequestController.isInitialized}');
-        // debugPrint('- error: ${friendRequestController.error}');
-        // debugPrint('- receivedRequests 개수: ${receivedRequests.length}');
-        // debugPrint('- 현재 사용자 UID: ${AuthController().currentUser?.uid}');
-        if (receivedRequests.isNotEmpty) {
-          // debugPrint('- 첫 번째 요청 정보:');
-          // debugPrint('  - ID: ${receivedRequests.first.id}');
-          // debugPrint('  - 발신자: ${receivedRequests.first.senderid}');
-          // debugPrint('  - 수신자 UID: ${receivedRequests.first.receiverUid}');
-          // debugPrint('  - 상태: ${receivedRequests.first.status}');
-          // debugPrint('  - 생성일: ${receivedRequests.first.createdAt}');
-        }
-        // debugPrint('==================================');
-
         return SizedBox(
           width: 354 * scale,
           child: Card(
@@ -994,61 +979,66 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
           CircleAvatar(
             radius: 22 * scale,
             backgroundColor: const Color(0xff323232),
-            child: Text(
-              request.senderid.isNotEmpty
-                  ? request.senderid[0].toUpperCase()
-                  : '?',
-              style: TextStyle(
-                color: const Color(0xfff9f9f9),
-                fontSize: 16 * scale,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
+            backgroundImage:
+                (request.senderProfileImageUrl != null &&
+                        request.senderProfileImageUrl!.isNotEmpty &&
+                        (request.senderProfileImageUrl!.startsWith('http://') ||
+                            request.senderProfileImageUrl!.startsWith(
+                              'https://',
+                            )))
+                    ? NetworkImage(request.senderProfileImageUrl!)
+                    : null,
+            child:
+                (request.senderProfileImageUrl == null ||
+                        request.senderProfileImageUrl!.isEmpty)
+                    ? Text(
+                      request.senderid.isNotEmpty
+                          ? request.senderid[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        color: const Color(0xfff9f9f9),
+                        fontSize: 16 * scale,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                    : null,
           ),
           SizedBox(width: 12 * scale),
 
-          // 사용자 정보
           Expanded(
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   request.senderid.isNotEmpty ? request.senderid : '알 수 없는 사용자',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: const Color(0xffd9d9d9),
-                    fontSize: 16 * scale,
-                    fontWeight: FontWeight.w500,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
-                if (request.message != null && request.message!.isNotEmpty) ...[
-                  SizedBox(height: 4 * scale),
-                  Text(
-                    request.message!,
-                    style: TextStyle(
-                      color: const Color(0xff999999),
-                      fontSize: 13 * scale,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-                SizedBox(height: 4 * scale),
+
                 Text(
-                  _formatRequestTime(request.createdAt),
+                  request.message!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: const Color(0xff666666),
-                    fontSize: 12 * scale,
+                    color: const Color(0xffd9d9d9),
+                    fontSize: 11.sp,
                   ),
                 ),
               ],
             ),
           ),
 
-          // 수락/거절 버튼
+          // 삭제/수락 버튼
           if (isProcessing) ...[
             SizedBox(
-              width: 24 * scale,
-              height: 24 * scale,
+              width: 24,
+              height: 24,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: const Color(0xfff9f9f9),
@@ -1058,10 +1048,10 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // 거절 버튼
+                // 삭제 버튼
                 SizedBox(
-                  width: 60 * scale,
-                  height: 32 * scale,
+                  width: 42.w,
+                  height: 29.h,
                   child: ElevatedButton(
                     onPressed:
                         () => _rejectFriendRequest(request.id, controller),
@@ -1069,15 +1059,17 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                       backgroundColor: const Color(0xff333333),
                       foregroundColor: const Color(0xff999999),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6 * scale),
+                        borderRadius: BorderRadius.circular(13),
                       ),
                       padding: EdgeInsets.zero,
+                      elevation: 0,
                     ),
                     child: Text(
-                      '거절',
+                      '삭제',
                       style: TextStyle(
-                        fontSize: 12 * scale,
-                        fontWeight: FontWeight.w500,
+                        fontSize: 13.sp,
+                        fontWeight: FontWeight.w600,
+                        fontFamily: 'Pretendard',
                       ),
                     ),
                   ),
@@ -1085,8 +1077,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                 SizedBox(width: 8 * scale),
                 // 수락 버튼
                 SizedBox(
-                  width: 60 * scale,
-                  height: 32 * scale,
+                  width: 42.w,
+                  height: 29.h,
                   child: ElevatedButton(
                     onPressed:
                         () => _acceptFriendRequest(request.id, controller),
@@ -1094,15 +1086,17 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                       backgroundColor: const Color(0xfff9f9f9),
                       foregroundColor: const Color(0xff1c1c1c),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(6 * scale),
+                        borderRadius: BorderRadius.circular(13 * scale),
                       ),
                       padding: EdgeInsets.zero,
+                      elevation: 0,
                     ),
                     child: Text(
                       '수락',
                       style: TextStyle(
-                        fontSize: 12 * scale,
+                        fontSize: 13.sp,
                         fontWeight: FontWeight.w600,
+                        fontFamily: 'Pretendard',
                       ),
                     ),
                   ),
@@ -1149,22 +1143,6 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
     }
   }
 
-  /// 요청 시간 포맷팅
-  String _formatRequestTime(DateTime createdAt) {
-    final now = DateTime.now();
-    final difference = now.difference(createdAt);
-
-    if (difference.inDays > 0) {
-      return '${difference.inDays}일 전';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours}시간 전';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes}분 전';
-    } else {
-      return '방금 전';
-    }
-  }
-
   // 사용자가 추가한 친구 목록
   Widget _buildFriendListCard(BuildContext context, double scale) {
     return Consumer<FriendController>(
@@ -1182,7 +1160,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
             child:
                 friends.isEmpty
                     ? SizedBox(
-                      height: 132 * scale,
+                      height: 132.h,
                       child: Center(
                         child: Text(
                           '아직 친구가 없습니다',
@@ -1193,97 +1171,119 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                         ),
                       ),
                     )
-                    : Container(
-                      padding: EdgeInsets.symmetric(horizontal: scale * 18),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // 친구들 리스트 (세로 리스트)
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: const NeverScrollableScrollPhysics(),
-                            itemCount: friends.length,
-                            itemBuilder: (context, index) {
-                              final friend = friends[index];
-                              return ListTile(
-                                contentPadding: EdgeInsets.symmetric(
-                                  horizontal: 0,
-                                ),
-                                leading: CircleAvatar(
-                                  radius: 20 * scale,
-                                  backgroundColor: const Color(0xff323232),
-                                  backgroundImage:
-                                      friend.profileImageUrl != null
-                                          ? NetworkImage(
-                                            friend.profileImageUrl!,
-                                          )
-                                          : null,
-                                  child:
-                                      friend.profileImageUrl == null
-                                          ? Text(
-                                            friend.id.isNotEmpty
-                                                ? friend.id[0]
-                                                : '?',
-                                            style: TextStyle(
-                                              color: const Color(0xfff9f9f9),
-                                              fontSize: 14 * scale,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          )
-                                          : null,
-                                ),
-                                title: Text(
-                                  friend.name,
-                                  style: TextStyle(
-                                    color: const Color(0xffd9d9d9),
-                                    fontSize: 14 * scale,
-                                    fontWeight: FontWeight.w500,
+                    : Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // 친구들 리스트 (세로 리스트)
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: friends.length,
+                          itemBuilder: (context, index) {
+                            final friend = friends[index];
+                            return Padding(
+                              padding: EdgeInsets.symmetric(
+                                horizontal: 18.w,
+                                vertical: 8.h,
+                              ),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  // 프로필 이미지 (고정 크기)
+                                  CircleAvatar(
+                                    radius: 22,
+                                    backgroundColor: const Color(0xff323232),
+                                    backgroundImage:
+                                        friend.profileImageUrl != null
+                                            ? NetworkImage(
+                                              friend.profileImageUrl!,
+                                            )
+                                            : null,
+                                    child:
+                                        friend.profileImageUrl == null
+                                            ? Text(
+                                              friend.id.isNotEmpty
+                                                  ? friend.id[0]
+                                                  : '?',
+                                              style: TextStyle(
+                                                color: const Color(0xfff9f9f9),
+                                                fontSize: 15.sp,
+                                                fontWeight: FontWeight.w600,
+                                                height: 1.1,
+                                              ),
+                                            )
+                                            : null,
                                   ),
-                                ),
-                                subtitle: Text(
-                                  friend.id,
-                                  style: TextStyle(
-                                    color: const Color(0xff999999),
-                                    fontSize: 12 * scale,
-                                  ),
-                                ),
-                                onTap: () {
-                                  // TODO: 친구 상세 페이지로 이동
-                                  // debugPrint('친구 상세 페이지로 이동: ${friend.name}');
-                                },
-                              );
-                            },
-                          ),
+                                  SizedBox(width: 9.w),
+                                  // 이름 + 서브텍스트 영역
+                                  Expanded(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          friend.name,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: const Color(0xffd9d9d9),
+                                            fontSize: 16.sp,
+                                            fontWeight: FontWeight.w400,
+                                          ),
+                                        ),
 
-                          // 더보기 링크 (친구가 10명 이상일 때)
-                          GestureDetector(
-                            onTap: () {
-                              // TODO: 친구 목록 전체 화면으로 이동
-                              // debugPrint('더보기 클릭됨');
-                            },
-                            child: Column(
-                              children: [
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.add, size: 18 * scale),
-                                    SizedBox(width: 8 * scale),
-                                    Text(
-                                      '더보기',
-                                      style: TextStyle(
-                                        color: const Color(0xffd9d9d9),
-                                        fontSize: 16 * scale,
-                                        decoration: TextDecoration.underline,
-                                      ),
+                                        Text(
+                                          friend.id,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            color: const Color(0xffd9d9d9),
+                                            fontSize: 10.sp,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ],
-                                ),
-                                SizedBox(height: 12 * scale),
-                              ],
-                            ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          },
+                        ),
+
+                        // 더보기 링크 (친구가 10명 이상일 때)
+                        GestureDetector(
+                          onTap: () {
+                            // 친구 목록 전체 화면으로 이동
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const FriendListScreen(),
+                              ),
+                            );
+                          },
+                          child: Column(
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.add, size: 18 * scale),
+                                  SizedBox(width: 8 * scale),
+                                  Text(
+                                    '더보기',
+                                    style: TextStyle(
+                                      color: const Color(0xffd9d9d9),
+                                      fontSize: 16 * scale,
+                                      decoration: TextDecoration.underline,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              SizedBox(height: 12 * scale),
+                            ],
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
           ),
         );
@@ -1473,7 +1473,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
             // debugPrint('매칭된 사용자 찾음: ${matchedUser.uid}, ${matchedUser.id}');
             final success = await friendRequestController.sendFriendRequest(
               receiverUid: matchedUser.uid,
-              message: '${contact.displayName}님과 친구가 되고 싶어요!',
+              message: '받은 친구 요청',
             );
 
             if (success && mounted) {
