@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../theme/theme.dart';
-import 'widgets/archive_card_widget.dart';
+import 'widgets/show_category/archive_card_widget.dart';
 
 // 나의 아카이브 화면
 // 현재 사용자의 아카이브 목록을 표시

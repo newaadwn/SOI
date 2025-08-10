@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/category_controller.dart';
 import '../../theme/theme.dart';
 import '../../controllers/auth_controller.dart';
-import 'widgets/archive_card_widget.dart';
+import 'widgets/show_category/archive_card_widget.dart';
 
 class SharedArchivesScreen extends StatefulWidget {
   const SharedArchivesScreen({super.key});

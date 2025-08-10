@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../controllers/category_controller.dart';
-import '../../../models/category_data_model.dart';
-import '../../../services/auth_service.dart';
+import '../../../../controllers/category_controller.dart';
+import '../../../../models/category_data_model.dart';
+import '../../../../services/auth_service.dart';
 
 /// ⚡ 아카이브 카테고리 액션 처리 클래스
 /// 카테고리 관련 비즈니스 로직을 담당합니다.

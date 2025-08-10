@@ -1,9 +1,10 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../../controllers/category_controller.dart';
-import '../../../models/category_data_model.dart';
-import '../category_photos_screen.dart';
+import '../../../../controllers/category_controller.dart';
+
+import '../../../../models/category_data_model.dart';
+import '../../category_photos_screen.dart';
 import 'archive_profile_row_widget.dart';
 import 'archive_popup_menu_widget.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';

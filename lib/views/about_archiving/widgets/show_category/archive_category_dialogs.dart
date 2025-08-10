@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../models/category_data_model.dart';
+import '../../../../models/category_data_model.dart';
 
 /// 🎨 아카이브 카테고리 다이얼로그 유틸리티 클래스
 /// 카테고리 관련 다이얼로그들을 관리합니다.
