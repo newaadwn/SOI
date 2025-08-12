@@ -10,7 +10,18 @@ import 'widgets/show_category/archive_card_widget.dart';
 // 모든 사용자의 아카이브 목록을 표시
 // 아카이브를 클릭하면 아카이브 상세 화면으로 이동
 class AllArchivesScreen extends StatefulWidget {
-  const AllArchivesScreen({super.key});
+  final bool isEditMode;
+  final String? editingCategoryId;
+  final TextEditingController? editingController;
+  final Function(String categoryId, String currentName)? onStartEdit;
+
+  const AllArchivesScreen({
+    super.key,
+    this.isEditMode = false,
+    this.editingCategoryId,
+    this.editingController,
+    this.onStartEdit,
+  });
 
   @override
   State<AllArchivesScreen> createState() => _AllArchivesScreenState();
@@ -172,7 +183,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
 
           // 데이터가 있으면 화면을 스크롤할 수 있도록 만듭니다.
           return Padding(
-            padding: EdgeInsets.only(left: 15.65.w, right: 10.65.w),
+            padding: EdgeInsets.only(left: (15.65).w, right: (10.65).w),
             child: SingleChildScrollView(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -191,7 +202,23 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
                       final category = categories[index];
                       final categoryId = category.id;
 
-                      return ArchiveCardWidget(categoryId: categoryId);
+                      return ArchiveCardWidget(
+                        categoryId: categoryId,
+                        isEditMode: widget.isEditMode,
+                        isEditing:
+                            widget.isEditMode &&
+                            widget.editingCategoryId == categoryId,
+                        editingController:
+                            widget.isEditMode &&
+                                    widget.editingCategoryId == categoryId
+                                ? widget.editingController
+                                : null,
+                        onStartEdit: () {
+                          if (widget.onStartEdit != null) {
+                            widget.onStartEdit!(categoryId, category.name);
+                          }
+                        },
+                      );
                     },
                   ),
                   // 하단 여백 추가 (화면 크기별)

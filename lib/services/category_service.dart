@@ -15,9 +15,7 @@ class CategoryService {
     if (name.trim().isEmpty) {
       return '카테고리 이름을 입력해주세요.';
     }
-    if (name.trim().length < 2) {
-      return '카테고리 이름은 2글자 이상이어야 합니다.';
-    }
+
     if (name.trim().length > 20) {
       return '카테고리 이름은 20글자 이하여야 합니다.';
     }

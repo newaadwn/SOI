@@ -191,7 +191,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (mounted) {
         // 로그아웃 성공 시 로그인 화면으로 이동
         Navigator.of(context).pushNamedAndRemoveUntil(
-          '/login', // 로그인 화면 라우트
+          '/start', // 로그인 화면 라우트
           (route) => false,
         );
       }
@@ -357,7 +357,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
         // 계정 삭제 성공 시 로그인 화면으로 이동
         Navigator.of(context).pushNamedAndRemoveUntil(
-          '/login', // 로그인 화면 라우트
+          '/start', // 로그인 화면 라우트
           (route) => false,
         );
       }

@@ -10,7 +10,18 @@ import 'widgets/show_category/archive_card_widget.dart';
 // 현재 사용자의 아카이브 목록을 표시
 // 아카이브를 클릭하면 아카이브 상세 화면으로 이동
 class MyArchivesScreen extends StatefulWidget {
-  const MyArchivesScreen({super.key});
+  final bool isEditMode;
+  final String? editingCategoryId;
+  final TextEditingController? editingController;
+  final Function(String categoryId, String currentName)? onStartEdit;
+
+  const MyArchivesScreen({
+    super.key,
+    this.isEditMode = false,
+    this.editingCategoryId,
+    this.editingController,
+    this.onStartEdit,
+  });
 
   @override
   State<MyArchivesScreen> createState() => _MyArchivesScreenState();
@@ -157,7 +168,23 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
                       final category = userCategories[index];
                       final categoryId = category.id;
 
-                      return ArchiveCardWidget(categoryId: categoryId);
+                      return ArchiveCardWidget(
+                        categoryId: categoryId,
+                        isEditMode: widget.isEditMode,
+                        isEditing:
+                            widget.isEditMode &&
+                            widget.editingCategoryId == categoryId,
+                        editingController:
+                            widget.isEditMode &&
+                                    widget.editingCategoryId == categoryId
+                                ? widget.editingController
+                                : null,
+                        onStartEdit: () {
+                          if (widget.onStartEdit != null) {
+                            widget.onStartEdit!(categoryId, category.name);
+                          }
+                        },
+                      );
                     },
                   ),
                   // 하단 여백 추가 (화면 크기별)

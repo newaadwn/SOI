@@ -7,7 +7,18 @@ import '../../controllers/auth_controller.dart';
 import 'widgets/show_category/archive_card_widget.dart';
 
 class SharedArchivesScreen extends StatefulWidget {
-  const SharedArchivesScreen({super.key});
+  final bool isEditMode;
+  final String? editingCategoryId;
+  final TextEditingController? editingController;
+  final Function(String categoryId, String currentName)? onStartEdit;
+
+  const SharedArchivesScreen({
+    super.key,
+    this.isEditMode = false,
+    this.editingCategoryId,
+    this.editingController,
+    this.onStartEdit,
+  });
 
   @override
   State<SharedArchivesScreen> createState() => _SharedArchivesScreenState();
@@ -156,7 +167,23 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
                       final category = sharedCategories[index];
                       final categoryId = category.id;
 
-                      return ArchiveCardWidget(categoryId: categoryId);
+                      return ArchiveCardWidget(
+                        categoryId: categoryId,
+                        isEditMode: widget.isEditMode,
+                        isEditing:
+                            widget.isEditMode &&
+                            widget.editingCategoryId == categoryId,
+                        editingController:
+                            widget.isEditMode &&
+                                    widget.editingCategoryId == categoryId
+                                ? widget.editingController
+                                : null,
+                        onStartEdit: () {
+                          if (widget.onStartEdit != null) {
+                            widget.onStartEdit!(categoryId, category.name);
+                          }
+                        },
+                      );
                     },
                   ),
                   // 하단 여백 추가 (화면 크기별)

@@ -58,16 +58,6 @@ class CategoryListWidget extends StatelessWidget {
                 onTap: addCategoryPressed,
               );
             }
-            // 카테고리가 없는 경우 안내 메시지 표시
-            else if (categories.isEmpty) {
-              return Center(
-                child: Text(
-                  '카테고리가 없습니다.\n추가해 보세요!',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey, fontSize: 14.sp),
-                ),
-              );
-            }
             // 카테고리 아이템 표시
             else {
               final category = categories[index - 1];

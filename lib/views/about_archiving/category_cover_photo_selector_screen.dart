@@ -45,7 +45,7 @@ class _CategoryCoverPhotoSelectorScreenState
           '표지사진 변경',
           style: TextStyle(
             color: Colors.white,
-            fontSize: 20,
+            fontSize: (20).sp,
             fontWeight: FontWeight.w600,
             fontFamily: 'Pretendard Variable',
           ),
@@ -69,15 +69,15 @@ class _CategoryCoverPhotoSelectorScreenState
                     children: [
                       Icon(
                         Icons.photo_library_outlined,
-                        size: 64,
+                        size: 64.sp,
                         color: Colors.grey[600],
                       ),
-                      SizedBox(height: 16),
+                      SizedBox(height: 16.h),
                       Text(
                         '아직 사진이 없습니다',
                         style: TextStyle(
                           color: Colors.grey[600],
-                          fontSize: 16,
+                          fontSize: 16.sp,
                           fontFamily: 'Pretendard Variable',
                         ),
                       ),
@@ -152,8 +152,8 @@ class _CategoryCoverPhotoSelectorScreenState
                                   top: 8.h,
                                   left: 8.w,
                                   child: Container(
-                                    width: 24,
-                                    height: 24,
+                                    width: 24.w,
+                                    height: 24.h,
                                     decoration: BoxDecoration(
                                       color: Colors.black,
                                       shape: BoxShape.circle,
@@ -166,12 +166,12 @@ class _CategoryCoverPhotoSelectorScreenState
                                         ),
                                       ],
                                     ),
-                                    child: const Center(
+                                    child: Center(
                                       child: Text(
                                         '✓', // 체크 이모지
                                         style: TextStyle(
                                           color: Colors.white,
-                                          fontSize: 14,
+                                          fontSize: (14).sp,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -213,7 +213,7 @@ class _CategoryCoverPhotoSelectorScreenState
                           (selectedPhotoUrl == null)
                               ? Colors.white
                               : Colors.black,
-                      fontSize: 16,
+                      fontSize: (16).sp,
                       fontWeight: FontWeight.w600,
                       fontFamily: 'Pretendard Variable',
                     ),
@@ -239,7 +239,7 @@ class _CategoryCoverPhotoSelectorScreenState
       photoUrl: selectedPhotoUrl!,
     );
 
-    if (success) {
+    if (success && mounted) {
       Navigator.pop(context, selectedPhotoUrl);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -247,7 +247,7 @@ class _CategoryCoverPhotoSelectorScreenState
           backgroundColor: Color(0xFF007AFF),
         ),
       );
-    } else {
+    } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(categoryController.error ?? '표지사진 변경에 실패했습니다.'),

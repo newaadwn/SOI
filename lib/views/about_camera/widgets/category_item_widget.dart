@@ -107,7 +107,7 @@ class CategoryItemWidget extends StatelessWidget {
       return Icon(
         icon!,
         color: Colors.black, // 검은색 + 아이콘
-        size: 40.sp,
+        size: dimensions.iconSize, // 동적 크기 사용
         weight: 2.0, // 아이콘 두께
       );
     }
@@ -115,13 +115,13 @@ class CategoryItemWidget extends StatelessWidget {
     // 이미지 URL이 있는 경우
     if (imageUrl != null && imageUrl!.isNotEmpty) {
       return SizedBox(
-        width: 60,
-        height: 60,
+        width: dimensions.containerSize, // 컨테이너 크기와 일치
+        height: dimensions.containerSize, // 컨테이너 크기와 일치
         child: CachedNetworkImage(
           imageUrl: imageUrl!,
           fit: BoxFit.cover, // 이미지가 원형 컨테이너를 완전히 채우도록
-          width: 60.w,
-          height: 60.h,
+          width: dimensions.containerSize,
+          height: dimensions.containerSize,
           placeholder: (context, url) => _buildLoadingIndicator(dimensions),
           errorWidget: (context, url, error) => _buildErrorIcon(dimensions),
         ),
@@ -131,25 +131,29 @@ class CategoryItemWidget extends StatelessWidget {
     // 기본 이미지 아이콘
     return Container(
       decoration: BoxDecoration(color: Color(0xffc3c1c1)),
-      width: 60,
-      height: 60,
-      child: Icon(Icons.image_outlined, size: 35.sp, color: Color(0xff656565)),
+      width: dimensions.containerSize, // 컨테이너 크기와 일치
+      height: dimensions.containerSize, // 컨테이너 크기와 일치
+      child: Icon(
+        Icons.image_outlined,
+        size: dimensions.iconSize,
+        color: Color(0xff656565),
+      ),
     );
   }
 
   /// 선택된 상태의 오버레이 빌드 (피그마 디자인 반영)
   Widget _buildSelectionOverlay(_CategoryDimensions dimensions) {
     return Container(
-      width: (63.1),
-      height: (63.1),
+      width: dimensions.containerSize,
+      height: dimensions.containerSize,
       decoration: BoxDecoration(
         color: Color(0xff404040).withValues(alpha: 0.7), // 피그마와 동일한 투명도
         shape: BoxShape.circle,
       ),
       child: Center(
         child: SizedBox(
-          width: 32,
-          height: 32,
+          width: dimensions.containerSize * 0.5, // 컨테이너 크기의 50%
+          height: dimensions.containerSize * 0.5,
           child: Center(child: Image.asset('assets/send_imoji.png')),
         ),
       ),
@@ -167,9 +171,13 @@ class CategoryItemWidget extends StatelessWidget {
   Widget _buildErrorIcon(_CategoryDimensions dimensions) {
     return Container(
       decoration: BoxDecoration(color: Color(0xffc3c1c1)),
-      width: 60,
-      height: 60,
-      child: Icon(Icons.image_outlined, size: 35.sp, color: Color(0xff656565)),
+      width: dimensions.containerSize,
+      height: dimensions.containerSize,
+      child: Icon(
+        Icons.image_outlined,
+        size: dimensions.iconSize,
+        color: Color(0xff656565),
+      ),
     );
   }
 

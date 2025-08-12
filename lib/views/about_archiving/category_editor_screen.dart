@@ -116,79 +116,80 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
               ),
             ),
           ),
-          body: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 표지사진 수정 섹션
-                CategoryCoverSection(
-                  category: currentCategory,
-                  onTap: () => _showCoverPhotoBottomSheet(context),
-                ),
+          body: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 24.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 표지사진 수정 섹션
+                  CategoryCoverSection(
+                    category: currentCategory,
+                    onTap: () => _showCoverPhotoBottomSheet(context),
+                  ),
 
-                SizedBox(height: 24.h),
+                  SizedBox(height: 24.h),
 
-                // 카테고리 이름 섹션
-                CategoryInfoSection(category: currentCategory),
+                  // 카테고리 이름 섹션
+                  CategoryInfoSection(category: currentCategory),
 
-                SizedBox(height: 12),
+                  SizedBox(height: 12),
 
-                // 알림설정 섹션
-                NotificationSettingSection(
-                  enabled: _notificationEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _notificationEnabled = value;
-                    });
-                  },
-                ),
-                SizedBox(height: 24.h),
+                  // 알림설정 섹션
+                  NotificationSettingSection(
+                    enabled: _notificationEnabled,
+                    onChanged: (value) {
+                      setState(() {
+                        _notificationEnabled = value;
+                      });
+                    },
+                  ),
+                  SizedBox(height: 24.h),
 
-                // 친구 추가 섹션
-                currentCategory.mates.length >= 2
-                    ? FriendsListWidget(
-                      category: currentCategory,
-                      friendsInfo: _friendsInfo,
-                      isLoadingFriends: _isLoadingFriends,
-                      isExpanded: _isExpanded,
-                      onExpandToggle: () {
-                        setState(() {
-                          _isExpanded = true;
-                        });
-                      },
-                      onCollapseToggle: () {
-                        setState(() {
-                          _isExpanded = false;
-                        });
-                      },
-                    )
-                    : AddFriendButton(
-                      category: currentCategory,
-                      onPressed: () {
-                        // Navigator 호출을 안전하게 처리
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (mounted) {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder:
-                                    (context) => FriendListScreen(
-                                      categoryId: currentCategory.id,
-                                    ),
-                              ),
-                            );
-                          }
-                        });
-                      },
-                    ),
-                SizedBox(height: 24.h),
+                  // 친구 추가 섹션
+                  currentCategory.mates.length >= 2
+                      ? FriendsListWidget(
+                        category: currentCategory,
+                        friendsInfo: _friendsInfo,
+                        isLoadingFriends: _isLoadingFriends,
+                        isExpanded: _isExpanded,
+                        onExpandToggle: () {
+                          setState(() {
+                            _isExpanded = true;
+                          });
+                        },
+                        onCollapseToggle: () {
+                          setState(() {
+                            _isExpanded = false;
+                          });
+                        },
+                      )
+                      : AddFriendButton(
+                        category: currentCategory,
+                        onPressed: () {
+                          // Navigator 호출을 안전하게 처리
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (mounted) {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => FriendListScreen(
+                                        categoryId: currentCategory.id,
+                                      ),
+                                ),
+                              );
+                            }
+                          });
+                        },
+                      ),
+                  SizedBox(height: 24.h),
 
-                // 나가기 버튼
-                ExitButton(
-                  category: currentCategory,
-                  onPressed: () => _showExitDialog(context),
-                ),
-              ],
+                  // 나가기 버튼
+                  ExitButton(category: currentCategory),
+
+                  SizedBox(height: 20.h),
+                ],
+              ),
             ),
           ),
         );
@@ -390,8 +391,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
       ),
     );
 
-    if (result != null) {
-      // 선택된 사진 URL로 업데이트 성공 - 카테고리 데이터 다시 로드
+    if (result != null && mounted) {
       final categoryController = context.read<CategoryController>();
       final authController = context.read<AuthController>();
       final userId = authController.getUserId;
@@ -410,7 +410,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
       imageFile: imageFile,
     );
 
-    if (success) {
+    if (success && mounted) {
       // 카테고리 데이터 다시 로드
       final authController = context.read<AuthController>();
       final userId = authController.getUserId;
@@ -445,7 +445,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
       widget.category.id,
     );
 
-    if (success) {
+    if (success && mounted) {
       // 카테고리 데이터 다시 로드
       final authController = context.read<AuthController>();
       final userId = authController.getUserId;
@@ -467,103 +467,5 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
         ),
       );
     }
-  }
-
-  // 나가기 확인 다이얼로그
-  void _showExitDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1c1c1c),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            '카테고리 나가기',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20.sp,
-              fontWeight: FontWeight.w600,
-              fontFamily: 'Pretendard Variable',
-            ),
-          ),
-          content: Text(
-            '정말로 이 카테고리에서 나가시겠습니까?\n나가면 이 카테고리의 사진들을 더 이상 볼 수 없습니다.',
-            style: TextStyle(
-              color: const Color(0xFFCCCCCC),
-              fontSize: 14.sp,
-              fontFamily: 'Pretendard Variable',
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(
-                '취소',
-                style: TextStyle(
-                  color: const Color(0xFFcccccc),
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w400,
-                  fontFamily: 'Pretendard Variable',
-                ),
-              ),
-            ),
-            TextButton(
-              onPressed: () async {
-                // 다이얼로그 닫기 전에 BuildContext를 저장
-                final navigator = Navigator.of(context);
-                final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-                navigator.pop(); // 다이얼로그 닫기
-
-                // 실제 카테고리 나가기 로직 수행
-                final categoryController = context.read<CategoryController>();
-                final authController = context.read<AuthController>();
-                final userId = authController.getUserId;
-
-                if (userId != null) {
-                  await categoryController.leaveCategoryByUid(
-                    widget.category.id,
-                    userId,
-                  );
-
-                  debugPrint(
-                    '카테고리 나가기 결과 - error: ${categoryController.error}',
-                  );
-
-                  if (categoryController.error == null) {
-                    debugPrint('카테고리 나가기 성공 - 페이지 이동 시작');
-
-                    // 성공 시 홈 화면의 아카이브 탭으로 이동
-
-                    navigator.popUntil((route) => route.isFirst);
-                    debugPrint('네비게이션 완료');
-                  } else {
-                    debugPrint('카테고리 나가기 실패: ${categoryController.error}');
-                  }
-                } else {
-                  scaffoldMessenger.showSnackBar(
-                    const SnackBar(
-                      content: Text('사용자 정보를 확인할 수 없습니다.'),
-                      backgroundColor: Color(0xFFcccccc),
-                    ),
-                  );
-                }
-              },
-              child: Text(
-                '나가기',
-                style: TextStyle(
-                  color: const Color(0xff000000),
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Pretendard Variable',
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
   }
 }

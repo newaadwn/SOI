@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../models/category_data_model.dart';
 
-/// 🎨 아카이브 카테고리 다이얼로그 유틸리티 클래스
-/// 카테고리 관련 다이얼로그들을 관리합니다.
+// 카테고리 관련 다이얼로그들을 관리합니다.
+// 팝업 메뉴에서 호출되는 다이얼로그들을 포함합니다.
 class ArchiveCategoryDialogs {
-  /// 📝 이름 수정 다이얼로그
+  // 이름 수정 다이얼로그
   static void showEditNameDialog(
     BuildContext context,
     CategoryDataModel category, {
@@ -82,13 +83,13 @@ class ArchiveCategoryDialogs {
                 children: [
                   // 제목
                   Container(
-                    height: 61, // 37 + 24
+                    height: 61.h,
                     alignment: Alignment.center,
-                    child: const Text(
+                    child: Text(
                       '카테고리 나가기',
                       style: TextStyle(
                         color: Color(0xFFF9F9F9),
-                        fontSize: 19.78,
+                        fontSize: (19.78).sp,
                         fontWeight: FontWeight.w700,
                         fontFamily: 'Pretendard Variable',
                       ),
@@ -98,13 +99,13 @@ class ArchiveCategoryDialogs {
 
                   // 설명 텍스트
                   Container(
-                    height: 78,
+                    height: 78.h,
                     alignment: Alignment.topCenter,
-                    child: const Text(
+                    child: Text(
                       '카테고리를 나가면, 해당 카테고리에 저장된 사진은 더 이상 확인할 수 없으며 복구가 불가능합니다.',
                       style: TextStyle(
                         color: Color(0xFFF9F9F9),
-                        fontSize: 15.78,
+                        fontSize: (15.78).sp,
                         fontWeight: FontWeight.w500,
                         fontFamily: 'Pretendard Variable',
                         height: 1.66,
@@ -113,11 +114,11 @@ class ArchiveCategoryDialogs {
                     ),
                   ),
 
-                  const SizedBox(height: 12), // 여백 조정
+                  SizedBox(height: 12.h), // 여백 조정
                   // 나가기 버튼
                   Container(
-                    width: 185.55,
-                    height: 38,
+                    width: (185.55).w,
+                    height: 38.h,
                     decoration: BoxDecoration(
                       color: const Color(0xFFF9F9F9), // 흰색 배경
                       borderRadius: BorderRadius.circular(14.22),
@@ -133,11 +134,11 @@ class ArchiveCategoryDialogs {
                           borderRadius: BorderRadius.circular(14.22),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         '나가기',
                         style: TextStyle(
                           color: Color(0xFF000000), // 검은색 텍스트
-                          fontSize: 17.78,
+                          fontSize: (17.78).sp,
                           fontWeight: FontWeight.w600,
                           fontFamily: 'Pretendard Variable',
                         ),
@@ -145,11 +146,11 @@ class ArchiveCategoryDialogs {
                     ),
                   ),
 
-                  const SizedBox(height: 13), // 버튼 간 간격
+                  SizedBox(height: 13.h), // 버튼 간 간격
                   // 취소 버튼
                   Container(
-                    width: 185.55,
-                    height: 38,
+                    width: (185.55).w,
+                    height: 38.h,
                     decoration: BoxDecoration(
                       color: const Color(0xFF5A5A5A), // 회색 배경
                       borderRadius: BorderRadius.circular(14.22),
@@ -162,11 +163,11 @@ class ArchiveCategoryDialogs {
                           borderRadius: BorderRadius.circular(14.22),
                         ),
                       ),
-                      child: const Text(
+                      child: Text(
                         '취소',
                         style: TextStyle(
                           color: Color(0xFFCCCCCC), // 연한 회색 텍스트
-                          fontSize: 17.78,
+                          fontSize: (17.78).sp,
                           fontWeight: FontWeight.w500,
                           fontFamily: 'Pretendard Variable',
                         ),

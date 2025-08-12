@@ -13,8 +13,19 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 /// 168x229 비율의 카드 UI를 제공하며, 화면 크기에 따라 적응합니다.
 class ArchiveCardWidget extends StatelessWidget {
   final String categoryId;
+  final bool isEditMode;
+  final bool isEditing;
+  final TextEditingController? editingController;
+  final VoidCallback? onStartEdit;
 
-  const ArchiveCardWidget({super.key, required this.categoryId});
+  const ArchiveCardWidget({
+    super.key,
+    required this.categoryId,
+    this.isEditMode = false,
+    this.isEditing = false,
+    this.editingController,
+    this.onStartEdit,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -144,45 +155,76 @@ class ArchiveCardWidget extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // 카테고리 이름 (반응형 폰트 크기)
-                Padding(
-                  padding: EdgeInsets.only(left: 14.w),
-                  child: Text(
-                    category.name,
-                    style: TextStyle(
-                      color: const Color(0xFFF9F9F9), // Figma 텍스트 색상
-                      fontSize: 14.sp,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -0.4,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                // 카테고리 이름 (편집 모드에 따라 TextField 또는 Text)
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 14.w, right: 8.w),
+                    child:
+                        isEditing
+                            ? TextField(
+                              controller: editingController,
+                              style: TextStyle(
+                                color: const Color(0xFFF9F9F9),
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: -0.4,
+                                fontFamily: 'Pretendard',
+                              ),
+                              cursorColor: Color(0xfff9f9f9),
+                              cursorHeight: 13.h,
+                              decoration: InputDecoration(
+                                border: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.white),
+                                ),
+                                focusedBorder: UnderlineInputBorder(
+                                  borderSide: BorderSide(color: Colors.white),
+                                ),
+                                contentPadding: EdgeInsets.zero,
+                                isDense: true,
+                              ),
+                              maxLines: 1,
+                              autofocus: true,
+                            )
+                            : Text(
+                              category.name,
+                              style: TextStyle(
+                                color: const Color(0xFFF9F9F9),
+                                fontSize: 14.sp,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: -0.4,
+                                fontFamily: 'Pretendard',
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                   ),
                 ),
 
-                // 더보기 버튼 (반응형 크기)
-                Builder(
-                  builder: (buttonContext) {
-                    return InkWell(
-                      onTap: () {
-                        ArchivePopupMenuWidget.showArchivePopupMenu(
-                          buttonContext,
-                          category,
-                        );
-                      },
-                      child: Container(
-                        width: 30.w,
-                        height: 30.h,
-                        alignment: Alignment.center,
-                        child: Icon(
-                          Icons.more_vert,
-                          color: Colors.white,
-                          size: 22.sp,
+                // 더보기 버튼 (편집 모드가 아닐 때만 표시)
+                if (!isEditMode)
+                  Builder(
+                    builder: (buttonContext) {
+                      return InkWell(
+                        onTap: () {
+                          ArchivePopupMenuWidget.showArchivePopupMenu(
+                            buttonContext,
+                            category,
+                            onEditName: onStartEdit,
+                          );
+                        },
+                        child: Container(
+                          width: 30.w,
+                          height: 30.h,
+                          alignment: Alignment.center,
+                          child: Icon(
+                            Icons.more_vert,
+                            color: Colors.white,
+                            size: 22.sp,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
               ],
             ),
 

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:audio_waveforms/audio_waveforms.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
 import '../../../controllers/audio_controller.dart';
@@ -586,10 +587,9 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     );
   }
 
-  /// ✅ 재생 UI 빌드 (녹음 완료 후) - 프로필 모드일 때 완전히 대체
+  // 재생 UI 빌드 (녹음 완료 후) - 프로필 모드일 때 완전히 대체
   Widget _buildPlaybackUI() {
     double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
 
     // 🎯 프로필 모드일 때는 전체 UI를 프로필 이미지로 완전히 대체
     if (_isProfileMode) {
@@ -598,41 +598,35 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
     // 기존 녹음 UI (파형 모드)
     return Container(
-      width: (screenWidth * 0.956).clamp(300.0, 400.0), // 반응형 너비
-      height: (screenHeight * 0.061).clamp(45.0, 65.0), // 반응형 높이
+      width: 376.w, // 반응형 너비
+      height: 52.h, // 반응형 높이
       decoration: BoxDecoration(
         color: const Color(0xff1c1c1c), // 회색 배경
-        borderRadius: BorderRadius.circular(
-          (screenWidth * 0.037).clamp(12.0, 18.0),
-        ), // 반응형 반지름
+        borderRadius: BorderRadius.circular(14.6), // 반응형 반지름
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          SizedBox(width: (screenWidth * 0.036).clamp(10.0, 18.0)), // 반응형 간격
-          // ✅ 쓰레기통 아이콘 (삭제)
+          SizedBox(width: 14.w), // 반응형 간격
+          // 쓰레기통 아이콘 (삭제)
           GestureDetector(
             onTap: _deleteRecording,
             child: Container(
-              width: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 너비
-              height: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 높이
+              width: 32.w, // 반응형 너비
+              height: 32.h, // 반응형 높이
               decoration: BoxDecoration(
                 color: Colors.grey.shade800,
                 shape: BoxShape.circle,
               ),
-              child: Image.asset(
-                'assets/trash.png',
-                width: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 너비
-                height: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 높이
-              ),
+              child: Image.asset('assets/trash.png'),
             ),
           ),
 
-          SizedBox(width: (screenWidth * 0.05).clamp(15.0, 25.0)), // 반응형 간격
-          // ✅ 재생 파형 (클릭하면 프로필 모드로 전환)
+          SizedBox(width: 17.w), // 반응형 간격
+          // 재생 파형 (클릭하면 프로필 모드로 전환)
           Expanded(child: _buildWaveformDisplay()),
-
-          // ✅ 재생 시간 표시
+          SizedBox(width: (13.15).w), // 반응형 간격
+          // 재생 시간 표시
           StreamBuilder<int>(
             stream:
                 playerController?.onCurrentDurationChanged ??
@@ -655,7 +649,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
             },
           ),
 
-          // ✅ 재생/일시정지 버튼
+          // 재생/일시정지 버튼
           IconButton(
             onPressed: _togglePlayback,
             icon: StreamBuilder<PlayerState>(
@@ -679,7 +673,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     );
   }
 
-  /// 🎯 프로필 모드 UI - 전체 녹음 UI를 프로필 이미지로 완전히 대체 (feed 스타일)
+  // 프로필 모드 UI - 전체 녹음 UI를 프로필 이미지로 완전히 대체 (feed 스타일)
   Widget _buildFullProfileModeUI() {
     double screenWidth = MediaQuery.of(context).size.width;
     //double screenHeight = MediaQuery.of(context).size.height;
@@ -729,7 +723,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     return Draggable<String>(
       data: 'profile_image',
       onDragStarted: () {
-        debugPrint('🚀 AudioRecorderWidget에서 드래그 시작됨');
+        debugPrint('AudioRecorderWidget에서 드래그 시작됨');
       },
       feedback: Transform.scale(
         scale: 1.2, // 드래그 중에는 조금 더 크게
@@ -742,12 +736,12 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       onDragEnd: (details) {
         // 드래그가 끝났을 때 위치 정보 처리
         debugPrint(
-          '🏁 AudioRecorderWidget에서 드래그 종료 - 위치: ${details.offset}, 성공: ${details.wasAccepted}',
+          'AudioRecorderWidget에서 드래그 종료 - 위치: ${details.offset}, 성공: ${details.wasAccepted}',
         );
         if (details.wasAccepted) {
-          debugPrint('✅ 드래그가 성공적으로 DragTarget에 접수됨');
+          debugPrint('드래그가 성공적으로 DragTarget에 접수됨');
         } else {
-          debugPrint('❌ 드래그가 DragTarget에 접수되지 않음');
+          debugPrint('드래그가 DragTarget에 접수되지 않음');
         }
 
         // 외부 콜백이 있으면 호출, 없으면 내부 처리
@@ -782,7 +776,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     _audioControllerTimer = Timer.periodic(Duration(milliseconds: 100), (
       timer,
     ) {
-      // ✅ mounted 체크 - 위젯이 dispose된 경우 타이머 취소
+      // mounted 체크 - 위젯이 dispose된 경우 타이머 취소
       if (!mounted) {
         timer.cancel();
         _audioControllerTimer = null;
@@ -813,25 +807,25 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     debugPrint('🛑🛑🛑 AudioController 중지 감지 - 저장 로직 시작!!! 🛑🛑🛑');
 
     try {
-      // ✅ mounted 체크 - 위젯이 dispose된 경우 early return
+      // mounted 체크 - 위젯이 dispose된 경우 early return
       if (!mounted) {
-        debugPrint('⚠️ 위젯이 이미 dispose됨 - AudioController 중지 처리 취소');
+        debugPrint('위젯이 이미 dispose됨 - AudioController 중지 처리 취소');
         return;
       }
 
-      // ✅ RecorderController 중지하기 전에 파형 데이터 먼저 추출
+      // RecorderController 중지하기 전에 파형 데이터 먼저 추출
       List<double> waveformData = List<double>.from(
         recorderController.waveData,
       );
-      debugPrint('🌊 중지 전 수집된 파형 데이터: ${waveformData.length} samples');
+      debugPrint('중지 전 수집된 파형 데이터: ${waveformData.length} samples');
 
       // RecorderController 중지
       await recorderController.stop();
-      debugPrint('📊 RecorderController 중지 완료');
+      debugPrint('RecorderController 중지 완료');
 
       if (waveformData.isNotEmpty) {
         waveformData = waveformData.map((value) => value.abs()).toList();
-        debugPrint('🔧 파형 데이터 처리 완료: ${waveformData.length} samples');
+        debugPrint('파형 데이터 처리 완료: ${waveformData.length} samples');
       } // 녹음된 파일 경로 설정
       _recordedFilePath = _audioController.currentRecordingPath;
 
@@ -847,39 +841,39 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         }
       }
 
-      // 🎯 CommentRecord 저장 (댓글 모드이고 photoId가 있는 경우에만)
-      debugPrint('🔍 CommentRecord 저장 조건 체크:');
-      debugPrint('  - widget.isCommentMode: ${widget.isCommentMode}');
-      debugPrint('  - widget.photoId: ${widget.photoId}');
-      debugPrint('  - _recordedFilePath: $_recordedFilePath');
-      debugPrint('  - waveformData.isNotEmpty: ${waveformData.isNotEmpty}');
-      debugPrint('  - waveformData.length: ${waveformData.length}');
+      // CommentRecord 저장 (댓글 모드이고 photoId가 있는 경우에만)
+      debugPrint('CommentRecord 저장 조건 체크:');
+      debugPrint(' - widget.isCommentMode: ${widget.isCommentMode}');
+      debugPrint(' - widget.photoId: ${widget.photoId}');
+      debugPrint(' - recordedFilePath: $_recordedFilePath');
+      debugPrint(' - waveformData.isNotEmpty: ${waveformData.isNotEmpty}');
+      debugPrint(' - waveformData.length: ${waveformData.length}');
 
-      if (widget.isCommentMode && // ✅ 댓글 모드인 경우에만
+      if (widget.isCommentMode && // 댓글 모드인 경우에만
           widget.photoId != null &&
           _recordedFilePath != null &&
           _recordedFilePath!.isNotEmpty &&
           waveformData.isNotEmpty) {
-        debugPrint('✅ 모든 조건 충족 - CommentRecord 저장 시작...');
+        debugPrint('모든 조건 충족 - CommentRecord 저장 시작...');
         await _saveCommentRecord(
           audioFilePath: _recordedFilePath!,
           waveformData: waveformData,
           duration: _audioController.recordingDuration,
         );
-        debugPrint('✅ CommentRecord 저장 완료!');
+        debugPrint('CommentRecord 저장 완료!');
       } else {
-        debugPrint('❌ CommentRecord 저장 조건 불충족');
-        if (!widget.isCommentMode) debugPrint('  - 사진 편집 모드 (댓글 저장 안함)');
-        if (widget.photoId == null) debugPrint('  - photoId가 null');
+        debugPrint('CommentRecord 저장 조건 불충족');
+        if (!widget.isCommentMode) debugPrint(' - 사진 편집 모드 (댓글 저장 안함)');
+        if (widget.photoId == null) debugPrint(' - photoId가 null');
         if (_recordedFilePath == null || _recordedFilePath!.isEmpty) {
-          debugPrint('  - recordedFilePath 문제');
+          debugPrint(' - recordedFilePath 문제');
         }
-        if (waveformData.isEmpty) debugPrint('  - waveformData 비어있음');
+        if (waveformData.isEmpty) debugPrint(' - waveformData 비어있음');
       }
 
-      // ✅ setState() 호출 전 mounted 체크
+      // setState() 호출 전 mounted 체크
       if (!mounted) {
-        debugPrint('⚠️ 위젯이 dispose됨 - setState() 호출 취소');
+        debugPrint('위젯이 dispose됨 - setState() 호출 취소');
         return;
       }
 
@@ -894,11 +888,11 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         widget.onRecordingCompleted!(_recordedFilePath, waveformData);
       }
 
-      debugPrint('🎉 AudioController 중지 처리 완료');
+      debugPrint('AudioController 중지 처리 완료');
     } catch (e) {
-      debugPrint('❌ AudioController 중지 처리 오류: $e');
+      debugPrint('AudioController 중지 처리 오류: $e');
 
-      // ✅ setState() 호출 전 mounted 체크
+      // setState() 호출 전 mounted 체크
       if (mounted) {
         setState(() {
           _currentState = RecordingState.idle;
@@ -970,16 +964,16 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
   void _onWaveformTapped() async {
     debugPrint('🎵 파형 클릭됨 - 프로필 모드로 전환');
 
-    // ✅ 댓글 모드가 아닌 경우 프로필 모드로 전환하지 않음
+    // 댓글 모드가 아닌 경우 프로필 모드로 전환하지 않음
     if (!widget.isCommentMode) {
-      debugPrint('📸 사진 편집 모드 - 프로필 모드 전환 비활성화');
+      debugPrint('사진 편집 모드 - 프로필 모드 전환 비활성화');
       return;
     }
 
     // 사용자 프로필 이미지 로드
     await _loadUserProfileImage();
 
-    // ✅ mounted 체크 후 상태 변경
+    // mounted 체크 후 상태 변경
     if (mounted) {
       setState(() {
         _isProfileMode = true;
@@ -989,32 +983,32 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
   /// 👤 프로필 이미지 클릭 시 호출되는 메서드
   void _onProfileImageTapped() async {
-    debugPrint('👤 프로필 이미지 클릭됨');
+    debugPrint('프로필 이미지 클릭됨');
 
     // 저장된 댓글의 오디오 URL이 있으면 재생
     if (widget.savedComment != null &&
         widget.savedComment!.audioUrl.isNotEmpty) {
-      debugPrint('🎵 저장된 음성 댓글 재생 시작: ${widget.savedComment!.audioUrl}');
+      debugPrint('저장된 음성 댓글 재생 시작: ${widget.savedComment!.audioUrl}');
 
       try {
         // AudioController를 사용하여 음성 재생
         await _audioController.toggleAudio(widget.savedComment!.audioUrl);
-        debugPrint('✅ 음성 재생 시작됨');
+        debugPrint('음성 재생 시작됨');
       } catch (e) {
-        debugPrint('❌ 음성 재생 실패: $e');
+        debugPrint('음성 재생 실패: $e');
       }
     } else if (_recordedFilePath != null && _recordedFilePath!.isNotEmpty) {
       // 현재 녹음된 파일이 있으면 재생
-      debugPrint('🎵 현재 녹음 파일 재생: $_recordedFilePath');
+      debugPrint('현재 녹음 파일 재생: $_recordedFilePath');
 
       try {
         await _audioController.toggleAudio(_recordedFilePath!);
-        debugPrint('✅ 현재 녹음 파일 재생 시작됨');
+        debugPrint('현재 녹음 파일 재생 시작됨');
       } catch (e) {
-        debugPrint('❌ 현재 녹음 파일 재생 실패: $e');
+        debugPrint('현재 녹음 파일 재생 실패: $e');
       }
     } else {
-      debugPrint('🔄 재생할 음성이 없어 파형 모드로 전환');
+      debugPrint('재생할 음성이 없어 파형 모드로 전환');
       // ✅ mounted 체크 후 상태 변경
       if (mounted) {
         setState(() {
@@ -1044,10 +1038,10 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
           });
         }
 
-        debugPrint('✅ 프로필 이미지 로드 완료: $profileImageUrl');
+        debugPrint('프로필 이미지 로드 완료: $profileImageUrl');
       }
     } catch (e) {
-      debugPrint('❌ 프로필 이미지 로드 실패: $e');
+      debugPrint('프로필 이미지 로드 실패: $e');
     }
   }
 
@@ -1055,7 +1049,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
   void dispose() {
     _stopAudioControllerListener(); // Timer 정리
     recorderController.dispose();
-    playerController?.dispose(); // ✅ 재생 컨트롤러도 dispose (null 체크)
+    playerController?.dispose(); // 재생 컨트롤러도 dispose (null 체크)
     super.dispose();
   }
 }

@@ -185,26 +185,22 @@ class CameraService {
   Widget _buildCameraView() {
     // 플랫폼에 따라 다른 카메라 프리뷰 위젯 생성
     if (Platform.isAndroid) {
-      return SizedBox(
-        width: double.infinity,
-        height: double.infinity,
-        child: AndroidView(
-          viewType: 'com.soi.camera',
-          onPlatformViewCreated: (int id) {
-            // 안드로이드 카메라 뷰 생성됨
+      return AndroidView(
+        viewType: 'com.soi.camera',
+        onPlatformViewCreated: (int id) {
+          // 안드로이드 카메라 뷰 생성됨
 
-            // 카메라 뷰 생성 후 충분한 시간을 두고 최적화 실행
-            Future.delayed(Duration(milliseconds: 800), () {
-              optimizeCamera();
-            });
-          },
-          creationParams: <String, dynamic>{
-            'useSRGBColorSpace': true,
-            'useHighQuality': true,
-            'resumeExistingSession': true,
-          },
-          creationParamsCodec: const StandardMessageCodec(),
-        ),
+          // 카메라 뷰 생성 후 충분한 시간을 두고 최적화 실행
+          Future.delayed(Duration(milliseconds: 800), () {
+            optimizeCamera();
+          });
+        },
+        creationParams: <String, dynamic>{
+          'useSRGBColorSpace': true,
+          'useHighQuality': true,
+          'resumeExistingSession': true,
+        },
+        creationParamsCodec: const StandardMessageCodec(),
       );
     } else if (Platform.isIOS) {
       return UiKitView(

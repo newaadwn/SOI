@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../services/camera_service.dart';
-import '../../theme/theme.dart';
 import 'photo_editor_screen.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -194,7 +193,7 @@ class _CameraScreenState extends State<CameraScreen>
       });
 
       // 사진 촬영 후 처리
-      if (result.isNotEmpty) {
+      if (result.isNotEmpty && mounted) {
         // 즉시 편집 화면으로 이동 (갤러리 새로고침과 독립적)
         Navigator.push(
           context,
@@ -224,18 +223,6 @@ class _CameraScreenState extends State<CameraScreen>
       // 추가 예외 처리
       // Unexpected error occurred during picture taking: $e
     }
-  }
-
-  /// 개선된 갤러리 미리보기 위젯 (photo_manager 기반) - 반응형
-  Widget _buildGalleryPreviewWidget(double screenWidth) {
-    // 📱 개선된 반응형 계산
-
-    return Container(
-      width: 46,
-      height: 46,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.76)),
-      child: _buildGalleryContent(46, 8.76),
-    );
   }
 
   /// 갤러리 콘텐츠 빌드 (로딩/에러/이미지 상태 처리)
@@ -323,41 +310,64 @@ class _CameraScreenState extends State<CameraScreen>
     // AutomaticKeepAliveClientMixin 필수 호출
     super.build(context);
 
-    // 📱 개선된 반응형: MediaQuery.sizeOf() 사용
-    final screenSize = MediaQuery.sizeOf(context);
-    final screenWidth = screenSize.width;
-
     return Scaffold(
       backgroundColor: Color(0xff000000), // 배경을 검정색으로 설정
 
       appBar: AppBar(
+        leadingWidth: 80.w, // leading 영역 크기 확장
         title: Column(
           children: [
             Text(
               'SOI',
               style: TextStyle(
-                color: AppTheme.lightTheme.colorScheme.secondary,
+                color: Color(0xfff9f9f9),
                 fontSize: 20.sp,
+                fontFamily: 'Pretendard',
+                fontWeight: FontWeight.w600,
               ),
             ),
             SizedBox(height: 30.h),
           ],
         ),
-        backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        toolbarHeight: 90.h,
-        leading: IconButton(
-          onPressed: () => Navigator.pushNamed(context, '/contact_manager'),
-          icon: Image.asset(
-            "assets/contacts.png",
-            width: 38.w, // 📱 개선된 반응형
-            height: 38.h, // 📱 개선된 반응형
-          ),
+        backgroundColor: Colors.black,
+        toolbarHeight: 70.h,
+        leading: Row(
+          children: [
+            SizedBox(width: 32.w),
+            IconButton(
+              constraints: BoxConstraints(),
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.pushNamed(context, '/contact_manager'),
+              icon: Container(
+                width: 35.w,
+                height: 35.h,
+                decoration: BoxDecoration(
+                  color: Color(0xff1c1c1c),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.people, color: Colors.white, size: 25.sp),
+              ),
+            ),
+          ],
         ),
         actions: [
-          Center(
+          Padding(
+            padding: EdgeInsets.only(right: 32.w),
             child: IconButton(
               onPressed: () {},
-              icon: Icon(Icons.notifications, color: Colors.white, size: 25.sp),
+              icon: Container(
+                width: 35.w,
+                height: 35.h,
+                decoration: BoxDecoration(
+                  color: Color(0xff1c1c1c), // 아이콘 배경색
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.notifications,
+                  color: Colors.white,
+                  size: 25.sp,
+                ),
+              ),
             ),
           ),
         ],
@@ -365,83 +375,81 @@ class _CameraScreenState extends State<CameraScreen>
       body: Column(
         children: [
           // 📱 카메라 영역을 Expanded로 감싸서 오버플로우 방지
-          Expanded(
-            child: Center(
-              child: FutureBuilder<void>(
-                future: _cameraInitialization,
-                builder: (contezxt, snapshot) {
-                  // 카메라 초기화 중이면 로딩 인디케이터 표시
-                  if (_isLoading) {
-                    return Container(
-                      width: 400.w,
-                      constraints: BoxConstraints(
-                        maxHeight: double.infinity, // 📱 유연한 높이
+          Center(
+            child: FutureBuilder<void>(
+              future: _cameraInitialization,
+              builder: (contezxt, snapshot) {
+                // 카메라 초기화 중이면 로딩 인디케이터 표시
+                if (_isLoading) {
+                  return Container(
+                    width: 400.w,
+                    constraints: BoxConstraints(
+                      maxHeight: double.infinity, // 📱 유연한 높이
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: Colors.white),
+                        ],
                       ),
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            CircularProgressIndicator(color: Colors.white),
-                          ],
-                        ),
-                      ),
-                    );
-                  }
-
-                  // 초기화 실패 시 오류 메시지 표시
-                  if (snapshot.hasError) {
-                    return Container(
-                      constraints: BoxConstraints(
-                        maxHeight: double.infinity, // 📱 유연한 높이
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Center(
-                        child: Text(
-                          '카메라를 초기화할 수 없습니다.\n앱을 다시 시작해 주세요.',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18.sp,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    );
-                  }
-
-                  // 카메라 초기화 완료되면 카메라 뷰 표시
-                  return Stack(
-                    alignment: Alignment.topCenter,
-                    children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16), // 📱 반응형
-                        child: SizedBox(
-                          width: 354.w, // 📱 반응형
-                          height: 500.h, // 📱 반응형
-                          child: _cameraService.getCameraView(),
-                        ),
-                      ),
-
-                      // 플래시 버튼
-                      IconButton(
-                        onPressed: _toggleFlash,
-                        icon: Icon(
-                          isFlashOn ? EvaIcons.flash : EvaIcons.flashOff,
-                          color: Colors.white,
-                          size: 28.sp, // 📱 반응형
-                        ),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ],
+                    ),
                   );
-                },
-              ),
+                }
+
+                // 초기화 실패 시 오류 메시지 표시
+                if (snapshot.hasError) {
+                  return Container(
+                    constraints: BoxConstraints(
+                      maxHeight: double.infinity, // 📱 유연한 높이
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Center(
+                      child: Text(
+                        '카메라를 초기화할 수 없습니다.\n앱을 다시 시작해 주세요.',
+                        style: TextStyle(color: Colors.white, fontSize: 18.sp),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  );
+                }
+
+                // 카메라 초기화 완료되면 카메라 뷰 표시
+                return Stack(
+                  alignment: Alignment.topCenter,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16), // 📱 반응형
+                      child: Container(
+                        width: 354.w, // 📱 반응형
+                        height: 500.h, // 📱 반응형
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.white, width: 1.0),
+                        ),
+                        child: _cameraService.getCameraView(),
+                      ),
+                    ),
+
+                    // 플래시 버튼
+                    IconButton(
+                      onPressed: _toggleFlash,
+                      icon: Icon(
+                        isFlashOn ? EvaIcons.flash : EvaIcons.flashOff,
+                        color: Colors.white,
+                        size: 28.sp, // 📱 반응형
+                      ),
+                      padding: EdgeInsets.zero,
+                    ),
+                  ],
+                );
+              },
             ),
           ),
           SizedBox(height: 20.h), // 📱 반응형
@@ -484,7 +492,14 @@ class _CameraScreenState extends State<CameraScreen>
                         }
                       }
                     },
-                    child: _buildGalleryPreviewWidget(screenWidth), // 📱 반응형
+                    child: Container(
+                      width: 46.w,
+                      height: 46.h,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8.76),
+                      ),
+                      child: _buildGalleryContent(46, 8.76),
+                    ), // 📱 반응형
                   ),
                 ),
               ),
@@ -494,22 +509,20 @@ class _CameraScreenState extends State<CameraScreen>
                 onPressed: _takePicture,
                 icon: Image.asset(
                   "assets/take_picture.png",
-                  width: 75.w, // 📱 개선된 반응형
-                  height: 75.h, // 📱 개선된 반응형
+                  width: 65.w,
+                  height: 65.h,
                 ),
               ),
 
               // 카메라 전환 버튼 - 개선된 반응형
               Expanded(
-                child: SizedBox(
-                  child: IconButton(
-                    onPressed: _switchCamera,
-                    color: Color(0xffd9d9d9),
-                    icon: Image.asset(
-                      "assets/switch.png",
-                      width: 80.w,
-                      height: 65.h,
-                    ),
+                child: IconButton(
+                  onPressed: _switchCamera,
+                  color: Color(0xffd9d9d9),
+                  icon: Image.asset(
+                    "assets/switch.png",
+                    width: 67.w,
+                    height: 56.h,
                   ),
                 ),
               ),

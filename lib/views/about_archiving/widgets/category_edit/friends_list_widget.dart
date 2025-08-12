@@ -101,76 +101,93 @@ class FriendsListWidget extends StatelessWidget {
               ),
             ),
           ] else ...[
-            // 친구 목록
-            for (int i = 0; i < displayMates.length; i++) ...[
-              _FriendItem(
-                mateUid: displayMates[i],
-                friendInfo: friendsInfo[displayMates[i]],
-              ),
-              if (i < displayMates.length - 1) SizedBox(height: 23.h),
-            ],
+            // 친구 목록을 ListView로 구성
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount:
+                  displayMates.length +
+                  (hasMore ? 1 : 0) +
+                  (isExpanded && totalMates > maxDisplayCount ? 1 : 0),
+              separatorBuilder: (context, index) => SizedBox(height: 8.h),
+              itemBuilder: (context, index) {
+                // 친구 아이템들
+                if (index < displayMates.length) {
+                  return _FriendListItem(
+                    mateUid: displayMates[index],
+                    friendInfo: friendsInfo[displayMates[index]],
+                  );
+                }
 
-            // "+더보기" 항목
-            if (hasMore) ...[
-              SizedBox(height: 8.h),
-              GestureDetector(
-                onTap: onExpandToggle,
-                child: Column(
-                  children: [
-                    Divider(color: const Color(0xFF666666)),
-                    SizedBox(height: 13.h),
-                    Text(
-                      '+ 더보기',
-                      style: TextStyle(
-                        color: const Color(0xFFCCCCCC),
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'Pretendard Variable',
+                // "+더보기" 버튼
+                if (hasMore && index == displayMates.length) {
+                  return SizedBox(
+                    height: 48.h, // 높이를 줄임
+                    child: GestureDetector(
+                      onTap: onExpandToggle,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Divider(color: const Color(0xFF666666)),
+                          SizedBox(height: 4.h),
+                          Text(
+                            '+ 더보기',
+                            style: TextStyle(
+                              color: const Color(0xFFCCCCCC),
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'Pretendard Variable',
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ],
+                  );
+                }
 
-            // "접기" 버튼 (확장된 상태에서만 표시)
-            if (isExpanded && totalMates > maxDisplayCount) ...[
-              SizedBox(height: 8.h),
-              GestureDetector(
-                onTap: onCollapseToggle,
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40.w,
-                      height: 40.w,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF444444),
-                        border: Border.all(
-                          color: const Color(0xFF666666),
-                          width: 1,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.remove,
-                        color: Colors.white,
-                        size: 20.sp,
+                // "접기" 버튼
+                if (isExpanded && totalMates > maxDisplayCount) {
+                  return SizedBox(
+                    height: 48.h, // 친구 아이템과 동일한 높이
+                    child: GestureDetector(
+                      onTap: onCollapseToggle,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 40.w,
+                            height: 40.w,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF444444),
+                              border: Border.all(
+                                color: const Color(0xFF666666),
+                                width: 1,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.remove,
+                              color: Colors.white,
+                              size: 20.sp,
+                            ),
+                          ),
+                          SizedBox(width: 12.w),
+                          Text(
+                            '접기',
+                            style: TextStyle(
+                              color: const Color(0xFFCCCCCC),
+                              fontSize: 14.sp,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'Pretendard Variable',
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    SizedBox(width: 12.w),
-                    Text(
-                      '접기',
-                      style: TextStyle(
-                        color: const Color(0xFFCCCCCC),
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'Pretendard Variable',
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                  );
+                }
+                return null;
+              },
+            ),
           ],
         ],
       ),
@@ -178,100 +195,103 @@ class FriendsListWidget extends StatelessWidget {
   }
 }
 
-class _FriendItem extends StatelessWidget {
+class _FriendListItem extends StatelessWidget {
   final String mateUid;
   final AuthModel? friendInfo;
 
-  const _FriendItem({required this.mateUid, required this.friendInfo});
+  const _FriendListItem({required this.mateUid, required this.friendInfo});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // 프로필 이미지
-        Container(
-          width: 40.w,
-          height: 40.w,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: const Color(0xFF666666),
+    return SizedBox(
+      height: 58.h, // 고정 높이 설정
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center, // center로 변경
+        children: [
+          // 프로필 이미지
+          Container(
+            width: 40.w,
+            height: 40.w,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: const Color(0xFF666666),
+            ),
+            child:
+                friendInfo?.profileImage != null &&
+                        friendInfo!.profileImage.isNotEmpty
+                    ? ClipOval(
+                      child: CachedNetworkImage(
+                        imageUrl: friendInfo!.profileImage,
+                        width: 40.w,
+                        height: 40.w,
+                        fit: BoxFit.cover,
+                        placeholder:
+                            (context, url) => Container(
+                              width: 40.w,
+                              height: 40.w,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: const Color(0xFF666666),
+                              ),
+                              child: Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 20.sp,
+                              ),
+                            ),
+                        errorWidget:
+                            (context, url, error) => Container(
+                              width: 40.w,
+                              height: 40.w,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: const Color(0xFF666666),
+                              ),
+                              child: Icon(
+                                Icons.person,
+                                color: Colors.white,
+                                size: 20.sp,
+                              ),
+                            ),
+                      ),
+                    )
+                    : Icon(Icons.person, color: Colors.white, size: 20.sp),
           ),
-          child:
-              friendInfo?.profileImage != null &&
-                      friendInfo!.profileImage.isNotEmpty
-                  ? ClipOval(
-                    child: CachedNetworkImage(
-                      imageUrl: friendInfo!.profileImage,
-                      width: 40.w,
-                      height: 40.w,
-                      fit: BoxFit.cover,
-                      placeholder:
-                          (context, url) => Container(
-                            width: 40.w,
-                            height: 40.w,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: const Color(0xFF666666),
-                            ),
-                            child: Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 20.sp,
-                            ),
-                          ),
-                      errorWidget:
-                          (context, url, error) => Container(
-                            width: 40.w,
-                            height: 40.w,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: const Color(0xFF666666),
-                            ),
-                            child: Icon(
-                              Icons.person,
-                              color: Colors.white,
-                              size: 20.sp,
-                            ),
-                          ),
-                    ),
-                  )
-                  : Icon(Icons.person, color: Colors.white, size: 20.sp),
-        ),
-        SizedBox(width: 12.w),
-        // 친구 이름/ID
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 이름
-              Text(
-                friendInfo?.name ?? '이름을 알 수 없습니다.!',
-                style: TextStyle(
-                  color: Color(0xffd9d9d9),
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w400,
-                  fontFamily: 'Pretendard Variable',
+          SizedBox(width: 12.w),
+          // 친구 이름/ID
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 이름
+                Text(
+                  friendInfo?.name ?? '이름을 알 수 없습니다.!',
+                  style: TextStyle(
+                    color: Color(0xffd9d9d9),
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w400,
+                    fontFamily: 'Pretendard Variable',
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
-              // ID
-              Text(
-                friendInfo?.id ?? mateUid,
-                style: TextStyle(
-                  color: const Color(0xFFAAAAAA),
-                  fontSize: 12.sp,
-                  fontWeight: FontWeight.w400,
-                  fontFamily: 'Pretendard Variable',
+                // ID
+                Text(
+                  friendInfo?.id ?? mateUid,
+                  style: TextStyle(
+                    color: const Color(0xFFAAAAAA),
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w400,
+                    fontFamily: 'Pretendard Variable',
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

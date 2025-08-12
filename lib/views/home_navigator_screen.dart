@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_swift_camera/views/about_feed/feed_home.dart';
 import 'package:provider/provider.dart';
 import '../theme/theme.dart';
@@ -48,47 +49,56 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      bottomNavigationBar: NavigationBarTheme(
-        data: NavigationBarThemeData(),
-        child: NavigationBar(
-          indicatorColor: Colors.transparent,
-          backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
-          onDestinationSelected: (int index) {
-            setState(() {
-              _currentPageIndex = index;
-            });
-          },
-          selectedIndex: _currentPageIndex,
-          destinations: <Widget>[
-            const NavigationDestination(
-              selectedIcon: Icon(Icons.home, color: Colors.white, size: 31),
-              icon: Icon(Icons.home, size: 31, color: Color(0xff535252)),
-              label: '',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.camera_alt, size: 31, color: Color(0xff535252)),
-              selectedIcon: Icon(
-                Icons.camera_alt,
-                size: 31,
-                color: Colors.white,
+      backgroundColor: Colors.black,
+      bottomNavigationBar: Container(
+        margin: EdgeInsets.only(top: 10.h),
+        height: 70.h,
+        child: NavigationBarTheme(
+          data: NavigationBarThemeData(backgroundColor: Colors.black),
+          child: NavigationBar(
+            indicatorColor: Colors.transparent,
+            backgroundColor: AppTheme.lightTheme.colorScheme.surface,
+            labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
+            onDestinationSelected: (int index) {
+              setState(() {
+                _currentPageIndex = index;
+              });
+            },
+            selectedIndex: _currentPageIndex,
+            destinations: <Widget>[
+              const NavigationDestination(
+                selectedIcon: Icon(Icons.home, color: Colors.white, size: 31),
+                icon: Icon(Icons.home, size: 31, color: Color(0xff535252)),
+                label: '',
               ),
-              label: '',
-            ),
-            const NavigationDestination(
-              icon: Icon(
-                FluentIcons.archive_24_filled,
-                size: 31,
-                color: Color(0xff535252),
+              NavigationDestination(
+                icon: Icon(
+                  Icons.camera_alt,
+                  size: 31,
+                  color: Color(0xff535252),
+                ),
+                selectedIcon: Icon(
+                  Icons.camera_alt,
+                  size: 31,
+                  color: Colors.white,
+                ),
+                label: '',
               ),
-              selectedIcon: Icon(
-                FluentIcons.archive_24_filled,
-                size: 31,
-                color: Colors.white,
+              const NavigationDestination(
+                icon: Icon(
+                  FluentIcons.archive_24_filled,
+                  size: 31,
+                  color: Color(0xff535252),
+                ),
+                selectedIcon: Icon(
+                  FluentIcons.archive_24_filled,
+                  size: 31,
+                  color: Colors.white,
+                ),
+                label: '',
               ),
-              label: '',
-            ),
-          ],
+            ],
+          ),
         ),
       ),
       body: IndexedStack(

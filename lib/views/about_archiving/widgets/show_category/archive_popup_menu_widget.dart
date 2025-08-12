@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../../models/category_data_model.dart';
 import 'archive_category_actions.dart';
 import 'archive_category_dialogs.dart';
@@ -11,6 +12,7 @@ class ArchivePopupMenuWidget {
     BuildContext context,
     CategoryDataModel category, {
     Offset? buttonPosition,
+    VoidCallback? onEditName,
   }) {
     // 버튼 위치 계산
     final RenderBox? renderBox = context.findRenderObject() as RenderBox?;
@@ -30,6 +32,7 @@ class ArchivePopupMenuWidget {
         return _ArchivePopupMenuDialog(
           category: category,
           buttonPosition: position,
+          onEditName: onEditName,
         );
       },
     );
@@ -41,10 +44,12 @@ class ArchivePopupMenuWidget {
 class _ArchivePopupMenuDialog extends StatelessWidget {
   final CategoryDataModel category;
   final Offset buttonPosition;
+  final VoidCallback? onEditName;
 
   const _ArchivePopupMenuDialog({
     required this.category,
     required this.buttonPosition,
+    this.onEditName,
   });
 
   @override
@@ -88,7 +93,7 @@ class _ArchivePopupMenuDialog extends StatelessWidget {
           child: Material(
             borderRadius: BorderRadius.circular(8.0),
             child: Container(
-              width: 151,
+              width: 151.w,
               decoration: BoxDecoration(
                 color: const Color(0xFF323232), // 피그마 배경색
                 borderRadius: BorderRadius.circular(8.0),
@@ -105,7 +110,7 @@ class _ArchivePopupMenuDialog extends StatelessWidget {
                     textColor: Colors.white,
                     onTap: () => _handleMenuAction(context, 'edit_name'),
                   ),
-                  const PopupMenuDivider(height: 1, color: Color(0xff5a5a5a)),
+                  PopupMenuDivider(height: 1.h, color: Color(0xff5a5a5a)),
 
                   // 고정/고정 해제 버튼
                   _buildMenuButton(
@@ -119,7 +124,7 @@ class _ArchivePopupMenuDialog extends StatelessWidget {
                           category.isPinned ? 'unpin' : 'pin',
                         ),
                   ),
-                  const PopupMenuDivider(height: 1, color: Color(0xff5a5a5a)),
+                  PopupMenuDivider(height: 1.h, color: Color(0xff5a5a5a)),
 
                   // 나가기 버튼
                   _buildMenuButton(
@@ -150,20 +155,20 @@ class _ArchivePopupMenuDialog extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8.0),
       child: Container(
-        width: 120, // 메뉴 너비
-        height: 40, // 메뉴 높이
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+        width: 120.w,
+        height: 40.h,
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
         child: Row(
           children: [
             // 아이콘
-            Image.asset(icon, width: 15.0, height: 15.0),
-            const SizedBox(width: 12.0),
+            Image.asset(icon, width: 15.w, height: 15.h),
+            SizedBox(width: 12.w),
             // 텍스트
             Text(
               menuText,
               style: TextStyle(
                 color: textColor,
-                fontSize: 13.0,
+                fontSize: 13.sp,
                 fontWeight: FontWeight.w400,
                 fontFamily: 'Pretendard Variable',
               ),
@@ -185,17 +190,8 @@ class _ArchivePopupMenuDialog extends StatelessWidget {
     // 안전한 부모 context로 액션 처리
     switch (action) {
       case 'edit_name':
-        ArchiveCategoryDialogs.showEditNameDialog(
-          parentContext,
-          category,
-          onConfirm: (newName) {
-            ArchiveCategoryActions.updateCategoryName(
-              parentContext,
-              category,
-              newName,
-            );
-          },
-        );
+        onEditName!();
+
         break;
       case 'pin':
       case 'unpin':

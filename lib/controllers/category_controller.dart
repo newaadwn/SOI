@@ -187,6 +187,11 @@ class CategoryController extends ChangeNotifier {
     }
   }
 
+  /// 🎯 카테고리 이름만 업데이트하는 편의 메서드
+  Future<void> updateCategoryName(String categoryId, String newName) async {
+    await updateCategory(categoryId: categoryId, name: newName);
+  }
+
   /// 카테고리 고정/해제를 토글합니다
   ///
   /// [categoryId] 토글할 카테고리 ID

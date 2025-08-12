@@ -295,91 +295,89 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
       barrierColor: Color(0xff171717).withValues(alpha: 0.8), // 반투명 회색 배경
       builder: (BuildContext context) {
         return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: EdgeInsets.symmetric(horizontal: 40 * scale),
+          backgroundColor: Color(0xff323232),
+          insetPadding: EdgeInsets.symmetric(horizontal: 40.w),
           child: StatefulBuilder(
             builder: (context, setState) {
               return Container(
-                padding: EdgeInsets.all(24 * scale),
+                width: 314.w,
+                height: 204.h,
                 decoration: BoxDecoration(
-                  color: const Color(0xff2a2a2a), // 어두운 회색 배경
-                  borderRadius: BorderRadius.circular(16 * scale),
+                  color: Color(0xff323232), // 어두운 회색 배경
+                  borderRadius: BorderRadius.circular(14.2),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // 제목
                     Text(
                       '추가할 아이디를 입력해주세요',
                       style: TextStyle(
                         color: const Color(0xfff9f9f9),
-                        fontSize: 16 * scale,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.w500,
                       ),
                       textAlign: TextAlign.center,
                     ),
 
-                    SizedBox(height: 24 * scale),
+                    SizedBox(height: 24.h),
 
                     // ID 입력 필드
                     Container(
-                      width: 249 * scale,
-                      height: 39 * scale,
+                      width: 249.w,
+                      height: 39.h,
                       decoration: BoxDecoration(
-                        color: const Color(0xff404040),
-                        borderRadius: BorderRadius.circular(8 * scale),
+                        color: const Color(0xff323232),
+                        borderRadius: BorderRadius.circular(8.89),
+                        border: Border.all(
+                          color: const Color(0xff5a5a5a),
+                          width: 1,
+                        ),
                       ),
                       child: TextField(
                         controller: idController,
                         style: TextStyle(
                           color: const Color(0xfff9f9f9),
-                          fontSize: 16 * scale,
+                          fontSize: 16.sp,
                         ),
                         decoration: InputDecoration(
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(
-                            horizontal: 16 * scale,
-                            vertical: 14 * scale,
+                            horizontal: 16.w,
+                            vertical: 14.h,
                           ),
                         ),
                         textAlign: TextAlign.center,
                       ),
                     ),
 
-                    SizedBox(height: 32 * scale),
+                    SizedBox(height: 35.h),
 
                     // 확인 버튼
                     SizedBox(
-                      width: 145 * scale,
-                      height: 48 * scale,
+                      width: 145.w,
+                      height: 48.h,
                       child: ElevatedButton(
                         onPressed: () {
                           final enteredId = idController.text.trim();
                           if (enteredId.isNotEmpty) {
                             Navigator.of(context).pop();
                             _addFriendById(enteredId);
-                          } else {
-                            // ID가 비어있을 때 경고
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('ID를 입력해주세요'),
-                                backgroundColor: Colors.orange,
-                              ),
-                            );
                           }
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xffffffff),
                           foregroundColor: const Color(0xff000000),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24 * scale),
+                            borderRadius: BorderRadius.circular(14.2),
                           ),
                           elevation: 0,
                         ),
                         child: Text(
                           '확인',
                           style: TextStyle(
-                            fontSize: 16 * scale,
+                            fontSize: (17.7778).sp,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -570,21 +568,18 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         builder: (context, contactController, child) {
           return SingleChildScrollView(
             // 전체적인 좌우 패딩을 반응형으로 적용
-            padding: EdgeInsets.symmetric(horizontal: 16 * scale),
+            padding: EdgeInsets.symmetric(horizontal: 16.w),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // 페이지 제목
                 Padding(
-                  padding: EdgeInsets.only(
-                    left: 17 * scale,
-                    bottom: 11 * scale,
-                  ),
+                  padding: EdgeInsets.only(left: 17.w, bottom: 11.h),
                   child: Text(
                     '친구추가',
                     style: TextStyle(
                       color: const Color(0xfff9f9f9),
-                      fontSize: 18 * scale,
+                      fontSize: 18.sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -593,18 +588,15 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                 // 친구 추가 옵션 카드 위젯 함수 호출
                 _buildFriendAddOptionsCard(context, scale, contactController),
 
-                SizedBox(height: 24 * scale),
+                SizedBox(height: 24.h),
 
                 Padding(
-                  padding: EdgeInsets.only(
-                    left: 17 * scale,
-                    bottom: 11 * scale,
-                  ),
+                  padding: EdgeInsets.only(left: 17.w, bottom: 11.h),
                   child: Text(
                     '초대링크',
                     style: TextStyle(
                       color: const Color(0xfff9f9f9),
-                      fontSize: 18.02 * scale,
+                      fontSize: (18.02).sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -612,55 +604,47 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                 // 가로 스크롤 링크 카드 목록
                 _buildLinkCard(context, scale),
 
-                SizedBox(height: 24 * scale),
+                SizedBox(height: 24.h),
 
                 Padding(
-                  padding: EdgeInsets.only(
-                    left: 17 * scale,
-                    bottom: 11 * scale,
-                  ),
+                  padding: EdgeInsets.only(left: 17.w, bottom: 11.h),
                   child: Text(
                     '친구 요청',
                     style: TextStyle(
                       color: const Color(0xfff9f9f9),
-                      fontSize: 18.02 * scale,
+                      fontSize: (18.02).sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
                 _buildRequestCard(context, scale),
-                SizedBox(height: 24 * scale),
+                SizedBox(height: 24.h),
                 Padding(
-                  padding: EdgeInsets.only(
-                    left: 17 * scale,
-                    bottom: 11 * scale,
-                  ),
+                  padding: EdgeInsets.only(left: 17.w, bottom: 11.h),
                   child: Text(
                     '친구 목록',
                     style: TextStyle(
                       color: const Color(0xfff9f9f9),
-                      fontSize: 18.02 * scale,
+                      fontSize: (18.02).sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
                 _buildFriendListCard(context, scale),
-                SizedBox(height: 24 * scale),
+                SizedBox(height: 24.h),
                 Padding(
-                  padding: EdgeInsets.only(
-                    left: 17 * scale,
-                    bottom: 11 * scale,
-                  ),
+                  padding: EdgeInsets.only(left: 17.w, bottom: 11.h),
                   child: Text(
                     '친구 추천',
                     style: TextStyle(
                       color: const Color(0xfff9f9f9),
-                      fontSize: 18.02 * scale,
+                      fontSize: (18.02).sp,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
                 _buildFriendSuggestCard(context, scale),
+                SizedBox(height: 134.h),
               ],
             ),
           );
@@ -684,16 +668,13 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         children: [
           // 연락처 동기화
           Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: 18 * scale,
-              vertical: 12 * scale,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 12.h),
             child: Row(
               children: [
                 // 아이콘
                 Container(
-                  width: 44 * scale,
-                  height: 44 * scale,
+                  width: 44.w,
+                  height: 44.h,
                   decoration: const BoxDecoration(
                     color: Color(0xff323232),
                     shape: BoxShape.circle,
@@ -701,10 +682,10 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                   child: Icon(
                     Boxicons.bxs_contact,
                     color: const Color(0xfff9f9f9),
-                    size: 24 * scale,
+                    size: 24.sp,
                   ),
                 ),
-                SizedBox(width: 9 * scale),
+                SizedBox(width: 9.sp),
 
                 // 텍스트
                 Expanded(
@@ -712,7 +693,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                     '연락처 동기화',
                     style: TextStyle(
                       color: const Color(0xfff9f9f9),
-                      fontSize: 16 * scale,
+                      fontSize: 16.sp,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -726,17 +707,17 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                       Icon(
                         Icons.pause_circle_filled,
                         color: Colors.orange,
-                        size: 20 * scale,
+                        size: 20.sp,
                       ),
-                      SizedBox(width: 8 * scale),
+                      SizedBox(width: 8.sp),
                     ],
                     Transform.scale(
                       scale: scale,
                       child:
                           contactController.isLoading
                               ? SizedBox(
-                                width: 24 * scale,
-                                height: 24 * scale,
+                                width: 24.sp,
+                                height: 24.sp,
                                 child: const CircularProgressIndicator(
                                   color: Colors.white,
                                   strokeWidth: 2,
@@ -762,7 +743,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
           ),
 
           // 구분선
-          const Divider(color: Color(0xff404040), height: 1, thickness: 1),
+          Divider(color: Color(0xff1c1c1c), height: 1, thickness: 1),
 
           // ID로 추가 하기
           InkWell(
@@ -770,16 +751,13 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
               _showAddByIdDialog(context, scale);
             },
             child: Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: 18 * scale,
-                vertical: 12 * scale,
-              ),
+              padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 12.h),
               child: Row(
                 children: [
                   // 아이콘
                   Container(
-                    width: 44 * scale,
-                    height: 44 * scale,
+                    width: 44.w,
+                    height: 44.h,
                     decoration: const BoxDecoration(
                       color: Color(0xff323232),
                       shape: BoxShape.circle,
@@ -789,13 +767,13 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                         'ID',
                         style: TextStyle(
                           color: const Color(0xfff9f9f9),
-                          fontSize: 25 * scale,
+                          fontSize: 25.sp,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
                   ),
-                  SizedBox(width: 9 * scale),
+                  SizedBox(width: 9.sp),
 
                   // 텍스트 (수정됨)
                   Expanded(
@@ -803,17 +781,10 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                       'ID로 추가 하기',
                       style: TextStyle(
                         color: const Color(0xfff9f9f9),
-                        fontSize: 16 * scale,
+                        fontSize: 16.sp,
                         fontWeight: FontWeight.w400,
                       ),
                     ),
-                  ),
-
-                  // 화살표 아이콘 (추가됨)
-                  Icon(
-                    Icons.arrow_forward_ios,
-                    color: const Color(0xff666666),
-                    size: 16 * scale,
                   ),
                 ],
               ),
@@ -826,40 +797,38 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
 
   Widget _buildLinkCard(BuildContext context, double scale) {
     return SizedBox(
-      width: 354 * scale,
-      height: 132 * scale,
+      width: 354.w,
+      height: 100.h,
       child: Card(
         clipBehavior: Clip.antiAliasWithSaveLayer,
         color: const Color(0xff1c1c1c),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12 * scale),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(width: 18 * scale),
-              _buildLinkCardContent(context, scale, '랑크 복사', 'assets/link.png'),
-              SizedBox(width: 21.24 * scale),
+              SizedBox(width: 18.w),
+              _buildLinkCardContent(context, scale, '링크 복사', 'assets/link.png'),
+              SizedBox(width: (21.24).w),
               _buildLinkCardContent(context, scale, '공유', 'assets/share.png'),
-              SizedBox(width: 21.24 * scale),
+              SizedBox(width: (21.24).w),
               _buildLinkCardContent(context, scale, '카카오톡', 'assets/kakao.png'),
-              SizedBox(width: 21.24 * scale),
+              SizedBox(width: (21.24).w),
               _buildLinkCardContent(
                 context,
                 scale,
                 '인스타그램',
                 'assets/insta.png',
               ),
-              SizedBox(width: 21.24 * scale),
+              SizedBox(width: (21.24).w),
               _buildLinkCardContent(
                 context,
                 scale,
                 '메세지',
                 'assets/message.png',
               ),
-              SizedBox(width: 18 * scale),
+              SizedBox(width: (18).w),
             ],
           ),
         ),
@@ -888,18 +857,14 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(100),
-            child: Image.asset(
-              imagePath,
-              width: 51.76 * scale,
-              height: 51.76 * scale,
-            ),
+            child: Image.asset(imagePath, width: (51.76).w, height: (51.76).w),
           ),
-          SizedBox(height: 7.24 * scale),
+          SizedBox(height: (7.24).h),
           Text(
             title,
             style: TextStyle(
               color: const Color(0xfff9f9f9),
-              fontSize: 12 * scale,
+              fontSize: (12).sp,
               fontWeight: FontWeight.w500,
             ),
           ),
@@ -915,19 +880,19 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         final receivedRequests = friendRequestController.receivedRequests;
 
         return SizedBox(
-          width: 354 * scale,
+          width: (354).w,
           child: Card(
             clipBehavior: Clip.antiAliasWithSaveLayer,
             color: const Color(0xff1c1c1c),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12 * scale),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               children: [
                 // 친구 요청 리스트
                 receivedRequests.isEmpty
                     ? SizedBox(
-                      height: 132 * scale,
+                      height: 132.h,
                       child: Center(
                         child: Text(
                           friendRequestController.isLoading
@@ -935,7 +900,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                               : '받은 친구 요청이 없습니다',
                           style: TextStyle(
                             color: const Color(0xff666666),
-                            fontSize: 14 * scale,
+                            fontSize: 14.sp,
                           ),
                         ),
                       ),
@@ -969,15 +934,12 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
     final isProcessing = controller.isProcessingRequest(request.id);
 
     return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: 18 * scale,
-        vertical: 12 * scale,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: (18).w, vertical: (12).h),
       child: Row(
         children: [
           // 프로필 이미지
           CircleAvatar(
-            radius: 22 * scale,
+            radius: (22).w,
             backgroundColor: const Color(0xff323232),
             backgroundImage:
                 (request.senderProfileImageUrl != null &&
@@ -997,13 +959,13 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                           : '?',
                       style: TextStyle(
                         color: const Color(0xfff9f9f9),
-                        fontSize: 16 * scale,
+                        fontSize: (16).sp,
                         fontWeight: FontWeight.w600,
                       ),
                     )
                     : null,
           ),
-          SizedBox(width: 12 * scale),
+          SizedBox(width: (12).w),
 
           Expanded(
             child: Column(
@@ -1016,7 +978,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     color: const Color(0xffd9d9d9),
-                    fontSize: 16.sp,
+                    fontSize: (16).sp,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -1037,8 +999,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
           // 삭제/수락 버튼
           if (isProcessing) ...[
             SizedBox(
-              width: 24,
-              height: 24,
+              width: (24).w,
+              height: (24).h,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: const Color(0xfff9f9f9),
@@ -1074,7 +1036,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                     ),
                   ),
                 ),
-                SizedBox(width: 8 * scale),
+                SizedBox(width: (8).w),
                 // 수락 버튼
                 SizedBox(
                   width: 42.w,
@@ -1086,7 +1048,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                       backgroundColor: const Color(0xfff9f9f9),
                       foregroundColor: const Color(0xff1c1c1c),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(13 * scale),
+                        borderRadius: BorderRadius.circular(13),
                       ),
                       padding: EdgeInsets.zero,
                       elevation: 0,
@@ -1150,12 +1112,12 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         final friends = friendController.friends;
 
         return SizedBox(
-          width: 354 * scale,
+          width: 354.w,
           child: Card(
             clipBehavior: Clip.antiAliasWithSaveLayer,
             color: const Color(0xff1c1c1c),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12 * scale),
+              borderRadius: BorderRadius.circular(12),
             ),
             child:
                 friends.isEmpty
@@ -1166,7 +1128,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                           '아직 친구가 없습니다',
                           style: TextStyle(
                             color: const Color(0xff666666),
-                            fontSize: 14 * scale,
+                            fontSize: 14.sp,
                           ),
                         ),
                       ),
@@ -1192,7 +1154,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                                 children: [
                                   // 프로필 이미지 (고정 크기)
                                   CircleAvatar(
-                                    radius: 22,
+                                    radius: (22),
                                     backgroundColor: const Color(0xff323232),
                                     backgroundImage:
                                         friend.profileImageUrl != null
@@ -1267,19 +1229,19 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Icon(Icons.add, size: 18 * scale),
-                                  SizedBox(width: 8 * scale),
+                                  Icon(Icons.add, size: (18).sp),
+                                  SizedBox(width: (8).w),
                                   Text(
                                     '더보기',
                                     style: TextStyle(
                                       color: const Color(0xffd9d9d9),
-                                      fontSize: 16 * scale,
+                                      fontSize: (16).sp,
                                       decoration: TextDecoration.underline,
                                     ),
                                   ),
                                 ],
                               ),
-                              SizedBox(height: 12 * scale),
+                              SizedBox(height: (12).h),
                             ],
                           ),
                         ),
@@ -1296,12 +1258,12 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
     return Consumer<ContactController>(
       builder: (context, contactController, child) {
         return SizedBox(
-          width: 354 * scale,
+          width: 354.w,
           child: Card(
             clipBehavior: Clip.antiAliasWithSaveLayer,
             color: const Color(0xff1c1c1c),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12 * scale),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: _buildFriendSuggestContent(
               context,
@@ -1323,25 +1285,22 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
     // ✅ 초기화 진행 중일 때
     if (_isInitializing) {
       return Container(
-        padding: EdgeInsets.all(40 * scale),
+        padding: EdgeInsets.all(40),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 24 * scale,
-              height: 24 * scale,
+              width: 24.w,
+              height: 24.h,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: const Color(0xfff9f9f9),
               ),
             ),
-            SizedBox(height: 16 * scale),
+            SizedBox(height: (16).h),
             Text(
               '연락처에서 친구를 찾는 중...',
-              style: TextStyle(
-                color: const Color(0xff666666),
-                fontSize: 14 * scale,
-              ),
+              style: TextStyle(color: const Color(0xff666666), fontSize: 14.sp),
             ),
           ],
         ),
@@ -1362,7 +1321,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                         : '?',
                     style: TextStyle(
                       color: const Color(0xfff9f9f9),
-                      fontSize: 16 * scale,
+                      fontSize: (16).sp,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1373,7 +1332,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                       : '이름 없음',
                   style: TextStyle(
                     color: const Color(0xffd9d9d9),
-                    fontSize: 16 * scale,
+                    fontSize: (16).sp,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -1385,7 +1344,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                           phones.first.number,
                           style: TextStyle(
                             color: const Color(0xff666666),
-                            fontSize: 14 * scale,
+                            fontSize: (14).sp,
                           ),
                         )
                         : null;
@@ -1395,7 +1354,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                   }
                 }(),
                 trailing: SizedBox(
-                  height: 29 * scale,
+                  height: 29.h,
                   child: ElevatedButton(
                     onPressed: () {
                       _addFriendFromContact(contact);
@@ -1406,7 +1365,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                       ),
                       shape: WidgetStateProperty.all(
                         RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(13 * scale),
+                          borderRadius: BorderRadius.circular(13),
                         ),
                       ),
                     ),
@@ -1414,7 +1373,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                       '친구 추가',
                       style: TextStyle(
                         color: const Color(0xff1c1c1c),
-                        fontSize: 13 * scale,
+                        fontSize: 13.sp,
                         fontWeight: FontWeight.w600,
                       ),
                       overflow: TextOverflow.visible,
@@ -1428,16 +1387,13 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
 
     // ✅ 기본 상태 (연락처 동기화 비활성화 또는 연락처 없음)
     return Container(
-      padding: EdgeInsets.all(20 * scale),
+      padding: EdgeInsets.all(20),
       child: Center(
         child: Text(
           contactController.contactSyncEnabled
               ? '연락처에서 친구를 찾을 수 없습니다'
               : '연락처 동기화를 활성화해주세요',
-          style: TextStyle(
-            color: const Color(0xff666666),
-            fontSize: 14 * scale,
-          ),
+          style: TextStyle(color: const Color(0xff666666), fontSize: 14.sp),
         ),
       ),
     );

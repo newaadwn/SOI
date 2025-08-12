@@ -32,11 +32,35 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   // Provider 참조를 미리 저장 (dispose에서 안전하게 사용하기 위함)
   CategoryController? _categoryController;
 
-  // 탭 화면 목록
-  final List<Widget> _screens = const [
-    AllArchivesScreen(),
-    MyArchivesScreen(),
-    SharedArchivesScreen(),
+  // 🎯 편집 모드 상태 관리
+  bool _isEditMode = false;
+  String? _editingCategoryId;
+  final _editingNameController = TextEditingController();
+  final ValueNotifier<bool> _hasTextChangedNotifier = ValueNotifier<bool>(
+    false,
+  ); // 🎯 ValueNotifier 사용
+  String _originalText = ''; // 🎯 원본 텍스트 저장
+
+  // 탭 화면 목록을 동적으로 생성하는 메서드
+  List<Widget> get _screens => [
+    AllArchivesScreen(
+      isEditMode: _isEditMode,
+      editingCategoryId: _editingCategoryId,
+      editingController: _editingNameController,
+      onStartEdit: startEditMode,
+    ),
+    MyArchivesScreen(
+      isEditMode: _isEditMode,
+      editingCategoryId: _editingCategoryId,
+      editingController: _editingNameController,
+      onStartEdit: startEditMode,
+    ),
+    SharedArchivesScreen(
+      isEditMode: _isEditMode,
+      editingCategoryId: _editingCategoryId,
+      editingController: _editingNameController,
+      onStartEdit: startEditMode,
+    ),
   ];
 
   @override
@@ -70,6 +94,96 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     _categoryController?.searchCategories(_searchController.text);
   }
 
+  // 🎯 편집 모드 관련 메서드들
+  void startEditMode(String categoryId, String currentName) {
+    setState(() {
+      _isEditMode = true;
+      _editingCategoryId = categoryId;
+      _originalText = currentName; // 원본 텍스트 저장
+      _hasTextChangedNotifier.value = false; // 초기 상태는 변경 없음
+
+      // 컨트롤러 완전히 초기화
+      _editingNameController.clear();
+      _editingNameController.text = currentName;
+
+      // 또는 선택과 커서 위치도 리셋
+      _editingNameController.selection = TextSelection.fromPosition(
+        TextPosition(offset: currentName.length),
+      );
+
+      // 🎯 텍스트 변경 리스너 추가
+      _editingNameController.addListener(_onTextChanged);
+    });
+  }
+
+  // 🎯 텍스트 변경 감지 메서드 (setState 없음!)
+  void _onTextChanged() {
+    // 🎯 원본 텍스트와 다르면 변경된 것으로 간주 (빈 텍스트도 허용)
+    final hasChanged =
+        _editingNameController.text.trim() != _originalText.trim();
+
+    if (_hasTextChangedNotifier.value != hasChanged) {
+      _hasTextChangedNotifier.value =
+          hasChanged; // 🎯 ValueNotifier만 업데이트 (setState 없음!)
+    }
+  }
+
+  void cancelEditMode() {
+    setState(() {
+      // 🎯 리스너 제거
+      _editingNameController.removeListener(_onTextChanged);
+
+      _isEditMode = false;
+      _editingCategoryId = null;
+      _hasTextChangedNotifier.value = false;
+      _originalText = '';
+      _editingNameController.clear();
+    });
+  }
+
+  Future<void> confirmEditMode() async {
+    if (_editingCategoryId == null) return;
+
+    final trimmedText = _editingNameController.text.trim();
+
+    // 🎯 빈 텍스트 입력 시에만 에러 메시지 표시
+    if (trimmedText.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('이름을 입력해주세요'),
+          backgroundColor: Color(0xff1c1c1c),
+        ),
+      );
+      return;
+    }
+
+    // 🎯 빈 텍스트가 아니면 모든 경우에 저장 진행 (변경사항 없어도 저장)
+    try {
+      await _categoryController?.updateCategoryName(
+        _editingCategoryId!,
+        trimmedText,
+      );
+
+      // 🎯 리스너 제거 후 모드 종료
+      _editingNameController.removeListener(_onTextChanged);
+      cancelEditMode();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('카테고리 이름이 수정되었습니다'),
+          backgroundColor: Color(0xff1c1c1c),
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('이름 수정 중 오류가 발생했습니다'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -93,7 +207,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
           ],
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        toolbarHeight: 55.h,
+        toolbarHeight: 70.h,
         leading: Consumer<AuthController>(
           builder: (context, authController, _) {
             return FutureBuilder(
@@ -117,8 +231,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                       );
                                     },
                                     child: SizedBox(
-                                      width: 34,
-                                      height: 34,
+                                      width: 34.w,
+                                      height: 34.h,
                                       child: CircleAvatar(
                                         backgroundImage:
                                             CachedNetworkImageProvider(
@@ -156,7 +270,6 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                       height: 34.h,
                                       child: CircleAvatar(
                                         backgroundColor: Colors.grey,
-
                                         child: Icon(
                                           Icons.person,
                                           color: Colors.white,
@@ -245,6 +358,44 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
             ),
           ),
           Expanded(child: _screens[_selectedIndex]),
+
+          if (_isEditMode)
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: cancelEditMode,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Color(0xFF323232),
+                        foregroundColor: Colors.white,
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(26.9),
+                        ),
+                      ),
+                      child: Text('취소'),
+                    ),
+                  ),
+                  SizedBox(width: 12.w),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: confirmEditMode,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        padding: EdgeInsets.symmetric(vertical: 12.h),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(26.9),
+                        ),
+                      ),
+                      child: Text('확인'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -548,6 +699,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   void dispose() {
     // 검색 리스너만 제거 (Controller는 Provider에서 관리되므로 건드리지 않음)
     _categoryNameController.dispose();
+    _editingNameController.dispose(); // 🎯 편집 컨트롤러 정리
+    _hasTextChangedNotifier.dispose(); // 🎯 ValueNotifier 정리
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
