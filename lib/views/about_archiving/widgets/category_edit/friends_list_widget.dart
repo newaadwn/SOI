@@ -49,7 +49,7 @@ class FriendsListWidget extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '카테고리 친구 ${totalMates}명',
+                '카테고리 친구 $totalMates명',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16.sp,
