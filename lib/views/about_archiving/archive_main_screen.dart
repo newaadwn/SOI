@@ -11,10 +11,6 @@ import 'my_archives_screen.dart';
 import 'shared_archives_screen.dart';
 
 // 아카이브 메인 화면
-// 전체 아카이브, 나의 아카이브, 공유 아카이브 화면으로 구성
-// 전체 아카이브: 모든 사용자의 아카이브 목록 표시
-// 나의 아카이브: 현재 사용자의 아카이브 목록 표시
-// 공유 아카이브: 다른 사용자와 공유된 아카이브 목록 표시
 class ArchiveMainScreen extends StatefulWidget {
   const ArchiveMainScreen({super.key});
 
@@ -96,19 +92,38 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   // 🎯 편집 모드 관련 메서드들
   void startEditMode(String categoryId, String currentName) {
+    // 현재 사용자의 커스텀 이름 가져오기
+    final authController = AuthController();
+    final userId = authController.getUserId;
+
+    // 카테고리 정보 가져오기
+    String displayName = currentName;
+    if (userId != null && _categoryController != null) {
+      // 카테고리 찾기
+      final category = _categoryController!.userCategoryList.firstWhere(
+        (cat) => cat.id == categoryId,
+        orElse: () => throw Exception('Category not found'),
+      );
+      // 사용자의 커스텀 이름 또는 기본 이름 사용
+      displayName = _categoryController!.getCategoryDisplayName(
+        category,
+        userId,
+      );
+    }
+
     setState(() {
       _isEditMode = true;
       _editingCategoryId = categoryId;
-      _originalText = currentName; // 원본 텍스트 저장
+      _originalText = displayName; // 현재 표시되는 이름 저장
       _hasTextChangedNotifier.value = false; // 초기 상태는 변경 없음
 
       // 컨트롤러 완전히 초기화
       _editingNameController.clear();
-      _editingNameController.text = currentName;
+      _editingNameController.text = displayName;
 
       // 또는 선택과 커서 위치도 리셋
       _editingNameController.selection = TextSelection.fromPosition(
-        TextPosition(offset: currentName.length),
+        TextPosition(offset: displayName.length),
       );
 
       // 🎯 텍스트 변경 리스너 추가
@@ -157,11 +172,21 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
       return;
     }
 
-    // 🎯 빈 텍스트가 아니면 모든 경우에 저장 진행 (변경사항 없어도 저장)
+    // 🎯 사용자별 커스텀 이름 업데이트
     try {
-      await _categoryController?.updateCategoryName(
-        _editingCategoryId!,
-        trimmedText,
+      // 현재 사용자 ID 가져오기
+      final authController = AuthController();
+      final userId = authController.getUserId;
+
+      if (userId == null) {
+        throw Exception('사용자 정보를 찾을 수 없습니다');
+      }
+
+      // 커스텀 이름 업데이트
+      await _categoryController?.updateCustomCategoryName(
+        categoryId: _editingCategoryId!,
+        userId: userId,
+        customName: trimmedText,
       );
 
       // 🎯 리스너 제거 후 모드 종료
@@ -170,7 +195,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('카테고리 이름이 수정되었습니다'),
+          content: Text('내 카테고리 이름이 수정되었습니다'),
           backgroundColor: Color(0xff1c1c1c),
         ),
       );
@@ -192,6 +217,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
       appBar: AppBar(
         centerTitle: true,
+        leadingWidth: 90.w,
         title: Column(
           children: [
             Text(
@@ -208,87 +234,98 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         ),
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
         toolbarHeight: 70.h,
-        leading: Consumer<AuthController>(
-          builder: (context, authController, _) {
-            return FutureBuilder(
-              future: authController.getUserProfileImageUrl(),
-              builder: (context, imageSnapshot) {
-                String profileImageUrl = imageSnapshot.data ?? '';
+        leading: Row(
+          children: [
+            SizedBox(width: 32.w),
+            Consumer<AuthController>(
+              builder: (context, authController, _) {
+                return FutureBuilder(
+                  future: authController.getUserProfileImageUrl(),
+                  builder: (context, imageSnapshot) {
+                    String profileImageUrl = imageSnapshot.data ?? '';
 
-                return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 8.h),
-                  child: Container(
-                    decoration: BoxDecoration(shape: BoxShape.circle),
-                    child: Builder(
-                      builder:
-                          (context) =>
-                              profileImageUrl.isNotEmpty
-                                  ? InkWell(
-                                    onTap: () {
-                                      Navigator.pushNamed(
-                                        context,
-                                        '/profile_screen',
-                                      );
-                                    },
-                                    child: SizedBox(
-                                      width: 34.w,
-                                      height: 34.h,
-                                      child: CircleAvatar(
-                                        backgroundImage:
-                                            CachedNetworkImageProvider(
-                                              profileImageUrl,
-                                            ),
-                                        onBackgroundImageError: (
-                                          exception,
-                                          stackTrace,
-                                        ) {
-                                          Future.microtask(
-                                            () =>
-                                                authController
-                                                    .cleanInvalidProfileImageUrl(),
+                    return Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 8.w,
+                        vertical: 8.h,
+                      ),
+                      child: Container(
+                        decoration: BoxDecoration(shape: BoxShape.circle),
+                        child: Builder(
+                          builder:
+                              (context) =>
+                                  profileImageUrl.isNotEmpty
+                                      ? InkWell(
+                                        onTap: () {
+                                          Navigator.pushNamed(
+                                            context,
+                                            '/profile_screen',
                                           );
                                         },
-                                        child:
-                                            profileImageUrl.isEmpty
-                                                ? Icon(
-                                                  Icons.person,
-                                                  color: Colors.white,
-                                                )
-                                                : null,
-                                      ),
-                                    ),
-                                  )
-                                  : InkWell(
-                                    onTap: () {
-                                      Navigator.pushNamed(
-                                        context,
-                                        '/profile_screen',
-                                      );
-                                    },
-                                    child: SizedBox(
-                                      width: 34.w,
-                                      height: 34.h,
-                                      child: CircleAvatar(
-                                        backgroundColor: Colors.grey,
-                                        child: Icon(
-                                          Icons.person,
-                                          color: Colors.white,
+                                        child: SizedBox(
+                                          width: 34.w,
+                                          height: 34.h,
+                                          child: CircleAvatar(
+                                            backgroundImage:
+                                                CachedNetworkImageProvider(
+                                                  profileImageUrl,
+                                                ),
+                                            onBackgroundImageError: (
+                                              exception,
+                                              stackTrace,
+                                            ) {
+                                              Future.microtask(
+                                                () =>
+                                                    authController
+                                                        .cleanInvalidProfileImageUrl(),
+                                              );
+                                            },
+                                            child:
+                                                profileImageUrl.isEmpty
+                                                    ? Icon(
+                                                      Icons.person,
+                                                      color: Colors.white,
+                                                    )
+                                                    : null,
+                                          ),
+                                        ),
+                                      )
+                                      : InkWell(
+                                        onTap: () {
+                                          Navigator.pushNamed(
+                                            context,
+                                            '/profile_screen',
+                                          );
+                                        },
+                                        child: SizedBox(
+                                          width: 34.w,
+                                          height: 34.h,
+                                          child: CircleAvatar(
+                                            backgroundColor: Colors.grey,
+                                            child: Icon(
+                                              Icons.person,
+                                              color: Colors.white,
+                                            ),
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ),
-                    ),
-                  ),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
-            );
-          },
+            ),
+          ],
         ),
         actions: [
-          IconButton(
-            onPressed: _showCategoryBottomSheet,
-            icon: SizedBox(
-              child: Icon(Icons.add, color: Colors.white, size: 33.sp),
+          Padding(
+            padding: EdgeInsets.only(right: 32.w),
+            child: IconButton(
+              onPressed: _showCategoryBottomSheet,
+              icon: SizedBox(
+                child: Icon(Icons.add, color: Colors.white, size: 33.sp),
+              ),
             ),
           ),
         ],

@@ -75,6 +75,10 @@ class CategoryController extends ChangeNotifier {
       // debugPrint('[CategoryController] 서비스에서 받은 카테고리 수: ${categories.length}');
 
       _userCategories = categories;
+
+      // 사용자별 고정 상태에 따라 정렬
+      _sortCategoriesForUser(userId);
+
       // debugPrint('[CategoryController] _userCategories에 할당 후: ${_userCategories.length}');
 
       // 캐시 정보 업데이트
@@ -98,7 +102,22 @@ class CategoryController extends ChangeNotifier {
 
   /// 카테고리 데이터를 스트림으로 가져오는 함수
   Stream<List<CategoryDataModel>> streamUserCategories(String userId) {
-    return _categoryService.getUserCategoriesStream(userId);
+    return _categoryService.getUserCategoriesStream(userId).map((categories) {
+      // 스트림에서도 사용자별 정렬 적용
+      categories.sort((a, b) {
+        final aIsPinned = a.isPinnedForUser(userId);
+        final bIsPinned = b.isPinnedForUser(userId);
+
+        // 고정된 카테고리를 상단에
+        if (aIsPinned && !bIsPinned) return -1;
+        if (!aIsPinned && bIsPinned) return 1;
+
+        // 같은 고정 상태 내에서는 생성일시 최신순
+        return b.createdAt.compareTo(a.createdAt);
+      });
+
+      return categories;
+    });
   }
 
   /// 단일 카테고리 실시간 스트림
@@ -192,12 +211,52 @@ class CategoryController extends ChangeNotifier {
     await updateCategory(categoryId: categoryId, name: newName);
   }
 
-  /// 카테고리 고정/해제를 토글합니다
+  /// 사용자별 카테고리 커스텀 이름 업데이트
+  Future<void> updateCustomCategoryName({
+    required String categoryId,
+    required String userId,
+    required String customName,
+  }) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      // 서비스를 통해 커스텀 이름 업데이트
+      final result = await _categoryService.updateCustomCategoryName(
+        categoryId: categoryId,
+        userId: userId,
+        customName: customName,
+      );
+
+      _isLoading = false;
+
+      if (result.isSuccess) {
+        // 성공 시 카테고리 목록 새로고침
+        await loadUserCategories(userId, forceReload: true);
+      } else {
+        _error = result.error;
+        notifyListeners();
+      }
+    } catch (e) {
+      _isLoading = false;
+      _error = '커스텀 이름 설정 중 오류가 발생했습니다.';
+      notifyListeners();
+    }
+  }
+
+  /// 현재 사용자를 위한 카테고리 표시 이름 가져오기
+  String getCategoryDisplayName(CategoryDataModel category, String userId) {
+    return category.getDisplayName(userId);
+  }
+
+  /// 카테고리 고정/해제를 토글합니다 (사용자별)
   ///
   /// [categoryId] 토글할 카테고리 ID
+  /// [userId] 요청하는 사용자 ID
   /// [currentPinStatus] 현재 고정 상태
   Future<void> togglePinCategory(
     String categoryId,
+    String userId,
     bool currentPinStatus,
   ) async {
     try {
@@ -209,20 +268,23 @@ class CategoryController extends ChangeNotifier {
       );
 
       if (categoryIndex != -1) {
-        // 카테고리 상태 업데이트
-        _userCategories[categoryIndex] = CategoryDataModel(
-          id: _userCategories[categoryIndex].id,
-          name: _userCategories[categoryIndex].name,
-          mates: _userCategories[categoryIndex].mates,
-          createdAt: _userCategories[categoryIndex].createdAt,
-          categoryPhotoUrl: _userCategories[categoryIndex].categoryPhotoUrl,
-          isPinned: newPinStatus,
+        // 사용자별 고정 상태 업데이트
+        final currentUserPinnedStatus = Map<String, bool>.from(
+          _userCategories[categoryIndex].userPinnedStatus ?? {},
         );
+        currentUserPinnedStatus[userId] = newPinStatus;
 
-        // 고정 상태에 따라 재정렬 (고정된 카테고리가 상단에)
+        // 카테고리 상태 업데이트
+        _userCategories[categoryIndex] = _userCategories[categoryIndex]
+            .copyWith(userPinnedStatus: currentUserPinnedStatus);
+
+        // 사용자별 고정 상태에 따라 재정렬 (고정된 카테고리가 상단에)
         _userCategories.sort((a, b) {
-          if (a.isPinned && !b.isPinned) return -1;
-          if (!a.isPinned && b.isPinned) return 1;
+          final aIsPinned = a.isPinnedForUser(userId);
+          final bIsPinned = b.isPinnedForUser(userId);
+
+          if (aIsPinned && !bIsPinned) return -1;
+          if (!aIsPinned && bIsPinned) return 1;
           return b.createdAt.compareTo(a.createdAt);
         });
 
@@ -231,9 +293,10 @@ class CategoryController extends ChangeNotifier {
 
       _isLoading = true;
 
-      // 서버에 변경사항 저장
-      final result = await _categoryService.updateCategory(
+      // 서버에 변경사항 저장 (사용자별 고정 상태 저장)
+      final result = await _categoryService.updateUserPinStatus(
         categoryId: categoryId,
+        userId: userId,
         isPinned: newPinStatus,
       );
 
@@ -242,19 +305,21 @@ class CategoryController extends ChangeNotifier {
       if (!result.isSuccess) {
         // 실패 시 이전 상태로 롤백
         if (categoryIndex != -1) {
-          _userCategories[categoryIndex] = CategoryDataModel(
-            id: _userCategories[categoryIndex].id,
-            name: _userCategories[categoryIndex].name,
-            mates: _userCategories[categoryIndex].mates,
-            createdAt: _userCategories[categoryIndex].createdAt,
-            categoryPhotoUrl: _userCategories[categoryIndex].categoryPhotoUrl,
-            isPinned: currentPinStatus,
+          final rollbackUserPinnedStatus = Map<String, bool>.from(
+            _userCategories[categoryIndex].userPinnedStatus ?? {},
           );
+          rollbackUserPinnedStatus[userId] = currentPinStatus;
+
+          _userCategories[categoryIndex] = _userCategories[categoryIndex]
+              .copyWith(userPinnedStatus: rollbackUserPinnedStatus);
 
           // 원래 상태로 재정렬
           _userCategories.sort((a, b) {
-            if (a.isPinned && !b.isPinned) return -1;
-            if (!a.isPinned && b.isPinned) return 1;
+            final aIsPinned = a.isPinnedForUser(userId);
+            final bIsPinned = b.isPinnedForUser(userId);
+
+            if (aIsPinned && !bIsPinned) return -1;
+            if (!aIsPinned && bIsPinned) return 1;
             return b.createdAt.compareTo(a.createdAt);
           });
 
@@ -270,20 +335,13 @@ class CategoryController extends ChangeNotifier {
       );
 
       if (categoryIndex != -1) {
-        _userCategories[categoryIndex] = CategoryDataModel(
-          id: _userCategories[categoryIndex].id,
-          name: _userCategories[categoryIndex].name,
-          mates: _userCategories[categoryIndex].mates,
-          createdAt: _userCategories[categoryIndex].createdAt,
-          categoryPhotoUrl: _userCategories[categoryIndex].categoryPhotoUrl,
-          isPinned: currentPinStatus,
+        final rollbackUserPinnedStatus = Map<String, bool>.from(
+          _userCategories[categoryIndex].userPinnedStatus ?? {},
         );
+        rollbackUserPinnedStatus[userId] = currentPinStatus;
 
-        _userCategories.sort((a, b) {
-          if (a.isPinned && !b.isPinned) return -1;
-          if (!a.isPinned && b.isPinned) return 1;
-          return b.createdAt.compareTo(a.createdAt);
-        });
+        _userCategories[categoryIndex] = _userCategories[categoryIndex]
+            .copyWith(userPinnedStatus: rollbackUserPinnedStatus);
 
         notifyListeners();
       }
@@ -686,6 +744,21 @@ class CategoryController extends ChangeNotifier {
   void invalidateCache() {
     _lastLoadTime = null;
     _lastLoadedUserId = null;
+  }
+
+  /// 사용자별 고정 상태에 따라 카테고리 정렬
+  void _sortCategoriesForUser(String userId) {
+    _userCategories.sort((a, b) {
+      final aIsPinned = a.isPinnedForUser(userId);
+      final bIsPinned = b.isPinnedForUser(userId);
+
+      // 고정된 카테고리를 상단에
+      if (aIsPinned && !bIsPinned) return -1;
+      if (!aIsPinned && bIsPinned) return 1;
+
+      // 같은 고정 상태 내에서는 생성일시 최신순
+      return b.createdAt.compareTo(a.createdAt);
+    });
   }
 
   // ==================== 검색 기능 ====================

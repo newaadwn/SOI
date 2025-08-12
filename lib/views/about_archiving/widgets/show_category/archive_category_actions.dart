@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_swift_camera/controllers/auth_controller.dart';
 import 'package:provider/provider.dart';
 import '../../../../controllers/category_controller.dart';
 import '../../../../models/category_data_model.dart';
-import '../../../../services/auth_service.dart';
 
 /// ⚡ 아카이브 카테고리 액션 처리 클래스
 /// 카테고리 관련 비즈니스 로직을 담당합니다.
 class ArchiveCategoryActions {
-  /// 📌 카테고리 고정/해제 토글
+  // 카테고리 고정/해제 토글
   static Future<void> handleTogglePinCategory(
     BuildContext context,
     CategoryDataModel category,
@@ -18,14 +18,35 @@ class ArchiveCategoryActions {
         listen: false,
       );
 
+      // AuthService에서 현재 사용자 UID 가져오기
+      final authController = AuthController();
+      final currentUserId = authController.getUserId;
+
+      if (currentUserId == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('사용자 정보를 찾을 수 없습니다.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      // 현재 사용자의 고정 상태 확인
+      final currentPinStatus = category.isPinnedForUser(currentUserId);
+
       await categoryController.togglePinCategory(
         category.id,
-        category.isPinned,
+        currentUserId,
+        currentPinStatus,
       );
 
       if (context.mounted) {
         final message =
-            category.isPinned ? '카테고리 고정이 해제되었습니다.' : '카테고리가 상단에 고정되었습니다.';
+            currentPinStatus ? '카테고리 고정이 해제되었습니다.' : '카테고리가 상단에 고정되었습니다.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(message),
@@ -49,7 +70,7 @@ class ArchiveCategoryActions {
     }
   }
 
-  /// 🔄 카테고리 이름 업데이트
+  // 카테고리 이름 업데이트 (관리자용 - 모든 사용자에게 적용)
   static Future<void> updateCategoryName(
     BuildContext context,
     CategoryDataModel category,
@@ -92,6 +113,67 @@ class ArchiveCategoryActions {
     }
   }
 
+  /// 🔄 사용자별 카테고리 커스텀 이름 업데이트
+  static Future<void> updateCustomCategoryName(
+    BuildContext context,
+    CategoryDataModel category,
+    String customName,
+  ) async {
+    try {
+      final categoryController = Provider.of<CategoryController>(
+        context,
+        listen: false,
+      );
+
+      // AuthService에서 현재 사용자 UID 가져오기
+      final authController = AuthController();
+      final currentUserId = authController.getUserId;
+
+      if (currentUserId == null) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('사용자 정보를 찾을 수 없습니다.'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+        return;
+      }
+
+      // 사용자별 커스텀 이름 업데이트
+      await categoryController.updateCustomCategoryName(
+        categoryId: category.id,
+        userId: currentUserId,
+        customName: customName,
+      );
+
+      // 성공 피드백
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('내 카테고리 이름이 "$customName"으로 변경되었습니다.'),
+            backgroundColor: const Color(0xFF323232),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      // 커스텀 이름 변경 실패
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('카테고리 이름 변경에 실패했습니다.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+  }
+
   /// 🚪 카테고리 나가기 실행
   static Future<void> leaveCategoryConfirmed(
     BuildContext context,
@@ -110,8 +192,8 @@ class ArchiveCategoryActions {
       );
 
       // AuthService에서 현재 사용자 UID 가져오기
-      final authService = AuthService();
-      final currentUserId = authService.getUserId;
+      final authController = AuthController();
+      final currentUserId = authController.getUserId;
 
       if (currentUserId == null) {
         if (context.mounted) {

@@ -99,6 +99,35 @@ class CategoryService {
     }
   }
 
+  /// 사용자별 카테고리 커스텀 이름 업데이트
+  Future<AuthResult> updateCustomCategoryName({
+    required String categoryId,
+    required String userId,
+    required String customName,
+  }) async {
+    try {
+      // 1. 카테고리 이름 검증
+      final validationError = _validateCategoryName(customName);
+      if (validationError != null) {
+        return AuthResult.failure(validationError);
+      }
+
+      // 2. 카테고리 이름 정규화
+      final normalizedName = _normalizeCategoryName(customName);
+
+      // 3. customNames 맵 업데이트
+      await _repository.updateCustomName(
+        categoryId: categoryId,
+        userId: userId,
+        customName: normalizedName,
+      );
+
+      return AuthResult.success();
+    } catch (e) {
+      return AuthResult.failure('커스텀 이름 설정 중 오류가 발생했습니다.');
+    }
+  }
+
   /// 카테고리 수정
   Future<AuthResult> updateCategory({
     required String categoryId,
@@ -139,6 +168,29 @@ class CategoryService {
       return AuthResult.success();
     } catch (e) {
       return AuthResult.failure('카테고리 수정 중 오류가 발생했습니다.');
+    }
+  }
+
+  /// 사용자별 카테고리 고정 상태 업데이트
+  Future<AuthResult> updateUserPinStatus({
+    required String categoryId,
+    required String userId,
+    required bool isPinned,
+  }) async {
+    try {
+      if (categoryId.isEmpty || userId.isEmpty) {
+        return AuthResult.failure('유효하지 않은 카테고리 또는 사용자입니다.');
+      }
+
+      await _repository.updateUserPinStatus(
+        categoryId: categoryId,
+        userId: userId,
+        isPinned: isPinned,
+      );
+
+      return AuthResult.success();
+    } catch (e) {
+      return AuthResult.failure('고정 상태 업데이트 중 오류가 발생했습니다.');
     }
   }
 

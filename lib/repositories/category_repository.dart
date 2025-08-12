@@ -51,15 +51,6 @@ class CategoryRepository {
             categories.add(category);
           }
 
-          // 고정된 카테고리를 상단에 위치시키는 정렬
-          categories.sort((a, b) {
-            // 고정된 카테고리를 상단으로
-            if (a.isPinned && !b.isPinned) return -1;
-            if (!a.isPinned && b.isPinned) return 1;
-            // 둘 다 고정되었거나 고정되지 않은 경우 생성일 기준 내림차순
-            return b.createdAt.compareTo(a.createdAt);
-          });
-
           return categories;
         });
   }
@@ -184,16 +175,6 @@ class CategoryRepository {
       categories.add(category);
     }
 
-    // 🎯 고정된 카테고리를 상단에 정렬
-    categories.sort((a, b) {
-      // 1. 고정 상태로 우선 정렬 (고정된 것이 위로)
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-
-      // 2. 같은 고정 상태 내에서는 생성일시 최신순
-      return b.createdAt.compareTo(a.createdAt);
-    });
-
     return categories;
   }
 
@@ -211,6 +192,28 @@ class CategoryRepository {
     Map<String, dynamic> data,
   ) async {
     await _firestore.collection('categories').doc(categoryId).update(data);
+  }
+
+  /// 사용자별 커스텀 이름 업데이트
+  Future<void> updateCustomName({
+    required String categoryId,
+    required String userId,
+    required String customName,
+  }) async {
+    await _firestore.collection('categories').doc(categoryId).update({
+      'customNames.$userId': customName,
+    });
+  }
+
+  /// 사용자별 고정 상태 업데이트
+  Future<void> updateUserPinStatus({
+    required String categoryId,
+    required String userId,
+    required bool isPinned,
+  }) async {
+    await _firestore.collection('categories').doc(categoryId).update({
+      'userPinnedStatus.$userId': isPinned,
+    });
   }
 
   /// 카테고리 삭제

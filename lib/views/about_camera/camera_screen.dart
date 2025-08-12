@@ -291,7 +291,7 @@ class _CameraScreenState extends State<CameraScreen>
       child: Icon(
         Icons.photo_library,
         color: Colors.white.withValues(alpha: 0.7),
-        size: 46.sp, // 24/46 비율
+        size: 46.sp,
       ),
     );
   }
@@ -314,7 +314,7 @@ class _CameraScreenState extends State<CameraScreen>
       backgroundColor: Color(0xff000000), // 배경을 검정색으로 설정
 
       appBar: AppBar(
-        leadingWidth: 80.w, // leading 영역 크기 확장
+        leadingWidth: 90.w, // leading 영역 크기 확장
         title: Column(
           children: [
             Text(
@@ -359,7 +359,7 @@ class _CameraScreenState extends State<CameraScreen>
                 width: 35.w,
                 height: 35.h,
                 decoration: BoxDecoration(
-                  color: Color(0xff1c1c1c), // 아이콘 배경색
+                  color: Color(0xff1c1c1c),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
@@ -374,18 +374,14 @@ class _CameraScreenState extends State<CameraScreen>
       ),
       body: Column(
         children: [
-          // 📱 카메라 영역을 Expanded로 감싸서 오버플로우 방지
           Center(
             child: FutureBuilder<void>(
               future: _cameraInitialization,
-              builder: (contezxt, snapshot) {
-                // 카메라 초기화 중이면 로딩 인디케이터 표시
+              builder: (context, snapshot) {
                 if (_isLoading) {
                   return Container(
                     width: 400.w,
-                    constraints: BoxConstraints(
-                      maxHeight: double.infinity, // 📱 유연한 높이
-                    ),
+                    constraints: BoxConstraints(maxHeight: double.infinity),
                     decoration: BoxDecoration(
                       color: Colors.black,
                       borderRadius: BorderRadius.circular(20),
@@ -404,9 +400,7 @@ class _CameraScreenState extends State<CameraScreen>
                 // 초기화 실패 시 오류 메시지 표시
                 if (snapshot.hasError) {
                   return Container(
-                    constraints: BoxConstraints(
-                      maxHeight: double.infinity, // 📱 유연한 높이
-                    ),
+                    constraints: BoxConstraints(maxHeight: double.infinity),
                     decoration: BoxDecoration(
                       color: Colors.black,
                       borderRadius: BorderRadius.circular(20),
@@ -426,10 +420,10 @@ class _CameraScreenState extends State<CameraScreen>
                   alignment: Alignment.topCenter,
                   children: [
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(16), // 📱 반응형
+                      borderRadius: BorderRadius.circular(16),
                       child: Container(
-                        width: 354.w, // 📱 반응형
-                        height: 500.h, // 📱 반응형
+                        width: 354.w,
+                        height: 500.h,
                         decoration: BoxDecoration(
                           border: Border.all(color: Colors.white, width: 1.0),
                         ),
@@ -443,7 +437,7 @@ class _CameraScreenState extends State<CameraScreen>
                       icon: Icon(
                         isFlashOn ? EvaIcons.flash : EvaIcons.flashOff,
                         color: Colors.white,
-                        size: 28.sp, // 📱 반응형
+                        size: 28.sp,
                       ),
                       padding: EdgeInsets.zero,
                     ),
@@ -452,7 +446,7 @@ class _CameraScreenState extends State<CameraScreen>
               },
             ),
           ),
-          SizedBox(height: 20.h), // 📱 반응형
+          SizedBox(height: 20.h),
           // 수정: 하단 버튼 레이아웃 변경 - 반응형
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -499,7 +493,7 @@ class _CameraScreenState extends State<CameraScreen>
                         borderRadius: BorderRadius.circular(8.76),
                       ),
                       child: _buildGalleryContent(46, 8.76),
-                    ), // 📱 반응형
+                    ),
                   ),
                 ),
               ),
@@ -540,6 +534,6 @@ class _CameraScreenState extends State<CameraScreen>
       _isLoading = true;
     });
 
-    await _initializeCameraAsync(); // 완전한 재초기화
+    await _initializeCameraAsync();
   }
 }

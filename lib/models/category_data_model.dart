@@ -7,8 +7,10 @@ class CategoryDataModel {
   final List<String> mates;
   final DateTime createdAt;
   final String? categoryPhotoUrl;
+  final Map<String, String>? customNames;
 
-  final bool isPinned;
+  // 사용자별 고정 상태 (userId -> isPinned)
+  final Map<String, bool>? userPinnedStatus;
 
   CategoryDataModel({
     required this.id,
@@ -16,8 +18,8 @@ class CategoryDataModel {
     required this.mates,
     required this.createdAt,
     this.categoryPhotoUrl,
-
-    this.isPinned = false,
+    this.customNames,
+    this.userPinnedStatus,
   });
 
   // Firestore에서 데이터를 가져올 때 사용
@@ -31,8 +33,14 @@ class CategoryDataModel {
       mates: (data['mates'] as List).cast<String>(),
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       categoryPhotoUrl: data['categoryPhotoUrl'],
-
-      isPinned: data['isPinned'] ?? false,
+      customNames:
+          data['customNames'] != null
+              ? Map<String, String>.from(data['customNames'])
+              : null,
+      userPinnedStatus:
+          data['userPinnedStatus'] != null
+              ? Map<String, bool>.from(data['userPinnedStatus'])
+              : null,
     );
   }
 
@@ -43,8 +51,8 @@ class CategoryDataModel {
       'mates': mates,
       'createdAt': Timestamp.fromDate(createdAt),
       'categoryPhotoUrl': categoryPhotoUrl,
-
-      'isPinned': isPinned,
+      'customNames': customNames,
+      'userPinnedStatus': userPinnedStatus,
     };
   }
 
@@ -55,8 +63,8 @@ class CategoryDataModel {
     List<String>? mates,
     DateTime? createdAt,
     String? categoryPhotoUrl,
-
-    bool? isPinned,
+    Map<String, String>? customNames,
+    Map<String, bool>? userPinnedStatus,
   }) {
     return CategoryDataModel(
       id: id ?? this.id,
@@ -64,9 +72,19 @@ class CategoryDataModel {
       mates: mates ?? this.mates,
       createdAt: createdAt ?? this.createdAt,
       categoryPhotoUrl: categoryPhotoUrl ?? this.categoryPhotoUrl,
-
-      isPinned: isPinned ?? this.isPinned,
+      customNames: customNames ?? this.customNames,
+      userPinnedStatus: userPinnedStatus ?? this.userPinnedStatus,
     );
+  }
+
+  /// 특정 사용자를 위한 표시 이름 가져오기
+  String getDisplayName(String userId) {
+    return customNames?[userId] ?? name;
+  }
+
+  /// 특정 사용자의 고정 상태 확인
+  bool isPinnedForUser(String userId) {
+    return userPinnedStatus?[userId] ?? false;
   }
 
   @override

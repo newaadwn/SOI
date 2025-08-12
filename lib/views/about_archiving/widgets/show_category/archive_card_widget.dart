@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/category_controller.dart';
 
 import '../../../../models/category_data_model.dart';
@@ -58,11 +59,6 @@ class ArchiveCardWidget extends StatelessWidget {
 
   /// 실제 카테고리 카드 빌드
   Widget _buildCategoryCard(BuildContext context, CategoryDataModel category) {
-    // 반응형 값들 계산
-    //final isSmallScreen = ArchiveResponsiveHelper.isSmallScreen(context);
-    //final isLargeScreen = ArchiveResponsiveHelper.isLargeScreen(context);
-    // GridView 가 childAspectRatio 로 셀 비율을 결정하므로 내부 고정 width/height 제거
-    // (168x229) 비율을 명시적으로 유지하기 위해 AspectRatio 사용
     return Card(
       color: const Color(0xFF1C1C1C), // Figma 배경색
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.61)),
@@ -130,24 +126,38 @@ class ArchiveCardWidget extends StatelessWidget {
                           ),
                 ),
 
-                // 📌 고정 아이콘 (고정된 경우에만 표시)
-                if (category.isPinned)
-                  Positioned(
-                    top: (8.0).h,
-                    left: (8.0).w,
-                    child: Container(
-                      padding: const EdgeInsets.all(4.0),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(12.0),
+                // 📌 고정 아이콘 (현재 사용자에게 고정된 경우에만 표시)
+                Builder(
+                  builder: (context) {
+                    final authController = AuthController();
+                    final userId = authController.getUserId;
+
+                    // 현재 사용자의 고정 상태 확인
+                    final isPinnedForCurrentUser =
+                        userId != null
+                            ? category.isPinnedForUser(userId)
+                            : false;
+
+                    if (!isPinnedForCurrentUser) return SizedBox.shrink();
+
+                    return Positioned(
+                      top: (8.0).h,
+                      left: (8.0).w,
+                      child: Container(
+                        padding: const EdgeInsets.all(4.0),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.7),
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                        child: Icon(
+                          Icons.push_pin,
+                          color: Colors.white,
+                          size: 14.sp,
+                        ),
                       ),
-                      child: Icon(
-                        Icons.push_pin,
-                        color: Colors.white,
-                        size: 14.sp,
-                      ),
-                    ),
-                  ),
+                    );
+                  },
+                ),
               ],
             ),
 
@@ -185,17 +195,38 @@ class ArchiveCardWidget extends StatelessWidget {
                               maxLines: 1,
                               autofocus: true,
                             )
-                            : Text(
-                              category.name,
-                              style: TextStyle(
-                                color: const Color(0xFFF9F9F9),
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.w500,
-                                letterSpacing: -0.4,
-                                fontFamily: 'Pretendard',
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            : Builder(
+                              builder: (context) {
+                                final authController = AuthController();
+                                final userId = authController.getUserId;
+                                final categoryController =
+                                    Provider.of<CategoryController>(
+                                      context,
+                                      listen: false,
+                                    );
+
+                                final displayName =
+                                    userId != null
+                                        ? categoryController
+                                            .getCategoryDisplayName(
+                                              category,
+                                              userId,
+                                            )
+                                        : category.name;
+
+                                return Text(
+                                  displayName,
+                                  style: TextStyle(
+                                    color: const Color(0xFFF9F9F9),
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: -0.4,
+                                    fontFamily: 'Pretendard',
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                );
+                              },
                             ),
                   ),
                 ),

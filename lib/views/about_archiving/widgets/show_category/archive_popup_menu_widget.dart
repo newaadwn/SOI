@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_swift_camera/controllers/auth_controller.dart';
 import '../../../../models/category_data_model.dart';
 import 'archive_category_actions.dart';
 import 'archive_category_dialogs.dart';
@@ -112,17 +113,30 @@ class _ArchivePopupMenuDialog extends StatelessWidget {
                   ),
                   PopupMenuDivider(height: 1.h, color: Color(0xff5a5a5a)),
 
-                  // 고정/고정 해제 버튼
-                  _buildMenuButton(
-                    context: context,
-                    icon: 'assets/pin.png',
-                    menuText: category.isPinned ? '고정 해제' : '고정',
-                    textColor: Colors.white,
-                    onTap:
-                        () => _handleMenuAction(
-                          context,
-                          category.isPinned ? 'unpin' : 'pin',
-                        ),
+                  // 고정/고정 해제 버튼 (현재 사용자의 고정 상태에 따라)
+                  Builder(
+                    builder: (context) {
+                      final authController = AuthController();
+                      final userId = authController.getUserId;
+
+                      // 현재 사용자의 고정 상태 확인
+                      final isPinnedForCurrentUser =
+                          userId != null
+                              ? category.isPinnedForUser(userId)
+                              : false;
+
+                      return _buildMenuButton(
+                        context: context,
+                        icon: 'assets/pin.png',
+                        menuText: isPinnedForCurrentUser ? '고정 해제' : '고정',
+                        textColor: Colors.white,
+                        onTap:
+                            () => _handleMenuAction(
+                              context,
+                              isPinnedForCurrentUser ? 'unpin' : 'pin',
+                            ),
+                      );
+                    },
                   ),
                   PopupMenuDivider(height: 1.h, color: Color(0xff5a5a5a)),
 

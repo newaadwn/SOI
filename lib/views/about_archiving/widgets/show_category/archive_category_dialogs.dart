@@ -5,59 +5,6 @@ import '../../../../models/category_data_model.dart';
 // 카테고리 관련 다이얼로그들을 관리합니다.
 // 팝업 메뉴에서 호출되는 다이얼로그들을 포함합니다.
 class ArchiveCategoryDialogs {
-  // 이름 수정 다이얼로그
-  static void showEditNameDialog(
-    BuildContext context,
-    CategoryDataModel category, {
-    required Function(String newName) onConfirm,
-  }) {
-    final TextEditingController controller = TextEditingController(
-      text: category.name,
-    );
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF2C2C2C),
-          title: const Text(
-            '카테고리 이름 수정',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: TextField(
-            controller: controller,
-            style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
-              hintText: '새 이름을 입력하세요',
-              hintStyle: TextStyle(color: Colors.grey),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.grey),
-              ),
-              focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.white),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('취소', style: TextStyle(color: Colors.grey)),
-            ),
-            TextButton(
-              onPressed: () {
-                if (controller.text.trim().isNotEmpty) {
-                  Navigator.of(context).pop();
-                  onConfirm(controller.text.trim());
-                }
-              },
-              child: const Text('확인', style: TextStyle(color: Colors.white)),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   /// 🚪 카테고리 나가기 확인 다이얼로그 (피그마 디자인)
   static void showLeaveCategoryDialog(
     BuildContext context,

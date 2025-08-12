@@ -22,7 +22,7 @@ import 'views/about_archiving/my_archives_screen.dart';
 import 'views/about_archiving/shared_archives_screen.dart';
 import 'views/about_camera/camera_screen.dart';
 import 'views/about_feed/feed_home.dart';
-import 'views/about_friends/friend_list_screen.dart';
+import 'views/about_friends/friend_list_add_screen.dart';
 import 'views/about_login/register_screen.dart';
 import 'views/about_login/login_screen.dart';
 import 'views/about_login/start_screen.dart';
@@ -184,7 +184,7 @@ class _MyAppState extends State<MyApp> {
 
             // 친구 관리 라우트
             '/contact_manager': (context) => const FriendManagementScreen(),
-            '/friend_list': (context) => const FriendListScreen(),
+            '/friend_list_add': (context) => const FriendListAddScreen(),
 
             // 피드 홈 라우트
             '/feed_home': (context) => const FeedHomeScreen(),

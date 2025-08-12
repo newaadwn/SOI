@@ -104,7 +104,7 @@ class AddCategoryWidget extends StatelessWidget {
                           // Navigator 호출을 안전하게 처리
                           WidgetsBinding.instance.addPostFrameCallback((_) {
                             if (context.mounted) {
-                              Navigator.pushNamed(context, '/friend_list');
+                              Navigator.pushNamed(context, '/friend_list_add');
                             }
                           });
                         },

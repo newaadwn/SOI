@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -7,7 +8,7 @@ import '../../models/category_data_model.dart';
 import '../../models/auth_model.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/auth_controller.dart';
-import '../about_friends/friend_list_screen.dart';
+import '../about_friends/friend_list_add_screen.dart';
 import 'category_cover_photo_selector_screen.dart';
 import 'widgets/category_edit/category_cover_section.dart';
 import 'widgets/category_edit/category_info_section.dart';
@@ -25,7 +26,8 @@ class CategoryEditorScreen extends StatefulWidget {
   State<CategoryEditorScreen> createState() => _CategoryEditorScreenState();
 }
 
-class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
+class _CategoryEditorScreenState extends State<CategoryEditorScreen>
+    with WidgetsBindingObserver {
   bool _notificationEnabled = true;
   bool _isExpanded = false;
 
@@ -36,22 +38,71 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadFriendsInfo();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // 외부에서 호출 가능한 친구 정보 새로고침 메서드
+  void refreshFriendsInfo() {
+    if (mounted) {
+      _loadFriendsInfo();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    // 앱이 다시 활성화될 때 친구 정보 새로고침
+    if (state == AppLifecycleState.resumed && mounted) {
+      _loadFriendsInfo();
+    }
   }
 
   @override
   void didUpdateWidget(CategoryEditorScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     // 카테고리가 변경되었거나 mates가 변경된 경우 친구 정보 다시 로드
     if (oldWidget.category.id != widget.category.id ||
-        oldWidget.category.mates.length != widget.category.mates.length) {
+        !_listsEqual(oldWidget.category.mates, widget.category.mates)) {
       _loadFriendsInfo();
     }
   }
 
-  // 친구 정보 로드
-  Future<void> _loadFriendsInfo() async {
-    if (widget.category.mates.isEmpty) return;
+  // 리스트 비교 헬퍼 함수
+  bool _listsEqual<T>(List<T> list1, List<T> list2) {
+    if (list1.length != list2.length) return false;
+    for (int i = 0; i < list1.length; i++) {
+      if (list1[i] != list2[i]) return false;
+    }
+    return true;
+  }
+
+  // 친구 정보 로드 (재시도 로직 포함)
+  Future<void> _loadFriendsInfo({int retryCount = 0}) async {
+    // CategoryController에서 최신 카테고리 정보 가져오기
+    final categoryController = context.read<CategoryController>();
+    final currentCategory = categoryController.userCategories.firstWhere(
+      (cat) => cat.id == widget.category.id,
+      orElse: () => widget.category,
+    );
+
+    final currentMates = currentCategory.mates;
+
+    if (currentMates.isEmpty) {
+      setState(() {
+        _isLoadingFriends = false;
+        _friendsInfo = {};
+      });
+      return;
+    }
 
     setState(() {
       _isLoadingFriends = true;
@@ -60,11 +111,19 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
     try {
       final authController = context.read<AuthController>();
       final Map<String, AuthModel> friendsInfo = {};
+      final List<String> failedUids = [];
 
-      for (String mateUid in widget.category.mates) {
-        final userInfo = await authController.getUserInfo(mateUid);
-        if (userInfo != null) {
-          friendsInfo[mateUid] = userInfo;
+      // 각 친구 정보를 순차적으로 로드 (최신 mates 사용)
+      for (String mateUid in currentMates) {
+        try {
+          final userInfo = await _getUserInfoWithRetry(authController, mateUid);
+          if (userInfo != null) {
+            friendsInfo[mateUid] = userInfo;
+          } else {
+            failedUids.add(mateUid);
+          }
+        } catch (e) {
+          failedUids.add(mateUid);
         }
       }
 
@@ -74,13 +133,91 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
           _isLoadingFriends = false;
         });
       }
+
+      // 실패한 항목이 있고 첫 번째 재시도인 경우 재시도
+      if (failedUids.isNotEmpty && retryCount == 0) {
+        Future.delayed(Duration(seconds: 3), () {
+          if (mounted) {
+            _retryFailedUsers(failedUids);
+          }
+        });
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
           _isLoadingFriends = false;
         });
       }
-      debugPrint('친구 정보 로드 실패: $e');
+
+      // 전체 재시도 (최대 1회)
+      if (retryCount == 0) {
+        Future.delayed(Duration(seconds: 5), () {
+          if (mounted) {
+            _loadFriendsInfo(retryCount: 1);
+          }
+        });
+      }
+    }
+  }
+
+  // 개별 사용자 정보 로드 (재시도 포함)
+  Future<AuthModel?> _getUserInfoWithRetry(
+    AuthController authController,
+    String uid, {
+    int maxRetries = 2,
+  }) async {
+    for (int attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        final userInfo = await authController.getUserInfo(uid);
+
+        if (userInfo != null) {
+          return userInfo;
+        }
+
+        // null인 경우 잠시 대기 후 재시도
+        if (attempt < maxRetries) {
+          final delay = 500 * (attempt + 1);
+
+          await Future.delayed(Duration(milliseconds: delay));
+        }
+      } catch (e) {
+        if (attempt < maxRetries) {
+          final delay = 1000 * (attempt + 1);
+
+          await Future.delayed(Duration(milliseconds: delay));
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // 실패한 사용자들만 재시도
+  Future<void> _retryFailedUsers(List<String> failedUids) async {
+    if (failedUids.isEmpty) return;
+
+    try {
+      final authController = context.read<AuthController>();
+      final Map<String, AuthModel> updatedFriendsInfo = Map.from(_friendsInfo);
+
+      for (String uid in failedUids) {
+        try {
+          final userInfo = await _getUserInfoWithRetry(authController, uid);
+          if (userInfo != null) {
+            updatedFriendsInfo[uid] = userInfo;
+          }
+        } catch (e) {
+          // 재시도 실패 시 무시
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _friendsInfo = updatedFriendsInfo;
+        });
+      }
+    } catch (e) {
+      // 전체 재시도 실패 시 무시
     }
   }
 
@@ -166,18 +303,60 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen> {
                       )
                       : AddFriendButton(
                         category: currentCategory,
-                        onPressed: () {
-                          // Navigator 호출을 안전하게 처리
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                        onPressed: () async {
+                          WidgetsBinding.instance.addPostFrameCallback((
+                            _,
+                          ) async {
                             if (mounted) {
-                              Navigator.of(context).push(
+                              await Navigator.of(context).push(
                                 MaterialPageRoute(
                                   builder:
-                                      (context) => FriendListScreen(
+                                      (context) => FriendListAddScreen(
                                         categoryId: currentCategory.id,
                                       ),
                                 ),
                               );
+
+                              // 친구 추가 페이지에서 돌아온 후 데이터 새로고침
+                              if (mounted) {
+                                // 잠시 대기 후 CategoryController 새로고침
+                                await Future.delayed(
+                                  Duration(milliseconds: 1000),
+                                );
+
+                                final categoryController =
+                                    context.read<CategoryController>();
+                                final authController =
+                                    context.read<AuthController>();
+                                final currentUser = authController.currentUser;
+
+                                if (currentUser != null) {
+                                  await categoryController.loadUserCategories(
+                                    currentUser.uid,
+                                    forceReload: true,
+                                  );
+
+                                  // 새로고침된 카테고리 정보 확인 후 친구 정보 로드
+                                  final updatedCategory = categoryController
+                                      .userCategories
+                                      .firstWhere(
+                                        (cat) => cat.id == widget.category.id,
+                                        orElse: () => widget.category,
+                                      );
+
+                                  if (updatedCategory.mates.length !=
+                                      widget.category.mates.length) {
+                                    await Future.delayed(
+                                      Duration(milliseconds: 500),
+                                    );
+                                    _loadFriendsInfo();
+                                  } else {
+                                    Future.delayed(Duration(seconds: 2), () {
+                                      if (mounted) _loadFriendsInfo();
+                                    });
+                                  }
+                                }
+                              }
                             }
                           });
                         },

@@ -3,18 +3,19 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/friend_controller.dart';
 import '../../controllers/category_controller.dart';
+import '../../controllers/auth_controller.dart';
 import '../../models/friend_model.dart';
 
-class FriendListScreen extends StatefulWidget {
+class FriendListAddScreen extends StatefulWidget {
   final String? categoryId; // 카테고리에 친구를 추가할 때 사용
 
-  const FriendListScreen({super.key, this.categoryId});
+  const FriendListAddScreen({super.key, this.categoryId});
 
   @override
-  State<FriendListScreen> createState() => _FriendListScreenState();
+  State<FriendListAddScreen> createState() => _FriendListAddScreenState();
 }
 
-class _FriendListScreenState extends State<FriendListScreen> {
+class _FriendListAddScreenState extends State<FriendListAddScreen> {
   // 선택된 친구들의 UID를 저장하는 Set
   final Set<String> _selectedFriendUids = <String>{};
 
@@ -25,7 +26,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
   void initState() {
     super.initState();
 
-    debugPrint('=== FriendListScreen 초기화 ===');
+    debugPrint('=== FriendListAddScreen 초기화 ===');
     debugPrint('categoryId: ${widget.categoryId}');
 
     _searchController.addListener(_onSearchChanged);
@@ -86,6 +87,14 @@ class _FriendListScreenState extends State<FriendListScreen> {
         }
 
         debugPrint('=== 친구 추가 성공 ===');
+
+        // CategoryController 강제 새로고침 - 즉시 UI 업데이트를 위해
+        final authController = context.read<AuthController>();
+        final userId = authController.getUserId;
+        if (userId != null) {
+          await categoryController.loadUserCategories(userId, forceReload: true);
+          debugPrint('CategoryController 강제 새로고침 완료');
+        }
 
         if (mounted) {
           // 성공 메시지 표시
@@ -152,7 +161,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
       body: Consumer<FriendController>(
         builder: (context, friendController, child) {
           // 디버깅: FriendController 상태 확인
-          debugPrint('FriendListScreen - FriendController 상태:');
+          debugPrint('FriendListAddScreen - FriendController 상태:');
           debugPrint('- isInitialized: ${friendController.isInitialized}');
           debugPrint('- isLoading: ${friendController.isLoading}');
           debugPrint('- friends 개수: ${friendController.friends.length}');
