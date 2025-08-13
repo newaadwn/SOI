@@ -6,6 +6,7 @@ import '../../controllers/audio_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/photo_controller.dart';
+import '../../models/selected_friend_model.dart';
 import '../home_navigator_screen.dart';
 import 'widgets/photo_display_widget.dart';
 import 'widgets/audio_recorder_widget.dart';
@@ -387,7 +388,10 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   }
 
   // 카테고리 생성 처리 함수
-  Future<void> _createNewCategory(String categoryName) async {
+  Future<void> _createNewCategory(
+    String categoryName,
+    List<SelectedFriendModel> selectedFriends,
+  ) async {
     if (_categoryNameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(
         context,
@@ -408,9 +412,21 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         return;
       }
 
-      // 메이트 리스트 준비 (현재 사용자만 포함)
+      // 메이트 리스트 준비 (현재 사용자 + 선택된 친구들)
       // 중요: mates 필드에는 Firebase Auth UID를 사용해야 함
       List<String> mates = [userId];
+
+      // 선택된 친구들의 UID 추가
+      for (final friend in selectedFriends) {
+        if (!mates.contains(friend.uid)) {
+          mates.add(friend.uid);
+        }
+      }
+
+      debugPrint('=== 카테고리 생성 정보 ===');
+      debugPrint('카테고리 이름: ${_categoryNameController.text.trim()}');
+      debugPrint('전체 멤버 수: ${mates.length}');
+      debugPrint('멤버 UIDs: $mates');
       // 카테고리 생성 - mates 리스트 준비
 
       // 카테고리 생성
@@ -580,8 +596,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                 _animateSheetTo(0.18);
                               },
                               onSavePressed:
-                                  () => _createNewCategory(
+                                  (selectedFriends) => _createNewCategory(
                                     _categoryNameController.text.trim(),
+                                    selectedFriends,
                                   ),
                             )
                             : CategoryListWidget(

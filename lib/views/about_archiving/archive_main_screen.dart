@@ -460,8 +460,9 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               label,
               style: TextStyle(
                 color: Colors.white,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 14.sp,
+                fontWeight: FontWeight.w500,
+                fontSize: 16.sp,
+                fontFamily: 'Pretendard',
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -532,7 +533,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                         // 저장 버튼
                         Container(
                           width: 51.w,
-                          height: 35.h,
+                          height: 25.h,
                           decoration: BoxDecoration(
                             color: const Color(0xFF323232),
                             borderRadius: BorderRadius.circular(16.5),
@@ -631,6 +632,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                             border: InputBorder.none,
                             counterText: '',
                           ),
+                          autofocus: true,
                         ),
 
                         // 커스텀 글자 수 표시

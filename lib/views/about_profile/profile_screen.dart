@@ -543,7 +543,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget _buildAccountCard(String label, String value) {
     return Container(
       width: double.infinity,
-      height: 62.h,
+      height: 62,
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C1C),
         borderRadius: BorderRadius.circular(12),

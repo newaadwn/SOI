@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../../models/selected_friend_model.dart';
+import '../../about_friends/friend_list_add_screen.dart';
 
 // 카테고리 추가 UI 위젯
 // 새로운 카테고리를 생성하는 인터페이스를 제공합니다.
-class AddCategoryWidget extends StatelessWidget {
+class AddCategoryWidget extends StatefulWidget {
   final TextEditingController textController;
   final ScrollController scrollController;
   final VoidCallback onBackPressed;
-  final VoidCallback onSavePressed;
+  final Function(List<SelectedFriendModel>) onSavePressed;
 
   const AddCategoryWidget({
     super.key,
@@ -16,6 +18,38 @@ class AddCategoryWidget extends StatelessWidget {
     required this.onBackPressed,
     required this.onSavePressed,
   });
+
+  @override
+  State<AddCategoryWidget> createState() => _AddCategoryWidgetState();
+}
+
+class _AddCategoryWidgetState extends State<AddCategoryWidget> {
+  // 선택된 친구들 상태 관리
+  List<SelectedFriendModel> _selectedFriends = [];
+
+  void _handleSavePressed() {
+    widget.onSavePressed(_selectedFriends);
+  }
+
+  Future<void> _handleAddFriends() async {
+    // Navigator.push로 결과값 받기
+    final result = await Navigator.push<List<SelectedFriendModel>>(
+      context,
+      MaterialPageRoute(builder: (context) => const FriendListAddScreen()),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      setState(() {
+        _selectedFriends = result;
+      });
+
+      debugPrint('=== 선택된 친구 정보 수신 ===');
+      debugPrint('선택된 친구 수: ${_selectedFriends.length}');
+      for (final friend in _selectedFriends) {
+        debugPrint('- ${friend.name} (${friend.uid})');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +72,7 @@ class AddCategoryWidget extends StatelessWidget {
                     color: Color(0xFFD9D9D9),
                     size: 20.sp,
                   ),
-                  onPressed: onBackPressed,
+                  onPressed: widget.onBackPressed,
                 ),
 
                 // 제목
@@ -58,7 +92,7 @@ class AddCategoryWidget extends StatelessWidget {
                   width: 51.w,
                   height: 35.h,
                   child: ElevatedButton(
-                    onPressed: onSavePressed,
+                    onPressed: _handleSavePressed,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF323232),
                       shape: RoundedRectangleBorder(
@@ -89,7 +123,7 @@ class AddCategoryWidget extends StatelessWidget {
           // 메인 컨텐츠 영역
           Expanded(
             child: SingleChildScrollView(
-              controller: scrollController,
+              controller: widget.scrollController,
               child: Container(
                 padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
                 child: Column(
@@ -100,14 +134,7 @@ class AddCategoryWidget extends StatelessWidget {
                       width: 129.w,
                       height: 30.h,
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          // Navigator 호출을 안전하게 처리
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            if (context.mounted) {
-                              Navigator.pushNamed(context, '/friend_list_add');
-                            }
-                          });
-                        },
+                        onPressed: _handleAddFriends,
                         icon: Image.asset(
                           'assets/person_add.png',
                           width: 17.w,
@@ -137,6 +164,12 @@ class AddCategoryWidget extends StatelessWidget {
                       ),
                     ),
 
+                    // 선택된 친구들 표시
+                    if (_selectedFriends.isNotEmpty) ...[
+                      SizedBox(height: 16.h),
+                      _buildSelectedFriendsSection(),
+                    ],
+
                     SizedBox(height: screenHeight * (14 / 852)),
 
                     // 텍스트 입력 영역
@@ -144,7 +177,7 @@ class AddCategoryWidget extends StatelessWidget {
                       children: [
                         // 입력 필드
                         TextField(
-                          controller: textController,
+                          controller: widget.textController,
                           cursorColor: Color(0xFFCCCCCC),
                           style: TextStyle(
                             color: Color(0xFFCCCCCC),
@@ -181,7 +214,7 @@ class AddCategoryWidget extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.end,
                           children: [
                             ValueListenableBuilder<TextEditingValue>(
-                              valueListenable: textController,
+                              valueListenable: widget.textController,
                               builder: (context, value, child) {
                                 return Text(
                                   '${value.text.length}/20자',
@@ -202,6 +235,121 @@ class AddCategoryWidget extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 선택된 친구들 UI 섹션
+  Widget _buildSelectedFriendsSection() {
+    return Container(
+      padding: EdgeInsets.all(12.w),
+      decoration: BoxDecoration(
+        color: Color(0xFF232323),
+        borderRadius: BorderRadius.circular(8.r),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '추가된 친구 (${_selectedFriends.length}명)',
+                style: TextStyle(
+                  color: Color(0xFFE2E2E2),
+                  fontSize: 14.sp,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'Pretendard',
+                ),
+              ),
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedFriends.clear();
+                  });
+                },
+                child: Text(
+                  '전체 삭제',
+                  style: TextStyle(
+                    color: Color(0xFF999999),
+                    fontSize: 12.sp,
+                    fontWeight: FontWeight.w500,
+                    fontFamily: 'Pretendard',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: 12.h),
+          // 친구 프로필 목록
+          Wrap(
+            spacing: 8.w,
+            runSpacing: 8.h,
+            children:
+                _selectedFriends
+                    .map((friend) => _buildFriendChip(friend))
+                    .toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 개별 친구 칩 위젯
+  Widget _buildFriendChip(SelectedFriendModel friend) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+      decoration: BoxDecoration(
+        color: Color(0xFF323232),
+        borderRadius: BorderRadius.circular(16.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 프로필 이미지
+          CircleAvatar(
+            radius: 12.r,
+            backgroundColor: Color(0xFF404040),
+            backgroundImage:
+                friend.profileImageUrl != null
+                    ? NetworkImage(friend.profileImageUrl!)
+                    : null,
+            child:
+                friend.profileImageUrl == null
+                    ? Text(
+                      friend.name.isNotEmpty
+                          ? friend.name[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        color: Color(0xFFE2E2E2),
+                        fontSize: 10.sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                    : null,
+          ),
+          SizedBox(width: 6.w),
+          // 친구 이름
+          Text(
+            friend.name,
+            style: TextStyle(
+              color: Color(0xFFE2E2E2),
+              fontSize: 12.sp,
+              fontWeight: FontWeight.w500,
+              fontFamily: 'Pretendard',
+            ),
+          ),
+          SizedBox(width: 4.w),
+          // 삭제 버튼
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedFriends.removeWhere((f) => f.uid == friend.uid);
+              });
+            },
+            child: Icon(Icons.close, color: Color(0xFF999999), size: 16.w),
           ),
         ],
       ),

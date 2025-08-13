@@ -43,48 +43,44 @@ class FriendsListWidget extends StatelessWidget {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+
         children: [
           // 헤더
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '카테고리 친구 $totalMates명',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16.sp,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Pretendard Variable',
+          InkWell(
+            onTap:
+                () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) =>
+                            FriendListAddScreen(categoryId: category.id),
+                  ),
                 ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder:
-                          (context) =>
-                              FriendListAddScreen(categoryId: category.id),
-                    ),
-                  );
-                },
-                child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 4.h),
+            borderRadius: BorderRadius.circular(8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Container(
+                  width: 40.w,
+                  height: 40.h,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF2a2a2a),
-                    borderRadius: BorderRadius.circular(12),
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF323232),
                   ),
-                  child: Text(
-                    '편집',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12.sp,
-                      fontWeight: FontWeight.w500,
-                      fontFamily: 'Pretendard Variable',
-                    ),
+                  child: Icon(Icons.add, color: Colors.white, size: 27.sp),
+                ),
+                SizedBox(width: 12.w),
+                Text(
+                  "친구 추가",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
 
           SizedBox(height: 12.h),
@@ -296,7 +292,7 @@ class _FriendListItem extends StatelessWidget {
                               height: 40.w,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: const Color(0xFF666666),
+                                color: const Color(0xFFffffff),
                               ),
                             ),
                         errorWidget:
@@ -305,12 +301,19 @@ class _FriendListItem extends StatelessWidget {
                               height: 40.w,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                color: const Color(0xFF666666),
+                                color: const Color(0xFFffffff),
                               ),
                             ),
                       ),
                     )
-                    : Icon(Icons.person, color: Colors.white, size: 20.sp),
+                    : Container(
+                      width: 40.w,
+                      height: 40.w,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: const Color(0xFFffffff),
+                      ),
+                    ),
           ),
           SizedBox(width: 12.w),
           // 텍스트 정보

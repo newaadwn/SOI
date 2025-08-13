@@ -5,6 +5,7 @@ import '../../controllers/friend_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/friend_model.dart';
+import '../../models/selected_friend_model.dart';
 
 class FriendListAddScreen extends StatefulWidget {
   final String? categoryId; // 카테고리에 친구를 추가할 때 사용
@@ -92,7 +93,10 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
         final authController = context.read<AuthController>();
         final userId = authController.getUserId;
         if (userId != null) {
-          await categoryController.loadUserCategories(userId, forceReload: true);
+          await categoryController.loadUserCategories(
+            userId,
+            forceReload: true,
+          );
           debugPrint('CategoryController 강제 새로고침 완료');
         }
 
@@ -131,10 +135,43 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
         }
       }
     } else {
-      // 단순히 선택된 친구들과 함께 이전 화면으로 돌아가기
+      // 단순히 선택된 친구들의 정보와 함께 이전 화면으로 돌아가기
+      final friendController = context.read<FriendController>();
+      final selectedFriends = <SelectedFriendModel>[];
+
+      // 선택된 UID들을 기반으로 친구 정보 수집
+      for (final uid in _selectedFriendUids) {
+        final friend = friendController.friends.firstWhere(
+          (friend) => friend.userId == uid,
+          orElse:
+              () => FriendModel(
+                userId: uid,
+                name: '알 수 없음',
+                id: uid,
+                status: FriendStatus.active,
+                isFavorite: false,
+                addedAt: DateTime.now(),
+              ),
+        );
+
+        selectedFriends.add(
+          SelectedFriendModel(
+            uid: friend.userId,
+            name: friend.name,
+            profileImageUrl: friend.profileImageUrl,
+          ),
+        );
+      }
+
+      debugPrint('=== 선택된 친구 정보 반환 ===');
+      debugPrint('선택된 친구 수: ${selectedFriends.length}');
+      for (final friend in selectedFriends) {
+        debugPrint('- ${friend.name} (${friend.uid})');
+      }
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          Navigator.of(context).pop(_selectedFriendUids.toList());
+          Navigator.of(context).pop(selectedFriends);
         }
       });
     }

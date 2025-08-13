@@ -301,6 +301,38 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     );
   }
 
+  // 삭제 확인 다이얼로그 표시
+  void _showDeleteDialog(PhotoDataModel photo) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.grey[850],
+          title: Text('사진 삭제', style: TextStyle(color: Colors.white)),
+          content: Text(
+            '이 사진을 정말로 삭제하시겠습니까?',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text('취소', style: TextStyle(color: Colors.blue)),
+              onPressed: () {
+                Navigator.of(context).pop(); // 다이얼로그 닫기
+              },
+            ),
+            TextButton(
+              child: Text('삭제', style: TextStyle(color: Colors.red)),
+              onPressed: () {
+                // TODO: 사진 삭제 로직 구현
+                Navigator.of(context).pop(); // 다이얼로그 닫기
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
@@ -689,8 +721,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
               SizedBox(height: (11.5).h), // 반응형 간격
               // 사진 아래 정보 섹션 (닉네임과 날짜만)
               Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-
                 children: [
                   SizedBox(width: 25.w), // 반응형 간격
                   Column(
@@ -698,14 +728,17 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
                     children: [
                       // 사용자 닉네임
-                      Text(
-                        '@${_userName.isNotEmpty ? _userName : photo.userID}',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16.sp,
-                          fontFamily: "Pretendard",
-                          fontWeight: FontWeight.w600,
-                          height: (1.3).h,
+                      Container(
+                        height: 22.h, // 고정 높이 설정
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '@${_userName.isNotEmpty ? _userName : photo.userID}',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16.sp,
+                            fontFamily: "Pretendard",
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
 
@@ -720,6 +753,51 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                         ),
                       ),
                     ],
+                  ),
+                  Spacer(), // 남은 공간을 채우기 위한 Spacer
+                  IconButton(
+                    onPressed: () async {
+                      final RenderBox renderBox =
+                          context.findRenderObject() as RenderBox;
+                      final Offset offset = renderBox.localToGlobal(
+                        Offset.zero,
+                      );
+
+                      await showMenu(
+                        context: context,
+                        position: RelativeRect.fromLTRB(
+                          offset.dx,
+                          offset.dy + renderBox.size.height,
+                          offset.dx + renderBox.size.width,
+                          offset.dy,
+                        ),
+                        items: [
+                          PopupMenuItem(
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, color: Colors.red),
+                                SizedBox(width: 8.w),
+                                Text(
+                                  '삭제하기',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              ],
+                            ),
+                            onTap: () {
+                              // 약간의 지연 후 다이얼로그 표시 (PopupMenu가 닫힌 후)
+                              Future.delayed(Duration(milliseconds: 100), () {
+                                _showDeleteDialog(photo);
+                              });
+                            },
+                          ),
+                        ],
+                      );
+                    },
+                    icon: Icon(
+                      Icons.more_vert,
+                      size: 25.sp,
+                      color: Color(0xfff9f9f9),
+                    ),
                   ),
                 ],
               ),
