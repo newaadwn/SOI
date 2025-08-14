@@ -129,45 +129,58 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 친구 추가하기 버튼
-                    SizedBox(
-                      width: 129.w,
-                      height: 30.h,
-                      child: ElevatedButton.icon(
-                        onPressed: _handleAddFriends,
-                        icon: Image.asset(
-                          'assets/person_add.png',
-                          width: 17.w,
-                          height: 17.h,
-                          color: Color(0xFFE2E2E2),
-                        ),
-                        label: Text(
-                          '친구 추가하기',
-                          style: TextStyle(
+                    if (_selectedFriends.isEmpty)
+                      // 친구 추가하기 버튼
+                      SizedBox(
+                        width: 129.w,
+                        height: 30.h,
+                        child: ElevatedButton.icon(
+                          onPressed: _handleAddFriends,
+                          icon: Image.asset(
+                            'assets/person_add.png',
+                            width: 17.w,
+                            height: 17.h,
                             color: Color(0xFFE2E2E2),
-                            fontSize: 12.sp,
-                            fontWeight: FontWeight.w500,
-                            fontFamily: 'Pretendard',
                           ),
-                        ),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Color(0xFF323232),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16.5),
+                          label: Text(
+                            '친구 추가하기',
+                            style: TextStyle(
+                              color: Color(0xFFE2E2E2),
+                              fontSize: 12.sp,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'Pretendard',
+                            ),
                           ),
-                          elevation: 0,
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 8.w,
-                            vertical: 6.h,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Color(0xFF323232),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16.5),
+                            ),
+                            elevation: 0,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 8.w,
+                              vertical: 6.h,
+                            ),
                           ),
                         ),
                       ),
-                    ),
 
                     // 선택된 친구들 표시
                     if (_selectedFriends.isNotEmpty) ...[
                       SizedBox(height: 16.h),
-                      _buildSelectedFriendsSection(),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            spacing: 8.w,
+                            runSpacing: 8.h,
+                            children:
+                                _selectedFriends
+                                    .map((friend) => _buildFriendChip(friend))
+                                    .toList(),
+                          ),
+                        ],
+                      ),
                     ],
 
                     SizedBox(height: screenHeight * (14 / 852)),
@@ -241,62 +254,6 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
     );
   }
 
-  // 선택된 친구들 UI 섹션
-  Widget _buildSelectedFriendsSection() {
-    return Container(
-      padding: EdgeInsets.all(12.w),
-      decoration: BoxDecoration(
-        color: Color(0xFF232323),
-        borderRadius: BorderRadius.circular(8.r),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '추가된 친구 (${_selectedFriends.length}명)',
-                style: TextStyle(
-                  color: Color(0xFFE2E2E2),
-                  fontSize: 14.sp,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'Pretendard',
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedFriends.clear();
-                  });
-                },
-                child: Text(
-                  '전체 삭제',
-                  style: TextStyle(
-                    color: Color(0xFF999999),
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w500,
-                    fontFamily: 'Pretendard',
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12.h),
-          // 친구 프로필 목록
-          Wrap(
-            spacing: 8.w,
-            runSpacing: 8.h,
-            children:
-                _selectedFriends
-                    .map((friend) => _buildFriendChip(friend))
-                    .toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
   // 개별 친구 칩 위젯
   Widget _buildFriendChip(SelectedFriendModel friend) {
     return Container(
@@ -331,26 +288,16 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
                     : null,
           ),
           SizedBox(width: 6.w),
-          // 친구 이름
-          Text(
-            friend.name,
-            style: TextStyle(
-              color: Color(0xFFE2E2E2),
-              fontSize: 12.sp,
-              fontWeight: FontWeight.w500,
-              fontFamily: 'Pretendard',
-            ),
-          ),
-          SizedBox(width: 4.w),
+
           // 삭제 버튼
-          GestureDetector(
+          /* GestureDetector(
             onTap: () {
               setState(() {
                 _selectedFriends.removeWhere((f) => f.uid == friend.uid);
               });
             },
             child: Icon(Icons.close, color: Color(0xFF999999), size: 16.w),
-          ),
+          ),*/
         ],
       ),
     );

@@ -39,6 +39,24 @@ class CategoryPhotosScreen extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            Spacer(),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.people, size: 25.sp, color: Colors.white),
+                SizedBox(width: 2.w),
+                // 카테고리에 있는 사용자의 숫자를 표시
+                Text(
+                  '${category.mates.length}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16.sp,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: "Pretendard",
+                  ),
+                ),
+              ],
+            ),
             IconButton(
               onPressed: () {
                 Navigator.push(

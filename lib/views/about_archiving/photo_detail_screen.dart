@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../../controllers/photo_controller.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/comment_record_model.dart';
 import '../../controllers/auth_controller.dart';
@@ -94,13 +95,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   // 사용자 프로필 정보 로드
   Future<void> _loadUserProfileImage() async {
     final currentPhoto = widget.photos[_currentIndex];
-    // Start loading profile information for the current photo's user
 
     try {
-      final authController = Provider.of<AuthController>(
-        context,
-        listen: false,
-      );
+      final authController = _getAuthController;
       final profileImageUrl = await authController.getUserProfileImageUrlById(
         currentPhoto.userID,
       );
@@ -112,10 +109,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
           _userName = userInfo?.id ?? currentPhoto.userID;
           _isLoadingProfile = false;
         });
-        // Profile image URL successfully retrieved and state updated
       }
     } catch (e) {
-      // Failed to load profile information - will use default user ID
       if (mounted) {
         setState(() {
           _userName = currentPhoto.userID;
@@ -128,7 +123,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   /// 현재 사진의 음성 댓글을 실시간으로 구독하여 위치 동기화
   void _subscribeToVoiceCommentsForCurrentPhoto() {
     final photoId = widget.photos[_currentIndex].id;
-    // Starting real-time subscription for voice comments on this photo
 
     try {
       _commentStreams[photoId]?.cancel();
@@ -137,13 +131,12 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
           .getCommentRecordsStream(photoId)
           .listen(
             (comments) => _handleCommentsUpdate(photoId, comments),
-            onError:
-                (error) => {
-                  /* Real-time comment subscription error for photo $photoId: $error */
-                },
+            onError: (error) {
+              // Real-time comment subscription error
+            },
           );
     } catch (e) {
-      // Failed to start real-time comment subscription for photo: $e
+      // Failed to start real-time comment subscription
     }
   }
 
@@ -152,8 +145,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     String photoId,
     List<CommentRecordModel> comments,
   ) async {
-    // Received real-time comment update - photo: $photoId, comment count: ${comments.length}
-
     if (!mounted) return;
 
     setState(() {
@@ -166,8 +157,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
           (comment) => comment.recorderUser == currentUserId,
         );
       }
-
-      // 댓글에서 프로필 위치는 각 댓글 객체에서 직접 사용하므로 별도 저장 불필요
     });
   }
 
@@ -177,18 +166,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     Offset position,
   ) async {
     try {
-      // Starting Firestore update for profile position - photo: $photoId, position: $position
-
-      final authController = Provider.of<AuthController>(
-        context,
-        listen: false,
-      );
+      final authController = _getAuthController;
       final currentUserId = authController.getUserId;
 
-      if (currentUserId == null) {
-        // Current user ID not found - cannot update profile position
-        return;
-      }
+      if (currentUserId == null) return;
 
       // 현재 사용자의 댓글 찾기
       final comments = _photoComments[photoId] ?? [];
@@ -197,24 +178,41 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
               .where((comment) => comment.recorderUser == currentUserId)
               .firstOrNull;
 
-      if (userComment == null) {
-        // Current user's voice comment not found - cannot update position
-        return;
-      }
+      if (userComment == null) return;
 
       await CommentRecordController().updateProfilePosition(
         commentId: userComment.id,
         photoId: photoId,
         profilePosition: position,
       );
-
-      // Profile position update result: ${success ? 'successful' : 'failed'}
     } catch (e) {
-      // Error updating profile position in Firestore: $e
+      // Error updating profile position in Firestore
     }
   }
 
-  // 페이지 변경 시 호출
+  // ==================== Helper Methods ====================
+
+  /// AuthController 인스턴스 가져오기
+  AuthController get _getAuthController =>
+      Provider.of<AuthController>(context, listen: false);
+
+  /// AudioController 인스턴스 가져오기
+  AudioController get _getAudioController =>
+      Provider.of<AudioController>(context, listen: false);
+
+  /// SnackBar 표시 헬퍼
+  void _showSnackBar(String message, {Color? backgroundColor}) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message, style: TextStyle(fontFamily: "Pretendard")),
+        backgroundColor: backgroundColor ?? Color(0xff323232),
+      ),
+    );
+  }
+
+  // ==================== Core Methods ====================
   void _onPageChanged(int index) {
     setState(() {
       _currentIndex = index;
@@ -228,29 +226,167 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   // 오디오 재생/일시정지
   Future<void> _toggleAudio() async {
     final currentPhoto = widget.photos[_currentIndex];
-    if (currentPhoto.audioUrl.isEmpty) {
-      // No audio URL available for this photo
-      return;
-    }
+    if (currentPhoto.audioUrl.isEmpty) return;
 
     try {
-      await Provider.of<AudioController>(
-        context,
-        listen: false,
-      ).toggleAudio(currentPhoto.audioUrl);
+      await _getAudioController.toggleAudio(currentPhoto.audioUrl);
     } catch (e) {
-      // Error playing audio: $e
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('음성 파일을 재생할 수 없습니다: $e')));
-      }
+      _showSnackBar('음성 파일을 재생할 수 없습니다: $e', backgroundColor: Colors.red);
     }
   }
 
   // 오디오 정지
   Future<void> _stopAudio() async {
-    await Provider.of<AudioController>(context, listen: false).stopAudio();
+    await _getAudioController.stopAudio();
+  }
+
+  // 삭제 다이얼로그 표시
+  void _showDeleteDialog(PhotoDataModel photo) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Color(0xff323232),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: 17.h),
+              // 제목
+              Text(
+                '사진 삭제',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontFamily: "Pretendard",
+                  fontWeight: FontWeight.w500,
+                  fontSize: 19.8.sp,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12.h),
+              // 설명
+              Text(
+                '사진 삭제하면 더 이상 해당 카테고리에서 확인할 수 없으며 삭제 후 복구가 \n불가능합니다.',
+                style: TextStyle(
+                  color: Color(0xfff9f9f9),
+                  fontFamily: "Pretendard",
+                  fontSize: 15.8.sp,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12.h),
+              // 버튼들
+              SizedBox(
+                width: (185.5).w,
+                height: 38.h,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                    _deletePhoto(photo);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xfff5f5f5),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14.2),
+                    ),
+                  ),
+
+                  child: Text(
+                    '삭제',
+                    style: TextStyle(
+                      fontFamily: "Pretendard",
+                      fontWeight: FontWeight.w600,
+                      fontSize: (17.8).sp,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 13.h),
+              SizedBox(
+                width: (185.5).w,
+                height: 38.h,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xff5a5a5a),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14.2),
+                    ),
+                  ),
+                  child: Text(
+                    '취소',
+                    style: TextStyle(
+                      fontFamily: "Pretendard",
+                      fontWeight: FontWeight.w500,
+                      fontSize: (17.8).sp,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 14.h),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // 사진 삭제 실행
+  Future<void> _deletePhoto(PhotoDataModel photo) async {
+    try {
+      final authController = _getAuthController;
+      final currentUserId = authController.getUserId;
+
+      if (currentUserId == null) {
+        _showSnackBar('사용자 인증이 필요합니다.', backgroundColor: Colors.red);
+        return;
+      }
+
+      // PhotoController를 통해 사진 삭제
+      final photoController = PhotoController();
+      final success = await photoController.deletePhoto(
+        categoryId: widget.categoryId,
+        photoId: photo.id,
+        userId: currentUserId,
+        permanentDelete: true,
+      );
+
+      if (!mounted) return;
+
+      if (success) {
+        _showSnackBar('사진이 삭제되었습니다.');
+        _handleSuccessfulDeletion(photo);
+      } else {
+        _showSnackBar('삭제 중 오류가 발생했습니다.', backgroundColor: Colors.red);
+      }
+    } catch (e) {
+      _showSnackBar('삭제 중 오류가 발생했습니다: $e', backgroundColor: Colors.red);
+    }
+  }
+
+  /// 성공적인 삭제 후 UI 처리
+  void _handleSuccessfulDeletion(PhotoDataModel photo) {
+    // 마지막 사진인 경우 이전 화면으로 돌아가기
+    if (widget.photos.length <= 1) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    // 다른 사진들이 남아있는 경우 현재 사진을 목록에서 제거하고 페이지 조정
+    setState(() {
+      widget.photos.removeWhere((p) => p.id == photo.id);
+      if (_currentIndex >= widget.photos.length) {
+        _currentIndex = widget.photos.length - 1;
+      }
+    });
+
+    _loadUserProfileImage();
+    _subscribeToVoiceCommentsForCurrentPhoto();
   }
 
   // 파형 위젯 빌드
@@ -296,38 +432,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
               progress: progress,
             ),
           ),
-        );
-      },
-    );
-  }
-
-  // 삭제 확인 다이얼로그 표시
-  void _showDeleteDialog(PhotoDataModel photo) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Colors.grey[850],
-          title: Text('사진 삭제', style: TextStyle(color: Colors.white)),
-          content: Text(
-            '이 사진을 정말로 삭제하시겠습니까?',
-            style: TextStyle(color: Colors.white70),
-          ),
-          actions: <Widget>[
-            TextButton(
-              child: Text('취소', style: TextStyle(color: Colors.blue)),
-              onPressed: () {
-                Navigator.of(context).pop(); // 다이얼로그 닫기
-              },
-            ),
-            TextButton(
-              child: Text('삭제', style: TextStyle(color: Colors.red)),
-              onPressed: () {
-                // TODO: 사진 삭제 로직 구현
-                Navigator.of(context).pop(); // 다이얼로그 닫기
-              },
-            ),
-          ],
         );
       },
     );
@@ -755,49 +859,88 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     ],
                   ),
                   Spacer(), // 남은 공간을 채우기 위한 Spacer
-                  IconButton(
-                    onPressed: () async {
-                      final RenderBox renderBox =
-                          context.findRenderObject() as RenderBox;
-                      final Offset offset = renderBox.localToGlobal(
-                        Offset.zero,
-                      );
-
-                      await showMenu(
-                        context: context,
-                        position: RelativeRect.fromLTRB(
-                          offset.dx,
-                          offset.dy + renderBox.size.height,
-                          offset.dx + renderBox.size.width,
-                          offset.dy,
+                  MenuAnchor(
+                    style: MenuStyle(
+                      backgroundColor: WidgetStatePropertyAll(
+                        Colors.transparent,
+                      ),
+                      shadowColor: WidgetStatePropertyAll(Colors.transparent),
+                      surfaceTintColor: WidgetStatePropertyAll(
+                        Colors.transparent,
+                      ),
+                      elevation: WidgetStatePropertyAll(0),
+                      side: WidgetStatePropertyAll(BorderSide.none),
+                      shape: WidgetStatePropertyAll(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(9.14),
                         ),
-                        items: [
-                          PopupMenuItem(
-                            child: Row(
-                              children: [
-                                Icon(Icons.delete, color: Colors.red),
-                                SizedBox(width: 8.w),
-                                Text(
-                                  '삭제하기',
-                                  style: TextStyle(color: Colors.red),
-                                ),
-                              ],
-                            ),
-                            onTap: () {
-                              // 약간의 지연 후 다이얼로그 표시 (PopupMenu가 닫힌 후)
-                              Future.delayed(Duration(milliseconds: 100), () {
-                                _showDeleteDialog(photo);
-                              });
-                            },
-                          ),
-                        ],
+                      ),
+                    ),
+                    builder: (
+                      BuildContext context,
+                      MenuController controller,
+                      Widget? child,
+                    ) {
+                      return IconButton(
+                        onPressed: () {
+                          if (controller.isOpen) {
+                            controller.close();
+                          } else {
+                            controller.open();
+                          }
+                        },
+                        icon: Icon(
+                          Icons.more_vert,
+                          size: 25.sp,
+                          color: Color(0xfff9f9f9),
+                        ),
+                        tooltip: 'Show menu',
                       );
                     },
-                    icon: Icon(
-                      Icons.more_vert,
-                      size: 25.sp,
-                      color: Color(0xfff9f9f9),
-                    ),
+                    menuChildren: [
+                      MenuItemButton(
+                        onPressed: () {
+                          _showDeleteDialog(photo);
+                        },
+                        style: ButtonStyle(
+                          shape: WidgetStatePropertyAll(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(9.14),
+                              side: BorderSide.none,
+                            ),
+                          ),
+                        ),
+                        child: Container(
+                          width: 173.w,
+                          height: 45.h,
+                          padding: EdgeInsets.only(left: 13.96.w),
+                          decoration: BoxDecoration(
+                            color: Color(0xff323232),
+                            borderRadius: BorderRadius.circular(9.14),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Image.asset(
+                                'assets/trash_red.png',
+                                color: Colors.red,
+                                width: 11.16.sp,
+                                height: 12.56.sp,
+                              ),
+                              SizedBox(width: 8.w),
+                              Text(
+                                '삭제',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 15.3517.sp,
+                                  fontFamily: "Pretendard",
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

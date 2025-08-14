@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../services/camera_service.dart';
 import 'photo_editor_screen.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
@@ -379,21 +380,10 @@ class _CameraScreenState extends State<CameraScreen>
               future: _cameraInitialization,
               builder: (context, snapshot) {
                 if (_isLoading) {
-                  return Container(
-                    width: 400.w,
-                    constraints: BoxConstraints(maxHeight: double.infinity),
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(color: Colors.white),
-                        ],
-                      ),
-                    ),
+                  return Shimmer.fromColors(
+                    baseColor: Colors.grey[800]!,
+                    highlightColor: Colors.grey[600]!,
+                    child: SizedBox(width: 354.w, height: 500.h),
                   );
                 }
 
@@ -487,8 +477,8 @@ class _CameraScreenState extends State<CameraScreen>
                       }
                     },
                     child: Container(
-                      width: 46.w,
-                      height: 46.h,
+                      width: 46,
+                      height: 46,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(8.76),
                       ),

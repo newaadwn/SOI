@@ -1,3 +1,4 @@
+import 'dart:async'; // 🎯 Timer 사용을 위해 추가
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -24,6 +25,9 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   // 컨트롤러들
   final _categoryNameController = TextEditingController();
   final _searchController = TextEditingController();
+
+  // 🎯 검색 debounce를 위한 Timer
+  Timer? _searchDebounceTimer;
 
   // Provider 참조를 미리 저장 (dispose에서 안전하게 사용하기 위함)
   CategoryController? _categoryController;
@@ -87,7 +91,13 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   }
 
   void _onSearchChanged() {
-    _categoryController?.searchCategories(_searchController.text);
+    // 🎯 이전 타이머 취소
+    _searchDebounceTimer?.cancel();
+
+    // 🎯 300ms 지연 후 검색 실행 (타이핑 중 깜빡거림 방지)
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      _categoryController?.searchCategories(_searchController.text);
+    });
   }
 
   // 🎯 편집 모드 관련 메서드들
@@ -736,6 +746,9 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   @override
   void dispose() {
+    // 🎯 검색 debounce 타이머 정리
+    _searchDebounceTimer?.cancel();
+
     // 검색 리스너만 제거 (Controller는 Provider에서 관리되므로 건드리지 않음)
     _categoryNameController.dispose();
     _editingNameController.dispose(); // 🎯 편집 컨트롤러 정리

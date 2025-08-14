@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/category_controller.dart';
 
@@ -12,7 +13,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// 🎨 아카이브 카드 공통 위젯 (반응형 디자인 + 실시간 업데이트)
 /// 168x229 비율의 카드 UI를 제공하며, 화면 크기에 따라 적응합니다.
-class ArchiveCardWidget extends StatelessWidget {
+class ArchiveCardWidget extends StatefulWidget {
   final String categoryId;
   final bool isEditMode;
   final bool isEditing;
@@ -29,28 +30,53 @@ class ArchiveCardWidget extends StatelessWidget {
   });
 
   @override
+  State<ArchiveCardWidget> createState() => _ArchiveCardWidgetState();
+}
+
+class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
+  CategoryDataModel? _cachedCategory; // 🎯 캐시된 카테고리 데이터
+  bool _hasLoadedOnce = false; // 🎯 한 번이라도 로드되었는지 추적
+
+  @override
   Widget build(BuildContext context) {
     return Consumer<CategoryController>(
       builder: (context, categoryController, child) {
         return StreamBuilder<CategoryDataModel?>(
-          stream: categoryController.streamSingleCategory(categoryId),
+          stream: categoryController.streamSingleCategory(widget.categoryId),
           builder: (context, snapshot) {
-            // 스트림 연결 상태 확인
-            if (snapshot.connectionState == ConnectionState.waiting) {
+            // 🎯 데이터가 있으면 캐시 업데이트
+            if (snapshot.hasData && snapshot.data != null) {
+              _cachedCategory = snapshot.data!;
+              _hasLoadedOnce = true;
+            }
+
+            // 🎯 스트림이 처음 연결 중이고 아직 한 번도 로드되지 않은 경우에만 Shimmer 표시
+            if (!_hasLoadedOnce &&
+                (snapshot.connectionState == ConnectionState.waiting ||
+                    snapshot.connectionState == ConnectionState.none ||
+                    !snapshot.hasData ||
+                    snapshot.data == null)) {
               return _buildLoadingCard(context);
             }
 
-            // 에러가 있거나 카테고리가 삭제된 경우
-            if (snapshot.hasError ||
-                snapshot.connectionState == ConnectionState.done ||
-                snapshot.hasData == false ||
-                snapshot.data == null) {
-              // 카드를 완전히 숨김 (삭제됨)
+            // 🎯 에러가 있거나 카테고리가 삭제된 경우
+            if (snapshot.hasError) {
               return const SizedBox.shrink();
             }
 
-            final category = snapshot.data!;
-            return _buildCategoryCard(context, category);
+            // 🎯 캐시된 데이터가 있으면 사용, 없으면 현재 스냅샷 데이터 사용
+            final category = _cachedCategory ?? snapshot.data;
+
+            // 🎯 여전히 데이터가 없으면 로딩 카드 표시
+            if (category == null || category.name.isEmpty) {
+              return _buildLoadingCard(context);
+            }
+
+            // 🎯 AnimatedSwitcher로 부드러운 전환 효과 적용
+            return AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _buildCategoryCard(context, category),
+            );
           },
         );
       },
@@ -87,41 +113,46 @@ class ArchiveCardWidget extends StatelessWidget {
                           ? CachedNetworkImage(
                             key: ValueKey(
                               '${category.id}_${category.categoryPhotoUrl}',
-                            ), // 카테고리ID + URL로 고유 키 생성
+                            ),
                             imageUrl: category.categoryPhotoUrl!,
                             cacheKey:
-                                '${category.id}_${category.categoryPhotoUrl}', // 캐시 키도 동일하게 설정
-                            width: (146.7).w,
-                            height: (146.8).h,
+                                '${category.id}_${category.categoryPhotoUrl}',
+                            width: (146.7),
+                            height: (146.8),
                             fit: BoxFit.cover,
+                            fadeInDuration: Duration(milliseconds: 200),
+                            fadeOutDuration: Duration(milliseconds: 100),
                             placeholder:
-                                (context, url) => Container(
-                                  color: Colors.grey[300],
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2.0,
-                                      color: Colors.grey,
-                                    ),
+                                (context, url) => Shimmer.fromColors(
+                                  baseColor: Color(0xFF2A2A2A),
+                                  highlightColor: Color(0xFFffffff),
+                                  child: SizedBox(
+                                    width: 146.7.w,
+                                    height: 146.8.h,
                                   ),
                                 ),
                             errorWidget:
                                 (context, url, error) => Container(
-                                  color: Colors.grey[300],
+                                  color: Color(
+                                    0xFFcacaca,
+                                  ).withValues(alpha: 0.9),
+                                  width: (146.7),
+                                  height: (146.8),
                                   child: Icon(
-                                    Icons.error,
-                                    color: Colors.grey,
-                                    size: 24.sp,
+                                    Icons.image,
+                                    color: Color(0xff5a5a5a),
+                                    size: 51.sp,
                                   ),
                                 ),
                           )
                           : Container(
-                            color: Colors.grey[300],
-                            width: (146.7).w,
-                            height: (146.8).h,
+                            color: Color(0xFFcacaca).withValues(alpha: 0.9),
+                            width: (146.7),
+                            height: (146.8),
                             child: Icon(
                               Icons.image,
-                              color: Colors.grey,
-                              size: 40.sp,
+                              color: Color(0xff5a5a5a),
+                              size: 51.sp,
                             ),
                           ),
                 ),
@@ -170,9 +201,9 @@ class ArchiveCardWidget extends StatelessWidget {
                   child: Padding(
                     padding: EdgeInsets.only(left: 14.w, right: 8.w),
                     child:
-                        isEditing
+                        widget.isEditing
                             ? TextField(
-                              controller: editingController,
+                              controller: widget.editingController,
                               style: TextStyle(
                                 color: const Color(0xFFF9F9F9),
                                 fontSize: 14.sp,
@@ -232,7 +263,7 @@ class ArchiveCardWidget extends StatelessWidget {
                 ),
 
                 // 더보기 버튼 (편집 모드가 아닐 때만 표시)
-                if (!isEditMode)
+                if (!widget.isEditMode)
                   Builder(
                     builder: (buttonContext) {
                       return InkWell(
@@ -240,7 +271,7 @@ class ArchiveCardWidget extends StatelessWidget {
                           ArchivePopupMenuWidget.showArchivePopupMenu(
                             buttonContext,
                             category,
-                            onEditName: onStartEdit,
+                            onEditName: widget.onStartEdit,
                           );
                         },
                         child: Container(
@@ -272,17 +303,75 @@ class ArchiveCardWidget extends StatelessWidget {
     );
   }
 
-  /// 로딩 카드
+  /// 로딩 카드 (Shimmer 효과 적용)
   Widget _buildLoadingCard(BuildContext context) {
-    return Container(
-      decoration: ShapeDecoration(
-        color: const Color(0xFF1C1C1C),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(6.61),
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFF1C1C1C),
+      highlightColor: const Color(0xFF2A2A2A),
+      child: Container(
+        decoration: ShapeDecoration(
+          color: const Color(0xFF1C1C1C),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(6.61),
+          ),
         ),
-      ),
-      child: Center(
-        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 이미지 영역 Shimmer
+            Container(
+              width: 146.7.w,
+              height: 146.8.h,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(6.61),
+              ),
+            ),
+
+            SizedBox(height: 8.h),
+
+            // 텍스트 영역 Shimmer
+            Row(
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(left: 14.w),
+                  child: Container(
+                    width: 80.w,
+                    height: 14.h,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: 8.h),
+
+            // 프로필 영역 Shimmer
+            Padding(
+              padding: EdgeInsets.only(left: 14.w),
+              child: Row(
+                children: List.generate(
+                  3,
+                  (index) => Padding(
+                    padding: EdgeInsets.only(right: 4.w),
+                    child: Container(
+                      width: 20.w,
+                      height: 20.h,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
