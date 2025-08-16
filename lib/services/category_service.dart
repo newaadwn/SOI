@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import '../repositories/category_repository.dart';
 import '../models/category_data_model.dart';
 import '../models/auth_result.dart';
@@ -431,6 +433,39 @@ class CategoryService {
       return AuthResult.success('카테고리에서 나갔습니다.');
     } catch (e) {
       return AuthResult.failure('카테고리 나가기 중 오류가 발생했습니다.');
+    }
+  }
+
+  /// 카테고리에 새 사진 업로드 정보 업데이트
+  Future<void> updateLastPhotoInfo({
+    required String categoryId,
+    required String uploadedBy,
+  }) async {
+    try {
+      final now = Timestamp.now();
+
+      await _repository.updateCategory(categoryId, {
+        'lastPhotoUploadedBy': uploadedBy,
+        'lastPhotoUploadedAt': now,
+      });
+    } catch (e) {
+      debugPrint('카테고리 최신 사진 정보 업데이트 실패: $e');
+    }
+  }
+
+  /// 사용자가 카테고리를 확인했음을 기록
+  Future<void> updateUserViewTime({
+    required String categoryId,
+    required String userId,
+  }) async {
+    try {
+      final now = Timestamp.now();
+
+      await _repository.updateCategory(categoryId, {
+        'userLastViewedAt.$userId': now,
+      });
+    } catch (e) {
+      debugPrint('사용자 확인 시간 업데이트 실패: $e');
     }
   }
 }

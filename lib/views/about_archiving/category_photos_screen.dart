@@ -1,18 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../controllers/photo_controller.dart';
+import '../../controllers/auth_controller.dart';
 import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/category_data_model.dart';
+import '../../services/category_service.dart';
+import 'category_edit/category_editor_screen.dart';
 import 'photo_grid_item.dart';
-import 'category_editor_screen.dart';
 
 // 카테고리 사진 화면
-class CategoryPhotosScreen extends StatelessWidget {
+class CategoryPhotosScreen extends StatefulWidget {
   final CategoryDataModel category;
 
   const CategoryPhotosScreen({super.key, required this.category});
+
+  @override
+  State<CategoryPhotosScreen> createState() => _CategoryPhotosScreenState();
+}
+
+class _CategoryPhotosScreenState extends State<CategoryPhotosScreen> {
+  final CategoryService _categoryService = CategoryService();
+
+  @override
+  void initState() {
+    super.initState();
+    _updateUserViewTime();
+  }
+
+  void _updateUserViewTime() async {
+    final authController = Provider.of<AuthController>(context, listen: false);
+    final userId = authController.getUserId;
+
+    if (userId != null) {
+      await _categoryService.updateUserViewTime(
+        categoryId: widget.category.id,
+        userId: userId,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +57,7 @@ class CategoryPhotosScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              category.name,
+              widget.category.name,
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 20.sp,
@@ -47,12 +74,11 @@ class CategoryPhotosScreen extends StatelessWidget {
                 SizedBox(width: 2.w),
                 // 카테고리에 있는 사용자의 숫자를 표시
                 Text(
-                  '${category.mates.length}',
+                  '${widget.category.mates.length}',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 16.sp,
                     fontWeight: FontWeight.w600,
-                    fontFamily: "Pretendard",
                   ),
                 ),
               ],
@@ -63,7 +89,8 @@ class CategoryPhotosScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder:
-                        (context) => CategoryEditorScreen(category: category),
+                        (context) =>
+                            CategoryEditorScreen(category: widget.category),
                   ),
                 );
               },
@@ -74,7 +101,7 @@ class CategoryPhotosScreen extends StatelessWidget {
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       ),
       body: StreamBuilder<List<PhotoDataModel>>(
-        stream: photoController.getPhotosByCategoryStream(category.id),
+        stream: photoController.getPhotosByCategoryStream(widget.category.id),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
@@ -128,8 +155,8 @@ class CategoryPhotosScreen extends StatelessWidget {
                 photo: photo,
                 allPhotos: photos,
                 currentIndex: index,
-                categoryName: category.name,
-                categoryId: category.id,
+                categoryName: widget.category.name,
+                categoryId: widget.category.id,
               );
             },
           );

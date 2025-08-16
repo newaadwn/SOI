@@ -64,7 +64,48 @@ class CommentRecordController extends ChangeNotifier {
     }
   }
 
-  /// 음성 댓글의 프로필 이미지 위치 업데이트
+  /// 음성 댓글의 프로필 이미지 위치 업데이트 (상대 좌표)
+  Future<bool> updateRelativeProfilePosition({
+    required String commentId,
+    required String photoId,
+    required Offset relativePosition,
+  }) async {
+    try {
+      _setLoading(true);
+      _clearError();
+
+      // debugPrint('📍 상대 프로필 위치 업데이트 시작 - 댓글: $commentId, 상대위치: $relativePosition');
+
+      await _service.updateRelativeProfilePosition(
+        commentId: commentId,
+        relativePosition: relativePosition,
+      );
+
+      // 캐시 업데이트
+      if (_commentCache.containsKey(photoId)) {
+        final commentIndex = _commentCache[photoId]!.indexWhere(
+          (comment) => comment.id == commentId,
+        );
+        if (commentIndex != -1) {
+          final updatedComment = _commentCache[photoId]![commentIndex].copyWith(
+            relativePosition: relativePosition,
+          );
+          _commentCache[photoId]![commentIndex] = updatedComment;
+        }
+      }
+
+      // debugPrint('✅ 상대 프로필 위치 업데이트 완료');
+      return true;
+    } catch (e) {
+      _setError('프로필 위치 업데이트 실패: $e');
+      // debugPrint('❌ 상대 프로필 위치 업데이트 실패: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// 음성 댓글의 프로필 이미지 위치 업데이트 (기존 절대 좌표 - 하위호환성)
   Future<bool> updateProfilePosition({
     required String commentId,
     required String photoId,
@@ -248,7 +289,7 @@ class CommentRecordController extends ChangeNotifier {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_error!),
-          backgroundColor: Colors.red,
+          backgroundColor: const Color(0xFF5A5A5A),
           duration: const Duration(seconds: 3),
         ),
       );

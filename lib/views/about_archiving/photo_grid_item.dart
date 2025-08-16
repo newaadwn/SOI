@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../models/photo_data_model.dart';
 import '../../controllers/auth_controller.dart';
 import 'widgets/custom_waveform_widget.dart';
@@ -178,19 +179,21 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                 imageUrl: widget.photo.imageUrl,
                 fit: BoxFit.cover,
                 placeholder:
-                    (context, url) => Container(
-                      color: Colors.grey[300],
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.5,
-                          color: Colors.grey,
-                        ),
-                      ),
+                    (context, url) => Shimmer.fromColors(
+                      baseColor: Colors.grey.shade800,
+                      highlightColor: Colors.grey.shade700,
+                      period: const Duration(milliseconds: 1500),
+                      child: Container(color: Colors.grey.shade800),
                     ),
                 errorWidget:
                     (context, url, error) => Container(
-                      color: Colors.grey[300],
-                      child: Icon(Icons.error, color: Colors.grey),
+                      color: Colors.grey.shade800,
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.image,
+                        color: Colors.grey.shade600,
+                        size: 32.sp,
+                      ),
                     ),
               ),
             ),
@@ -209,15 +212,26 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                     decoration: BoxDecoration(shape: BoxShape.circle),
                     child:
                         _isLoadingProfile
-                            ? CircleAvatar(
-                              radius: 16, // 반응형 반지름
-                              backgroundColor: Colors.grey,
-                              child: SizedBox(
-                                width: 18.sp, // 반응형 너비
-                                height: 18.sp, // 반응형 높이
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.5, // 반응형 선 두께
-                                  color: Colors.white,
+                            ? Shimmer.fromColors(
+                              baseColor: Colors.grey.shade800,
+                              highlightColor: Colors.grey.shade700,
+                              period: const Duration(milliseconds: 1500),
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  shape: BoxShape.circle,
+                                ),
+                                clipBehavior: Clip.antiAlias,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade800,
+                                    border: Border.all(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                      width: 1,
+                                    ),
+                                    shape: BoxShape.circle,
+                                  ),
                                 ),
                               ),
                             )
@@ -231,42 +245,41 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                                   imageUrl: _userProfileImageUrl,
                                   imageBuilder:
                                       (context, imageProvider) => CircleAvatar(
-                                        radius: 16, // 반응형 반지름
+                                        radius: 16,
                                         backgroundImage: imageProvider,
                                       ),
                                   placeholder:
-                                      (context, url) => CircleAvatar(
-                                        radius: 161, // 반응형 반지름
-                                        backgroundColor: Colors.grey,
-                                        child: SizedBox(
-                                          width: 18.sp, // 반응형 너비
-                                          height: 18.sp, // 반응형 높이
-                                          child: CircularProgressIndicator(
-                                            strokeWidth: 2.5, // 반응형 선 두께
-                                            color: Colors.white,
-                                          ),
+                                      (context, url) => Shimmer.fromColors(
+                                        baseColor: Colors.grey.shade800,
+                                        highlightColor: Colors.grey.shade700,
+                                        period: const Duration(
+                                          milliseconds: 1500,
+                                        ),
+                                        child: CircleAvatar(
+                                          radius: 16,
+                                          backgroundColor: Colors.grey.shade800,
                                         ),
                                       ),
                                   errorWidget:
                                       (context, url, error) => CircleAvatar(
-                                        radius: 16, // 반응형 반지름
-                                        backgroundColor: Colors.grey,
+                                        radius: 16,
+                                        backgroundColor: Colors.grey.shade700,
                                         child: Icon(
                                           Icons.person,
                                           color: Colors.white,
-                                          size: 18.sp, // 반응형 아이콘 크기
+                                          size: 18.sp,
                                         ),
                                       ),
                                 );
                               },
                             )
                             : CircleAvatar(
-                              radius: 16, // 반응형 반지름
-                              backgroundColor: Colors.grey,
+                              radius: 16,
+                              backgroundColor: Colors.grey.shade700,
                               child: Icon(
                                 Icons.person,
                                 color: Colors.white,
-                                size: 18.sp, // 반응형 아이콘 크기
+                                size: 18.sp,
                               ),
                             ),
                   ),

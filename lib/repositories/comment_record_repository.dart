@@ -202,7 +202,24 @@ class CommentRecordRepository {
         );
   }
 
-  /// 프로필 이미지 위치 업데이트
+  /// 프로필 이미지 위치 업데이트 (상대 좌표)
+  Future<void> updateRelativeProfilePosition({
+    required String commentId,
+    required Offset relativePosition,
+  }) async {
+    try {
+      await _firestore.collection(_collectionName).doc(commentId).update({
+        'relativePosition': {
+          'x': relativePosition.dx,
+          'y': relativePosition.dy,
+        },
+      });
+    } catch (e) {
+      throw Exception('상대 프로필 위치 업데이트 실패: $e');
+    }
+  }
+
+  /// 프로필 이미지 위치 업데이트 (기존 절대 좌표 - 하위호환성)
   Future<void> updateProfilePosition({
     required String commentId,
     required Offset profilePosition,

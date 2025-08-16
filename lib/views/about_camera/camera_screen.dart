@@ -215,7 +215,7 @@ class _CameraScreenState extends State<CameraScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('카메라 촬영 중 오류가 발생했습니다. 오디오 녹음을 중지하고 다시 시도해주세요.'),
-              backgroundColor: Colors.orange,
+              backgroundColor: Color(0xFF5A5A5A),
             ),
           );
         }
@@ -228,13 +228,26 @@ class _CameraScreenState extends State<CameraScreen>
 
   /// 갤러리 콘텐츠 빌드 (로딩/에러/이미지 상태 처리)
   Widget _buildGalleryContent(double gallerySize, double borderRadius) {
-    // 로딩 중
+    // 로딩 중 - shimmer 효과 적용
     if (_isLoadingGallery) {
-      return Center(
-        child: SizedBox(
-          width: 46.w,
-          height: 46.h,
-          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+      return Shimmer.fromColors(
+        baseColor: Colors.grey.shade800,
+        highlightColor: Colors.grey.shade700,
+        period: const Duration(milliseconds: 1500),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: Container(
+            width: 46.w,
+            height: 46.h,
+            decoration: BoxDecoration(
+              color: Colors.grey.shade800,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.12),
+                width: 1.0,
+              ),
+              borderRadius: BorderRadius.circular(borderRadius),
+            ),
+          ),
         ),
       );
     }
@@ -266,13 +279,23 @@ class _CameraScreenState extends State<CameraScreen>
               // Gallery thumbnail data load error: ${snapshot.error}
               return _buildPlaceholderGallery(gallerySize);
             } else {
-              return Center(
-                child: SizedBox(
-                  width: 46.w,
-                  height: 46.h,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 1,
-                    color: Colors.white.withValues(alpha: 0.7),
+              return Shimmer.fromColors(
+                baseColor: Colors.grey.shade800,
+                highlightColor: Colors.grey.shade700,
+                period: const Duration(milliseconds: 1500),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(borderRadius),
+                  child: Container(
+                    width: 46.w,
+                    height: 46.h,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade800,
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.12),
+                        width: 1.0,
+                      ),
+                      borderRadius: BorderRadius.circular(borderRadius),
+                    ),
                   ),
                 ),
               );
@@ -363,10 +386,12 @@ class _CameraScreenState extends State<CameraScreen>
                   color: Color(0xff1c1c1c),
                   shape: BoxShape.circle,
                 ),
-                child: Icon(
-                  Icons.notifications,
-                  color: Colors.white,
-                  size: 25.sp,
+                child: Padding(
+                  padding: EdgeInsets.all(8.sp),
+                  child: Image.asset(
+                    'assets/norification.png',
+                    fit: BoxFit.contain,
+                  ),
                 ),
               ),
             ),
@@ -381,9 +406,24 @@ class _CameraScreenState extends State<CameraScreen>
               builder: (context, snapshot) {
                 if (_isLoading) {
                   return Shimmer.fromColors(
-                    baseColor: Colors.grey[800]!,
-                    highlightColor: Colors.grey[600]!,
-                    child: SizedBox(width: 354.w, height: 500.h),
+                    baseColor: Colors.grey.shade800,
+                    highlightColor: Colors.grey.shade700,
+                    period: const Duration(milliseconds: 1500),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        width: 354.w,
+                        height: 500.h,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade800,
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            width: 1.0,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
                   );
                 }
 
@@ -397,7 +437,7 @@ class _CameraScreenState extends State<CameraScreen>
                     ),
                     child: Center(
                       child: Text(
-                        '카메라를 초기화할 수 없습니다.\n앱을 다시 시작해 주세요.',
+                        '카메라를 시작할 수 없습니다.\n앱을 다시 시작해 주세요.',
                         style: TextStyle(color: Colors.white, fontSize: 18.sp),
                         textAlign: TextAlign.center,
                       ),
@@ -470,7 +510,7 @@ class _CameraScreenState extends State<CameraScreen>
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text('갤러리에서 이미지를 선택할 수 없습니다'),
-                              backgroundColor: Colors.red,
+                              backgroundColor: const Color(0xFF5A5A5A),
                             ),
                           );
                         }

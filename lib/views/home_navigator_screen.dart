@@ -7,7 +7,8 @@ import '../controllers/auth_controller.dart';
 import '../services/deep_link_service.dart';
 import 'about_archiving/archive_main_screen.dart';
 import 'about_camera/camera_screen.dart';
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:antdesign_icons/antdesign_icons.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class HomePageNavigationBar extends StatefulWidget {
   final int currentPageIndex;
@@ -66,34 +67,58 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
             },
             selectedIndex: _currentPageIndex,
             destinations: <Widget>[
-              const NavigationDestination(
-                selectedIcon: Icon(Icons.home, color: Colors.white, size: 31),
-                icon: Icon(Icons.home, size: 31, color: Color(0xff535252)),
+              NavigationDestination(
+                selectedIcon: Icon(
+                  AntIcons.homeFilled,
+                  size: 31.sp,
+                  color: Color(0xffffffff),
+                ),
+                icon: Icon(
+                  AntIcons.homeFilled,
+                  size: 31.sp,
+                  color: Color(0xff535252),
+                ),
                 label: '',
               ),
               NavigationDestination(
-                icon: Icon(
-                  Icons.camera_alt,
-                  size: 31,
-                  color: Color(0xff535252),
+                icon: SvgPicture.asset(
+                  'assets/camera_icon.svg',
+                  width: 31.sp,
+                  height: 31.sp,
+                  colorFilter: ColorFilter.mode(
+                    Color(0xff535252),
+                    BlendMode.srcIn,
+                  ),
                 ),
-                selectedIcon: Icon(
-                  Icons.camera_alt,
-                  size: 31,
-                  color: Colors.white,
+                selectedIcon: SvgPicture.asset(
+                  'assets/camera_icon.svg',
+                  width: 31.sp,
+                  height: 31.sp,
+                  colorFilter: ColorFilter.mode(
+                    Color(0xffffffff),
+                    BlendMode.srcIn,
+                  ),
                 ),
                 label: '',
               ),
-              const NavigationDestination(
-                icon: Icon(
-                  FluentIcons.archive_24_filled,
-                  size: 31,
-                  color: Color(0xff535252),
+              NavigationDestination(
+                icon: SvgPicture.asset(
+                  'assets/archive_icon.svg',
+                  width: 28.sp,
+                  height: 25.sp,
+                  colorFilter: ColorFilter.mode(
+                    Color(0xff535252),
+                    BlendMode.srcIn,
+                  ),
                 ),
-                selectedIcon: Icon(
-                  FluentIcons.archive_24_filled,
-                  size: 31,
-                  color: Colors.white,
+                selectedIcon: SvgPicture.asset(
+                  'assets/archive_icon.svg',
+                  width: 28.sp,
+                  height: 25.sp,
+                  colorFilter: ColorFilter.mode(
+                    Color(0xffffffff),
+                    BlendMode.srcIn,
+                  ),
                 ),
                 label: '',
               ),

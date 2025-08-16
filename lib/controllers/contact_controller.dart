@@ -70,34 +70,6 @@ class ContactController extends ChangeNotifier {
     return result;
   }
 
-  /// 연락처 권한 요청
-  Future<ContactToggleResult> requestContactPermission() async {
-    _setLoading(true);
-    notifyListeners();
-
-    try {
-      final result = await _contactService.requestContactPermission();
-
-      // 성공한 경우에만 상태 업데이트
-      if (result.type == ContactToggleResultType.success) {
-        _contactSyncEnabled = result.isEnabled;
-      }
-
-      _setLoading(false);
-      notifyListeners();
-
-      return result;
-    } catch (e) {
-      _setLoading(false);
-      notifyListeners();
-
-      return ContactToggleResult.error(
-        message: '권한 요청 중 오류가 발생했습니다: $e',
-        isEnabled: false,
-      );
-    }
-  }
-
   /// 설정에서 돌아온 후 권한 상태 재확인
   Future<ContactToggleResult> checkPermissionAfterSettings() async {
     _setLoading(true);

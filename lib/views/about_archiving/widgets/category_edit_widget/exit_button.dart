@@ -102,19 +102,10 @@ class ExitButton extends StatelessWidget {
                     userId,
                   );
 
-                  debugPrint(
-                    '카테고리 나가기 결과 - error: ${categoryController.error}',
-                  );
-
                   if (categoryController.error == null) {
-                    debugPrint('카테고리 나가기 성공 - 페이지 이동 시작');
-
                     // 성공 시 홈 화면의 아카이브 탭으로 이동
 
                     navigator.popUntil((route) => route.isFirst);
-                    debugPrint('네비게이션 완료');
-                  } else {
-                    debugPrint('카테고리 나가기 실패: ${categoryController.error}');
                   }
                 } else {
                   scaffoldMessenger.showSnackBar(

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/friend_controller.dart';
-import '../friend_list_add_screen.dart';
 
 class FriendListCard extends StatelessWidget {
   final double scale;
@@ -121,12 +120,7 @@ class FriendListCard extends StatelessWidget {
                         GestureDetector(
                           onTap: () {
                             // 친구 목록 전체 화면으로 이동
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder:
-                                    (context) => const FriendListAddScreen(),
-                              ),
-                            );
+                            Navigator.pushNamed(context, '/friend_list');
                           },
                           child: Column(
                             children: [

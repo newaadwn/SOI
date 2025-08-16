@@ -93,7 +93,34 @@ class CommentRecordService {
     }
   }
 
-  /// 프로필 이미지 위치 업데이트
+  /// 프로필 이미지 위치 업데이트 (상대 좌표)
+  Future<void> updateRelativeProfilePosition({
+    required String commentId,
+    required Offset relativePosition,
+  }) async {
+    if (commentId.isEmpty) {
+      throw ServiceException('유효하지 않은 댓글 ID입니다');
+    }
+
+    // 상대 좌표 유효성 검사 (0.0 ~ 1.0 범위)
+    if (relativePosition.dx < 0.0 ||
+        relativePosition.dx > 1.0 ||
+        relativePosition.dy < 0.0 ||
+        relativePosition.dy > 1.0) {
+      throw ServiceException('상대 좌표는 0.0 ~ 1.0 범위여야 합니다: $relativePosition');
+    }
+
+    try {
+      await _repository.updateRelativeProfilePosition(
+        commentId: commentId,
+        relativePosition: relativePosition,
+      );
+    } catch (e) {
+      throw ServiceException('상대 프로필 위치 업데이트 실패', originalError: e);
+    }
+  }
+
+  /// 프로필 이미지 위치 업데이트 (기존 절대 좌표 - 하위호환성)
   Future<void> updateProfilePosition({
     required String commentId,
     required Offset profilePosition,

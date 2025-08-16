@@ -148,7 +148,7 @@ class _FriendSuggestCardState extends State<FriendSuggestCard> {
   }
 
   // 친구 추가, 요청됨, 추가됨을 파라미터에 따라서 다르게 표시하는 버튼
-  Widget _buildFriendButton(Contact contact) {
+  Widget? _buildFriendButton(Contact contact) {
     final status = _friendshipStatuses[contact.displayName] ?? 'none';
 
     switch (status) {
@@ -161,16 +161,10 @@ class _FriendSuggestCardState extends State<FriendSuggestCard> {
           onPressed: null,
         );
       case 'friends':
-        return _buildButton(
-          text: '추가됨',
-          isEnabled: false,
-          backgroundColor: const Color(0xff666666),
-          textColor: const Color(0xffd9d9d9),
-          onPressed: null,
-        );
-      case 'received':
+        // 친구로 추가되면 목록에 표시하지 않음. 버튼은 필요없음.
+        return null;
+
       case 'none':
-      default:
         return _buildButton(
           text: '친구 추가',
           isEnabled: true,
@@ -184,6 +178,7 @@ class _FriendSuggestCardState extends State<FriendSuggestCard> {
           },
         );
     }
+    return null;
   }
 
   // 버튼을 만드는 공통 위젯 함수
@@ -250,9 +245,29 @@ class _FriendSuggestCardState extends State<FriendSuggestCard> {
 
     // 연락처 동기화가 활성화되어 있고 연락처가 있는 경우
     if (contactController.contactSyncEnabled && widget.contacts.isNotEmpty) {
+      // 친구로 추가된 사용자 제외 필터링
+      final filteredContacts =
+          widget.contacts.where((contact) {
+            final status = _friendshipStatuses[contact.displayName] ?? 'none';
+            return status != 'friends'; // 친구 상태가 아닌 연락처만 표시
+          }).toList();
+
+      // 필터링 후 연락처가 없으면 메시지 표시
+      if (filteredContacts.isEmpty) {
+        return Container(
+          padding: EdgeInsets.all(20.sp),
+          child: Center(
+            child: Text(
+              '추천할 친구가 없습니다',
+              style: TextStyle(color: const Color(0xff666666), fontSize: 14.sp),
+            ),
+          ),
+        );
+      }
+
       return Column(
         children:
-            widget.contacts.map((contact) {
+            filteredContacts.map((contact) {
               return ListTile(
                 leading: CircleAvatar(
                   backgroundColor: const Color(0xff323232),

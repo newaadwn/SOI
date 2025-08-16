@@ -171,7 +171,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
           _contacts = await _contactController!.getContacts(
             forceRefresh: false,
           );
-          // debugPrint('연락처 로드 성공: ${_contacts}');
+
           if (mounted) {
             setState(() {});
           }
@@ -197,7 +197,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('초기화 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color(0xFF5A5A5A),
           ),
         );
       }
@@ -247,22 +247,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
 
   /// SnackBar 표시 (결과 타입에 따른 색상)
   void _showSnackBar(String message, ContactToggleResultType type) {
-    Color backgroundColor;
-
-    switch (type) {
-      case ContactToggleResultType.success:
-        backgroundColor = const Color(0xff404040);
-        break;
-      case ContactToggleResultType.failure:
-        backgroundColor = Colors.orange;
-        break;
-      case ContactToggleResultType.error:
-        backgroundColor = Colors.red;
-        break;
-      case ContactToggleResultType.requiresSettings:
-        backgroundColor = Colors.orange;
-        break;
-    }
+    // 모든 SnackBar 배경색을 0xFF5A5A5A로 통일
+    const backgroundColor = Color(0xFF5A5A5A);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: backgroundColor),
@@ -271,19 +257,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
 
   /// 초기화 결과 SnackBar 표시
   void _showInitSnackBar(String message, ContactInitResultType type) {
-    Color backgroundColor;
-
-    switch (type) {
-      case ContactInitResultType.success:
-        backgroundColor = const Color(0xff404040);
-        break;
-      case ContactInitResultType.failure:
-        backgroundColor = Colors.orange;
-        break;
-      case ContactInitResultType.error:
-        backgroundColor = Colors.red;
-        break;
-    }
+    // 모든 SnackBar 배경색을 0xFF5A5A5A로 통일
+    const backgroundColor = Color(0xFF5A5A5A);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message), backgroundColor: backgroundColor),
@@ -321,7 +296,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('ID "$id"를 찾을 수 없습니다'),
-              backgroundColor: Colors.orange,
+              backgroundColor: const Color(0xFF5A5A5A),
             ),
           );
         }
@@ -344,7 +319,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${searchResult.single.id}님에게 친구 요청을 보냈습니다'),
-              backgroundColor: const Color(0xff404040),
+              backgroundColor: const Color(0xFF5A5A5A),
             ),
           );
         } else {
@@ -352,7 +327,10 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
           final errorMessage =
               friendRequestController.error ?? '친구 요청 전송에 실패했습니다';
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(errorMessage), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text(errorMessage),
+              backgroundColor: const Color(0xFF5A5A5A),
+            ),
           );
         }
       }
@@ -366,7 +344,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('친구 추가 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color(0xFF5A5A5A),
           ),
         );
       }
@@ -392,7 +370,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('설정 화면을 열 수 없습니다: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color(0xFF5A5A5A),
           ),
         );
       }
@@ -530,7 +508,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('친구 요청을 수락했습니다'),
-          backgroundColor: Color(0xff404040),
+          backgroundColor: Color(0xFF5A5A5A),
         ),
       );
     }
@@ -590,7 +568,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('${contact.displayName}님에게 친구 요청을 전송했습니다'),
-                  backgroundColor: const Color(0xff404040),
+                  backgroundColor: const Color(0xFF5A5A5A),
                 ),
               );
             }
@@ -603,7 +581,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                   content: Text(
                     '${contact.displayName}님의 정보를 확인하는 중 문제가 발생했습니다. 잠시 후 다시 시도해주세요.',
                   ),
-                  backgroundColor: Colors.orange,
+                  backgroundColor: const Color(0xFF5A5A5A),
                 ),
               );
             }
@@ -616,7 +594,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('${contact.displayName}님은 이미 친구입니다'),
-                backgroundColor: Colors.orange,
+                backgroundColor: const Color(0xFF5A5A5A),
               ),
             );
           }
@@ -628,7 +606,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('${contact.displayName}님에게 이미 친구 요청을 보냈습니다'),
-                backgroundColor: Colors.orange,
+                backgroundColor: const Color(0xFF5A5A5A),
               ),
             );
           }
@@ -642,7 +620,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                 content: Text(
                   '${contact.displayName}님으로부터 친구 요청이 와있습니다. 친구 요청 목록을 확인해주세요',
                 ),
-                backgroundColor: const Color(0xff404040),
+                backgroundColor: const Color(0xFF5A5A5A),
               ),
             );
           }
@@ -659,7 +637,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text('${contact.displayName}님 정보를 확인하는 중 오류가 발생했습니다'),
-                backgroundColor: Colors.red,
+                backgroundColor: const Color(0xFF5A5A5A),
               ),
             );
           }
@@ -671,7 +649,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('친구 추가 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color(0xFF5A5A5A),
           ),
         );
       }
@@ -691,7 +669,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${contact.displayName}님의 전화번호가 없습니다'),
-              backgroundColor: Colors.orange,
+              backgroundColor: const Color(0xFF5A5A5A),
             ),
           );
         }
@@ -712,7 +690,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${contact.displayName}님의 유효한 전화번호가 없습니다'),
-              backgroundColor: Colors.orange,
+              backgroundColor: const Color(0xFF5A5A5A),
             ),
           );
         }
@@ -744,7 +722,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('${contact.displayName}님에게 초대 메시지를 전송했습니다'),
-              backgroundColor: const Color(0xff404040),
+              backgroundColor: const Color(0xFF5A5A5A),
             ),
           );
         }
@@ -755,7 +733,10 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
       // debugPrint('SMS 전송 실패: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('메시지 전송 실패: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('메시지 전송 실패: $e'),
+            backgroundColor: const Color(0xFF5A5A5A),
+          ),
         );
       }
     }

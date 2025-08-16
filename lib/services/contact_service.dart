@@ -91,11 +91,6 @@ class ContactService {
     }
   }
 
-  /// 연락처 권한 요청
-  Future<ContactToggleResult> requestContactPermission() async {
-    return await _requestContactPermission();
-  }
-
   /// 설정에서 돌아온 후 권한 상태 재확인
   Future<ContactToggleResult> checkPermissionAfterSettings() async {
     try {

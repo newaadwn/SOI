@@ -2,12 +2,14 @@ import 'dart:io';
 import '../models/photo_data_model.dart';
 import '../repositories/photo_repository.dart';
 import 'audio_service.dart';
+import 'category_service.dart';
 
 /// Photo Service - 사진 관련 비즈니스 로직을 처리
 /// Repository를 사용해서 실제 비즈니스 규칙을 적용
 class PhotoService {
   final PhotoRepository _photoRepository = PhotoRepository();
   final AudioService _audioService = AudioService();
+  final CategoryService _categoryService = CategoryService();
 
   // ==================== 사진 업로드 비즈니스 로직 ====================
 
@@ -77,6 +79,12 @@ class PhotoService {
       if (photoId == null) {
         return PhotoUploadResult.failure('사진 정보 저장에 실패했습니다.');
       }
+
+      // 5. 카테고리의 최신 사진 정보 업데이트
+      await _categoryService.updateLastPhotoInfo(
+        categoryId: categoryId,
+        uploadedBy: userId,
+      );
 
       return PhotoUploadResult.success(
         photoId: photoId,
@@ -158,6 +166,12 @@ class PhotoService {
         userIds: userIds,
         categoryId: categoryId,
         waveformData: finalWaveformData, // 파형 데이터 전달
+      );
+
+      // 카테고리의 최신 사진 정보 업데이트
+      await _categoryService.updateLastPhotoInfo(
+        categoryId: categoryId,
+        uploadedBy: userID,
       );
 
       // // debugPrint('🎉 사진과 오디오 저장 완료 - PhotoId: $photoId');

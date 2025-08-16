@@ -203,7 +203,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('로그아웃 중 오류가 발생했습니다.'),
-            backgroundColor: Colors.red,
+            backgroundColor: Color(0xFF5A5A5A),
           ),
         );
       }
@@ -371,7 +371,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('계정 삭제 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color(0xFF5A5A5A),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -739,19 +739,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           if (hasToggle)
-            Switch(
-              value: _isNotificationEnabled,
-              onChanged: (value) {
+            GestureDetector(
+              onTap: () {
                 setState(() {
-                  _isNotificationEnabled = value;
+                  _isNotificationEnabled = !_isNotificationEnabled;
                 });
               },
-              activeColor: Colors.black, // 켜진 상태 스위치 색상
-              activeTrackColor: const Color(0xFFf9f9f9), // 켜진 상태 배경색 (iOS 파란색)
-              inactiveThumbColor: Colors.black, // 꺼진 상태 스위치 색상
-              inactiveTrackColor: const Color(0xFFf9f9f9), // 꺼진 상태 배경색
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              splashRadius: 0, // 터치 효과 제거
+              child: _profileSwitch(_isNotificationEnabled),
             )
           else if (value != null)
             Flexible(
@@ -769,6 +763,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _profileSwitch(bool isNotificationEnabled) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: 50.w,
+      height: 26.h,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(13.r),
+        color:
+            isNotificationEnabled
+                ? const Color(0xffffffff)
+                : const Color(0xff5a5a5a),
+      ),
+      child: AnimatedAlign(
+        duration: const Duration(milliseconds: 200),
+        alignment:
+            isNotificationEnabled
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
+        child: Container(
+          width: 22.w,
+          height: 22.h,
+          margin: EdgeInsets.symmetric(horizontal: 2.w),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xff000000),
+          ),
+        ),
       ),
     );
   }

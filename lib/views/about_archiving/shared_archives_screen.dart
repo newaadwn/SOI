@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../controllers/category_controller.dart';
 import '../../theme/theme.dart';
 import '../../controllers/auth_controller.dart';
-import 'widgets/show_category/archive_card_widget.dart';
+import 'widgets/show_category_widget/archive_card_widget.dart';
 
 class SharedArchivesScreen extends StatefulWidget {
   final bool isEditMode;
@@ -149,46 +149,50 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
 
           return Padding(
             padding: EdgeInsets.only(left: 15.65.w, right: 10.65.w),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GridView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 0.77,
-                      mainAxisSpacing: 10.h, // 세로 간격
-                      crossAxisSpacing: 15.w, // 가로 간격
-                    ),
-                    itemCount: sharedCategories.length,
-                    itemBuilder: (context, index) {
-                      final category = sharedCategories[index];
-                      final categoryId = category.id;
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: 0.h),
+              child: SingleChildScrollView(
+                physics: AlwaysScrollableScrollPhysics(),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    GridView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      shrinkWrap: true,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        childAspectRatio: 0.77,
+                        mainAxisSpacing: 10.h, // 세로 간격
+                        crossAxisSpacing: 15.w, // 가로 간격
+                      ),
+                      itemCount: sharedCategories.length,
+                      itemBuilder: (context, index) {
+                        final category = sharedCategories[index];
+                        final categoryId = category.id;
 
-                      return ArchiveCardWidget(
-                        categoryId: categoryId,
-                        isEditMode: widget.isEditMode,
-                        isEditing:
-                            widget.isEditMode &&
-                            widget.editingCategoryId == categoryId,
-                        editingController:
-                            widget.isEditMode &&
-                                    widget.editingCategoryId == categoryId
-                                ? widget.editingController
-                                : null,
-                        onStartEdit: () {
-                          if (widget.onStartEdit != null) {
-                            widget.onStartEdit!(categoryId, category.name);
-                          }
-                        },
-                      );
-                    },
-                  ),
-                  // 하단 여백 추가 (화면 크기별)
-                  SizedBox(height: 20.h),
-                ],
+                        return ArchiveCardWidget(
+                          categoryId: categoryId,
+                          isEditMode: widget.isEditMode,
+                          isEditing:
+                              widget.isEditMode &&
+                              widget.editingCategoryId == categoryId,
+                          editingController:
+                              widget.isEditMode &&
+                                      widget.editingCategoryId == categoryId
+                                  ? widget.editingController
+                                  : null,
+                          onStartEdit: () {
+                            if (widget.onStartEdit != null) {
+                              widget.onStartEdit!(categoryId, category.name);
+                            }
+                          },
+                        );
+                      },
+                    ),
+                    // 하단 여백 추가 (스크롤 범위 확장)
+                    SizedBox(height: 200.h),
+                  ],
+                ),
               ),
             ),
           );

@@ -74,6 +74,9 @@ dependencies:
   iconoir_flutter: ^7.11.0
   flutter_screenutil: ^5.9.3
   shimmer: ^3.0.0
+  antdesign_icons: ^0.0.3
+  iconify_flutter_plus: ^1.0.4
+  flutter_svg: ^2.2.0
 
 dev_dependencies:
   flutter_test:

@@ -1,38 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/friend_controller.dart';
-import '../../controllers/category_controller.dart';
-import '../../controllers/auth_controller.dart';
 import '../../models/friend_model.dart';
-import '../../models/selected_friend_model.dart';
 
-class FriendListAddScreen extends StatefulWidget {
-  final String? categoryId; // 카테고리에 친구를 추가할 때 사용
+class FriendListScreen extends StatefulWidget {
+  final String? categoryId;
 
-  const FriendListAddScreen({super.key, this.categoryId});
+  const FriendListScreen({super.key, this.categoryId});
 
   @override
-  State<FriendListAddScreen> createState() => _FriendListAddScreenState();
+  State<FriendListScreen> createState() => _FriendListScreenState();
 }
 
-class _FriendListAddScreenState extends State<FriendListAddScreen> {
+class _FriendListScreenState extends State<FriendListScreen> {
   // 선택된 친구들의 UID를 저장하는 Set
   final Set<String> _selectedFriendUids = <String>{};
 
   // 검색 컨트롤러
   final TextEditingController _searchController = TextEditingController();
 
-  // Navigator 중복 호출 방지 플래그
-  bool _isNavigating = false;
+  // 각 친구별 MenuController를 저장하는 Map
+  final Map<String, MenuController> _menuControllers = {};
 
   @override
   void initState() {
     super.initState();
-
-    debugPrint('=== FriendListAddScreen 초기화 ===');
-    debugPrint('categoryId: ${widget.categoryId}');
 
     _searchController.addListener(_onSearchChanged);
 
@@ -40,7 +33,6 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final friendController = context.read<FriendController>();
       if (!friendController.isInitialized) {
-        debugPrint('FriendController 초기화되지 않음 - 초기화 시작');
         friendController.initialize();
       }
     });
@@ -48,16 +40,13 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
 
   @override
   void dispose() {
-    _isNavigating = true; // dispose 시작 시 플래그 설정
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
   }
 
   void _onSearchChanged() {
-    setState(() {
-      debugPrint('검색어 변경: "${_searchController.text}"');
-    });
+    setState(() {});
   }
 
   void _toggleFriendSelection(String friendUid) {
@@ -68,110 +57,6 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
         _selectedFriendUids.add(friendUid);
       }
     });
-  }
-
-  void _onConfirmPressed() async {
-    // 이미 Navigator가 진행 중이면 중복 실행 방지
-    if (_isNavigating) return;
-
-    if (widget.categoryId != null) {
-      // 카테고리에 친구들 추가
-      try {
-        final categoryController = context.read<CategoryController>();
-
-        // 선택된 각 친구의 UID를 카테고리 mates에 추가
-        for (final friendUid in _selectedFriendUids) {
-          await categoryController.addUidToCategory(
-            widget.categoryId!,
-            friendUid,
-          );
-        }
-
-        // CategoryController 강제 새로고침 - 즉시 UI 업데이트를 위해
-        final authController = context.read<AuthController>();
-        final userId = authController.getUserId;
-        if (userId != null) {
-          await categoryController.loadUserCategories(
-            userId,
-            forceReload: true,
-          );
-        }
-
-        if (mounted && !_isNavigating) {
-          // 성공 메시지 표시
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '${_selectedFriendUids.length}명의 친구가 카테고리에 추가되었습니다.',
-              ),
-              backgroundColor: const Color(0xFF5A5A5A),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-
-          // Navigator 플래그 설정 후 안전하게 pop - 다음 프레임에서 실행
-          _isNavigating = true;
-          SchedulerBinding.instance.addPostFrameCallback((_) {
-            if (mounted) {
-              Navigator.of(context).pop();
-            }
-          });
-        }
-      } catch (e) {
-        if (mounted && !_isNavigating) {
-          // 에러 메시지 표시
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('친구 추가 중 오류가 발생했습니다: $e'),
-              backgroundColor: const Color(0xFF5A5A5A),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        }
-      }
-    } else {
-      // 단순히 선택된 친구들의 정보와 함께 이전 화면으로 돌아가기
-      if (mounted && !_isNavigating) {
-        final friendController = context.read<FriendController>();
-        final selectedFriends = <SelectedFriendModel>[];
-
-        // 선택된 UID들을 기반으로 친구 정보 수집
-        for (final uid in _selectedFriendUids) {
-          final friend = friendController.friends.firstWhere(
-            (friend) => friend.userId == uid,
-            orElse:
-                () => FriendModel(
-                  userId: uid,
-                  name: '알 수 없음',
-                  id: uid,
-                  status: FriendStatus.active,
-                  isFavorite: false,
-                  addedAt: DateTime.now(),
-                ),
-          );
-
-          selectedFriends.add(
-            SelectedFriendModel(
-              uid: friend.userId,
-              name: friend.name,
-              profileImageUrl: friend.profileImageUrl,
-            ),
-          );
-        }
-
-        for (final friend in selectedFriends) {
-          debugPrint('- ${friend.name} (${friend.uid})');
-        }
-
-        // Navigator 플래그 설정 후 안전하게 pop - 다음 프레임에서 실행
-        _isNavigating = true;
-        SchedulerBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            Navigator.of(context).pop(selectedFriends);
-          }
-        });
-      }
-    }
   }
 
   @override
@@ -213,7 +98,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                   width: double.infinity,
                   height: 47.h,
                   decoration: BoxDecoration(
-                    color: const Color(0xff1e1e1e),
+                    color: const Color(0xff292929),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: TextField(
@@ -245,6 +130,23 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                 ),
               ),
               SizedBox(height: 38.h),
+              Row(
+                children: [
+                  SizedBox(width: 27.w),
+                  Icon(Icons.people_alt_outlined, size: 21.sp),
+                  SizedBox(width: 11.w),
+                  Text(
+                    "친구 목록",
+                    style: TextStyle(
+                      color: const Color(0xfff9f9f9),
+                      fontSize: 18.sp,
+                      fontWeight: FontWeight.w700,
+                      fontFamily: 'Pretendard',
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(height: 18.h),
               // 친구 목록
               friendController.isLoading
                   ? Center(
@@ -283,57 +185,13 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                     padding: EdgeInsets.symmetric(horizontal: 20.w),
                     child: Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xff1c1c1c),
-                        borderRadius: BorderRadius.circular(12.r),
+                        color: Color(0xffadadad).withValues(alpha: 0.28),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       child: Column(
                         children: [
-                          SizedBox(height: (16.3).h),
-                          Material(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(8.r),
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.pushNamed(
-                                  context,
-                                  '/contact_manager',
-                                );
-                              },
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 18.w,
-                                  vertical: 12.h,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 44,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Color(0xff4a4a4a),
-                                      ),
-                                      child: Icon(
-                                        Icons.add,
-                                        size: 25.sp,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    SizedBox(width: 12.w),
-                                    Text(
-                                      "친구 추가",
-                                      style: TextStyle(
-                                        color: Color(0xffd9d9d9),
-                                        fontSize: 16.sp,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-
+                          SizedBox(height: (13).h),
+                          // 친구 목록
                           Column(
                             mainAxisSize: MainAxisSize.min,
                             children:
@@ -359,47 +217,6 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                       ),
                     ),
                   ),
-
-              // 확인 버튼을 위한 여유 공간
-              const Spacer(),
-
-              // 확인 버튼
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.all(16.w),
-                child: SizedBox(
-                  height: 48.h,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      if (_selectedFriendUids.isNotEmpty) {
-                        _onConfirmPressed();
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          _selectedFriendUids.isEmpty
-                              ? const Color(0xff5a5a5a)
-                              : const Color(0xffffffff),
-                      foregroundColor:
-                          _selectedFriendUids.isEmpty
-                              ? Colors.white
-                              : const Color(0xff000000),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24.r),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: Text(
-                      '확인',
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 24.h),
             ],
           );
         },
@@ -479,32 +296,140 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                   ),
                 ),
 
-                // 체크박스
-                Container(
-                  width: 24.w,
-                  height: 24.h,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isSelected ? Color(0xffffffff) : Color(0xff5a5a5a),
+                MenuAnchor(
+                  style: MenuStyle(
+                    backgroundColor: WidgetStatePropertyAll(Colors.transparent),
+                    shadowColor: WidgetStatePropertyAll(Colors.transparent),
+
+                    shape: WidgetStatePropertyAll(
+                      RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(9.14),
+                      ),
+                    ),
                   ),
-                  child:
-                      isSelected
-                          ? Icon(
-                            Icons.check,
-                            color: Color(0xff000000),
-                            size: 16.w,
-                          )
-                          : Icon(
-                            Icons.check,
-                            color: Color(0xfff9f9f9),
-                            size: 16.w,
-                          ),
+                  builder: (
+                    BuildContext context,
+                    MenuController controller,
+                    Widget? child,
+                  ) {
+                    // 각 친구별로 MenuController 저장
+                    _menuControllers[friend.userId] = controller;
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: IconButton(
+                        onPressed: () {
+                          if (controller.isOpen) {
+                            controller.close();
+                          } else {
+                            controller.open();
+                          }
+                        },
+                        icon: Icon(
+                          Icons.more_vert,
+                          size: 25.sp,
+                          color: Color(0xfff9f9f9),
+                        ),
+                      ),
+                    );
+                  },
+                  menuChildren: [_menuItem(friend.userId)],
                 ),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _menuItem(String friendUserId) {
+    return MenuItemButton(
+      style: ButtonStyle(
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9.14),
+            side: BorderSide.none,
+          ),
+        ),
+      ),
+      child: Container(
+        width: 173.w,
+        height: 88.h,
+
+        decoration: BoxDecoration(
+          color: Color(0xff323232),
+          borderRadius: BorderRadius.circular(9.14),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            InkWell(
+              onTap: () {
+                debugPrint("친구 삭제");
+                // 해당 친구의 MenuController를 찾아서 닫기
+                final controller = _menuControllers[friendUserId];
+                if (controller != null && controller.isOpen) {
+                  controller.close();
+                }
+              },
+              child: Row(
+                children: [
+                  SizedBox(width: 13.96.w),
+                  Image.asset(
+                    'assets/trash_bin.png',
+
+                    width: 11.16.sp,
+                    height: 12.56.sp,
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    '친구 삭제',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15.3517.sp,
+                      fontFamily: "Pretendard",
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(color: Color(0xff5a5a5a)),
+            InkWell(
+              onTap: () {
+                debugPrint("차단");
+                // 해당 친구의 MenuController를 찾아서 닫기
+                final controller = _menuControllers[friendUserId];
+                if (controller != null && controller.isOpen) {
+                  controller.close();
+                }
+              },
+              child: Row(
+                children: [
+                  SizedBox(width: 13.96.w),
+                  Image.asset(
+                    'assets/block.png',
+
+                    width: 11.16.sp,
+                    height: 12.56.sp,
+                  ),
+                  SizedBox(width: 8.w),
+                  Text(
+                    '차단',
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontSize: 15.3517.sp,
+                      fontFamily: "Pretendard",
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

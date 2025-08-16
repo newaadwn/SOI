@@ -168,19 +168,7 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
                     // 선택된 친구들 표시
                     if (_selectedFriends.isNotEmpty) ...[
                       SizedBox(height: 16.h),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Wrap(
-                            spacing: 8.w,
-                            runSpacing: 8.h,
-                            children:
-                                _selectedFriends
-                                    .map((friend) => _buildFriendChip(friend))
-                                    .toList(),
-                          ),
-                        ],
-                      ),
+                      _buildOverlappingProfilesWidget(),
                     ],
 
                     SizedBox(height: screenHeight * (14 / 852)),
@@ -254,50 +242,96 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
     );
   }
 
-  // 개별 친구 칩 위젯
-  Widget _buildFriendChip(SelectedFriendModel friend) {
+  // 겹쳐지는 프로필 이미지들과 + 버튼을 표시하는 위젯
+  Widget _buildOverlappingProfilesWidget() {
+    // 최대 4개의 프로필만 표시 (5번째는 + 버튼)
+    final displayFriends = _selectedFriends.take(4).toList();
+    final hasMoreFriends = _selectedFriends.length > 4;
+
+    // 전체 너비 계산: 첫 번째 프로필(24) + 겹치는 부분들(16 * 개수) + + 버튼(24)
+    final totalProfiles =
+        displayFriends.length +
+        (hasMoreFriends || displayFriends.length < 5 ? 1 : 0);
+    final containerWidth = 24.0 + (totalProfiles - 1) * 16.0;
+
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 6.h),
+      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       decoration: BoxDecoration(
         color: Color(0xFF323232),
-        borderRadius: BorderRadius.circular(16.r),
+        borderRadius: BorderRadius.circular(20.r),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 프로필 이미지
-          CircleAvatar(
-            radius: 12.r,
-            backgroundColor: Color(0xFF404040),
-            backgroundImage:
-                friend.profileImageUrl != null
-                    ? NetworkImage(friend.profileImageUrl!)
-                    : null,
-            child:
-                friend.profileImageUrl == null
-                    ? Text(
-                      friend.name.isNotEmpty
-                          ? friend.name[0].toUpperCase()
-                          : '?',
-                      style: TextStyle(
-                        color: Color(0xFFE2E2E2),
-                        fontSize: 10.sp,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    )
-                    : null,
-          ),
-          SizedBox(width: 6.w),
+          // 겹쳐지는 프로필 이미지들
+          SizedBox(
+            height: 24.h,
+            width: containerWidth,
+            child: Stack(
+              children: [
+                // 친구 프로필들
+                ...displayFriends.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final friend = entry.value;
 
-          // 삭제 버튼
-          /* GestureDetector(
-            onTap: () {
-              setState(() {
-                _selectedFriends.removeWhere((f) => f.uid == friend.uid);
-              });
-            },
-            child: Icon(Icons.close, color: Color(0xFF999999), size: 16.w),
-          ),*/
+                  return Positioned(
+                    left: index * 16.0,
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Color(0xFF323232), width: 1),
+                      ),
+                      child: CircleAvatar(
+                        radius: 11,
+                        backgroundColor: Color(0xFF404040),
+                        backgroundImage:
+                            friend.profileImageUrl != null
+                                ? NetworkImage(friend.profileImageUrl!)
+                                : null,
+                        child:
+                            friend.profileImageUrl == null
+                                ? Text(
+                                  friend.name.isNotEmpty
+                                      ? friend.name[0].toUpperCase()
+                                      : '?',
+                                  style: TextStyle(
+                                    color: Color(0xFFE2E2E2),
+                                    fontSize: 8.sp,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                )
+                                : null,
+                      ),
+                    ),
+                  );
+                }).toList(),
+
+                // + 버튼 (항상 표시)
+                Positioned(
+                  left: displayFriends.length * 16.0,
+                  child: GestureDetector(
+                    onTap: _handleAddFriends,
+                    child: Container(
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFF404040),
+                        border: Border.all(color: Color(0xFF323232), width: 1),
+                      ),
+                      child: Icon(
+                        Icons.add,
+                        color: Color(0xFFE2E2E2),
+                        size: 14.sp,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

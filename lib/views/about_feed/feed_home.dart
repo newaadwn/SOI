@@ -453,9 +453,12 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     } catch (e) {
       debugPrint('오디오 재생 오류: $e');
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('음성 파일을 재생할 수 없습니다: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('음성 파일을 재생할 수 없습니다: $e'),
+            backgroundColor: const Color(0xFF5A5A5A),
+          ),
+        );
       }
     }
   }
@@ -520,7 +523,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('음성 댓글이 저장되었습니다'),
-              backgroundColor: Colors.green,
+              backgroundColor: Color(0xFF5A5A5A),
               duration: Duration(seconds: 2),
             ),
           );
@@ -554,7 +557,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('음성 댓글 저장 실패: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color(0xFF5A5A5A),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -1226,20 +1229,23 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
                       children: [
                         // 사용자 닉네임
-                        Text(
-                          '@${_userNames[photo.userID] ?? photo.userID}',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16.sp,
-                            fontFamily: "Pretendard",
-                            fontWeight: FontWeight.w600,
-                            height: (1.3).h,
+                        Container(
+                          height: 22.h,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '@${_userNames[photo.userID] ?? photo.userID}',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16.sp,
+                              fontFamily: "Pretendard",
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
 
                         // 날짜
                         Text(
-                          _formatTimestamp(photo.createdAt),
+                          FormatUtils.formatDate(photo.createdAt),
                           style: TextStyle(
                             color: Color(0xffcccccc),
                             fontSize: 14.sp,
@@ -1496,8 +1502,8 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                         child: IconButton(
                           onPressed: () => _toggleVoiceComment(photo.id),
                           icon: Image.asset(
-                            width: 85 / 393 * screenWidth,
-                            height: 85 / 852 * screenHeight,
+                            width: 54.w,
+                            height: 54.h,
                             'assets/comment.png',
                           ),
                         ),
@@ -1507,22 +1513,5 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         );
       },
     );
-  }
-
-  String _formatTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-
-    if (difference.inMinutes < 1) {
-      return '방금 전';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes}분 전';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours}시간 전';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}일 전';
-    } else {
-      return '${timestamp.year}.${timestamp.month.toString().padLeft(2, '0')}.${timestamp.day.toString().padLeft(2, '0')}';
-    }
   }
 }

@@ -71,33 +71,21 @@ class FriendAddOptionsCard extends StatelessWidget {
                       ),
                       SizedBox(width: 8.sp),
                     ],
-                    Transform.scale(
-                      scale: scale,
-                      child:
-                          contactController.isLoading
-                              ? SizedBox(
-                                width: 24.sp,
-                                height: 24.sp,
-                                child: const CircularProgressIndicator(
-                                  color: Colors.white,
-                                  strokeWidth: 2,
-                                ),
-                              )
-                              : SizedBox(
-                                width: 35,
-                                height: 18,
-                                child: Switch(
-                                  value: contactController.contactSyncEnabled,
-                                  onChanged: (value) {
-                                    onToggleChange();
-                                  },
-                                  activeColor: const Color(0xff000000),
-                                  activeTrackColor: const Color(0xffffffff),
-                                  inactiveThumbColor: const Color(0xff000000),
-                                  inactiveTrackColor: const Color(0xff5a5a5a),
-                                ),
-                              ),
-                    ),
+                    contactController.isLoading
+                        ? SizedBox(
+                          width: 24.sp,
+                          height: 24.sp,
+                          child: const CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                        : _buildCustomSwitch(
+                          value: contactController.contactSyncEnabled,
+                          onChanged: (value) {
+                            onToggleChange();
+                          },
+                        ),
                   ],
                 ),
               ],
@@ -155,6 +143,37 @@ class FriendAddOptionsCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCustomSwitch({
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return GestureDetector(
+      onTap: () => onChanged(!value),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        width: 50.w, // 원하는 너비
+        height: 26.h, // 원하는 높이
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(13.r),
+          color: value ? const Color(0xffffffff) : const Color(0xff5a5a5a),
+        ),
+        child: AnimatedAlign(
+          duration: const Duration(milliseconds: 200),
+          alignment: value ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            width: 22.w,
+            height: 22.h,
+            margin: EdgeInsets.symmetric(horizontal: 2.w),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xff000000),
+            ),
+          ),
+        ),
       ),
     );
   }

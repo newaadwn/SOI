@@ -1,4 +1,4 @@
-import 'dart:async'; // 🎯 Timer 사용을 위해 추가
+import 'dart:async'; // Timer 사용을 위해 추가
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -26,20 +26,20 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   final _categoryNameController = TextEditingController();
   final _searchController = TextEditingController();
 
-  // 🎯 검색 debounce를 위한 Timer
+  // 검색 debounce를 위한 Timer
   Timer? _searchDebounceTimer;
 
   // Provider 참조를 미리 저장 (dispose에서 안전하게 사용하기 위함)
   CategoryController? _categoryController;
 
-  // 🎯 편집 모드 상태 관리
+  // 편집 모드 상태 관리
   bool _isEditMode = false;
   String? _editingCategoryId;
   final _editingNameController = TextEditingController();
   final ValueNotifier<bool> _hasTextChangedNotifier = ValueNotifier<bool>(
     false,
-  ); // 🎯 ValueNotifier 사용
-  String _originalText = ''; // 🎯 원본 텍스트 저장
+  ); // ValueNotifier 사용
+  String _originalText = ''; // 원본 텍스트 저장
 
   // 탭 화면 목록을 동적으로 생성하는 메서드
   List<Widget> get _screens => [
@@ -91,16 +91,16 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   }
 
   void _onSearchChanged() {
-    // 🎯 이전 타이머 취소
+    // 이전 타이머 취소
     _searchDebounceTimer?.cancel();
 
-    // 🎯 300ms 지연 후 검색 실행 (타이핑 중 깜빡거림 방지)
+    // 300ms 지연 후 검색 실행 (타이핑 중 깜빡거림 방지)
     _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
       _categoryController?.searchCategories(_searchController.text);
     });
   }
 
-  // 🎯 편집 모드 관련 메서드들
+  // 편집 모드 관련 메서드들
   void startEditMode(String categoryId, String currentName) {
     // 현재 사용자의 커스텀 이름 가져오기
     final authController = AuthController();
@@ -136,26 +136,26 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         TextPosition(offset: displayName.length),
       );
 
-      // 🎯 텍스트 변경 리스너 추가
+      // 텍스트 변경 리스너 추가
       _editingNameController.addListener(_onTextChanged);
     });
   }
 
-  // 🎯 텍스트 변경 감지 메서드 (setState 없음!)
+  // 텍스트 변경 감지 메서드 (setState 없음!)
   void _onTextChanged() {
-    // 🎯 원본 텍스트와 다르면 변경된 것으로 간주 (빈 텍스트도 허용)
+    // 원본 텍스트와 다르면 변경된 것으로 간주 (빈 텍스트도 허용)
     final hasChanged =
         _editingNameController.text.trim() != _originalText.trim();
 
     if (_hasTextChangedNotifier.value != hasChanged) {
       _hasTextChangedNotifier.value =
-          hasChanged; // 🎯 ValueNotifier만 업데이트 (setState 없음!)
+          hasChanged; // ValueNotifier만 업데이트 (setState 없음!)
     }
   }
 
   void cancelEditMode() {
     setState(() {
-      // 🎯 리스너 제거
+      // 리스너 제거
       _editingNameController.removeListener(_onTextChanged);
 
       _isEditMode = false;
@@ -171,18 +171,18 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
     final trimmedText = _editingNameController.text.trim();
 
-    // 🎯 빈 텍스트 입력 시에만 에러 메시지 표시
+    // 빈 텍스트 입력 시에만 에러 메시지 표시
     if (trimmedText.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('이름을 입력해주세요'),
-          backgroundColor: Color(0xff1c1c1c),
+          backgroundColor: const Color(0xFF5A5A5A),
         ),
       );
       return;
     }
 
-    // 🎯 사용자별 커스텀 이름 업데이트
+    // 사용자별 커스텀 이름 업데이트
     try {
       // 현재 사용자 ID 가져오기
       final authController = AuthController();
@@ -199,21 +199,21 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         customName: trimmedText,
       );
 
-      // 🎯 리스너 제거 후 모드 종료
+      // 리스너 제거 후 모드 종료
       _editingNameController.removeListener(_onTextChanged);
       cancelEditMode();
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('내 카테고리 이름이 수정되었습니다'),
-          backgroundColor: Color(0xff1c1c1c),
+          backgroundColor: const Color(0xFF5A5A5A),
         ),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('이름 수정 중 오류가 발생했습니다'),
-          backgroundColor: Colors.red,
+          backgroundColor: const Color(0xFF5A5A5A),
         ),
       );
     }
@@ -221,229 +221,242 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      resizeToAvoidBottomInset: true,
-
-      appBar: AppBar(
-        centerTitle: true,
-        leadingWidth: 90.w,
-        title: Column(
-          children: [
-            Text(
-              'SOI',
-              style: TextStyle(
-                color: AppTheme.lightTheme.colorScheme.secondary,
-                fontSize: 20.sp,
-                fontWeight: FontWeight.w600,
-                fontFamily: GoogleFonts.inter().fontFamily,
-              ),
-            ),
-            SizedBox(height: 30.h),
-          ],
-        ),
+    return GestureDetector(
+      onTap: () {
+        // 편집 모드일 때 바깥 부분 클릭 시 편집 모드 해제
+        if (_isEditMode) {
+          cancelEditMode();
+        }
+      },
+      child: Scaffold(
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        toolbarHeight: 70.h,
-        leading: Row(
-          children: [
-            SizedBox(width: 32.w),
-            Consumer<AuthController>(
-              builder: (context, authController, _) {
-                return FutureBuilder(
-                  future: authController.getUserProfileImageUrl(),
-                  builder: (context, imageSnapshot) {
-                    String profileImageUrl = imageSnapshot.data ?? '';
+        resizeToAvoidBottomInset: true,
 
-                    return Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 8.w,
-                        vertical: 8.h,
-                      ),
-                      child: Container(
-                        decoration: BoxDecoration(shape: BoxShape.circle),
-                        child: Builder(
-                          builder:
-                              (context) =>
-                                  profileImageUrl.isNotEmpty
-                                      ? InkWell(
-                                        onTap: () {
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/profile_screen',
-                                          );
-                                        },
-                                        child: SizedBox(
-                                          width: 34.w,
-                                          height: 34.h,
-                                          child: CircleAvatar(
-                                            backgroundImage:
-                                                CachedNetworkImageProvider(
-                                                  profileImageUrl,
-                                                ),
-                                            onBackgroundImageError: (
-                                              exception,
-                                              stackTrace,
-                                            ) {
-                                              Future.microtask(
-                                                () =>
-                                                    authController
-                                                        .cleanInvalidProfileImageUrl(),
-                                              );
-                                            },
-                                            child:
-                                                profileImageUrl.isEmpty
-                                                    ? Icon(
-                                                      Icons.person,
-                                                      color: Colors.white,
-                                                    )
-                                                    : null,
+        appBar: AppBar(
+          centerTitle: true,
+          leadingWidth: 90.w,
+          title: Column(
+            children: [
+              Text(
+                'SOI',
+                style: TextStyle(
+                  color: AppTheme.lightTheme.colorScheme.secondary,
+                  fontSize: 20.sp,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: GoogleFonts.inter().fontFamily,
+                ),
+              ),
+              SizedBox(height: 30.h),
+            ],
+          ),
+          backgroundColor: AppTheme.lightTheme.colorScheme.surface,
+          toolbarHeight: 70.h,
+          leading: Row(
+            children: [
+              SizedBox(width: 32.w),
+              Consumer<AuthController>(
+                builder: (context, authController, _) {
+                  return FutureBuilder(
+                    future: authController.getUserProfileImageUrl(),
+                    builder: (context, imageSnapshot) {
+                      String profileImageUrl = imageSnapshot.data ?? '';
+
+                      return Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 8.w,
+                          vertical: 8.h,
+                        ),
+                        child: Container(
+                          decoration: BoxDecoration(shape: BoxShape.circle),
+                          child: Builder(
+                            builder:
+                                (context) =>
+                                    profileImageUrl.isNotEmpty
+                                        ? InkWell(
+                                          onTap: () {
+                                            Navigator.pushNamed(
+                                              context,
+                                              '/profile_screen',
+                                            );
+                                          },
+                                          child: SizedBox(
+                                            width: 34.w,
+                                            height: 34.h,
+                                            child: CircleAvatar(
+                                              backgroundImage:
+                                                  CachedNetworkImageProvider(
+                                                    profileImageUrl,
+                                                  ),
+                                              onBackgroundImageError: (
+                                                exception,
+                                                stackTrace,
+                                              ) {
+                                                Future.microtask(
+                                                  () =>
+                                                      authController
+                                                          .cleanInvalidProfileImageUrl(),
+                                                );
+                                              },
+                                              child:
+                                                  profileImageUrl.isEmpty
+                                                      ? Icon(
+                                                        Icons.person,
+                                                        color: Colors.white,
+                                                      )
+                                                      : null,
+                                            ),
                                           ),
-                                        ),
-                                      )
-                                      : InkWell(
-                                        onTap: () {
-                                          Navigator.pushNamed(
-                                            context,
-                                            '/profile_screen',
-                                          );
-                                        },
-                                        child: SizedBox(
-                                          width: 34.w,
-                                          height: 34.h,
-                                          child: CircleAvatar(
-                                            backgroundColor: Colors.grey,
-                                            child: Icon(
-                                              Icons.person,
-                                              color: Colors.white,
+                                        )
+                                        : InkWell(
+                                          onTap: () {
+                                            Navigator.pushNamed(
+                                              context,
+                                              '/profile_screen',
+                                            );
+                                          },
+                                          child: SizedBox(
+                                            width: 34.w,
+                                            height: 34.h,
+                                            child: CircleAvatar(
+                                              backgroundColor: Colors.grey,
+                                              child: Icon(
+                                                Icons.person,
+                                                color: Colors.white,
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
+                      );
+                    },
+                  );
+                },
+              ),
+            ],
+          ),
+          actions: [
+            Padding(
+              padding: EdgeInsets.only(right: 32.w),
+              child: IconButton(
+                onPressed: _showCategoryBottomSheet,
+                icon: SizedBox(
+                  child: Icon(Icons.add, color: Colors.white, size: 33.sp),
+                ),
+              ),
             ),
           ],
-        ),
-        actions: [
-          Padding(
-            padding: EdgeInsets.only(right: 32.w),
-            child: IconButton(
-              onPressed: _showCategoryBottomSheet,
-              icon: SizedBox(
-                child: Icon(Icons.add, color: Colors.white, size: 33.sp),
+          bottom: PreferredSize(
+            preferredSize: Size.fromHeight(60.sp),
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 8.w),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildChip('전체', 0),
+                      SizedBox(width: 8.w),
+                      _buildChip('개인앨범', 1),
+                      SizedBox(width: 8.w),
+                      _buildChip('공유앨범', 2),
+                    ],
+                  ),
+                ],
               ),
             ),
           ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(60.sp),
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 8.w),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        ),
+        body: Column(
+          children: [
+            // 검색 바
+            Padding(
+              padding: EdgeInsets.only(
+                left: 20.w,
+                right: 20.w,
+                top: 15.h,
+                bottom: 15.h,
+              ),
+              child: Container(
+                height: 41.h,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1C1C1C),
+                  borderRadius: BorderRadius.circular(16.6),
+                ),
+                child: Row(
                   children: [
-                    _buildChip('전체', 0),
-                    SizedBox(width: 8.w),
-                    _buildChip('개인앨범', 1),
-                    SizedBox(width: 8.w),
-                    _buildChip('공유앨범', 2),
+                    SizedBox(width: 10.w),
+                    Icon(
+                      Icons.search,
+                      color: const Color(0xFFCCCCCC),
+                      size: 24.sp,
+                    ),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: 12.h),
+                        child: TextField(
+                          controller: _searchController,
+                          textAlignVertical: TextAlignVertical.center,
+                          cursorColor: const Color(0xFFCCCCCC),
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.sp,
+                          ),
+                          decoration: InputDecoration(
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(
+                              vertical: 10.w,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
-              ],
-            ),
-          ),
-        ),
-      ),
-      body: Column(
-        children: [
-          // 검색 바
-          Padding(
-            padding: EdgeInsets.only(
-              left: 20.w,
-              right: 20.w,
-              top: 15.h,
-              bottom: 15.h,
-            ),
-            child: Container(
-              height: 41.h,
-              decoration: BoxDecoration(
-                color: const Color(0xFF1C1C1C),
-                borderRadius: BorderRadius.circular(16.6),
-              ),
-              child: Row(
-                children: [
-                  SizedBox(width: 10.w),
-                  Icon(
-                    Icons.search,
-                    color: const Color(0xFFCCCCCC),
-                    size: 24.sp,
-                  ),
-                  SizedBox(width: 10.w),
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(bottom: 12.h),
-                      child: TextField(
-                        controller: _searchController,
-                        textAlignVertical: TextAlignVertical.center,
-                        cursorColor: const Color(0xFFCCCCCC),
-                        style: TextStyle(color: Colors.white, fontSize: 14.sp),
-                        decoration: InputDecoration(
-                          border: InputBorder.none,
-                          contentPadding: EdgeInsets.symmetric(vertical: 10.w),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
-          ),
-          Expanded(child: _screens[_selectedIndex]),
+            Expanded(child: _screens[_selectedIndex]),
 
-          if (_isEditMode)
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: cancelEditMode,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF323232),
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26.9),
+            if (_isEditMode)
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 12.h),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: confirmEditMode,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: Colors.black,
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(26.9),
+                          ),
                         ),
+                        child: Text('확인'),
                       ),
-                      child: Text('취소'),
                     ),
-                  ),
-                  SizedBox(width: 12.w),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: confirmEditMode,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: EdgeInsets.symmetric(vertical: 12.h),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(26.9),
+                    SizedBox(width: 12.w),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: cancelEditMode,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF323232),
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(vertical: 12.h),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(26.9),
+                          ),
                         ),
+                        child: Text('취소'),
                       ),
-                      child: Text('확인'),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -686,7 +699,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
             '카테고리 이름을 입력해주세요',
             style: TextStyle(color: Colors.white),
           ),
-          backgroundColor: Color(0xff1c1c1c),
+          backgroundColor: const Color(0xFF5A5A5A),
         ),
       );
       return;
@@ -713,7 +726,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               '로그인이 필요합니다. 다시 로그인해주세요.',
               style: TextStyle(color: Colors.white),
             ),
-            backgroundColor: Color(0xff1c1c1c),
+            backgroundColor: const Color(0xFF5A5A5A),
           ),
         );
         return;
@@ -738,7 +751,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
             '카테고리 생성 중 오류가 발생했습니다',
             style: TextStyle(color: Colors.white),
           ),
-          backgroundColor: Color(0xff1c1c1c),
+          backgroundColor: const Color(0xFF5A5A5A),
         ),
       );
     }
@@ -746,13 +759,13 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   @override
   void dispose() {
-    // 🎯 검색 debounce 타이머 정리
+    // 검색 debounce 타이머 정리
     _searchDebounceTimer?.cancel();
 
     // 검색 리스너만 제거 (Controller는 Provider에서 관리되므로 건드리지 않음)
     _categoryNameController.dispose();
-    _editingNameController.dispose(); // 🎯 편집 컨트롤러 정리
-    _hasTextChangedNotifier.dispose(); // 🎯 ValueNotifier 정리
+    _editingNameController.dispose(); // 편집 컨트롤러 정리
+    _hasTextChangedNotifier.dispose(); // ValueNotifier 정리
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
