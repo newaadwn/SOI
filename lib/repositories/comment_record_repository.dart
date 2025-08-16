@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart'; // debugPrint를 위한 import
 import 'package:flutter/painting.dart'; // Offset를 위한 import
 import '../models/comment_record_model.dart';
 
@@ -67,10 +68,18 @@ class CommentRecordRepository {
         throw Exception('음성 파일이 존재하지 않습니다: $filePath');
       }
 
+      // 🔍 파일 업로드 전 로그
+      debugPrint('📤 Firebase Storage 업로드 시작');
+      debugPrint('  - 로컬 파일 경로: $filePath');
+      debugPrint('  - 파일 크기: ${await file.length()} bytes');
+
       // 고유한 파일명 생성
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = '${photoId}_${recorderUser}_$timestamp.aac';
       final storageRef = _storage.ref().child('$_storagePath/$fileName');
+
+      debugPrint('  - 생성된 파일명: $fileName');
+      debugPrint('  - Storage 경로: $_storagePath/$fileName');
 
       // 메타데이터 설정
       final metadata = SettableMetadata(
@@ -87,7 +96,12 @@ class CommentRecordRepository {
       final snapshot = await uploadTask;
 
       // 다운로드 URL 반환
-      return await snapshot.ref.getDownloadURL();
+      final downloadUrl = await snapshot.ref.getDownloadURL();
+
+      debugPrint('✅ Firebase Storage 업로드 완료');
+      debugPrint('  - 다운로드 URL: $downloadUrl');
+
+      return downloadUrl;
     } catch (e) {
       throw Exception('음성 파일 업로드 실패: $e');
     }
@@ -113,10 +127,13 @@ class CommentRecordRepository {
       final results =
           querySnapshot.docs.map((doc) {
             try {
-              // debugPrint('📄 문서 파싱 중 - ID: ${doc.id}');
-              return CommentRecordModel.fromFirestore(doc);
+              final comment = CommentRecordModel.fromFirestore(doc);
+              debugPrint(
+                '📄 댓글 조회됨 - ID: ${comment.id}, audioUrl: ${comment.audioUrl}',
+              );
+              return comment;
             } catch (e) {
-              // debugPrint('❌ 문서 파싱 실패 - ID: ${doc.id}, 오류: $e');
+              debugPrint('❌ 문서 파싱 실패 - ID: ${doc.id}, 오류: $e');
               rethrow;
             }
           }).toList();

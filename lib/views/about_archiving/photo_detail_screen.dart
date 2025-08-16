@@ -609,6 +609,20 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                       ) {
                                         return InkWell(
                                           onTap: () async {
+                                            debugPrint('🎵 이미지 위 프로필 클릭됨');
+                                            debugPrint(
+                                              '  - 댓글 ID: ${comment.id}',
+                                            );
+                                            debugPrint(
+                                              '  - 댓글 audioUrl: ${comment.audioUrl}',
+                                            );
+                                            debugPrint(
+                                              '  - 댓글 작성자: ${comment.recorderUser}',
+                                            );
+                                            debugPrint(
+                                              '  - 댓글 생성시간: ${comment.createdAt}',
+                                            );
+
                                             _audioController =
                                                 Provider.of<AudioController>(
                                                   context,
@@ -616,10 +630,18 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                                 );
                                             // 해당 댓글의 오디오 재생
                                             if (comment.audioUrl.isNotEmpty) {
+                                              debugPrint(
+                                                '🔊 음성 재생 시작: ${comment.audioUrl}',
+                                              );
                                               await _audioController!
                                                   .toggleAudio(
                                                     comment.audioUrl,
                                                   );
+                                              debugPrint('✅ 음성 재생 완료');
+                                            } else {
+                                              debugPrint(
+                                                '❌ 재생할 audioUrl이 비어있음',
+                                              );
                                             }
                                           },
                                           child: SizedBox(
