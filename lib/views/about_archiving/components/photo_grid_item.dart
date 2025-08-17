@@ -3,10 +3,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import '../../models/photo_data_model.dart';
-import '../../controllers/auth_controller.dart';
-import 'widgets/custom_waveform_widget.dart';
-import 'photo_detail_screen.dart';
+
+import '../../../controllers/auth_controller.dart';
+import '../../../models/photo_data_model.dart';
+import '../screens/archive_detail/photo_detail_screen.dart';
+import '../widgets/wave_form_widget/custom_waveform_widget.dart';
 
 class PhotoGridItem extends StatefulWidget {
   final PhotoDataModel photo;

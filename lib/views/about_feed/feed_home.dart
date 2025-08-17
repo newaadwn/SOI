@@ -11,7 +11,7 @@ import '../../controllers/comment_record_controller.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/comment_record_model.dart';
 import '../../utils/format_utils.dart';
-import '../about_archiving/widgets/custom_waveform_widget.dart';
+import '../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
 import 'widgets/voice_comment_widget.dart';
 
 class FeedHomeScreen extends StatefulWidget {

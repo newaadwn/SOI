@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../controllers/category_controller.dart';
-import '../../controllers/photo_controller.dart';
-import '../../models/category_data_model.dart';
+
+import '../../../../controllers/category_controller.dart';
+import '../../../../controllers/photo_controller.dart';
+import '../../../../models/category_data_model.dart';
 
 /// 카테고리 표지사진 선택 화면
 class CategoryCoverPhotoSelectorScreen extends StatefulWidget {

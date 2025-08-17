@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
-import '../../controllers/auth_controller.dart';
-import '../../controllers/category_controller.dart';
-import '../../theme/theme.dart';
-import 'widgets/show_category_widget/archive_card_widget.dart';
 
-// 나의 아카이브 화면
-// 현재 사용자의 아카이브 목록을 표시
+import '../../../../controllers/auth_controller.dart';
+import '../../../../controllers/category_controller.dart';
+import '../../../../theme/theme.dart';
+import '../../widgets/archive_card/archive_card_widget.dart';
+
+// 전체 아카이브 화면
+// 모든 사용자의 아카이브 목록을 표시
 // 아카이브를 클릭하면 아카이브 상세 화면으로 이동
-class MyArchivesScreen extends StatefulWidget {
+class AllArchivesScreen extends StatefulWidget {
   final bool isEditMode;
   final String? editingCategoryId;
   final TextEditingController? editingController;
   final Function(String categoryId, String currentName)? onStartEdit;
 
-  const MyArchivesScreen({
+  const AllArchivesScreen({
     super.key,
     this.isEditMode = false,
     this.editingCategoryId,
@@ -24,31 +25,59 @@ class MyArchivesScreen extends StatefulWidget {
   });
 
   @override
-  State<MyArchivesScreen> createState() => _MyArchivesScreenState();
+  State<AllArchivesScreen> createState() => _AllArchivesScreenState();
 }
 
-class _MyArchivesScreenState extends State<MyArchivesScreen> {
-  String? uID;
-  // 카테고리별 프로필 이미지 캐시
+class _AllArchivesScreenState extends State<AllArchivesScreen> {
+  String? nickName;
   final Map<String, List<String>> _categoryProfileImages = {};
+  AuthController? _authController; // AuthController 참조 저장
 
   @override
   void initState() {
     super.initState();
     // 이메일이나 닉네임을 미리 가져와요.
-    final authController = Provider.of<AuthController>(context, listen: false);
-    authController.getIdFromFirestore().then((value) {
-      if (mounted) {
-        setState(() {
-          uID = value;
-        });
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _authController = Provider.of<AuthController>(context, listen: false);
+      _authController!.getIdFromFirestore().then((value) {
+        if (mounted) {
+          setState(() {
+            nickName = value;
+          });
+        }
+      });
+
+      // AuthController의 변경사항을 감지하여 프로필 이미지 캐시 업데이트
+      _authController!.addListener(_onAuthControllerChanged);
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // AuthController 참조를 안전하게 저장
+    _authController ??= Provider.of<AuthController>(context, listen: false);
+  }
+
+  @override
+  void dispose() {
+    // 저장된 참조를 사용하여 리스너 제거
+    _authController?.removeListener(_onAuthControllerChanged);
+    super.dispose();
+  }
+
+  /// AuthController 변경 감지 시 프로필 이미지 캐시 무효화
+  void _onAuthControllerChanged() {
+    if (mounted) {
+      setState(() {
+        _categoryProfileImages.clear(); // 모든 프로필 이미지 캐시 무효화
+      });
+    }
   }
 
   // 카테고리에 대한 프로필 이미지를 가져오는 함수
   Future<void> _loadProfileImages(String categoryId, List<String> mates) async {
-    // Skip if already loaded
+    // 이미 로드된 경우에도 AuthController 변경에 의해 캐시가 무효화되면 다시 로드
     if (_categoryProfileImages.containsKey(categoryId)) {
       return;
     }
@@ -81,11 +110,14 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
   @override
   Widget build(BuildContext context) {
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
-    if (uID == null) {
+    if (nickName == null) {
       return Scaffold(
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-        body: const Center(
-          child: CircularProgressIndicator(color: Colors.white),
+        body: Center(
+          child: CircularProgressIndicator(
+            color: Colors.white,
+            strokeWidth: 3.0,
+          ),
         ),
       );
     }
@@ -96,38 +128,39 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
         builder: (context, categoryController, child) {
           // 사용자 카테고리 로드 (한 번만 로드)
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            categoryController.loadUserCategories(uID!);
+            categoryController.loadUserCategories(nickName!);
           });
 
           // 로딩 중일 때
           if (categoryController.isLoading &&
               categoryController.userCategories.isEmpty) {
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.white),
+            return Center(
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 3.0,
+              ),
             );
           }
 
           // 에러가 생겼을 때
           if (categoryController.error != null) {
-            return const Center(
-              child: CircularProgressIndicator(color: Colors.white),
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 40.h),
+                child: Text(
+                  categoryController.error!,
+                  style: TextStyle(color: Colors.white, fontSize: 16.sp),
+                  textAlign: TextAlign.center,
+                ),
+              ),
             );
           }
 
           // 필터링된 카테고리 가져오기
-          final allCategories = categoryController.userCategories;
-
-          // 사용자 카테고리만 필터링합니다.
-          final userCategories =
-              allCategories
-                  .where(
-                    (category) =>
-                        category.mates.every((element) => element == uID),
-                  )
-                  .toList();
+          final categories = categoryController.userCategories;
 
           // 데이터 없으면
-          if (allCategories.isEmpty) {
+          if (categories.isEmpty) {
             return Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 40.h),
@@ -141,15 +174,17 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
               ),
             );
           }
+
           // 모든 카테고리에 대해 프로필 이미지 로드 요청
-          for (var category in userCategories) {
+          for (var category in categories) {
             final categoryId = category.id;
             final mates = category.mates;
             _loadProfileImages(categoryId, mates);
           }
 
+          // 데이터가 있으면 화면을 스크롤할 수 있도록 만듭니다.
           return Padding(
-            padding: EdgeInsets.only(left: 15.65.w, right: 10.65.w),
+            padding: EdgeInsets.only(left: (15.65).w, right: (10.65).w),
             child: SingleChildScrollView(
               physics: AlwaysScrollableScrollPhysics(),
               child: ConstrainedBox(
@@ -158,17 +193,17 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
                       shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: 2,
                         childAspectRatio: 0.77,
                         mainAxisSpacing: 10.h, // 세로 간격
                         crossAxisSpacing: 15.w, // 가로 간격
                       ),
-                      itemCount: userCategories.length,
+                      itemCount: categories.length,
                       itemBuilder: (context, index) {
-                        final category = userCategories[index];
+                        final category = categories[index];
                         final categoryId = category.id;
 
                         return ArchiveCardWidget(
@@ -190,8 +225,8 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
                         );
                       },
                     ),
-                    // 하단 여백 추가 (화면 크기별)
-                    SizedBox(height: 20.h),
+                    // 하단 여백 추가 (스크롤 범위 확장)
+                    SizedBox(height: 200.h),
                   ],
                 ),
               ),

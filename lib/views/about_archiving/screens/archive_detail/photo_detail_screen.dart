@@ -4,16 +4,17 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../controllers/photo_controller.dart';
-import '../../models/photo_data_model.dart';
-import '../../models/comment_record_model.dart';
-import '../../controllers/auth_controller.dart';
-import '../../controllers/audio_controller.dart';
-import '../../controllers/comment_record_controller.dart';
-import '../../utils/format_utils.dart';
-import '../../utils/position_converter.dart';
-import 'widgets/custom_waveform_widget.dart';
-import '../about_camera/widgets/audio_recorder_widget.dart';
+
+import '../../../../controllers/audio_controller.dart';
+import '../../../../controllers/auth_controller.dart';
+import '../../../../controllers/comment_record_controller.dart';
+import '../../../../controllers/photo_controller.dart';
+import '../../../../models/comment_record_model.dart';
+import '../../../../models/photo_data_model.dart';
+import '../../../../utils/format_utils.dart';
+import '../../../../utils/position_converter.dart';
+import '../../../about_camera/widgets/audio_recorder_widget.dart';
+import '../../widgets/wave_form_widget/custom_waveform_widget.dart';
 
 class PhotoDetailScreen extends StatefulWidget {
   final List<PhotoDataModel> photos;

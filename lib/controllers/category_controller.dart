@@ -966,4 +966,23 @@ class CategoryController extends ChangeNotifier {
 
     return words;
   }
+
+  /// 사용자의 카테고리 조회 시간을 업데이트합니다
+  ///
+  /// [categoryId] 업데이트할 카테고리 ID
+  /// [userId] 사용자 ID
+  Future<void> updateUserViewTime({
+    required String categoryId,
+    required String userId,
+  }) async {
+    try {
+      await _categoryService.updateUserViewTime(
+        categoryId: categoryId,
+        userId: userId,
+      );
+    } catch (e) {
+      // debugPrint('[CategoryController] updateUserViewTime 오류: $e');
+      // 에러가 발생해도 UI에는 영향을 주지 않음 (사용자 경험을 위해)
+    }
+  }
 }

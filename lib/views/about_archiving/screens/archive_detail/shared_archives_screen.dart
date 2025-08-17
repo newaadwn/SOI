@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
-import '../../controllers/category_controller.dart';
-import '../../theme/theme.dart';
-import '../../controllers/auth_controller.dart';
-import 'widgets/show_category_widget/archive_card_widget.dart';
+
+import '../../../../controllers/auth_controller.dart';
+import '../../../../controllers/category_controller.dart';
+import '../../../../theme/theme.dart';
+import '../../widgets/archive_card/archive_card_widget.dart';
 
 class SharedArchivesScreen extends StatefulWidget {
   final bool isEditMode;

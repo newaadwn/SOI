@@ -3,13 +3,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../controllers/auth_controller.dart';
-import '../../controllers/category_controller.dart';
 import 'package:provider/provider.dart';
-import '../../theme/theme.dart';
-import 'all_archives_screen.dart';
-import 'my_archives_screen.dart';
-import 'shared_archives_screen.dart';
+import '../../../controllers/auth_controller.dart';
+import '../../../controllers/category_controller.dart';
+import '../../../theme/theme.dart';
+import 'archive_detail/all_archives_screen.dart';
+import 'archive_detail/my_archives_screen.dart';
+import 'archive_detail/shared_archives_screen.dart';
 
 // 아카이브 메인 화면
 class ArchiveMainScreen extends StatefulWidget {
