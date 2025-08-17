@@ -43,7 +43,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
   // 컨트롤러 참조
   AuthController? _authController;
-  AudioController? _audioController;
 
   // 음성 댓글 관련 맵들
   final Map<String, List<CommentRecordModel>> _photoComments = {};
@@ -51,12 +50,16 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       {}; // 현재 사용자의 드래그 위치만 임시 저장
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
   _commentStreams = {};
-  final Map<String, bool> _voiceCommentSavedStates = {};
+  // (필요 시 확장) 댓글 저장 여부 맵 제거됨 – UI에서 사용하지 않아 정리
+
+  // PageController를 상태로 유지 (build마다 새로 생성 방지)
+  late final PageController _pageController;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
     _loadUserProfileImage();
     _subscribeToVoiceCommentsForCurrentPhoto();
   }
@@ -145,70 +148,44 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   void _handleCommentsUpdate(
     String photoId,
     List<CommentRecordModel> comments,
-  ) async {
+  ) {
     if (!mounted) return;
 
     setState(() {
       _photoComments[photoId] = comments;
-
-      // 현재 사용자가 댓글을 올렸는지만 확인 (다른 사용자 댓글과 무관)
-      final currentUserId = _authController?.getUserId;
-      if (currentUserId != null) {
-        _voiceCommentSavedStates[photoId] = comments.any(
-          (comment) => comment.recorderUser == currentUserId,
-        );
-      }
     });
   }
 
   /// Firestore에 프로필 위치 업데이트 (상대 좌표 사용)
+  /// 이제 recorderUser 단일 댓글이 아닌 특정 commentId 에 대해 위치를 저장하도록 개선
   Future<void> _updateProfilePositionInFirestore(
     String photoId,
+    String commentId,
     Offset absolutePosition,
   ) async {
     try {
       debugPrint('=== 프로필 위치 업데이트 시작 ===');
       debugPrint('photoId: $photoId');
+      debugPrint('commentId: $commentId');
       debugPrint('입력 절대 위치: $absolutePosition');
 
-      final authController = _getAuthController;
-      final currentUserId = authController.getUserId;
-
-      if (currentUserId == null) {
-        debugPrint('❌ 현재 사용자 ID가 null');
-        return;
-      }
-
-      // 현재 사용자의 댓글 찾기
-      final comments = _photoComments[photoId] ?? [];
-      final userComment =
-          comments
-              .where((comment) => comment.recorderUser == currentUserId)
-              .firstOrNull;
-
-      if (userComment == null) {
-        debugPrint('❌ 현재 사용자의 댓글을 찾을 수 없음');
+      if (commentId.isEmpty) {
+        debugPrint('❌ 댓글 ID가 비어있음');
         return;
       }
 
       final imageSize = Size(354.w, 500.h);
-      debugPrint('이미지 크기: $imageSize');
 
       final relativePosition = PositionConverter.toRelativePosition(
         absolutePosition,
         imageSize,
       );
 
-      debugPrint('변환된 상대 위치: $relativePosition');
-
       await CommentRecordController().updateRelativeProfilePosition(
-        commentId: userComment.id,
+        commentId: commentId,
         photoId: photoId,
         relativePosition: relativePosition,
       );
-
-      debugPrint('✅ 상대 위치 저장 완료: $relativePosition (절대: $absolutePosition)');
-      debugPrint('=== 프로필 위치 업데이트 완료 ===');
     } catch (e) {
       debugPrint('❌ 프로필 위치 업데이트 오류: $e');
     }
@@ -481,7 +458,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         ),
       ),
       body: PageView.builder(
-        controller: PageController(initialPage: widget.initialIndex),
+        controller: _pageController,
         itemCount: widget.photos.length,
         scrollDirection: Axis.vertical,
         onPageChanged: _onPageChanged, // 페이지 변경 감지
@@ -497,7 +474,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     return DragTarget<String>(
                       onWillAcceptWithDetails: (details) {
                         // DragTarget is being approached with data: ${details.data}
-                        return details.data == 'profile_image';
+                        // commentId 문자열이 들어오면 허용
+                        return (details.data).isNotEmpty;
                       },
                       onAcceptWithDetails: (details) {
                         debugPrint(
@@ -527,8 +505,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                         });
 
                         // Firestore에 위치 업데이트
+                        final droppedCommentId = details.data;
                         _updateProfilePositionInFirestore(
                           photo.id,
+                          droppedCommentId,
                           adjustedPosition,
                         );
                       },
@@ -583,7 +563,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                       '🔍 댓글 ${comment.id} 기존 절대 위치: $absolutePosition',
                                     );
                                   } else {
-                                    debugPrint('❌ 댓글 ${comment.id} 위치 정보 없음');
                                     return Container(); // 위치 정보가 없으면 빈 컨테이너
                                   }
 
@@ -593,10 +572,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                         absolutePosition,
                                         imageSize,
                                       );
-
-                                  debugPrint(
-                                    '🔍 댓글 ${comment.id} 클램프된 위치: $clampedPosition (원본: $absolutePosition)',
-                                  );
 
                                   return Positioned(
                                     left: clampedPosition.dx - 13.5,
@@ -609,38 +584,15 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                                       ) {
                                         return InkWell(
                                           onTap: () async {
-                                            debugPrint('🎵 이미지 위 프로필 클릭됨');
-                                            debugPrint(
-                                              '  - 댓글 ID: ${comment.id}',
-                                            );
-                                            debugPrint(
-                                              '  - 댓글 audioUrl: ${comment.audioUrl}',
-                                            );
-                                            debugPrint(
-                                              '  - 댓글 작성자: ${comment.recorderUser}',
-                                            );
-                                            debugPrint(
-                                              '  - 댓글 생성시간: ${comment.createdAt}',
-                                            );
-
-                                            _audioController =
+                                            final audioController =
                                                 Provider.of<AudioController>(
                                                   context,
                                                   listen: false,
                                                 );
-                                            // 해당 댓글의 오디오 재생
                                             if (comment.audioUrl.isNotEmpty) {
-                                              debugPrint(
-                                                '🔊 음성 재생 시작: ${comment.audioUrl}',
-                                              );
-                                              await _audioController!
-                                                  .toggleAudio(
-                                                    comment.audioUrl,
-                                                  );
-                                              debugPrint('✅ 음성 재생 완료');
-                                            } else {
-                                              debugPrint(
-                                                '❌ 재생할 audioUrl이 비어있음',
+                                              await audioController.toggleAudio(
+                                                comment.audioUrl,
+                                                commentId: comment.id,
                                               );
                                             }
                                           },
@@ -1049,19 +1001,13 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                     profileImagePosition: _profileImagePositions[photo.id],
                     getProfileImagePosition:
                         () => _profileImagePositions[photo.id],
+                    // 위치 드래그 콜백은 UI 반영만 (commentId 없이 Firestore 호출 금지)
                     onProfileImageDragged: (Offset position) {
-                      // 프로필 이미지 드래그 처리
                       setState(() {
                         _profileImagePositions[photo.id] = position;
                       });
-
-                      // Firestore에 위치 업데이트
-                      _updateProfilePositionInFirestore(photo.id, position);
                     },
                     onCommentSaved: (commentRecord) {
-                      setState(() {
-                        _voiceCommentSavedStates[photo.id] = true;
-                      });
                       // 새 댓글이 저장되면 음성 댓글 목록 새로고침
                       _subscribeToVoiceCommentsForCurrentPhoto();
                     },

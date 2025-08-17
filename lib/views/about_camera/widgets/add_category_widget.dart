@@ -306,7 +306,7 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
                       ),
                     ),
                   );
-                }).toList(),
+                }),
 
                 // + 버튼 (항상 표시)
                 Positioned(

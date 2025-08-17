@@ -8,6 +8,7 @@ import '../../../controllers/audio_controller.dart';
 import '../../../controllers/comment_record_controller.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../models/comment_record_model.dart';
+import '../../../utils/position_converter.dart';
 import '../../about_archiving/widgets/custom_waveform_widget.dart';
 
 /// 오디오 녹음을 위한 위젯
@@ -92,6 +93,9 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
   ///  프로필 이미지 표시 모드 (파형 클릭 시 활성화)
   bool _isProfileMode = false;
+
+  /// 최근 저장된 댓글 ID (드래그 시 위치 업데이트에 사용)
+  String? _lastSavedCommentId;
 
   /// 사용자 프로필 이미지 URL
   String? _userProfileImageUrl;
@@ -340,7 +344,6 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       final currentUserId = authController.getUserId;
 
       if (currentUserId == null) {
-        debugPrint('❌ 현재 사용자 ID를 찾을 수 없습니다.');
         return;
       }
 
@@ -355,7 +358,18 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       // getProfileImagePosition 콜백이 있으면 최신 위치를 가져오고, 없으면 profileImagePosition 사용
       final currentProfilePosition =
           widget.getProfileImagePosition?.call() ?? widget.profileImagePosition;
-      debugPrint('🔍 음성 댓글 저장 시 현재 프로필 위치: $currentProfilePosition');
+
+      // 절대 좌표를 상대 좌표로 변환
+      Offset? relativePosition;
+      if (currentProfilePosition != null) {
+        // PhotoDetailScreen에서 사용하는 이미지 크기와 동일하게 설정
+        final imageSize = Size(354.w, 500.h);
+
+        relativePosition = PositionConverter.toRelativePosition(
+          currentProfilePosition,
+          imageSize,
+        );
+      }
 
       final commentRecord = await commentRecordController.createCommentRecord(
         audioFilePath: audioFilePath,
@@ -364,19 +378,19 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         waveformData: waveformData,
         duration: duration,
         profileImageUrl: profileImageUrl,
-        profilePosition: currentProfilePosition,
+        profilePosition: null, // 더 이상 절대 좌표는 사용하지 않음
+        relativePosition: relativePosition, // 새로운 상대 좌표 방식 사용
       );
 
       if (commentRecord != null) {
         // 프로필 이미지 URL 설정
         _userProfileImageUrl = profileImageUrl;
+        _lastSavedCommentId = commentRecord.id; // commentId 저장
 
         // 저장 완료 콜백 호출
         if (widget.onCommentSaved != null) {
           widget.onCommentSaved!(commentRecord);
         }
-      } else {
-        debugPrint('CommentRecord 저장 실패');
       }
     } catch (e) {
       debugPrint('CommentRecord 저장 중 오류: $e');
@@ -620,10 +634,9 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
     // Draggable로 감싸서 드래그 가능하게 만들기
     return Draggable<String>(
-      data: 'profile_image',
-      onDragStarted: () {
-        debugPrint('AudioRecorderWidget에서 드래그 시작됨');
-      },
+      // commentId 가 반드시 있어야 위치 저장 가능. 없으면 빈 문자열 전달하여 DragTarget 거부.
+      data: _lastSavedCommentId ?? '',
+
       feedback: Transform.scale(
         scale: 1.2, // 드래그 중에는 조금 더 크게
         child: Opacity(opacity: 0.8, child: profileWidget),
@@ -633,24 +646,15 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         child: profileWidget,
       ),
       onDragEnd: (details) {
-        debugPrint('🎯 드래그 완료: wasAccepted=${details.wasAccepted}');
-
         // DragTarget에서 성공적으로 처리된 경우에만 리셋
         if (details.wasAccepted) {
-          debugPrint('✅ 드래그가 성공적으로 처리됨, 마이크 아이콘으로 리셋');
-
           // ✅ 위치 설정 완료 콜백 호출 (부모가 리셋을 담당)
           if (widget.onCommentPositioned != null) {
             widget.onCommentPositioned!();
           }
-
-          // ✅ 드래그가 성공적으로 완료된 경우에만 마이크 아이콘으로 리셋
-          // 약간의 지연을 주어 드래그 애니메이션이 완료된 후 리셋
-          Future.delayed(Duration(milliseconds: 300), () {
-            _resetToMicrophoneIcon();
-          });
+          // 드래그 성공 후에는 아이콘 바로 리셋하지 않고 유지하여 추가 위치 조정 허용 (요구 시 주석 해제)
+          // Future.delayed(Duration(milliseconds: 300), () { _resetToMicrophoneIcon(); });
         } else {
-          debugPrint('❌ 드래그가 처리되지 않음, 상태 유지');
           // 외부 콜백이 있으면 호출, 없으면 내부 처리
           if (widget.onProfileImageDragged != null) {
             widget.onProfileImageDragged!(details.offset);
@@ -876,8 +880,8 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         _recordedFilePath = null;
         _waveformData = null;
         _userProfileImageUrl = null;
+        _lastSavedCommentId = null;
       });
-      debugPrint('🎤 마이크 아이콘으로 리셋 완료');
     }
   }
 

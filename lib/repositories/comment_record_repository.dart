@@ -20,7 +20,8 @@ class CommentRecordRepository {
     required List<double> waveformData,
     required int duration,
     required String profileImageUrl, // 프로필 이미지 URL 추가
-    Offset? profilePosition, // 프로필 이미지 위치 (선택적)
+    Offset? profilePosition, // 프로필 이미지 위치 (선택적) - 하위호환성용
+    Offset? relativePosition, // 프로필 이미지 상대 위치 (새로운 방식)
   }) async {
     try {
       // 1. Firebase Storage에 음성 파일 업로드
@@ -41,7 +42,8 @@ class CommentRecordRepository {
         duration: duration,
         isDeleted: false,
         profileImageUrl: profileImageUrl, // 전달받은 프로필 이미지 URL 사용
-        profilePosition: profilePosition, // 프로필 위치 추가
+        profilePosition: profilePosition, // 프로필 위치 추가 (하위호환성)
+        relativePosition: relativePosition, // 상대 위치 추가 (새로운 방식)
       );
 
       // 3. Firestore에 저장

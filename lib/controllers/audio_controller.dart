@@ -838,36 +838,49 @@ class AudioController extends ChangeNotifier {
   /// 실시간 오디오 재생 (중복 방지)
   Future<void> playRealtimeAudio(String audioUrl) async {
     try {
+      debugPrint('🎵 playRealtimeAudio 시작 - URL: $audioUrl');
+      debugPrint('🎵 현재 재생 중인 URL: $_currentPlayingAudioUrl');
+      debugPrint('🎵 재생 상태: $_isPlaying');
+
       _isLoading = true;
       _error = null;
       notifyListeners();
 
-      _initializeRealtimePlayer();
-
       // 이미 같은 오디오가 재생 중이면 일시정지/재생 토글
       if (_currentPlayingAudioUrl == audioUrl && _isPlaying) {
-        await _realtimeAudioPlayer!.pause();
-        // debugPrint('오디오 일시정지: $audioUrl');
+        debugPrint('🎵 같은 오디오 재생 중 - 일시정지');
+        if (_realtimeAudioPlayer != null) {
+          await _realtimeAudioPlayer!.pause();
+        }
         _isLoading = false;
         notifyListeners();
         return;
       }
 
-      // 다른 오디오가 재생 중이면 정지
-      if (_isPlaying) {
+      // 기존과 URL 이 다를 때만 완전 정리
+      if (_realtimeAudioPlayer != null && _currentPlayingAudioUrl != audioUrl) {
+        debugPrint('🎵 기존 플레이어 정리 (다른 URL)');
         await _realtimeAudioPlayer!.stop();
-        // debugPrint('🛑 이전 오디오 정지');
+        await _realtimeAudioPlayer!.dispose();
+        _disposeRealtimeListeners();
+        _realtimeAudioPlayer = null;
+        _currentPlayingAudioUrl = null;
       }
 
+      // 새 플레이어 생성
+      debugPrint('🎵 새 플레이어 생성');
+      _initializeRealtimePlayer();
+
       // 새 오디오 재생
+      debugPrint('🎵 새 오디오 재생 시작: $audioUrl');
       await _realtimeAudioPlayer!.play(ap.UrlSource(audioUrl));
       _currentPlayingAudioUrl = audioUrl;
 
       _isLoading = false;
-      // debugPrint('새 오디오 재생: $audioUrl');
       notifyListeners();
+      debugPrint('🎵 재생 시작 완료');
     } catch (e) {
-      // debugPrint('실시간 오디오 재생 오류: $e');
+      debugPrint('❌ 재생 오류: $e');
       _isLoading = false;
       _error = '음성 파일을 재생할 수 없습니다.';
       notifyListeners();
@@ -894,12 +907,17 @@ class AudioController extends ChangeNotifier {
   }
 
   /// 오디오 토글 (재생/일시정지) - UI용 간편 메서드
-  Future<void> toggleAudio(String audioUrl) async {
-    if (_currentPlayingAudioUrl == audioUrl && _isPlaying) {
-      await pauseRealtimeAudio();
-    } else {
-      await playRealtimeAudio(audioUrl);
+  Future<void> toggleAudio(String audioUrl, {String? commentId}) async {
+    // commentId 는 향후 서로 다른 재생소스를 구분하기 위한 확장 포인트
+    if (_currentPlayingAudioUrl == audioUrl) {
+      if (_isPlaying) {
+        await pauseRealtimeAudio();
+      } else {
+        await playRealtimeAudio(audioUrl);
+      }
+      return;
     }
+    await playRealtimeAudio(audioUrl);
   }
 
   /// 오디오 정지 - UI용 간편 메서드

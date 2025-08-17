@@ -27,7 +27,8 @@ class CommentRecordController extends ChangeNotifier {
     required List<double> waveformData,
     required int duration,
     required String profileImageUrl, // 프로필 이미지 URL 추가
-    Offset? profilePosition, // 프로필 이미지 위치 추가 (선택적)
+    Offset? profilePosition, // 프로필 이미지 위치 추가 (선택적) - 하위호환성용
+    Offset? relativePosition, // 프로필 이미지 상대 위치 (새로운 방식)
   }) async {
     try {
       _setLoading(true);
@@ -45,7 +46,8 @@ class CommentRecordController extends ChangeNotifier {
         waveformData: normalizedWaveform,
         duration: duration,
         profileImageUrl: profileImageUrl, // 프로필 이미지 URL 전달
-        profilePosition: profilePosition, // 프로필 이미지 위치 전달
+        profilePosition: profilePosition, // 프로필 이미지 위치 전달 (하위호환성)
+        relativePosition: relativePosition, // 상대 위치 전달 (새로운 방식)
       );
 
       // 캐시 업데이트
