@@ -41,6 +41,9 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   // 임시 음성 댓글 데이터 (파형 클릭 시 저장용)
   final Map<String, Map<String, dynamic>> _pendingVoiceComments = {};
 
+  // 임시 프로필 위치 (음성 댓글 저장 전 드래그된 위치)
+  final Map<String, Offset> _pendingProfilePositions = {};
+
   // 프로필 이미지 관리
   final Map<String, Offset?> _profileImagePositions = {};
   final Map<String, String> _commentProfileImageUrls = {};
@@ -333,10 +336,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   /// 특정 사진의 음성 댓글 정보를 실시간 구독하여 프로필 위치 동기화
   void _subscribeToVoiceCommentsForPhoto(String photoId, String currentUserId) {
     try {
-      debugPrint(
-        '🔊 Feed - 음성 댓글 실시간 구독 시작 - 사진: $photoId, 사용자: $currentUserId',
-      );
-
       _commentStreams[photoId]?.cancel();
 
       _commentStreams[photoId] = CommentRecordController()
@@ -344,9 +343,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           .listen(
             (comments) =>
                 _handleCommentsUpdate(photoId, currentUserId, comments),
-            onError:
-                (error) =>
-                    debugPrint('❌ Feed - 실시간 댓글 구독 오류 - 사진 $photoId: $error'),
           );
 
       // 실시간 스트림과 별개로 기존 댓글도 직접 로드
@@ -362,13 +358,9 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     String currentUserId,
   ) async {
     try {
-      debugPrint('📥 Feed - 기존 댓글 직접 로드 시작 - 사진: $photoId');
-
       final commentController = CommentRecordController();
       await commentController.loadCommentRecordsByPhotoId(photoId);
       final comments = commentController.getCommentsByPhotoId(photoId);
-
-      debugPrint('📥 Feed - 직접 로드된 댓글 수: ${comments.length}');
 
       if (mounted && comments.isNotEmpty) {
         _handleCommentsUpdate(photoId, currentUserId, comments);
@@ -384,23 +376,9 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     String currentUserId,
     List<CommentRecordModel> comments,
   ) {
-    debugPrint(
-      '[REALTIME] Feed 실시간 댓글 업데이트 수신 - 사진: $photoId, 댓글 수: ${comments.length}',
-    );
-
-    // 모든 댓글 정보 로그
-    for (var comment in comments) {
-      debugPrint(
-        '📝 Feed - 댓글 ${comment.id}: 사용자=${comment.recorderUser}, 프로필이미지=${comment.profileImageUrl}, 위치=${comment.relativePosition ?? comment.profilePosition}',
-      );
-    }
-
     if (mounted) {
       setState(() {
         _photoComments[photoId] = comments;
-        debugPrint(
-          '📊 Feed - _photoComments[$photoId] 업데이트됨: ${comments.length}개',
-        );
       });
     }
 
@@ -408,10 +386,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         comments
             .where((comment) => comment.recorderUser == currentUserId)
             .firstOrNull;
-
-    debugPrint(
-      '🔍 Feed - 현재 사용자($currentUserId)의 댓글: ${userComment?.id ?? "없음"}',
-    );
 
     if (userComment != null) {
       if (mounted) {
@@ -584,30 +558,19 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         debugPrint('✅ 음성 댓글 실제 저장 완료 - ID: ${commentRecord.id}');
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('음성 댓글이 저장되었습니다'),
-              backgroundColor: Color(0xFF5A5A5A),
-              duration: Duration(seconds: 2),
-            ),
-          );
-
           setState(() {
             _voiceCommentSavedStates[photoId] = true;
             _savedCommentIds[photoId] = commentRecord.id;
             _pendingVoiceComments.remove(photoId); // 임시 데이터 삭제
           });
 
-          debugPrint(
-            '🎯 음성 댓글 ID 저장됨 - photoId: $photoId, commentId: ${commentRecord.id}',
-          );
-
           // 댓글 저장 완료 후 대기 중인 프로필 위치가 있다면 업데이트
-          final pendingPosition = _profileImagePositions[photoId];
+          final pendingPosition = _pendingProfilePositions[photoId];
           if (pendingPosition != null) {
-            debugPrint(' 댓글 저장 완료 후 대기 중인 프로필 위치 업데이트: $pendingPosition');
             Future.delayed(const Duration(milliseconds: 200), () {
               _updateProfilePositionInFirestore(photoId, pendingPosition);
+              // 위치 업데이트 후 임시 위치 정리
+              _pendingProfilePositions.remove(photoId);
             });
           }
         }
@@ -617,7 +580,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         }
       }
     } catch (e) {
-      debugPrint('❌ 음성 댓글 실제 저장 실패: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -637,13 +599,22 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       _voiceCommentSavedStates[photoId] = false;
       _profileImagePositions[photoId] = null;
     });
-    debugPrint('음성 댓글 삭제됨 - 사진 ID: $photoId');
+  }
+
+  /// 음성 댓글 저장 완료 후 위젯 초기화 (추가 댓글을 위한)
+  void _onSaveCompleted(String photoId) {
+    setState(() {
+      // 저장 완료 후 다시 버튼 상태로 돌아가서 추가 댓글 녹음 가능
+      _voiceCommentActiveStates[photoId] = false;
+      // _voiceCommentSavedStates는 건드리지 않음 (실제 댓글이 저장되어 있으므로)
+      // 임시 데이터 정리
+      _pendingVoiceComments.remove(photoId);
+      _pendingProfilePositions.remove(photoId);
+    });
   }
 
   /// 프로필 이미지 드래그 처리 (절대 위치를 상대 위치로 변환하여 저장)
   void _onProfileImageDragged(String photoId, Offset absolutePosition) {
-    debugPrint('🖼️ 프로필 이미지 드래그됨 - 사진: $photoId, 절대위치: $absolutePosition');
-
     // 이미지 크기 (ScreenUtil 기준)
     final imageSize = Size(354.w, 500.h);
 
@@ -653,10 +624,17 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       imageSize,
     );
 
-    debugPrint('📊 변환된 상대위치: $relativePosition (이미지 크기: $imageSize)');
+    // UI에 즉시 반영 (임시 위치)
+    setState(() {
+      _profileImagePositions[photoId] = relativePosition;
+      _pendingProfilePositions[photoId] = relativePosition;
+    });
 
-    setState(() => _profileImagePositions[photoId] = relativePosition);
-    _updateProfilePositionInFirestore(photoId, relativePosition);
+    // 음성 댓글이 이미 저장된 경우에만 즉시 Firestore 업데이트
+    final isSaved = _voiceCommentSavedStates[photoId] == true;
+    if (isSaved) {
+      _updateProfilePositionInFirestore(photoId, relativePosition);
+    }
   }
 
   /// Firestore에 프로필 위치 업데이트
@@ -667,18 +645,10 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     int maxRetries = 3,
   }) async {
     try {
-      debugPrint(
-        '🔍 프로필 위치 업데이트 시작 - photoId: $photoId, position: $position, retry: $retryCount',
-      );
-
       final isSaved = _voiceCommentSavedStates[photoId] == true;
-      debugPrint('🔍 음성 댓글 저장 상태 확인: isSaved = $isSaved');
 
       if (!isSaved) {
         if (retryCount < maxRetries) {
-          debugPrint(
-            '⏳ 음성 댓글이 아직 저장되지 않음 - ${retryCount + 1}초 후 재시도 (${retryCount + 1}/$maxRetries)',
-          );
           await Future.delayed(const Duration(seconds: 1));
           return _updateProfilePositionInFirestore(
             photoId,
@@ -686,7 +656,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
             retryCount: retryCount + 1,
           );
         } else {
-          debugPrint('⚠️ 최대 재시도 횟수 초과 - 위치 업데이트를 건너뜁니다');
           return;
         }
       }
@@ -699,24 +668,15 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       final currentUserId = authController.getUserId;
 
       if (currentUserId == null) {
-        debugPrint('❌ 현재 사용자 ID를 찾을 수 없습니다');
         return;
       }
 
-      debugPrint('🔍 현재 사용자 ID: $currentUserId');
-
       // 저장된 댓글 ID 확인 및 사용
       final savedCommentId = _savedCommentIds[photoId];
-      debugPrint('🔍 저장된 댓글 ID: $savedCommentId');
 
       if (savedCommentId != null && savedCommentId.isNotEmpty) {
-        debugPrint('🔍 저장된 댓글 ID로 직접 위치 업데이트 시작');
-
         // 상대 위치를 Map 형태로 변환해서 Firestore에 저장
-        final relativePositionMap = PositionConverter.relativePositionToMap(
-          position,
-        );
-        debugPrint('💾 Firestore 저장용 상대위치 Map: $relativePositionMap');
+        PositionConverter.relativePositionToMap(position);
 
         final success = await commentRecordController
             .updateRelativeProfilePosition(
@@ -724,17 +684,16 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
               photoId: photoId,
               relativePosition: position, // 상대 위치로 전달
             );
-        debugPrint(
-          success ? '✅ 프로필 위치가 Firestore에 저장되었습니다' : '❌ 프로필 위치 저장에 실패했습니다',
-        );
+
+        // 프로필 위치 업데이트 성공 후 위젯 초기화 (추가 댓글을 위한 준비)
+        if (success) {
+          _onSaveCompleted(photoId);
+        }
         return;
       }
 
       // 저장된 댓글 ID가 없는 경우 재시도 또는 검색
       if (retryCount < maxRetries) {
-        debugPrint(
-          ' 저장된 댓글 ID가 없음 - ${retryCount + 1}초 후 재시도 (${retryCount + 1}/$maxRetries)',
-        );
         await Future.delayed(const Duration(seconds: 1));
         return _updateProfilePositionInFirestore(
           photoId,
@@ -751,7 +710,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         position,
       );
     } catch (e) {
-      debugPrint('❌ 프로필 위치 업데이트 중 오류 발생: $e');
+      return;
     }
   }
 
@@ -762,23 +721,17 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     String currentUserId,
     Offset position,
   ) async {
-    debugPrint('🔍 저장된 댓글 ID가 없어 캐시/서버에서 검색 시작');
-
     var comments = commentRecordController.getCommentsByPhotoId(photoId);
-    debugPrint('🔍 캐시에서 찾은 댓글 수: ${comments.length}');
 
     if (comments.isEmpty) {
-      debugPrint('🔍 캐시가 비어있어 서버에서 음성 댓글 로드 시작 - photoId: $photoId');
       await commentRecordController.loadCommentRecordsByPhotoId(photoId);
       comments = commentRecordController.commentRecords;
-      debugPrint('🔍 서버에서 로드된 댓글 수: ${comments.length}');
     }
 
     final userComment =
         comments
             .where((comment) => comment.recorderUser == currentUserId)
             .firstOrNull;
-    debugPrint('🔍 현재 사용자의 댓글 찾기 결과: ${userComment?.id}');
 
     if (userComment != null) {
       await commentRecordController.updateRelativeProfilePosition(
@@ -786,8 +739,12 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         photoId: photoId,
         relativePosition: position,
       );
+
+      // 프로필 위치 업데이트 성공 후 위젯 초기화 (추가 댓글을 위한 준비)
+
+      _onSaveCompleted(photoId);
     } else {
-      debugPrint('⚠️ 해당 사진에 대한 사용자의 음성 댓글을 찾을 수 없습니다');
+      return;
     }
   }
 
@@ -846,15 +803,10 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
             scrollDirection: Axis.vertical,
             itemCount: _allPhotos.length + (_hasMoreData ? 1 : 0),
             onPageChanged: (index) {
-              debugPrint('📍 현재 페이지: $index / 전체: ${_allPhotos.length}');
-
               // 마지막에서 2번째 페이지에 도달하면 추가 로드
               if (index >= _allPhotos.length - 2 &&
                   _hasMoreData &&
                   !_isLoadingMore) {
-                debugPrint(
-                  '🔄 추가 로드 트리거 - index: $index, 전체: ${_allPhotos.length}',
-                );
                 _loadMorePhotos();
               }
             },
@@ -959,6 +911,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           onVoiceCommentDeleted: _onVoiceCommentDeleted,
           onProfileImageDragged: _onProfileImageDragged,
           onSaveRequested: _saveVoiceComment,
+          onSaveCompleted: _onSaveCompleted, // 저장 완료 후 초기화 콜백
         ),
       ],
     );

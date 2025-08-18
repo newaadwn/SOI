@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/auth_controller.dart';
-import '../../../controllers/audio_controller.dart';
-import '../../../controllers/comment_record_controller.dart';
 import '../../../models/photo_data_model.dart';
 import '../../../models/comment_record_model.dart';
 import 'voice_comment_widget.dart';
@@ -24,6 +22,7 @@ class VoiceRecordingWidget extends StatelessWidget {
   final Function(String) onVoiceCommentDeleted;
   final Function(String, Offset) onProfileImageDragged;
   final Function(String)? onSaveRequested;
+  final Function(String)? onSaveCompleted; // 저장 완료 후 초기화 콜백
 
   const VoiceRecordingWidget({
     super.key,
@@ -38,6 +37,7 @@ class VoiceRecordingWidget extends StatelessWidget {
     required this.onVoiceCommentDeleted,
     required this.onProfileImageDragged,
     this.onSaveRequested,
+    this.onSaveCompleted, // 저장 완료 후 초기화 콜백
   });
 
   @override
@@ -68,153 +68,30 @@ class VoiceRecordingWidget extends StatelessWidget {
                         ) ??
                         false;
 
-                    // 실시간 댓글이 있으면서 현재 사용자의 댓글이면 저장된 프로필 이미지 표시
-                    if (hasRealTimeComment && currentUserId != null) {
-                      return Center(
-                        child: Draggable<String>(
-                          data: 'profile_image',
-                          onDragStarted: () {
-                            debugPrint('저장된 프로필 이미지 드래그 시작 - feed');
-                          },
-                          feedback: Transform.scale(
-                            scale: 1.2,
-                            child: Opacity(
-                              opacity: 0.8,
-                              child: Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                ),
-                                child: ClipOval(
-                                  child:
-                                      currentUserProfileImage != null &&
-                                              currentUserProfileImage.isNotEmpty
-                                          ? Image.network(
-                                            currentUserProfileImage,
-                                            fit: BoxFit.cover,
-                                          )
-                                          : Container(
-                                            color: Colors.grey.shade600,
-                                            child: Icon(
-                                              Icons.person,
-                                              color: Colors.white,
-                                              size: 20,
-                                            ),
-                                          ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          childWhenDragging: Opacity(
-                            opacity: 0.3,
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(shape: BoxShape.circle),
-                              child: ClipOval(
-                                child:
-                                    currentUserProfileImage != null &&
-                                            currentUserProfileImage.isNotEmpty
-                                        ? Image.network(
-                                          currentUserProfileImage,
-                                          fit: BoxFit.cover,
-                                        )
-                                        : Container(
-                                          color: Colors.grey.shade600,
-                                          child: Icon(
-                                            Icons.person,
-                                            color: Colors.white,
-                                            size: 20,
-                                          ),
-                                        ),
-                              ),
-                            ),
-                          ),
-                          onDragEnd: (details) {
-                            onProfileImageDragged(photo.id, details.offset);
-                          },
-                          child: GestureDetector(
-                            onTap: () async {
-                              // 현재 사용자의 댓글 찾기
-                              final currentUserId =
-                                  authController.currentUser?.uid;
-                              if (currentUserId != null) {
-                                final commentRecordController =
-                                    CommentRecordController();
+                    // 위젯이 활성화된 상태에서는 댓글이 있어도 새로운 녹음 모드로 시작
+                    // (추가 댓글을 위한 로직)
+                    final shouldStartAsSaved =
+                        hasRealTimeComment &&
+                        voiceCommentActiveStates[photo.id] != true;
 
-                                try {
-                                  // 해당 사진의 댓글들 로드
-                                  await commentRecordController
-                                      .loadCommentRecordsByPhotoId(photo.id);
-                                  final comments =
-                                      commentRecordController.commentRecords;
-
-                                  // 현재 사용자의 댓글 찾기
-                                  final userComment =
-                                      comments
-                                          .where(
-                                            (comment) =>
-                                                comment.recorderUser ==
-                                                currentUserId,
-                                          )
-                                          .firstOrNull;
-
-                                  if (userComment != null &&
-                                      userComment.audioUrl.isNotEmpty) {
-                                    // AudioController를 사용하여 음성 재생
-                                    final audioController =
-                                        Provider.of<AudioController>(
-                                          context,
-                                          listen: false,
-                                        );
-                                    await audioController.toggleAudio(
-                                      userComment.audioUrl,
-                                    );
-                                  }
-                                } catch (e) {
-                                  debugPrint('❌ 음성 재생 실패: $e');
-                                }
-                              }
-                            },
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(shape: BoxShape.circle),
-                              child: ClipOval(
-                                child:
-                                    currentUserProfileImage != null &&
-                                            currentUserProfileImage.isNotEmpty
-                                        ? Image.network(
-                                          currentUserProfileImage,
-                                          fit: BoxFit.cover,
-                                        )
-                                        : Container(
-                                          color: Colors.grey.shade600,
-                                          child: Icon(
-                                            Icons.person,
-                                            color: Colors.white,
-                                            size: 20,
-                                          ),
-                                        ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-
+                    // 다중 댓글 기능을 위해 항상 VoiceCommentWidget을 표시
                     // 댓글이 없으면 VoiceCommentWidget 표시
                     return VoiceCommentWidget(
-                      autoStart: !hasRealTimeComment, // 실시간 댓글이 없을 때만 자동 시작
-                      startAsSaved:
-                          hasRealTimeComment, // 실시간 댓글이 있으면 저장된 상태로 시작
+                      autoStart: !shouldStartAsSaved, // 저장된 상태가 아닐 때만 자동 시작
+                      startAsSaved: shouldStartAsSaved,
                       profileImageUrl:
                           commentProfileImageUrls[photo.id] ??
                           currentUserProfileImage,
+                      enableMultipleComments: true, // 다중 댓글 활성화
+                      hasExistingComments:
+                          (photoComments[photo.id] ?? []).isNotEmpty,
                       onSaveRequested: () {
                         // 파형 클릭 시 저장 요청
                         onSaveRequested?.call(photo.id);
+                      },
+                      onSaveCompleted: () {
+                        // 저장 완료 후 위젯 초기화
+                        onSaveCompleted?.call(photo.id);
                       },
                       onRecordingCompleted: (
                         audioPath,

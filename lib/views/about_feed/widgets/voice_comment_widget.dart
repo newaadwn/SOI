@@ -24,9 +24,12 @@ class VoiceCommentWidget extends StatefulWidget {
   final VoidCallback? onRecordingDeleted; // 녹음 삭제 콜백
   final VoidCallback? onSaved; // 저장 완료 콜백 추가
   final VoidCallback? onSaveRequested; // 저장 요청 콜백 (파형 클릭 시)
+  final VoidCallback? onSaveCompleted; // 저장 완료 후 위젯 초기화 콜백
   final String? profileImageUrl; // 프로필 이미지 URL 추가
   final bool startAsSaved; // 저장된 상태로 시작할지 여부
   final Function(Offset)? onProfileImageDragged; // 프로필 이미지 드래그 콜백
+  final bool enableMultipleComments; // 여러 댓글 지원 여부
+  final bool hasExistingComments; // 기존 댓글 존재 여부
 
   const VoiceCommentWidget({
     super.key,
@@ -35,9 +38,12 @@ class VoiceCommentWidget extends StatefulWidget {
     this.onRecordingDeleted,
     this.onSaved,
     this.onSaveRequested, // 저장 요청 콜백 추가
+    this.onSaveCompleted, // 저장 완료 후 위젯 초기화 콜백 추가
     this.profileImageUrl, // 프로필 이미지 URL 추가
     this.startAsSaved = false, // 기본값은 false
     this.onProfileImageDragged, // 드래그 콜백 추가
+    this.enableMultipleComments = false, // 여러 댓글 지원 기본값 false
+    this.hasExistingComments = false, // 기존 댓글 존재 기본값 false
   });
 
   @override
@@ -67,7 +73,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     // 저장된 상태로 시작해야 하는 경우
     if (widget.startAsSaved) {
       _currentState = VoiceCommentState.saved;
-      // debugPrint('🖼️ VoiceCommentWidget이 저장된 상태로 시작됨');
+
       return; // 컨트롤러 초기화 없이 리턴
     }
 
@@ -93,7 +99,6 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
           ..sampleRate = 44100;
 
     _playerController = PlayerController();
-    // debugPrint('🎛️ 음성 댓글 컨트롤러 초기화 완료');
   }
 
   @override
@@ -109,8 +114,6 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
   /// 녹음 시작
   Future<void> _startRecording() async {
     try {
-      // debugPrint('🎤 음성 댓글 녹음 시작');
-
       // 녹음 시작 시간 기록
       _recordingStartTime = DateTime.now();
 
@@ -120,10 +123,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
       setState(() {
         _currentState = VoiceCommentState.recording;
       });
-
-      // debugPrint('✅ 음성 댓글 녹음 시작 완료');
     } catch (e) {
-      // debugPrint('❌ 녹음 시작 오류: $e');
       setState(() {
         _currentState = VoiceCommentState.idle;
       });
@@ -133,8 +133,6 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
   /// 녹음 중지 및 재생 준비
   Future<void> _stopAndPreparePlayback() async {
     try {
-      // debugPrint('🛑 음성 댓글 녹음 중지');
-
       // 파형 데이터 추출
       List<double> waveformData = List<double>.from(
         _recorderController.waveData,
@@ -455,6 +453,13 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     widget.onSaved?.call();
 
     // debugPrint('✅ 음성 댓글이 저장 완료 상태로 변경됨 - 컨트롤러 정리 완료');
+
+    // 주석 처리: 자동 초기화 제거 - 프로필 드래그 후 수동으로 초기화되어야 함
+    // Future.delayed(const Duration(milliseconds: 500), () {
+    //   if (mounted && widget.enableMultipleComments) {
+    //     widget.onSaveCompleted?.call();
+    //   }
+    // });
   }
 
   /// 컨트롤러들을 정리하는 메서드
