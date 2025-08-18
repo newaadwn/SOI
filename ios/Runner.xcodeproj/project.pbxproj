@@ -34,6 +34,16 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		7948B29B2E534A94000BF9E0 /* Embed App Clips */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/AppClips";
+			dstSubfolderSpec = 16;
+			files = (
+			);
+			name = "Embed App Clips";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		9705A1C41CF9048500538489 /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -77,6 +87,42 @@
 		F43CB16513FF05BE67A6D72C /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		F6F2FC6B243607FAA9DCECD9 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		7948B2792E534A92000BF9E0 /* SOI */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = SOI;
+			sourceTree = "<group>";
+		};
+		7948B2892E534A94000BF9E0 /* SOITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = SOITests;
+			sourceTree = "<group>";
+		};
+		7948B2932E534A94000BF9E0 /* SOIUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = SOIUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		824B4754A9876835D1EC9C78 /* Frameworks */ = {
@@ -122,6 +168,9 @@
 			children = (
 				9740EEB11CF90186004384FC /* Flutter */,
 				97C146F01CF9000F007C117D /* Runner */,
+				7948B2792E534A92000BF9E0 /* SOI */,
+				7948B2892E534A94000BF9E0 /* SOITests */,
+				7948B2932E534A94000BF9E0 /* SOIUITests */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
 				CE0BEDE7AB31AD57CF265276 /* Pods */,
@@ -216,6 +265,7 @@
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				6D3D249A3242B55C3558549E /* [CP] Embed Pods Frameworks */,
 				4BF4A576C26868F1DBEF5B79 /* [CP] Copy Pods Resources */,
+				7948B29B2E534A94000BF9E0 /* Embed App Clips */,
 			);
 			buildRules = (
 			);
@@ -233,6 +283,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
+				LastSwiftUpdateCheck = 1640;
 				LastUpgradeCheck = 1510;
 				ORGANIZATIONNAME = "";
 				TargetAttributes = {

@@ -532,8 +532,13 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
           child: profileWidget,
         ),
         onDragEnd: (details) {
-          // 드래그가 끝났을 때 위치 정보 전달
-          widget.onProfileImageDragged?.call(details.offset);
+          // DragTarget에서 성공적으로 처리된 경우에만 추가 처리
+          if (details.wasAccepted) {
+            // DragTarget에서 이미 위치가 처리되었으므로 여기서는 아무것도 하지 않음
+            debugPrint('✅ 드래그 성공적으로 완료됨');
+          } else {
+            debugPrint('❌ 드래그가 DragTarget에서 거부됨');
+          }
         },
         child: profileWidget,
       );

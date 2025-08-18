@@ -615,7 +615,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
   /// 프로필 이미지 드래그 처리 (절대 위치를 상대 위치로 변환하여 저장)
   void _onProfileImageDragged(String photoId, Offset absolutePosition) {
-    // 이미지 크기 (ScreenUtil 기준)
+    // 이미지 크기 (ScreenUtil 기준 - PhotoDisplayWidget과 동일하게)
     final imageSize = Size(354.w, 500.h);
 
     // 절대 위치를 상대 위치로 변환 (0.0 ~ 1.0 범위)
@@ -623,6 +623,12 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       absolutePosition,
       imageSize,
     );
+
+    // 디버그 로그 추가
+    debugPrint('📍 Feed - 드래그 위치 변환:');
+    debugPrint('  - 절대 위치: $absolutePosition');
+    debugPrint('  - 이미지 크기: $imageSize');
+    debugPrint('  - 상대 위치: $relativePosition');
 
     // UI에 즉시 반영 (임시 위치)
     setState(() {

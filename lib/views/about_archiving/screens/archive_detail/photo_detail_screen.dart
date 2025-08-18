@@ -578,10 +578,13 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                           details.offset,
                         );
 
+                        final modifiedPositionX = localPosition.dx + 13.5;
+                        final modifiedPositionY = localPosition.dy + 13.5;
+
                         // 프로필 이미지 크기(27x27)의 절반만큼 보정하여 중심점으로 조정
                         final adjustedPosition = Offset(
-                          localPosition.dx,
-                          localPosition.dy,
+                          modifiedPositionX,
+                          modifiedPositionY,
                         );
 
                         // 사진 영역 내 상대 좌표로 저장

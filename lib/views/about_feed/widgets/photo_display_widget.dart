@@ -160,275 +160,332 @@ class PhotoDisplayWidget extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // 이미지 영역에만 DragTarget 적용
-        DragTarget<String>(
-          onAcceptWithDetails: (details) async {
-            // 드롭된 좌표를 이미지 내 상대 좌표로 변환
-            final RenderBox renderBox = context.findRenderObject() as RenderBox;
-            final localPosition = renderBox.globalToLocal(details.offset);
+        // 이미지 영역에만 DragTarget 적용 - Builder Pattern 사용
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Builder(
+            builder: (builderContext) {
+              return DragTarget<String>(
+                onWillAcceptWithDetails: (details) {
+                  // DragTarget is being approached with data: ${details.data}
+                  // commentId 문자열이 들어오면 허용
+                  return (details.data).isNotEmpty;
+                },
+                onAcceptWithDetails: (details) {
+                  // 드롭된 좌표를 사진 내 상대 좌표로 변환
+                  final RenderBox renderBox =
+                      builderContext.findRenderObject() as RenderBox;
+                  final localPosition = renderBox.globalToLocal(details.offset);
 
-            // 부모로 드롭 이벤트 전달
-            onProfileImageDragged(photo.id, localPosition);
-          },
-          builder: (context, candidateData, rejectedData) {
-            return Stack(
-              alignment: Alignment.topCenter,
-              children: [
-                // 배경 이미지
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: CachedNetworkImage(
-                    imageUrl: photo.imageUrl,
-                    fit: BoxFit.cover,
-                    width: imageWidth, // 실제 이미지 너비
-                    height: imageHeight, // 실제 이미지 높이
-                    placeholder: (context, url) {
-                      return Container(
-                        width: imageWidth,
-                        height: imageHeight,
-                        color: Colors.grey[900],
-                        child: const Center(),
-                      );
-                    },
-                  ),
-                ),
-                // 카테고리 정보
-                Padding(
-                  padding: EdgeInsets.only(top: 16.h),
-                  child: IntrinsicWidth(
-                    child: Container(
-                      // width 제거 - 텍스트 길이에 따라 동적으로 조정
-                      height: 32.h,
-                      padding: EdgeInsets.symmetric(horizontal: 16.w),
-                      constraints: BoxConstraints(
-                        minWidth: 60.w, // 최소 너비
-                        maxWidth: imageWidth * 0.8, // 최대 너비 제한
-                      ),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        categoryName,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 16.sp,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 1, // 한 줄로 제한
-                      ),
-                    ),
-                  ),
-                ),
+                  // 프로필 이미지 크기(27x27)의 절반만큼 보정하여 중심점으로 조정
+                  final adjustedPosition = Offset(
+                    localPosition.dx + 13.5, // 드래그되는 프로필의 중심점으로 조정
+                    localPosition.dy + 13.5, // 드래그되는 프로필의 중심점으로 조정
+                  );
 
-                // 오디오 컨트롤 오버레이 (photo_detail처럼)
-                if (photo.audioUrl.isNotEmpty)
-                  Positioned(
-                    bottom: 16.h,
-                    left: 20.w,
-                    right: 20.w,
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: 12.w,
-                        vertical: 8.h,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Color(0xff000000).withValues(alpha: 0.4),
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: Row(
-                        children: [
-                          // 왼쪽 프로필 이미지 (작은 버전)
-                          Container(
-                            width: 33.w,
-                            height: 33.w,
-                            decoration: BoxDecoration(shape: BoxShape.circle),
-                            child: ClipOval(
-                              child: _buildUserProfileWidget(context),
-                            ),
-                          ),
-                          SizedBox(width: 12.w),
+                  // 디버그 로그 추가
+                  debugPrint('🎯 Feed DragTarget 드롭 감지 (Builder Pattern):');
+                  debugPrint('  - Global offset: ${details.offset}');
+                  debugPrint('  - Local position: $localPosition');
 
-                          // 가운데 파형 (progress 포함)
-                          Expanded(
-                            child: SizedBox(
-                              height: 34.h,
-                              child: _buildWaveformWidgetWithProgress(),
-                            ),
-                          ),
+                  debugPrint('  - Adjusted position: $adjustedPosition');
+                  debugPrint('  - CommentId: ${details.data}');
 
-                          SizedBox(width: 12.w),
-
-                          // 오른쪽 재생 시간 (실시간 업데이트)
-                          Consumer<AudioController>(
-                            builder: (context, audioController, child) {
-                              // 현재 사진의 오디오가 재생 중인지 확인
-                              final isCurrentAudio =
-                                  audioController.isPlaying &&
-                                  audioController.currentPlayingAudioUrl ==
-                                      photo.audioUrl;
-
-                              // 실시간 재생 시간 사용
-                              Duration displayDuration = Duration.zero;
-                              if (isCurrentAudio) {
-                                displayDuration =
-                                    audioController.currentPosition;
-                              }
-
-                              return Text(
-                                FormatUtils.formatDuration(displayDuration),
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12.sp,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                // 모든 댓글의 드롭된 프로필 이미지들 표시 (상대 좌표 사용)
-                ...(() {
-                  final comments = photoComments[photo.id] ?? [];
-
-                  final commentsWithPosition =
-                      comments
-                          .where(
-                            (comment) =>
-                                comment.relativePosition != null ||
-                                comment.profilePosition != null,
-                          )
-                          .toList();
-
-                  return commentsWithPosition.map((comment) {
-                    // 상대 좌표를 절대 좌표로 변환 (실제 렌더링 크기 사용)
-                    final actualImageSize = Size(
-                      imageWidth.toDouble(),
-                      imageHeight.toDouble(),
-                    );
-                    Offset absolutePosition;
-
-                    if (comment.relativePosition != null) {
-                      // 새로운 상대 좌표 사용
-                      absolutePosition = PositionConverter.toAbsolutePosition(
-                        comment.relativePosition!,
-                        actualImageSize,
-                      );
-                    } else if (comment.profilePosition != null) {
-                      // 기존 절대 좌표 사용 (하위호환성) - 크기 비율 조정 필요
-                      final originalSize = Size(354.0, 500.0); // 원본 고정 크기
-                      final scaleX = actualImageSize.width / originalSize.width;
-                      final scaleY =
-                          actualImageSize.height / originalSize.height;
-
-                      absolutePosition = Offset(
-                        comment.profilePosition!.dx * scaleX,
-                        comment.profilePosition!.dy * scaleY,
-                      );
-                    } else {
-                      return Container(); // 위치 정보가 없으면 빈 컨테이너
-                    }
-
-                    // 프로필 이미지가 화면을 벗어나지 않도록 위치 조정
-                    final clampedPosition = PositionConverter.clampPosition(
-                      absolutePosition,
-                      actualImageSize,
-                    );
-
-                    return Positioned(
-                      left: clampedPosition.dx - 13.5,
-                      top: clampedPosition.dy - 13.5,
-                      child: Consumer<AuthController>(
-                        builder: (context, authController, child) {
-                          return InkWell(
-                            onTap: () async {
-                              if (comment.audioUrl.isNotEmpty) {
-                                try {
-                                  final audioController =
-                                      Provider.of<AudioController>(
-                                        context,
-                                        listen: false,
-                                      );
-                                  await audioController.toggleAudio(
-                                    comment.audioUrl,
-                                    commentId: comment.id,
-                                  );
-                                } catch (e) {
-                                  debugPrint('❌ Feed - 음성 재생 실패: $e');
-                                }
-                              }
-                            },
-                            child: Container(
-                              width: 27,
-                              height: 27,
-                              decoration: BoxDecoration(shape: BoxShape.circle),
-                              child:
-                                  comment.profileImageUrl.isNotEmpty
-                                      ? ClipOval(
-                                        child: CachedNetworkImage(
-                                          imageUrl: comment.profileImageUrl,
-                                          width: 27,
-                                          height: 27,
-                                          fit: BoxFit.cover,
-                                          placeholder:
-                                              (context, url) => Container(
-                                                width: 27,
-                                                height: 27,
-                                                decoration: BoxDecoration(
-                                                  color: Colors.grey[700],
-                                                  shape: BoxShape.circle,
-                                                ),
-                                                child: Icon(
-                                                  Icons.person,
-                                                  color: Colors.white,
-                                                  size: 14,
-                                                ),
-                                              ),
-                                          errorWidget:
-                                              (context, error, stackTrace) =>
-                                                  Container(
-                                                    width: 27,
-                                                    height: 27,
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.grey[700],
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: Icon(
-                                                      Icons.person,
-                                                      color: Colors.white,
-                                                      size: 14,
-                                                    ),
-                                                  ),
-                                        ),
-                                      )
-                                      : Container(
-                                        width: 27,
-                                        height: 27,
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey[700],
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          Icons.person,
-                                          color: Colors.white,
-                                          size: 14,
-                                        ),
-                                      ),
-                            ),
+                  // 부모로 드롭 이벤트 전달 (한 번만 호출)
+                  onProfileImageDragged(photo.id, adjustedPosition);
+                },
+                builder: (context, candidateData, rejectedData) {
+                  return Stack(
+                    alignment: Alignment.topCenter,
+                    children: [
+                      // 배경 이미지
+                      CachedNetworkImage(
+                        imageUrl: photo.imageUrl,
+                        fit: BoxFit.cover,
+                        width: imageWidth, // 실제 이미지 너비
+                        height: imageHeight, // 실제 이미지 높이
+                        placeholder: (context, url) {
+                          return Container(
+                            width: imageWidth,
+                            height: imageHeight,
+                            color: Colors.grey[900],
+                            child: const Center(),
                           );
                         },
                       ),
-                    );
-                  });
-                })(),
-              ],
-            );
-          },
+                      // 카테고리 정보
+                      Padding(
+                        padding: EdgeInsets.only(top: 16.h),
+                        child: IntrinsicWidth(
+                          child: Container(
+                            // width 제거 - 텍스트 길이에 따라 동적으로 조정
+                            height: 32.h,
+                            padding: EdgeInsets.symmetric(horizontal: 16.w),
+                            constraints: BoxConstraints(
+                              minWidth: 60.w, // 최소 너비
+                              maxWidth: imageWidth * 0.8, // 최대 너비 제한
+                            ),
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.5),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text(
+                              categoryName,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 16.sp,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1, // 한 줄로 제한
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      // 오디오 컨트롤 오버레이 (photo_detail처럼)
+                      if (photo.audioUrl.isNotEmpty)
+                        Positioned(
+                          bottom: 16.h,
+                          left: 20.w,
+                          right: 20.w,
+                          child: Container(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: 12.w,
+                              vertical: 8.h,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Color(0xff000000).withValues(alpha: 0.4),
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                            child: Row(
+                              children: [
+                                // 왼쪽 프로필 이미지 (작은 버전)
+                                Container(
+                                  width: 33.w,
+                                  height: 33.w,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: ClipOval(
+                                    child: _buildUserProfileWidget(context),
+                                  ),
+                                ),
+                                SizedBox(width: 12.w),
+
+                                // 가운데 파형 (progress 포함)
+                                Expanded(
+                                  child: SizedBox(
+                                    height: 34.h,
+                                    child: _buildWaveformWidgetWithProgress(),
+                                  ),
+                                ),
+
+                                SizedBox(width: 12.w),
+
+                                // 오른쪽 재생 시간 (실시간 업데이트)
+                                Consumer<AudioController>(
+                                  builder: (context, audioController, child) {
+                                    // 현재 사진의 오디오가 재생 중인지 확인
+                                    final isCurrentAudio =
+                                        audioController.isPlaying &&
+                                        audioController
+                                                .currentPlayingAudioUrl ==
+                                            photo.audioUrl;
+
+                                    // 실시간 재생 시간 사용
+                                    Duration displayDuration = Duration.zero;
+                                    if (isCurrentAudio) {
+                                      displayDuration =
+                                          audioController.currentPosition;
+                                    }
+
+                                    return Text(
+                                      FormatUtils.formatDuration(
+                                        displayDuration,
+                                      ),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      // 모든 댓글의 드롭된 프로필 이미지들 표시 (상대 좌표 사용)
+                      ...(() {
+                        final comments = photoComments[photo.id] ?? [];
+
+                        final commentsWithPosition =
+                            comments
+                                .where(
+                                  (comment) =>
+                                      comment.relativePosition != null ||
+                                      comment.profilePosition != null,
+                                )
+                                .toList();
+
+                        return commentsWithPosition.map((comment) {
+                          // 상대 좌표를 절대 좌표로 변환 (실제 렌더링 크기 사용)
+                          final actualImageSize = Size(
+                            imageWidth.toDouble(),
+                            imageHeight.toDouble(),
+                          );
+                          Offset absolutePosition;
+
+                          if (comment.relativePosition != null) {
+                            // 새로운 상대 좌표 사용
+                            absolutePosition =
+                                PositionConverter.toAbsolutePosition(
+                                  comment.relativePosition!,
+                                  actualImageSize,
+                                );
+                          } else if (comment.profilePosition != null) {
+                            // 기존 절대 좌표 사용 (하위호환성) - 크기 비율 조정 필요
+                            final originalSize = Size(354.0, 500.0); // 원본 고정 크기
+                            final scaleX =
+                                actualImageSize.width / originalSize.width;
+                            final scaleY =
+                                actualImageSize.height / originalSize.height;
+
+                            absolutePosition = Offset(
+                              comment.profilePosition!.dx * scaleX,
+                              comment.profilePosition!.dy * scaleY,
+                            );
+                          } else {
+                            return Container(); // 위치 정보가 없으면 빈 컨테이너
+                          }
+
+                          // 프로필 이미지가 화면을 벗어나지 않도록 위치 조정
+                          final clampedPosition =
+                              PositionConverter.clampPosition(
+                                absolutePosition,
+                                actualImageSize,
+                              );
+
+                          // 디버깅을 위한 로그 추가
+                          debugPrint('🎯 프로필 위치 계산:');
+                          debugPrint(
+                            '  - comment.relativePosition: ${comment.relativePosition}',
+                          );
+                          debugPrint('  - actualImageSize: $actualImageSize');
+                          debugPrint('  - absolutePosition: $absolutePosition');
+                          debugPrint('  - clampedPosition: $clampedPosition');
+                          debugPrint(
+                            '  - final left: ${clampedPosition.dx - 13.5}',
+                          );
+                          debugPrint(
+                            '  - final top: ${clampedPosition.dy - 13.5}',
+                          );
+
+                          return Positioned(
+                            left:
+                                clampedPosition.dx -
+                                13.5, // clampPosition이 이미 중심점을 고려하므로 좌상단으로 조정
+                            top:
+                                clampedPosition.dy -
+                                13.5, // clampPosition이 이미 중심점을 고려하므로 좌상단으로 조정
+                            child: Consumer<AuthController>(
+                              builder: (context, authController, child) {
+                                return InkWell(
+                                  onTap: () async {
+                                    if (comment.audioUrl.isNotEmpty) {
+                                      try {
+                                        final audioController =
+                                            Provider.of<AudioController>(
+                                              context,
+                                              listen: false,
+                                            );
+                                        await audioController.toggleAudio(
+                                          comment.audioUrl,
+                                          commentId: comment.id,
+                                        );
+                                      } catch (e) {
+                                        debugPrint('❌ Feed - 음성 재생 실패: $e');
+                                      }
+                                    }
+                                  },
+                                  child: Container(
+                                    width: 27,
+                                    height: 27,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child:
+                                        comment.profileImageUrl.isNotEmpty
+                                            ? ClipOval(
+                                              child: CachedNetworkImage(
+                                                imageUrl:
+                                                    comment.profileImageUrl,
+                                                width: 27,
+                                                height: 27,
+                                                fit: BoxFit.cover,
+                                                placeholder:
+                                                    (context, url) => Container(
+                                                      width: 27,
+                                                      height: 27,
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.grey[700],
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.person,
+                                                        color: Colors.white,
+                                                        size: 14,
+                                                      ),
+                                                    ),
+                                                errorWidget:
+                                                    (
+                                                      context,
+                                                      error,
+                                                      stackTrace,
+                                                    ) => Container(
+                                                      width: 27,
+                                                      height: 27,
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.grey[700],
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: Icon(
+                                                        Icons.person,
+                                                        color: Colors.white,
+                                                        size: 14,
+                                                      ),
+                                                    ),
+                                              ),
+                                            )
+                                            : Container(
+                                              width: 27,
+                                              height: 27,
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey[700],
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: Icon(
+                                                Icons.person,
+                                                color: Colors.white,
+                                                size: 14,
+                                              ),
+                                            ),
+                                  ),
+                                );
+                              },
+                            ),
+                          );
+                        });
+                      })(),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
         ),
       ],
     );
