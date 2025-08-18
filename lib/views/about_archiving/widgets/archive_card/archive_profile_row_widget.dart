@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../../controllers/auth_controller.dart';
@@ -38,7 +37,7 @@ class ArchiveProfileRowWidget extends StatelessWidget {
         return Align(
           alignment: Alignment.centerLeft,
           child: SizedBox(
-            height: 19.sp,
+            height: 19,
             width: (displayMates.length - 1) * 12.0 + 19.0,
             child: Stack(
               children:

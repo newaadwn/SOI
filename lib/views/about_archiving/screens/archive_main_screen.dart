@@ -2,11 +2,15 @@ import 'dart:async'; // Timer 사용을 위해 추가
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../controllers/category_controller.dart';
+import '../../../models/selected_friend_model.dart';
 import '../../../theme/theme.dart';
+import '../../about_friends/friend_list_add_screen.dart';
+import '../components/overlapping_profiles_widget.dart';
 import 'archive_detail/all_archives_screen.dart';
 import 'archive_detail/my_archives_screen.dart';
 import 'archive_detail/shared_archives_screen.dart';
@@ -40,6 +44,9 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     false,
   ); // ValueNotifier 사용
   String _originalText = ''; // 원본 텍스트 저장
+
+  // 선택된 친구들 상태 관리
+  List<SelectedFriendModel> _selectedFriends = [];
 
   // 탭 화면 목록을 동적으로 생성하는 메서드
   List<Widget> get _screens => [
@@ -505,203 +512,273 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder:
-          (context) => Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Container(
-              height: 200.h,
-              decoration: const BoxDecoration(
-                color: Color(0xFF171717),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(24.8)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 헤더 영역
-                  Padding(
-                    padding: EdgeInsets.fromLTRB(12.w, 17.h, 20.w, 8.h),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        // 뒤로가기 버튼
-                        SizedBox(
-                          width: 34.w,
-                          height: 38.h,
-                          child: IconButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              _categoryNameController.clear();
-                            },
-                            icon: Icon(
-                              Icons.arrow_back_ios,
-                              color: const Color(0xFFD9D9D9),
+          (context) => StatefulBuilder(
+            builder: (BuildContext context, StateSetter setModalState) {
+              return Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                ),
+                child: Container(
+                  height: 200.h,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFF171717),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(24.8),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // 헤더 영역
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(12.w, 17.h, 20.w, 8.h),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            // 뒤로가기 버튼
+                            SizedBox(
+                              width: 34.w,
+                              height: 38.h,
+                              child: IconButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  _categoryNameController.clear();
+                                  setState(() {
+                                    _selectedFriends = [];
+                                  });
+                                },
+                                icon: Icon(
+                                  Icons.arrow_back_ios,
+                                  color: const Color(0xFFD9D9D9),
+                                ),
+                                padding: EdgeInsets.zero,
+                              ),
                             ),
-                            padding: EdgeInsets.zero,
-                          ),
-                        ),
 
-                        // 제목
-                        Text(
-                          '새 카테고리 만들기',
-                          style: TextStyle(
-                            color: const Color(0xFFFFFFFF),
-                            fontSize: 16.sp,
-                            fontWeight: FontWeight.w600,
-                            fontFamily: 'Pretendard',
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-
-                        // 저장 버튼
-                        Container(
-                          width: 51.w,
-                          height: 25.h,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF323232),
-                            borderRadius: BorderRadius.circular(16.5),
-                          ),
-                          child: TextButton(
-                            onPressed: () {
-                              _createNewCategory();
-                            },
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: Size.zero,
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                            child: Text(
-                              '저장',
+                            // 제목
+                            Text(
+                              '새 카테고리 만들기',
                               style: TextStyle(
                                 color: const Color(0xFFFFFFFF),
-                                fontSize: 14.sp,
+                                fontSize: 16.sp,
                                 fontWeight: FontWeight.w600,
                                 fontFamily: 'Pretendard',
-                                letterSpacing: -0.4,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+
+                            // 저장 버튼
+                            Container(
+                              width: 51.w,
+                              height: 25.h,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF323232),
+                                borderRadius: BorderRadius.circular(16.5),
+                              ),
+                              child: TextButton(
+                                onPressed: () {
+                                  _createNewCategory();
+                                },
+                                style: TextButton.styleFrom(
+                                  padding: EdgeInsets.zero,
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                child: Text(
+                                  '저장',
+                                  style: TextStyle(
+                                    color: const Color(0xFFFFFFFF),
+                                    fontSize: 14.sp,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: 'Pretendard',
+                                    letterSpacing: -0.4,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // 구분선
+                      Container(
+                        width: screenWidth,
+                        height: 1,
+                        color: const Color(0xFF3D3D3D),
+                        margin: EdgeInsets.symmetric(horizontal: 2.w),
+                      ),
+
+                      // 친구 추가 섹션
+                      if (_selectedFriends.isEmpty)
+                        // 친구 추가하기 버튼
+                        GestureDetector(
+                          onTap: () async {
+                            // add_category_widget.dart와 동일한 방식으로 처리
+                            final result =
+                                await Navigator.push<List<SelectedFriendModel>>(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder:
+                                        (context) =>
+                                            const FriendListAddScreen(),
+                                  ),
+                                );
+
+                            if (result != null && result.isNotEmpty) {
+                              setModalState(() {
+                                _selectedFriends = result;
+                              });
+
+                              for (final friend in _selectedFriends) {
+                                debugPrint('- ${friend.name} (${friend.uid})');
+                              }
+                            }
+                          },
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 10.h, left: 12.w),
+                            child: Container(
+                              width: 117.w,
+                              height: 35.h,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF323232),
+                                borderRadius: BorderRadius.circular(16.5),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Image.asset(
+                                    'assets/category_add.png',
+                                    width: 17.sp,
+                                    height: 17.sp,
+                                  ),
+                                  SizedBox(width: 6.w),
+                                  Text(
+                                    '친구 추가하기',
+                                    style: TextStyle(
+                                      color: const Color(0xFFE2E2E2),
+                                      fontSize: 14.sp,
+                                      fontWeight: FontWeight.w400,
+                                      fontFamily: 'Pretendard',
+                                      letterSpacing: -0.4,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
 
-                  // 구분선
-                  Container(
-                    width: screenWidth,
-                    height: 1,
-                    color: const Color(0xFF3D3D3D),
-                    margin: EdgeInsets.symmetric(horizontal: 2.w),
-                  ),
-
-                  // 친구 추가 섹션
-                  Padding(
-                    padding: EdgeInsets.only(top: 10.h, left: 12.w),
-                    child: Container(
-                      width: 117.w,
-                      height: 35.h,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF323232),
-                        borderRadius: BorderRadius.circular(16.5),
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Image.asset(
-                            'assets/category_add.png',
-                            width: 17.sp,
-                            height: 17.sp,
-                          ),
-                          SizedBox(width: 6.w),
-                          Text(
-                            '친구 추가하기',
-                            style: TextStyle(
-                              color: const Color(0xFFE2E2E2),
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w400,
-                              fontFamily: 'Pretendard',
-                              letterSpacing: -0.4,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-                  // 입력 필드 영역
-                  Padding(
-                    padding: EdgeInsets.only(left: 22.w),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        TextField(
-                          controller: _categoryNameController,
-                          maxLength: 20,
-                          cursorColor: const Color(0xFFCCCCCC),
-                          style: TextStyle(
-                            color: const Color(0xFFFFFFFF),
-                            fontSize: 14.sp,
-                            fontFamily: 'Pretendard',
-                          ),
-                          decoration: InputDecoration(
-                            hintText: '카테고리의 이름을 입력해 주세요.',
-                            hintStyle: TextStyle(
-                              color: const Color(0xFFCCCCCC),
-                              fontSize: 14.sp,
-                              fontWeight: FontWeight.w400,
-                              fontFamily: 'Pretendard',
-                              letterSpacing: -0.4,
-                            ),
-                            border: InputBorder.none,
-                            counterText: '',
-                          ),
-                          autofocus: true,
-                        ),
-
-                        // 커스텀 글자 수 표시
+                      // 선택된 친구들 표시 (+ 버튼 포함)
+                      if (_selectedFriends.isNotEmpty)
                         Padding(
-                          padding: EdgeInsets.only(right: 11.w),
-                          child: Align(
-                            alignment: Alignment.centerRight,
-                            child: ValueListenableBuilder<TextEditingValue>(
-                              valueListenable: _categoryNameController,
-                              builder: (context, value, child) {
-                                return Text(
-                                  '${value.text.length}/20자',
-                                  style: TextStyle(
-                                    color: const Color(0xFFCCCCCC),
-                                    fontSize: 12.sp,
-                                    fontWeight: FontWeight.w500,
-                                    fontFamily: 'Pretendard',
-                                    letterSpacing: -0.4,
-                                  ),
-                                );
-                              },
-                            ),
+                          padding: EdgeInsets.only(top: 10.h, left: 12.w),
+                          child: OverlappingProfilesWidget(
+                            selectedFriends: _selectedFriends,
+                            onAddPressed: () async {
+                              final result = await Navigator.push<
+                                List<SelectedFriendModel>
+                              >(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) => const FriendListAddScreen(),
+                                ),
+                              );
+
+                              if (result != null && result.isNotEmpty) {
+                                setModalState(() {
+                                  _selectedFriends = result;
+                                });
+
+                                for (final friend in _selectedFriends) {
+                                  debugPrint(
+                                    '- ${friend.name} (${friend.uid})',
+                                  );
+                                }
+                              }
+                            },
+                            showAddButton: true, // + 버튼 표시
                           ),
                         ),
-                      ],
-                    ),
+
+                      // 입력 필드 영역
+                      Padding(
+                        padding: EdgeInsets.only(left: 22.w),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            TextField(
+                              controller: _categoryNameController,
+                              maxLength: 20,
+                              cursorColor: const Color(0xFFCCCCCC),
+                              style: TextStyle(
+                                color: const Color(0xFFFFFFFF),
+                                fontSize: 14.sp,
+                                fontFamily: 'Pretendard',
+                              ),
+                              decoration: InputDecoration(
+                                hintText: '카테고리의 이름을 입력해 주세요.',
+                                hintStyle: TextStyle(
+                                  color: const Color(0xFFCCCCCC),
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w400,
+                                  fontFamily: 'Pretendard',
+                                  letterSpacing: -0.4,
+                                ),
+                                border: InputBorder.none,
+                                counterText: '',
+                              ),
+                              autofocus: true,
+                            ),
+
+                            // 커스텀 글자 수 표시
+                            Padding(
+                              padding: EdgeInsets.only(right: 11.w),
+                              child: Align(
+                                alignment: Alignment.centerRight,
+                                child: ValueListenableBuilder<TextEditingValue>(
+                                  valueListenable: _categoryNameController,
+                                  builder: (context, value, child) {
+                                    return Text(
+                                      '${value.text.length}/20자',
+                                      style: TextStyle(
+                                        color: const Color(0xFFCCCCCC),
+                                        fontSize: 12.sp,
+                                        fontWeight: FontWeight.w500,
+                                        fontFamily: 'Pretendard',
+                                        letterSpacing: -0.4,
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
+                ),
+              );
+            },
           ),
-    );
+    ).then((_) {
+      // 바텀시트가 닫힐 때 선택된 친구들 초기화
+      if (mounted) {
+        setState(() {
+          _selectedFriends = [];
+        });
+      }
+    });
   }
 
   // 카테고리 생성 처리 함수
   Future<void> _createNewCategory() async {
     if (_categoryNameController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '카테고리 이름을 입력해주세요',
-            style: TextStyle(color: Colors.white),
-          ),
-          backgroundColor: const Color(0xFF5A5A5A),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(_snackBarComponenet('카테고리 이름을 입력해주세요'));
       return;
     }
 
@@ -720,20 +797,22 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
       final String? userId = authController.getUserId;
 
       if (userId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              '로그인이 필요합니다. 다시 로그인해주세요.',
-              style: TextStyle(color: Colors.white),
-            ),
-            backgroundColor: const Color(0xFF5A5A5A),
-          ),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(_snackBarComponenet('로그인이 필요합니다. 다시 로그인해주세요.'));
         return;
       }
 
-      // 메이트 리스트 준비 (현재 사용자만 포함)
+      // 메이트 리스트 준비 (현재 사용자 + 선택된 친구들)
+      // 중요: mates 필드에는 Firebase Auth UID를 사용해야 함
       List<String> mates = [userId];
+
+      // 선택된 친구들의 UID 추가
+      for (final friend in _selectedFriends) {
+        if (!mates.contains(friend.uid)) {
+          mates.add(friend.uid);
+        }
+      }
 
       // 카테고리 생성
       await categoryController.createCategory(
@@ -744,17 +823,55 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
       // bottom sheet 닫기
       Navigator.pop(context);
       _categoryNameController.clear();
+
+      // 선택된 친구들 초기화
+      setState(() {
+        _selectedFriends = [];
+      });
+
+      // 성공 메시지 표시
+      ScaffoldMessenger.of(context).showSnackBar(_showSuccessSnackBar());
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '카테고리 생성 중 오류가 발생했습니다',
-            style: TextStyle(color: Colors.white),
-          ),
-          backgroundColor: const Color(0xFF5A5A5A),
-        ),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(_snackBarComponenet('카테고리 생성 중 오류가 발생했습니다'));
     }
+  }
+
+  SnackBar _showSuccessSnackBar() {
+    return SnackBar(
+      content: Row(
+        children: [
+          SvgPicture.asset(
+            'assets/archive_icon.svg',
+            width: 19.sp,
+            height: 17.sp,
+            colorFilter: ColorFilter.mode(Color(0xffc2c0c0), BlendMode.srcIn),
+          ),
+          SizedBox(width: 15.w),
+          Text(
+            '새 카테고리가 추가 되었습니다.',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16.sp,
+              fontFamily: 'Pretendard',
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+      backgroundColor: Color(0xFF323232),
+      duration: Duration(seconds: 2),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.5)),
+    );
+  }
+
+  SnackBar _snackBarComponenet(String content) {
+    return SnackBar(
+      content: Text(content, style: TextStyle(color: Colors.white)),
+      backgroundColor: const Color(0xFF5A5A5A),
+    );
   }
 
   @override

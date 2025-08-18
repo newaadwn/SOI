@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../models/selected_friend_model.dart';
+import '../../../views/about_archiving/components/overlapping_profiles_widget.dart';
 import '../../about_friends/friend_list_add_screen.dart';
 
 // 카테고리 추가 UI 위젯
@@ -27,7 +28,29 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
   // 선택된 친구들 상태 관리
   List<SelectedFriendModel> _selectedFriends = [];
 
-  void _handleSavePressed() {
+  void _handleSavePressed() async {
+    // 카테고리 이름이 입력되었는지 확인
+    if (widget.textController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '카테고리 이름을 입력해주세요',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 14.sp,
+              fontFamily: 'Pretendard',
+            ),
+          ),
+          backgroundColor: Color(0xFF323232),
+          duration: Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      );
+      return;
+    }
+
+    // 저장 콜백 호출
     widget.onSavePressed(_selectedFriends);
   }
 
@@ -43,8 +66,6 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
         _selectedFriends = result;
       });
 
-      debugPrint('=== 선택된 친구 정보 수신 ===');
-      debugPrint('선택된 친구 수: ${_selectedFriends.length}');
       for (final friend in _selectedFriends) {
         debugPrint('- ${friend.name} (${friend.uid})');
       }
@@ -53,8 +74,6 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-
     return Container(
       color: Color(0xFF171717),
       child: Column(
@@ -90,7 +109,7 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
                 // 저장 버튼
                 SizedBox(
                   width: 51.w,
-                  height: 35.h,
+                  height: 25.h,
                   child: ElevatedButton(
                     onPressed: _handleSavePressed,
                     style: ElevatedButton.styleFrom(
@@ -167,11 +186,12 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
 
                     // 선택된 친구들 표시
                     if (_selectedFriends.isNotEmpty) ...[
-                      SizedBox(height: 16.h),
-                      _buildOverlappingProfilesWidget(),
+                      OverlappingProfilesWidget(
+                        selectedFriends: _selectedFriends,
+                        onAddPressed: _handleAddFriends,
+                        showAddButton: true, // + 버튼 표시
+                      ),
                     ],
-
-                    SizedBox(height: screenHeight * (14 / 852)),
 
                     // 텍스트 입력 영역
                     Column(
@@ -204,7 +224,7 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
                             required isFocused,
                             maxLength,
                           }) {
-                            return null; // 기본 카운터 숨김
+                            return null;
                           },
                         ),
 
@@ -235,101 +255,6 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
                   ],
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 겹쳐지는 프로필 이미지들과 + 버튼을 표시하는 위젯
-  Widget _buildOverlappingProfilesWidget() {
-    // 최대 4개의 프로필만 표시 (5번째는 + 버튼)
-    final displayFriends = _selectedFriends.take(4).toList();
-    final hasMoreFriends = _selectedFriends.length > 4;
-
-    // 전체 너비 계산: 첫 번째 프로필(24) + 겹치는 부분들(16 * 개수) + + 버튼(24)
-    final totalProfiles =
-        displayFriends.length +
-        (hasMoreFriends || displayFriends.length < 5 ? 1 : 0);
-    final containerWidth = 24.0 + (totalProfiles - 1) * 16.0;
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
-      decoration: BoxDecoration(
-        color: Color(0xFF323232),
-        borderRadius: BorderRadius.circular(20.r),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 겹쳐지는 프로필 이미지들
-          SizedBox(
-            height: 24.h,
-            width: containerWidth,
-            child: Stack(
-              children: [
-                // 친구 프로필들
-                ...displayFriends.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final friend = entry.value;
-
-                  return Positioned(
-                    left: index * 16.0,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Color(0xFF323232), width: 1),
-                      ),
-                      child: CircleAvatar(
-                        radius: 11,
-                        backgroundColor: Color(0xFF404040),
-                        backgroundImage:
-                            friend.profileImageUrl != null
-                                ? NetworkImage(friend.profileImageUrl!)
-                                : null,
-                        child:
-                            friend.profileImageUrl == null
-                                ? Text(
-                                  friend.name.isNotEmpty
-                                      ? friend.name[0].toUpperCase()
-                                      : '?',
-                                  style: TextStyle(
-                                    color: Color(0xFFE2E2E2),
-                                    fontSize: 8.sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                )
-                                : null,
-                      ),
-                    ),
-                  );
-                }),
-
-                // + 버튼 (항상 표시)
-                Positioned(
-                  left: displayFriends.length * 16.0,
-                  child: GestureDetector(
-                    onTap: _handleAddFriends,
-                    child: Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFF404040),
-                        border: Border.all(color: Color(0xFF323232), width: 1),
-                      ),
-                      child: Icon(
-                        Icons.add,
-                        color: Color(0xFFE2E2E2),
-                        size: 14.sp,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ),
         ],

@@ -14,7 +14,7 @@ import '../../../../models/photo_data_model.dart';
 import '../../../../utils/format_utils.dart';
 import '../../../../utils/position_converter.dart';
 import '../../../about_camera/widgets/audio_recorder_widget.dart';
-import '../../widgets/wave_form_widget/custom_waveform_widget.dart';
+import '../../widgets/common/wave_form_widget/custom_waveform_widget.dart';
 
 class PhotoDetailScreen extends StatefulWidget {
   final List<PhotoDataModel> photos;
@@ -51,7 +51,12 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       {}; // 현재 사용자의 드래그 위치만 임시 저장
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
   _commentStreams = {};
-  // (필요 시 확장) 댓글 저장 여부 맵 제거됨 – UI에서 사용하지 않아 정리
+
+  // Feed와 동일한 음성 댓글 상태 관리 변수들 추가
+  final Map<String, bool> _voiceCommentSavedStates = {};
+  final Map<String, String> _savedCommentIds = {};
+  final Map<String, String> _commentProfileImageUrls = {};
+  final Map<String, String> _droppedProfileImageUrls = {};
 
   // PageController를 상태로 유지 (build마다 새로 생성 방지)
   late final PageController _pageController;
@@ -63,6 +68,11 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     _pageController = PageController(initialPage: widget.initialIndex);
     _loadUserProfileImage();
     _subscribeToVoiceCommentsForCurrentPhoto();
+
+    // 초기 사진의 댓글도 직접 로드
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadCommentsForPhoto(widget.photos[_currentIndex].id);
+    });
   }
 
   @override
@@ -132,22 +142,27 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     try {
       _commentStreams[photoId]?.cancel();
 
+      // 현재 사용자 ID 가져오기
+      final currentUserId = _authController?.currentUser?.uid;
+      if (currentUserId == null) {
+        return;
+      }
+
       _commentStreams[photoId] = CommentRecordController()
           .getCommentRecordsStream(photoId)
           .listen(
-            (comments) => _handleCommentsUpdate(photoId, comments),
-            onError: (error) {
-              // Real-time comment subscription error
-            },
+            (comments) =>
+                _handleCommentsUpdate(photoId, currentUserId, comments),
           );
     } catch (e) {
-      // Failed to start real-time comment subscription
+      debugPrint('❌ Photo Detail - 실시간 댓글 구독 시작 실패 - 사진 $photoId: $e');
     }
   }
 
   /// 댓글 업데이트 처리
   void _handleCommentsUpdate(
     String photoId,
+    String currentUserId,
     List<CommentRecordModel> comments,
   ) {
     if (!mounted) return;
@@ -155,6 +170,66 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     setState(() {
       _photoComments[photoId] = comments;
     });
+
+    // 현재 사용자의 댓글 찾기 (Feed와 동일한 로직)
+    final userComment =
+        comments
+            .where((comment) => comment.recorderUser == currentUserId)
+            .firstOrNull;
+
+    if (userComment != null) {
+      if (mounted) {
+        setState(() {
+          _voiceCommentSavedStates[photoId] = true;
+          _savedCommentIds[photoId] = userComment.id;
+
+          if (userComment.profileImageUrl.isNotEmpty) {
+            _commentProfileImageUrls[photoId] = userComment.profileImageUrl;
+          }
+
+          // relativePosition 필드 우선 사용 (Feed와 동일한 로직)
+          if (userComment.relativePosition != null) {
+            Offset relativePosition;
+
+            if (userComment.relativePosition is Map<String, dynamic>) {
+              relativePosition = PositionConverter.mapToRelativePosition(
+                userComment.relativePosition as Map<String, dynamic>,
+              );
+            } else {
+              relativePosition = userComment.relativePosition!;
+            }
+
+            _profileImagePositions[photoId] = relativePosition;
+            _droppedProfileImageUrls[photoId] = userComment.profileImageUrl;
+          } else if (userComment.profilePosition != null) {
+            // 하위 호환성을 위한 기존 profilePosition 처리 (향후 제거 예정)
+            Offset relativePosition;
+
+            if (userComment.profilePosition is Map<String, dynamic>) {
+              relativePosition = PositionConverter.mapToRelativePosition(
+                userComment.profilePosition as Map<String, dynamic>,
+              );
+            } else {
+              relativePosition = userComment.profilePosition!;
+            }
+
+            _profileImagePositions[photoId] = relativePosition;
+            _droppedProfileImageUrls[photoId] = userComment.profileImageUrl;
+          }
+        });
+      }
+    } else {
+      // 현재 사용자의 댓글이 없는 경우 상태 초기화 (Feed와 동일한 로직)
+      if (mounted) {
+        setState(() {
+          _voiceCommentSavedStates[photoId] = false;
+          _savedCommentIds.remove(photoId);
+          _profileImagePositions[photoId] = null;
+          _commentProfileImageUrls.remove(photoId);
+          _droppedProfileImageUrls.remove(photoId);
+        });
+      }
+    }
   }
 
   /// Firestore에 프로필 위치 업데이트 (상대 좌표 사용)
@@ -165,13 +240,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     Offset absolutePosition,
   ) async {
     try {
-      debugPrint('=== 프로필 위치 업데이트 시작 ===');
-      debugPrint('photoId: $photoId');
-      debugPrint('commentId: $commentId');
-      debugPrint('입력 절대 위치: $absolutePosition');
-
       if (commentId.isEmpty) {
-        debugPrint('❌ 댓글 ID가 비어있음');
         return;
       }
 
@@ -216,6 +285,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
   // ==================== Core Methods ====================
   void _onPageChanged(int index) {
+    final newPhotoId = widget.photos[index].id;
+
     setState(() {
       _currentIndex = index;
       _profileImageRefreshKey++;
@@ -223,6 +294,27 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     _stopAudio();
     _loadUserProfileImage();
     _subscribeToVoiceCommentsForCurrentPhoto();
+
+    // 새 페이지의 댓글을 강제로 한 번 로드
+    _loadCommentsForPhoto(newPhotoId);
+  }
+
+  /// 특정 사진의 댓글을 직접 로드 (실시간 스트림과 별개)
+  Future<void> _loadCommentsForPhoto(String photoId) async {
+    try {
+      final commentController = CommentRecordController();
+      await commentController.loadCommentRecordsByPhotoId(photoId);
+      final comments = commentController.getCommentsByPhotoId(photoId);
+
+      if (mounted) {
+        final currentUserId = _authController?.currentUser?.uid;
+        if (currentUserId != null) {
+          _handleCommentsUpdate(photoId, currentUserId, comments);
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Photo Detail - 댓글 직접 로드 실패: $e');
+    }
   }
 
   // 오디오 재생/일시정지
@@ -479,10 +571,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                         return (details.data).isNotEmpty;
                       },
                       onAcceptWithDetails: (details) {
-                        debugPrint(
-                          'DragTarget에서 드롭 처리 시작 - 전역 위치: ${details.offset}',
-                        );
-
                         // 드롭된 좌표를 사진 내 상대 좌표로 변환
                         final RenderBox renderBox =
                             builderContext.findRenderObject() as RenderBox;
@@ -490,15 +578,11 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                           details.offset,
                         );
 
-                        debugPrint('변환된 로컬 위치: $localPosition');
-
                         // 프로필 이미지 크기(27x27)의 절반만큼 보정하여 중심점으로 조정
                         final adjustedPosition = Offset(
                           localPosition.dx,
                           localPosition.dy,
                         );
-
-                        debugPrint('보정된 최종 위치: $adjustedPosition');
 
                         // 사진 영역 내 상대 좌표로 저장
                         setState(() {
@@ -536,153 +620,149 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                             ),
 
                             // 모든 댓글의 드롭된 프로필 이미지들 표시 (상대 좌표 사용)
-                            ...(_photoComments[photo.id] ?? [])
-                                .where(
-                                  (comment) =>
-                                      comment.relativePosition != null ||
-                                      comment.profilePosition != null,
-                                )
-                                .map((comment) {
-                                  // 상대 좌표를 절대 좌표로 변환
-                                  final imageSize = Size(354.w, 500.h);
-                                  Offset absolutePosition;
+                            ...(() {
+                              final comments = _photoComments[photo.id] ?? [];
 
-                                  if (comment.relativePosition != null) {
-                                    // 새로운 상대 좌표 사용
-                                    absolutePosition =
-                                        PositionConverter.toAbsolutePosition(
-                                          comment.relativePosition!,
-                                          imageSize,
-                                        );
-                                    debugPrint(
-                                      '🔍 댓글 ${comment.id} 상대 위치: ${comment.relativePosition} → 절대 위치: $absolutePosition',
-                                    );
-                                  } else if (comment.profilePosition != null) {
-                                    // 기존 절대 좌표 사용 (하위호환성)
-                                    absolutePosition = comment.profilePosition!;
-                                    debugPrint(
-                                      '🔍 댓글 ${comment.id} 기존 절대 위치: $absolutePosition',
-                                    );
-                                  } else {
-                                    return Container(); // 위치 정보가 없으면 빈 컨테이너
-                                  }
+                              final commentsWithPosition =
+                                  comments
+                                      .where(
+                                        (comment) =>
+                                            comment.relativePosition != null ||
+                                            comment.profilePosition != null,
+                                      )
+                                      .toList();
 
-                                  // 프로필 이미지가 화면을 벗어나지 않도록 위치 조정
-                                  final clampedPosition =
-                                      PositionConverter.clampPosition(
-                                        absolutePosition,
+                              return commentsWithPosition.map((comment) {
+                                // 상대 좌표를 절대 좌표로 변환
+                                final imageSize = Size(354.w, 500.h);
+                                Offset absolutePosition;
+
+                                if (comment.relativePosition != null) {
+                                  // 새로운 상대 좌표 사용
+                                  absolutePosition =
+                                      PositionConverter.toAbsolutePosition(
+                                        comment.relativePosition!,
                                         imageSize,
                                       );
+                                } else if (comment.profilePosition != null) {
+                                  // 기존 절대 좌표 사용 (하위호환성)
+                                  absolutePosition = comment.profilePosition!;
+                                } else {
+                                  return Container();
+                                }
 
-                                  return Positioned(
-                                    left: clampedPosition.dx - 13.5,
-                                    top: clampedPosition.dy - 13.5,
-                                    child: Consumer<AuthController>(
-                                      builder: (
-                                        context,
-                                        authController,
-                                        child,
-                                      ) {
-                                        return InkWell(
-                                          onTap: () async {
-                                            final audioController =
-                                                Provider.of<AudioController>(
-                                                  context,
-                                                  listen: false,
-                                                );
-                                            if (comment.audioUrl.isNotEmpty) {
-                                              await audioController.toggleAudio(
-                                                comment.audioUrl,
-                                                commentId: comment.id,
+                                // 프로필 이미지가 화면을 벗어나지 않도록 위치 조정
+                                final clampedPosition =
+                                    PositionConverter.clampPosition(
+                                      absolutePosition,
+                                      imageSize,
+                                    );
+
+                                return Positioned(
+                                  left: clampedPosition.dx - 13.5,
+                                  top: clampedPosition.dy - 13.5,
+                                  child: Consumer<AuthController>(
+                                    builder: (context, authController, child) {
+                                      return InkWell(
+                                        onTap: () async {
+                                          final audioController =
+                                              Provider.of<AudioController>(
+                                                context,
+                                                listen: false,
                                               );
-                                            }
-                                          },
-                                          child: SizedBox(
-                                            width: 27,
-                                            height: 27,
-                                            child:
-                                                comment
-                                                        .profileImageUrl
-                                                        .isNotEmpty
-                                                    ? ClipOval(
-                                                      child: CachedNetworkImage(
-                                                        imageUrl:
-                                                            comment
-                                                                .profileImageUrl,
-                                                        width: 27,
-                                                        height: 27,
-                                                        key: ValueKey(
-                                                          'detail_profile_${comment.profileImageUrl}_$_profileImageRefreshKey',
-                                                        ),
-                                                        fit: BoxFit.cover,
-                                                        placeholder:
-                                                            (
-                                                              context,
-                                                              url,
-                                                            ) => Container(
-                                                              width: 27,
-                                                              height: 27,
-                                                              decoration: BoxDecoration(
-                                                                color:
-                                                                    Colors
-                                                                        .grey[700],
-                                                                shape:
-                                                                    BoxShape
-                                                                        .circle,
-                                                              ),
-                                                              child: Icon(
-                                                                Icons.person,
-                                                                color:
-                                                                    Colors
-                                                                        .white,
-                                                                size: 14.sp,
-                                                              ),
-                                                            ),
-                                                        errorWidget:
-                                                            (
-                                                              context,
-                                                              error,
-                                                              stackTrace,
-                                                            ) => Container(
-                                                              width: 27,
-                                                              height: 27,
-                                                              decoration: BoxDecoration(
-                                                                color:
-                                                                    Colors
-                                                                        .grey[700],
-                                                                shape:
-                                                                    BoxShape
-                                                                        .circle,
-                                                              ),
-                                                              child: Icon(
-                                                                Icons.person,
-                                                                color:
-                                                                    Colors
-                                                                        .white,
-                                                                size: 14.sp,
-                                                              ),
-                                                            ),
-                                                      ),
-                                                    )
-                                                    : Container(
+                                          if (comment.audioUrl.isNotEmpty) {
+                                            await audioController.toggleAudio(
+                                              comment.audioUrl,
+                                              commentId: comment.id,
+                                            );
+                                          }
+                                        },
+                                        child: Container(
+                                          width: 27,
+                                          height: 27,
+                                          decoration: BoxDecoration(
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child:
+                                              comment.profileImageUrl.isNotEmpty
+                                                  ? ClipOval(
+                                                    child: CachedNetworkImage(
+                                                      imageUrl:
+                                                          comment
+                                                              .profileImageUrl,
                                                       width: 27,
                                                       height: 27,
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.grey[700],
-                                                        shape: BoxShape.circle,
+                                                      key: ValueKey(
+                                                        'detail_profile_${comment.profileImageUrl}_$_profileImageRefreshKey',
                                                       ),
-                                                      child: Icon(
-                                                        Icons.person,
-                                                        color: Colors.white,
-                                                        size: 14.sp,
-                                                      ),
+                                                      fit: BoxFit.cover,
+                                                      placeholder:
+                                                          (
+                                                            context,
+                                                            url,
+                                                          ) => Container(
+                                                            width: 27,
+                                                            height: 27,
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  Colors
+                                                                      .grey[700],
+                                                              shape:
+                                                                  BoxShape
+                                                                      .circle,
+                                                            ),
+                                                            child: Icon(
+                                                              Icons.person,
+                                                              color:
+                                                                  Colors.white,
+                                                              size: 14.sp,
+                                                            ),
+                                                          ),
+                                                      errorWidget:
+                                                          (
+                                                            context,
+                                                            error,
+                                                            stackTrace,
+                                                          ) => Container(
+                                                            width: 27,
+                                                            height: 27,
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  Colors
+                                                                      .grey[700],
+                                                              shape:
+                                                                  BoxShape
+                                                                      .circle,
+                                                            ),
+                                                            child: Icon(
+                                                              Icons.person,
+                                                              color:
+                                                                  Colors.white,
+                                                              size: 14.sp,
+                                                            ),
+                                                          ),
                                                     ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  );
-                                }),
+                                                  )
+                                                  : Container(
+                                                    width: 27,
+                                                    height: 27,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.grey[700],
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(
+                                                      Icons.person,
+                                                      color: Colors.white,
+                                                      size: 14.sp,
+                                                    ),
+                                                  ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                );
+                              });
+                            })(),
 
                             // 오디오 컨트롤 오버레이 (하단에 배치)
                             if (photo.audioUrl.isNotEmpty)

@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:audio_waveforms/audio_waveforms.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/audio_controller.dart';
-import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
+import '../../about_archiving/widgets/common/wave_form_widget/custom_waveform_widget.dart';
 
 /// 음성 댓글 전용 위젯
 ///
 /// 피드 화면에서 음성 댓글을 녹음하고 재생하는 기능을 제공합니다.
 /// AudioRecorderWidget보다 단순하고 음성 댓글에 최적화되어 있습니다.
-
 enum VoiceCommentState {
   idle, // 초기 상태 (녹음 버튼 표시)
   recording, // 녹음 중
@@ -23,6 +23,7 @@ class VoiceCommentWidget extends StatefulWidget {
   onRecordingCompleted; // 녹음 완료 콜백 (duration 추가)
   final VoidCallback? onRecordingDeleted; // 녹음 삭제 콜백
   final VoidCallback? onSaved; // 저장 완료 콜백 추가
+  final VoidCallback? onSaveRequested; // 저장 요청 콜백 (파형 클릭 시)
   final String? profileImageUrl; // 프로필 이미지 URL 추가
   final bool startAsSaved; // 저장된 상태로 시작할지 여부
   final Function(Offset)? onProfileImageDragged; // 프로필 이미지 드래그 콜백
@@ -33,6 +34,7 @@ class VoiceCommentWidget extends StatefulWidget {
     this.onRecordingCompleted,
     this.onRecordingDeleted,
     this.onSaved,
+    this.onSaveRequested, // 저장 요청 콜백 추가
     this.profileImageUrl, // 프로필 이미지 URL 추가
     this.startAsSaved = false, // 기본값은 false
     this.onProfileImageDragged, // 드래그 콜백 추가
@@ -225,75 +227,74 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
   /// 녹음 중 UI (AudioRecorderWidget과 동일)
   Widget _buildRecordingUI(String duration) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
-
     return Container(
-      width: (screenWidth * 0.956).clamp(300.0, 400.0), // 반응형 너비
-      height: (screenHeight * 0.061).clamp(45.0, 65.0), // 반응형 높이
+      width: 354.w, // 반응형 너비
+      height: 41.h, // 반응형 높이
       decoration: BoxDecoration(
         color: const Color(0xff1c1c1c),
-        borderRadius: BorderRadius.circular(
-          (screenWidth * 0.037).clamp(12.0, 18.0),
-        ), // 반응형 반지름
+        borderRadius: BorderRadius.circular(14.6),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          SizedBox(width: (screenWidth * 0.036).clamp(10.0, 18.0)), // 반응형 간격
+          SizedBox(width: 18.w), // 반응형 간격
           // 쓰레기통 아이콘 (녹음 취소)
           GestureDetector(
             onTap: _deleteRecording,
             child: Container(
-              width: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 너비
-              height: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 높이
+              width: 32.w, // 반응형 너비
+              height: 32.h, // 반응형 높이
               decoration: BoxDecoration(
                 color: Colors.grey.shade800,
                 shape: BoxShape.circle,
               ),
               child: Image.asset(
                 'assets/trash.png',
-                width: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 너비
-                height: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 높이
+                width: 32.w, // 반응형 너비
+                height: 32.h, // 반응형 높이
               ),
             ),
           ),
-          SizedBox(width: (screenWidth * 0.05).clamp(15.0, 25.0)), // 반응형 간격
+          SizedBox(width: 17.w), // 반응형 간격
           // 실시간 파형
-          Expanded(
-            child: AudioWaveforms(
-              size: Size(
-                1,
-                (screenHeight * 0.061).clamp(45.0, 65.0), // 반응형 높이
-              ),
-              recorderController: _recorderController,
-              waveStyle: const WaveStyle(
-                waveColor: Colors.white,
-                extendWaveform: true,
-                showMiddleLine: false,
-              ),
+          AudioWaveforms(
+            size: Size(170.w, 41.h),
+            recorderController: _recorderController,
+            waveStyle: const WaveStyle(
+              waveColor: Colors.white,
+              extendWaveform: true,
+              showMiddleLine: false,
             ),
           ),
+          SizedBox(width: (13.15).w), // 반응형 간격
           // 녹음 시간
-          Text(
-            duration,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: (screenWidth * 0.036).clamp(12.0, 16.0), // 반응형 폰트 크기
+          SizedBox(
+            width: 40.w,
+            child: Text(
+              duration,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12.sp,
+                fontFamily: 'Pretendard',
+                fontWeight: FontWeight.w500,
+                letterSpacing: -0.40,
+              ),
             ),
           ),
           // 중지 버튼
-          IconButton(
-            onPressed: () {
-              _stopAndPreparePlayback();
-            },
-            icon: Icon(
-              Icons.stop,
-              color: Colors.white,
-              size: (screenWidth * 0.061).clamp(20.0, 28.0), // 반응형 아이콘 크기
+          Padding(
+            padding: EdgeInsets.only(right: 19.w),
+            child: GestureDetector(
+              onTap: () {
+                _stopAndPreparePlayback();
+              },
+              child: Icon(
+                Icons.stop,
+                color: Colors.white,
+                size: 28.sp, // 반응형 아이콘 크기
+              ),
             ),
           ),
-          SizedBox(width: (screenWidth * 0.061).clamp(20.0, 28.0)), // 반응형 간격
         ],
       ),
     );
@@ -301,47 +302,45 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
   /// 재생 UI (AudioRecorderWidget과 동일)
   Widget _buildPlaybackUI() {
-    double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
-
-    return GestureDetector(
-      onTap: () {
-        // 쓰레기통과 재생 버튼 영역을 제외한 부분 클릭 시 저장 완료 상태로 변경
-        _markAsSaved();
-      },
-      child: Container(
-        width: (screenWidth * 0.956).clamp(300.0, 400.0), // 반응형 너비
-        height: (screenHeight * 0.061).clamp(45.0, 65.0), // 반응형 높이
-        decoration: BoxDecoration(
-          color: const Color(0xff1c1c1c), // 회색 배경
-          borderRadius: BorderRadius.circular(
-            (screenWidth * 0.037).clamp(12.0, 18.0),
-          ), // 반응형 반지름
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            SizedBox(width: (screenWidth * 0.036).clamp(10.0, 18.0)), // 반응형 간격
-            // 쓰레기통 아이콘 (삭제)
-            GestureDetector(
-              onTap: _deleteRecording,
-              child: Container(
-                width: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 너비
-                height: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 높이
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade800,
-                  shape: BoxShape.circle,
-                ),
-                child: Image.asset(
-                  'assets/trash.png',
-                  width: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 너비
-                  height: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 높이
-                ),
+    return Container(
+      width: 354.w, // 반응형 너비
+      height: 41.h, // 반응형 높이
+      decoration: BoxDecoration(
+        color: const Color(0xff1c1c1c), // 회색 배경
+        borderRadius: BorderRadius.circular(14.6), // 반응형 반지름
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          SizedBox(width: 18.w), // 반응형 간격 (녹음 UI와 동일)
+          // 쓰레기통 아이콘 (삭제)
+          GestureDetector(
+            onTap: _deleteRecording,
+            child: Container(
+              width: 32.w, // 반응형 너비
+              height: 32.h, // 반응형 높이
+              decoration: BoxDecoration(
+                color: Colors.grey.shade800,
+                shape: BoxShape.circle,
+              ),
+              child: Image.asset(
+                'assets/trash.png',
+                width: 32.w, // 반응형 너비
+                height: 32.h, // 반응형 높이
               ),
             ),
-            SizedBox(width: (screenWidth * 0.05).clamp(15.0, 25.0)), // 반응형 간격
-            // 재생 파형 (회색 배경에 흰색으로 채워짐)
-            Expanded(
+          ),
+          SizedBox(width: 17.w), // 반응형 간격 (녹음 UI와 동일)
+          // 재생 파형 (회색 배경에 흰색으로 채워짐) - 클릭 시 저장
+          GestureDetector(
+            onTap: () {
+              // 파형 클릭 시 저장 요청 후 프로필로 전환
+              widget.onSaveRequested?.call();
+              _markAsSaved();
+            },
+            child: SizedBox(
+              width: 170.w, // AudioWaveforms와 동일한 고정 크기
+              height: 41.h, // AudioWaveforms와 동일한 고정 크기
               child:
                   _waveformData != null && _waveformData!.isNotEmpty
                       ? StreamBuilder<int>(
@@ -362,7 +361,6 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
                                   : 0.0;
 
                           return Container(
-                            height: (screenHeight * 0.023).clamp(16.0, 24.0),
                             alignment: Alignment.center,
                             child: CustomWaveformWidget(
                               waveformData: _waveformData!,
@@ -374,20 +372,50 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
                         },
                       )
                       : Container(
-                        height: (screenHeight * 0.023).clamp(16.0, 24.0),
                         alignment: Alignment.center,
                         child: Text(
                           '파형 없음',
                           style: TextStyle(
                             color: Colors.white70,
-                            fontSize: (screenWidth * 0.028).clamp(10.0, 14.0),
+                            fontSize: 12.sp,
                           ),
                         ),
                       ),
             ),
-            SizedBox(width: (screenWidth * 0.025).clamp(8.0, 12.0)), // 반응형 간격
-            // 재생/일시정지 버튼
-            StreamBuilder<PlayerState>(
+          ),
+          SizedBox(width: (13.15).w), // 반응형 간격 (녹음 UI와 동일)
+          // 재생 시간
+          SizedBox(
+            width: 40.w, // 반응형 너비 (녹음 UI와 동일)
+            child: StreamBuilder<int>(
+              stream:
+                  _playerController?.onCurrentDurationChanged ??
+                  const Stream.empty(),
+              builder: (context, snapshot) {
+                final currentDurationMs = snapshot.data ?? 0;
+                final currentDuration = Duration(
+                  milliseconds: currentDurationMs,
+                );
+                final minutes = currentDuration.inMinutes;
+                final seconds = currentDuration.inSeconds % 60;
+                return Text(
+                  '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.sp,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.40,
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // 재생/일시정지 버튼
+          Padding(
+            padding: EdgeInsets.only(right: 19.w), // 녹음 UI와 동일
+            child: StreamBuilder<PlayerState>(
               stream:
                   _playerController?.onPlayerStateChanged ??
                   const Stream.empty(),
@@ -397,25 +425,16 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
                 return GestureDetector(
                   onTap: _togglePlayback,
-                  child: Container(
-                    width: (screenWidth * 0.081).clamp(28.0, 36.0),
-                    height: (screenWidth * 0.081).clamp(28.0, 36.0),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade800,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      isPlaying ? Icons.pause : Icons.play_arrow,
-                      color: Colors.white,
-                      size: (screenWidth * 0.051).clamp(18.0, 24.0),
-                    ),
+                  child: Icon(
+                    isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white,
+                    size: 28.sp, // 녹음 UI와 동일
                   ),
                 );
               },
             ),
-            SizedBox(width: (screenWidth * 0.036).clamp(10.0, 18.0)), // 반응형 간격
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -468,10 +487,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     final profileWidget = Container(
       width: 27,
       height: 27,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 1),
-      ),
+      decoration: BoxDecoration(shape: BoxShape.circle),
       child:
           widget.profileImageUrl != null && widget.profileImageUrl!.isNotEmpty
               ? ClipOval(

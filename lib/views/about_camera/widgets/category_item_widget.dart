@@ -7,7 +7,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 /// 아이콘이나 이미지 URL을 함께 표시할 수 있습니다.
 class CategoryItemWidget extends StatelessWidget {
   final String? imageUrl;
-  final IconData? icon;
+  final String? image;
   final String label;
   final VoidCallback onTap;
   final String? categoryId;
@@ -16,7 +16,7 @@ class CategoryItemWidget extends StatelessWidget {
   const CategoryItemWidget({
     super.key,
     this.imageUrl,
-    this.icon,
+    this.image,
     required this.label,
     required this.onTap,
     this.categoryId,
@@ -83,7 +83,7 @@ class CategoryItemWidget extends StatelessWidget {
       height: dimensions.containerSize,
       decoration: BoxDecoration(
         color:
-            (icon != null) ? Colors.white : Colors.transparent, // 추가 버튼은 흰색 배경
+            (image != null) ? Colors.white : Colors.transparent, // 추가 버튼은 흰색 배경
         shape: BoxShape.circle,
       ),
       child: ClipOval(
@@ -103,12 +103,13 @@ class CategoryItemWidget extends StatelessWidget {
   /// 컨테이너 내부 위젯 빌드
   Widget _buildContainerChild(_CategoryDimensions dimensions) {
     // 기본 아이콘이 있는 경우 (추가하기 버튼)
-    if (icon != null) {
-      return Icon(
-        icon!,
-        color: Colors.black, // 검은색 + 아이콘
-        size: dimensions.iconSize, // 동적 크기 사용
-        weight: 2.0, // 아이콘 두께
+    if (image != null) {
+      return Image.asset(
+        image!,
+        color: Colors.black,
+        width: 27.w,
+        height: 27.h,
+        fit: BoxFit.cover,
       );
     }
 
@@ -119,7 +120,7 @@ class CategoryItemWidget extends StatelessWidget {
         height: dimensions.containerSize, // 컨테이너 크기와 일치
         child: CachedNetworkImage(
           imageUrl: imageUrl!,
-          fit: BoxFit.cover, // 이미지가 원형 컨테이너를 완전히 채우도록
+          fit: BoxFit.cover,
           width: dimensions.containerSize,
           height: dimensions.containerSize,
           placeholder: (context, url) => _buildLoadingIndicator(dimensions),
@@ -130,13 +131,13 @@ class CategoryItemWidget extends StatelessWidget {
 
     // 기본 이미지 아이콘
     return Container(
-      decoration: BoxDecoration(color: Color(0xffc3c1c1)),
+      decoration: BoxDecoration(color: Color(0xff4a4a4a)),
       width: dimensions.containerSize, // 컨테이너 크기와 일치
       height: dimensions.containerSize, // 컨테이너 크기와 일치
       child: Icon(
         Icons.image_outlined,
         size: dimensions.iconSize,
-        color: Color(0xff656565),
+        color: Color(0xffcecece),
       ),
     );
   }
@@ -152,8 +153,8 @@ class CategoryItemWidget extends StatelessWidget {
       ),
       child: Center(
         child: SizedBox(
-          width: dimensions.containerSize * 0.5, // 컨테이너 크기의 50%
-          height: dimensions.containerSize * 0.5,
+          width: 45.4.w,
+          height: 45.4.h,
           child: Center(child: Image.asset('assets/send_imoji.png')),
         ),
       ),

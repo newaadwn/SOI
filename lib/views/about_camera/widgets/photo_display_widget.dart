@@ -7,11 +7,10 @@ import 'package:flutter_screenutil/flutter_screenutil.dart'; // File 클래스�
 // 이미지를 표시하는 위젯
 // 로컬 이미지 경로나 Firebase Storage URL을 기반으로 이미지를 표시합니다.
 class PhotoDisplayWidget extends StatelessWidget {
-  // 로컬 이미지 경로를 우선적으로 사용해서 이미지를 띄우고 로컬 이미지 경로가 없을 경우 Firebase Storage URL을 사용합니다.
-  final String? imagePath; // 로컬 이미지 경로
-  final String? downloadUrl; // Firebase Storage URL
-  final bool useLocalImage; // 로컬 이미지 사용 여부
-  final bool useDownloadUrl; // 다운로드 URL 사용 여부
+  final String? imagePath;
+  final String? downloadUrl;
+  final bool useLocalImage;
+  final bool useDownloadUrl;
   final double width;
   final double height;
 
@@ -62,11 +61,7 @@ class PhotoDisplayWidget extends StatelessWidget {
             onPressed: () {
               Navigator.pop(context);
             },
-            icon: Icon(
-              Icons.cancel,
-              color: Color(0xff1c1b1f).withValues(alpha: 0.8),
-              size: 30.sp,
-            ),
+            icon: Icon(Icons.cancel, color: Color(0xff1c1b1f), size: 35.sp),
           ),
         ],
       );

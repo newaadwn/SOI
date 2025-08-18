@@ -459,168 +459,215 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Column(
-          children: [
-            Text(
-              'SOI',
-              style: TextStyle(
-                color: Color(0xfff9f9f9),
-                fontSize: 20.sp,
-                fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 30.h),
-          ],
-        ),
-        toolbarHeight: 70.h,
-        backgroundColor: Colors.black,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            // Main content
-            Center(
-              child:
-                  _isLoading
-                      ? const CircularProgressIndicator()
-                      : _errorMessage != null
-                      ? Text(
-                        _errorMessage!,
-                        style: const TextStyle(color: Colors.white),
-                      )
-                      : Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-
-                        children: [
-                          // 이미지 표시 위젯을 DragTarget으로 감싸기 (피드와 동일한 방식)
-                          DragTarget<String>(
-                            onAcceptWithDetails: (details) async {
-                              // 드롭된 좌표를 사진 내 상대 좌표로 변환 (피드와 동일한 로직)
-                              final RenderBox renderBox =
-                                  context.findRenderObject() as RenderBox;
-                              final localPosition = renderBox.globalToLocal(
-                                details.offset,
-                              );
-
-                              // 프로필 이미지가 사진 영역에 드롭됨
-
-                              // 사진 영역 내 좌표로 저장
-                              setState(() {
-                                _profileImagePosition = localPosition;
-                              });
-                            },
-                            builder: (context, candidateData, rejectedData) {
-                              return PhotoDisplayWidget(
-                                imagePath: widget.imagePath,
-                                downloadUrl: widget.downloadUrl,
-                                useLocalImage: _useLocalImage,
-                                useDownloadUrl: _useDownloadUrl,
-                                width: 354.w,
-                                height: 500.h,
-                              );
-                            },
-                          ),
-                          SizedBox(height: (19.h)),
-                          // 오디오 녹음 위젯
-                          AudioRecorderWidget(
-                            photoId:
-                                widget.imagePath?.split('/').last ?? 'unknown',
-                            isCommentMode: false,
-                            profileImagePosition: _profileImagePosition,
-                            getProfileImagePosition:
-                                () => _profileImagePosition,
-                            onRecordingCompleted: (
-                              String? audioPath,
-                              List<double>? waveformData,
-                            ) {
-                              // 파형 데이터를 상태 변수에 저장
-                              setState(() {
-                                _recordedWaveformData = waveformData;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-            ),
-          ],
-        ),
-      ),
-      bottomSheet: DraggableScrollableSheet(
-        controller: _draggableScrollController,
-        initialChildSize: 0.18,
-        minChildSize: 0.18,
-        maxChildSize: 0.8,
-        expand: false,
-        builder: (context, scrollController) {
-          return Container(
-            decoration: BoxDecoration(
-              color: Color(0xff171717),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            child: Column(
+    return Stack(
+      children: [
+        Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            automaticallyImplyLeading: false,
+            title: Column(
               children: [
-                // 드래그 핸들
-                Center(
-                  child: Container(
-                    height: 5.h,
-                    width: 109.w,
-                    margin: EdgeInsets.only(top: 10.h, bottom: 12.h),
-                    decoration: BoxDecoration(
-                      color: Color(0xff5a5a5a),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
+                Text(
+                  'SOI',
+                  style: TextStyle(
+                    color: Color(0xfff9f9f9),
+                    fontSize: 20.sp,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
+                SizedBox(height: 30.h),
+              ],
+            ),
+            toolbarHeight: 70.h,
+            backgroundColor: Colors.black,
+          ),
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Main content
+                Center(
+                  child:
+                      _isLoading
+                          ? const CircularProgressIndicator()
+                          : _errorMessage != null
+                          ? Text(
+                            _errorMessage!,
+                            style: const TextStyle(color: Colors.white),
+                          )
+                          : Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
 
-                // 콘텐츠 영역: 조건에 따라 카테고리 목록 또는 카테고리 추가 UI 표시
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: Duration(milliseconds: 300),
-                    child:
-                        // _showAddCategoryUI가 참이면 AddCategoryWidget, 거짓이면 CategoryListWidget
-                        _showAddCategoryUI
-                            ? AddCategoryWidget(
-                              textController: _categoryNameController,
-                              scrollController: scrollController,
-                              onBackPressed: () {
-                                setState(() {
-                                  _showAddCategoryUI = false;
+                            children: [
+                              // 이미지 표시 위젯을 DragTarget으로 감싸기 (피드와 동일한 방식)
+                              DragTarget<String>(
+                                onAcceptWithDetails: (details) async {
+                                  // 드롭된 좌표를 사진 내 상대 좌표로 변환 (피드와 동일한 로직)
+                                  final RenderBox renderBox =
+                                      context.findRenderObject() as RenderBox;
+                                  final localPosition = renderBox.globalToLocal(
+                                    details.offset,
+                                  );
 
-                                  _categoryNameController.clear();
-                                });
-                                _animateSheetTo(0.18);
-                              },
-                              onSavePressed:
-                                  (selectedFriends) => _createNewCategory(
-                                    _categoryNameController.text.trim(),
-                                    selectedFriends,
-                                  ),
-                            )
-                            : CategoryListWidget(
-                              scrollController: scrollController,
-                              selectedCategoryId: _selectedCategoryId,
-                              onCategorySelected: _handleCategorySelection,
-                              addCategoryPressed: () {
-                                setState(() {
-                                  _showAddCategoryUI = true;
-                                });
-                                // 시트 애니메이션 - 안전한 방법으로 실행
-                                _animateSheetTo(0.65);
-                              },
-                              isLoading: _categoryController.isLoading,
-                            ),
-                  ),
+                                  // 프로필 이미지가 사진 영역에 드롭됨
+
+                                  // 사진 영역 내 좌표로 저장
+                                  setState(() {
+                                    _profileImagePosition = localPosition;
+                                  });
+                                },
+                                builder: (
+                                  context,
+                                  candidateData,
+                                  rejectedData,
+                                ) {
+                                  return PhotoDisplayWidget(
+                                    imagePath: widget.imagePath,
+                                    downloadUrl: widget.downloadUrl,
+                                    useLocalImage: _useLocalImage,
+                                    useDownloadUrl: _useDownloadUrl,
+                                    width: 354.w,
+                                    height: 500.h,
+                                  );
+                                },
+                              ),
+                              SizedBox(height: (19.h)),
+                              // 오디오 녹음 위젯
+                              AudioRecorderWidget(
+                                photoId:
+                                    widget.imagePath?.split('/').last ??
+                                    'unknown',
+                                isCommentMode: false,
+                                profileImagePosition: _profileImagePosition,
+                                getProfileImagePosition:
+                                    () => _profileImagePosition,
+                                onRecordingCompleted: (
+                                  String? audioPath,
+                                  List<double>? waveformData,
+                                ) {
+                                  // 파형 데이터를 상태 변수에 저장
+                                  setState(() {
+                                    _recordedWaveformData = waveformData;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
                 ),
               ],
             ),
-          );
-        },
-      ),
+          ),
+          bottomSheet: DraggableScrollableSheet(
+            controller: _draggableScrollController,
+            initialChildSize: 0.18,
+            minChildSize: 0.18,
+            maxChildSize: 0.8,
+            expand: false,
+            builder: (context, scrollController) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Color(0xff171717),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Column(
+                  children: [
+                    // 드래그 핸들
+                    _showAddCategoryUI
+                        ? Center(
+                          child: Container(
+                            margin: EdgeInsets.only(bottom: 12.h),
+                          ),
+                        )
+                        : Center(
+                          child: Container(
+                            height: 4.h,
+                            width: 99.w,
+                            margin: EdgeInsets.only(top: 10.h, bottom: 12.h),
+                            decoration: BoxDecoration(
+                              color: Color(0xffcdcdcd),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                        ),
+
+                    // 콘텐츠 영역: 조건에 따라 카테고리 목록 또는 카테고리 추가 UI 표시
+                    Expanded(
+                      child: AnimatedSwitcher(
+                        duration: Duration(milliseconds: 300),
+                        child:
+                            // _showAddCategoryUI가 참이면 AddCategoryWidget, 거짓이면 CategoryListWidget
+                            _showAddCategoryUI
+                                ? AddCategoryWidget(
+                                  textController: _categoryNameController,
+                                  scrollController: scrollController,
+                                  onBackPressed: () {
+                                    setState(() {
+                                      _showAddCategoryUI = false;
+
+                                      _categoryNameController.clear();
+                                    });
+                                    _animateSheetTo(0.18);
+                                  },
+                                  onSavePressed:
+                                      (selectedFriends) => _createNewCategory(
+                                        _categoryNameController.text.trim(),
+                                        selectedFriends,
+                                      ),
+                                )
+                                : CategoryListWidget(
+                                  scrollController: scrollController,
+                                  selectedCategoryId: _selectedCategoryId,
+                                  onCategorySelected: _handleCategorySelection,
+                                  addCategoryPressed: () {
+                                    setState(() {
+                                      _showAddCategoryUI = true;
+                                    });
+                                    // 시트 애니메이션 - 안전한 방법으로 실행
+                                    _animateSheetTo(0.65);
+                                  },
+                                  isLoading: _categoryController.isLoading,
+                                ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        // AppBar까지 덮는 전체 화면 반투명 배경 오버레이
+        /*AnimatedBuilder(
+          animation: _draggableScrollController,
+          builder: (context, child) {
+            double opacity = 0.0;
+            if (_draggableScrollController.isAttached) {
+              // 시트가 실제로 18%보다 많이 올라올 때만 배경 오버레이 표시
+              double currentSize = _draggableScrollController.size;
+              if (currentSize > 0.185) {
+                // 약간의 여유를 둠 (0.18 -> 0.185)
+                // 0.185에서 0.8까지의 범위를 0.0에서 0.7까지로 매핑
+                opacity = ((currentSize - 0.185) / (0.8 - 0.185)) * 0.7;
+                opacity = opacity.clamp(0.0, 0.7);
+              }
+            }
+            return IgnorePointer(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Color(0x7d7d7d).withOpacity(opacity),
+                ),
+                width: double.infinity,
+                // 바텀시트 영역을 제외한 높이만 덮도록 설정
+                height:
+                    MediaQuery.of(context).size.height *
+                    (1.098 -
+                        (_draggableScrollController.isAttached
+                            ? _draggableScrollController.size
+                            : 0.18)),
+              ),
+            );
+          },
+        ),*/
+      ],
     );
   }
 

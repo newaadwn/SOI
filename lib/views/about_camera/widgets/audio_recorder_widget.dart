@@ -9,7 +9,7 @@ import '../../../controllers/comment_record_controller.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../models/comment_record_model.dart';
 import '../../../utils/position_converter.dart';
-import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
+import '../../about_archiving/widgets/common/wave_form_widget/custom_waveform_widget.dart';
 
 /// 오디오 녹음을 위한 위젯
 ///
@@ -295,12 +295,24 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
   /// ✅ 재생/일시정지 토글 함수
   Future<void> _togglePlayback() async {
-    if (playerController == null) return;
+    if (playerController == null || _recordedFilePath == null) return;
 
     try {
       if (playerController!.playerState.isPlaying) {
         await playerController!.pausePlayer();
         debugPrint('재생 일시정지');
+      } else {
+        // 준비 상태 확인 후 재생
+        if (playerController!.playerState == PlayerState.initialized ||
+            playerController!.playerState == PlayerState.paused) {
+          await playerController!.startPlayer();
+          debugPrint('재생 시작');
+        } else {
+          // 준비되지 않았으면 다시 준비
+          await playerController!.preparePlayer(path: _recordedFilePath!);
+          await playerController!.startPlayer();
+          debugPrint('재생 준비 후 시작');
+        }
       }
       setState(() {}); // UI 갱신
     } catch (e) {
@@ -430,44 +442,39 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
   }
 
   Widget _buildRecordingUI(String duration) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
-
     return Container(
-      width: (screenWidth * 0.956).clamp(300.0, 400.0), // 반응형 너비
-      height: (screenHeight * 0.061).clamp(45.0, 65.0), // 반응형 높이
+      width: 376.w, // 반응형 너비
+      height: 52.h, // 반응형 높이
       decoration: BoxDecoration(
         color: const Color(0xff1c1c1c),
-        borderRadius: BorderRadius.circular(
-          (screenWidth * 0.037).clamp(12.0, 18.0),
-        ), // 반응형 반지름
+        borderRadius: BorderRadius.circular(14.6),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          SizedBox(width: (screenWidth * 0.036).clamp(10.0, 18.0)), // 반응형 간격
+          SizedBox(width: 14.w), // 반응형 간격
           GestureDetector(
             onTap: _stopRecording,
             child: Container(
-              width: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 너비
-              height: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 높이
+              width: 32.w, // 반응형 너비
+              height: 32.h, // 반응형 높이
               decoration: BoxDecoration(
                 color: Colors.grey.shade800,
                 shape: BoxShape.circle,
               ),
               child: Image.asset(
                 'assets/trash.png',
-                width: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 너비
-                height: (screenWidth * 0.081).clamp(28.0, 36.0), // 반응형 높이
+                width: 32.w, // 반응형 너비
+                height: 32.h, // 반응형 높이
               ),
             ),
           ),
-          SizedBox(width: (screenWidth * 0.05).clamp(15.0, 25.0)), // 반응형 간격
+          SizedBox(width: 17.w), // 반응형 간격
           Expanded(
             child: AudioWaveforms(
               size: Size(
                 1,
-                (screenHeight * 0.061).clamp(45.0, 65.0), // 반응형 높이
+                52.h, // 반응형 높이
               ),
               recorderController: recorderController,
               waveStyle: const WaveStyle(
@@ -477,24 +484,31 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
               ),
             ),
           ),
-          Text(
-            duration,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: (screenWidth * 0.036).clamp(12.0, 16.0), // 반응형 폰트 크기
+          SizedBox(width: (13.15).w), // 반응형 간격
+          SizedBox(
+            width: 40.w,
+            child: Text(
+              duration,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12.sp,
+                fontFamily: "Pretendard",
+              ),
             ),
           ),
-          IconButton(
-            onPressed: () {
-              _stopAndPreparePlayback();
-            },
-            icon: Icon(
-              Icons.stop,
-              color: Colors.white,
-              size: (screenWidth * 0.061).clamp(20.0, 28.0), // 반응형 아이콘 크기
+          Padding(
+            padding: EdgeInsets.only(right: 19.w),
+            child: IconButton(
+              onPressed: () {
+                _stopAndPreparePlayback();
+              },
+              icon: Icon(
+                Icons.stop,
+                color: Colors.white,
+                size: 28.sp, // 반응형 아이콘 크기
+              ),
             ),
           ),
-          SizedBox(width: (screenWidth * 0.061).clamp(20.0, 28.0)), // 반응형 간격
         ],
       ),
     );
@@ -502,8 +516,6 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
   // 재생 UI 빌드 (녹음 완료 후) - 프로필 모드일 때 완전히 대체
   Widget _buildPlaybackUI() {
-    double screenWidth = MediaQuery.of(context).size.width;
-
     // 🎯 프로필 모드일 때는 전체 UI를 프로필 이미지로 완전히 대체
     if (_isProfileMode) {
       return _buildFullProfileModeUI();
@@ -549,38 +561,40 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
               final currentDuration = Duration(milliseconds: currentDurationMs);
               final minutes = currentDuration.inMinutes;
               final seconds = currentDuration.inSeconds % 60;
-              return Text(
-                '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: (screenWidth * 0.036).clamp(
-                    12.0,
-                    16.0,
-                  ), // 반응형 폰트 크기
+              return SizedBox(
+                width: 40.w,
+                child: Text(
+                  '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.sp,
+                    fontFamily: "Pretendard",
+                  ),
                 ),
               );
             },
           ),
 
           // 재생/일시정지 버튼
-          IconButton(
-            onPressed: _togglePlayback,
-            icon: StreamBuilder<PlayerState>(
-              stream:
-                  playerController?.onPlayerStateChanged ??
-                  const Stream.empty(),
-              builder: (context, snapshot) {
-                final isPlaying = snapshot.data?.isPlaying ?? false;
-                return Icon(
-                  isPlaying ? Icons.pause : Icons.play_arrow,
-                  color: Colors.white,
-                  size: (screenWidth * 0.061).clamp(20.0, 28.0), // 반응형 아이콘 크기
-                );
-              },
+          Padding(
+            padding: EdgeInsets.only(right: 19.w),
+            child: IconButton(
+              onPressed: _togglePlayback,
+              icon: StreamBuilder<PlayerState>(
+                stream:
+                    playerController?.onPlayerStateChanged ??
+                    const Stream.empty(),
+                builder: (context, snapshot) {
+                  final isPlaying = snapshot.data?.isPlaying ?? false;
+                  return Icon(
+                    isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white,
+                    size: 28.sp, // 반응형 아이콘 크기
+                  );
+                },
+              ),
             ),
           ),
-
-          SizedBox(width: (screenWidth * 0.061).clamp(20.0, 28.0)), // 반응형 간격
         ],
       ),
     );
@@ -771,9 +785,6 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
   /// 🎵 파형 표시 위젯 빌드
   Widget _buildWaveformDisplay() {
-    double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
-
     return _waveformData != null && _waveformData!.isNotEmpty
         ? GestureDetector(
           onTap: _onWaveformTapped, // 파형 클릭 시 프로필 모드로 전환
@@ -789,18 +800,11 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
                       ? (currentPosition / totalDuration).clamp(0.0, 1.0)
                       : 0.0;
 
-              return Container(
-                height: (screenHeight * 0.023).clamp(18.0, 25.0),
-                padding: EdgeInsets.symmetric(
-                  horizontal: (screenWidth * 0.02).clamp(6.0, 10.0),
-                  vertical: (screenHeight * 0.006).clamp(4.0, 7.0),
-                ),
-                child: CustomWaveformWidget(
-                  waveformData: _waveformData!,
-                  color: Colors.grey,
-                  activeColor: Colors.white,
-                  progress: progress,
-                ),
+              return CustomWaveformWidget(
+                waveformData: _waveformData!,
+                color: Colors.grey,
+                activeColor: Colors.white,
+                progress: progress,
               );
             },
           ),
@@ -808,19 +812,18 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         : GestureDetector(
           onTap: _onWaveformTapped,
           child: Container(
-            height: (screenHeight * 0.061).clamp(45.0, 65.0),
+            height: 52.h,
             decoration: BoxDecoration(
               color: Colors.grey.shade700,
-              borderRadius: BorderRadius.circular(
-                (screenWidth * 0.02).clamp(6.0, 10.0),
-              ),
+              borderRadius: BorderRadius.circular(10),
             ),
             child: Center(
               child: Text(
                 '파형 없음',
                 style: TextStyle(
                   color: Colors.white54,
-                  fontSize: (screenWidth * 0.031).clamp(10.0, 14.0),
+                  fontSize: 14.sp,
+                  fontFamily: "Pretendard",
                 ),
               ),
             ),

@@ -285,7 +285,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
                   SizedBox(height: 24.h),
 
                   // 친구 추가 섹션
-                  currentCategory.mates.length >= 2
+                  currentCategory.mates.length >= 5
                       ? FriendsListWidget(
                         category: currentCategory,
                         friendsInfo: _friendsInfo,
@@ -414,12 +414,15 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 9.h),
+
               Divider(color: const Color(0xFF5A5A5A)),
-              SizedBox(height: 9.h),
 
               // 카메라로 촬영
               ListTile(
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16.w,
+                  vertical: 0.h,
+                ),
                 leading: Image.asset(
                   'assets/camera_archive_edit.png',
                   width: 24.w,
@@ -442,6 +445,10 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
 
               // 갤러리에서 선택
               ListTile(
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16.w,
+                  vertical: 0.h,
+                ),
                 leading: Image.asset(
                   'assets/library_archive_edit.png',
                   width: 24.w,
@@ -464,6 +471,10 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
 
               // 카테고리에서 선택
               ListTile(
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16.w,
+                  vertical: 0.h,
+                ),
                 leading: Image.asset(
                   'assets/archiving_archive.png',
                   width: 24.w,
@@ -486,6 +497,10 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
 
               // 표지삭제
               ListTile(
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: 16.w,
+                  vertical: 0.h,
+                ),
                 leading: Image.asset(
                   'assets/trash_archive_edit.png',
                   width: 24.w,
@@ -506,7 +521,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
                 },
               ),
 
-              //SizedBox(height: MediaQuery.of(context).padding.bottom + 20),
+              SizedBox(height: 30.h),
             ],
           ),
         );
@@ -531,7 +546,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('카메라 촬영 중 오류가 발생했습니다.'),
-          backgroundColor: Color(0xFFFF3B30),
+          backgroundColor: Color(0xFF5a5a5a),
         ),
       );
     }
@@ -554,7 +569,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('갤러리 선택 중 오류가 발생했습니다.'),
-          backgroundColor: Color(0xFFFF3B30),
+          backgroundColor: Color(0xFF5a5a5a),
         ),
       );
     }
@@ -604,14 +619,14 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
             '표지사진이 변경되었습니다.',
             style: TextStyle(color: Colors.white),
           ),
-          backgroundColor: Color(0xFF1c1c1c),
+          backgroundColor: Color(0xFF5a5a5a),
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(categoryController.error ?? '표지사진 변경에 실패했습니다.'),
-          backgroundColor: const Color(0xFFFF3B30),
+          backgroundColor: const Color(0xFF5a5a5a),
         ),
       );
     }
@@ -636,14 +651,14 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('표지사진이 삭제되었습니다.'),
-          backgroundColor: Color(0xFF1c1c1c),
+          backgroundColor: Color(0xFF5a5a5a),
         ),
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(categoryController.error ?? '표지사진 삭제에 실패했습니다.'),
-          backgroundColor: const Color(0xFFFF3B30),
+          backgroundColor: const Color(0xFF5a5a5a),
         ),
       );
     }

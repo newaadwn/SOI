@@ -66,7 +66,6 @@ class _CategoryMembersBottomSheetState
           _isLoading = false;
         });
       }
-      debugPrint('멤버 정보 전체 로드 실패: $e');
     }
   }
 
@@ -83,18 +82,18 @@ class _CategoryMembersBottomSheetState
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          SizedBox(height: 7.h),
           // 핸들바
           Container(
-            margin: EdgeInsets.only(top: 12.h),
             width: 56.w,
-            height: 3.h,
+            height: 2.9.h,
             decoration: BoxDecoration(
               color: const Color(0xFFCCCCCC),
               borderRadius: BorderRadius.circular(2.r),
             ),
           ),
 
-          SizedBox(height: 20.h),
+          SizedBox(height: 24.h),
 
           // 멤버 목록
           if (_isLoading) _buildLoadingWidget() else _buildMembersGrid(),
@@ -208,8 +207,8 @@ class _CategoryMembersBottomSheetState
       children: [
         // 프로필 이미지
         Container(
-          width: 60.w,
-          height: 60.h,
+          width: 60,
+          height: 60,
           decoration: BoxDecoration(shape: BoxShape.circle),
           child: ClipOval(
             child:
@@ -222,8 +221,8 @@ class _CategoryMembersBottomSheetState
                             baseColor: Colors.grey.shade800,
                             highlightColor: Colors.grey.shade700,
                             child: Container(
-                              width: 60.w,
-                              height: 60.h,
+                              width: 60,
+                              height: 60,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.grey.shade800,
@@ -235,8 +234,8 @@ class _CategoryMembersBottomSheetState
                             baseColor: Colors.grey.shade800,
                             highlightColor: Colors.grey.shade700,
                             child: Container(
-                              width: 60.w,
-                              height: 60.h,
+                              width: 60,
+                              height: 60,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.grey.shade800,
@@ -248,8 +247,8 @@ class _CategoryMembersBottomSheetState
                       baseColor: Colors.grey.shade800,
                       highlightColor: Colors.grey.shade700,
                       child: Container(
-                        width: 60.w,
-                        height: 60.h,
+                        width: 60,
+                        height: 60,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.grey.shade800,
@@ -259,7 +258,7 @@ class _CategoryMembersBottomSheetState
           ),
         ),
 
-        SizedBox(height: 8.h),
+        SizedBox(height: (5.86).h),
 
         // 이름
         Text(
@@ -301,8 +300,8 @@ class _CategoryMembersBottomSheetState
         children: [
           // + 버튼
           Container(
-            width: 60.w,
-            height: 60.h,
+            width: 60,
+            height: 60,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFFffffff),
@@ -310,9 +309,9 @@ class _CategoryMembersBottomSheetState
             child: Center(
               child: Image.asset(
                 'assets/plus_icon.png',
-                width: 21.5.w,
-                height: 21.5.h,
-                fit: BoxFit.contain,
+                width: 25.5,
+                height: 25.5,
+                fit: BoxFit.cover,
               ),
             ),
           ),

@@ -26,7 +26,7 @@ class FriendsListWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 최대 2개까지만 표시 (나머지는 "+더보기"로 표시)
-    const int maxDisplayCount = 2;
+    const int maxDisplayCount = 5;
     final totalMates = category.mates.length;
     final displayMates =
         isExpanded
@@ -268,13 +268,13 @@ class _FriendListItem extends StatelessWidget {
     }
 
     return Container(
-      padding: EdgeInsets.only(bottom: 15.h),
+      padding: EdgeInsets.only(bottom: 17.h),
       child: Row(
         children: [
           // 프로필 이미지
           Container(
-            width: 40.w,
-            height: 40.w,
+            width: 44.w,
+            height: 44.w,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: const Color(0xFF666666),
@@ -322,6 +322,7 @@ class _FriendListItem extends StatelessWidget {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               mainAxisSize: MainAxisSize.min,
               children: [
                 // 이름
@@ -337,12 +338,13 @@ class _FriendListItem extends StatelessWidget {
                             : Color(0xFF888888),
                     fontSize: 16.sp,
                     fontWeight: FontWeight.w400,
-                    fontFamily: 'Pretendard Variable',
-                    height: 1.2,
+                    fontFamily: 'Pretendard',
+                    height: 1.0,
                   ),
                   overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
-                SizedBox(height: 2.h),
+                SizedBox(height: (4.76).h),
                 // ID
                 Text(
                   friendInfo?.id ??
@@ -356,10 +358,11 @@ class _FriendListItem extends StatelessWidget {
                             : const Color(0xFF666666),
                     fontSize: 12.sp,
                     fontWeight: FontWeight.w400,
-                    fontFamily: 'Pretendard Variable',
-                    height: 1.2,
+                    fontFamily: 'Pretendard',
+                    height: 1.0,
                   ),
                   overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ],
             ),

@@ -245,14 +245,14 @@ class _CategoryCoverPhotoSelectorScreenState
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('표지사진이 변경되었습니다.'),
-          backgroundColor: Color(0xFF007AFF),
+          backgroundColor: Color(0xFF5a5a5a),
         ),
       );
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(categoryController.error ?? '표지사진 변경에 실패했습니다.'),
-          backgroundColor: const Color(0xFFFF3B30),
+          backgroundColor: const Color(0xFF5a5a5a),
         ),
       );
     }

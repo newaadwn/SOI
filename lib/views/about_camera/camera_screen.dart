@@ -363,8 +363,8 @@ class _CameraScreenState extends State<CameraScreen>
               padding: EdgeInsets.zero,
               onPressed: () => Navigator.pushNamed(context, '/contact_manager'),
               icon: Container(
-                width: 35.w,
-                height: 35.h,
+                width: 35,
+                height: 35,
                 decoration: BoxDecoration(
                   color: Color(0xff1c1c1c),
                   shape: BoxShape.circle,
@@ -377,20 +377,25 @@ class _CameraScreenState extends State<CameraScreen>
         actions: [
           Padding(
             padding: EdgeInsets.only(right: 32.w),
-            child: IconButton(
-              onPressed: () {},
-              icon: Container(
-                width: 35.w,
-                height: 35.h,
-                decoration: BoxDecoration(
-                  color: Color(0xff1c1c1c),
-                  shape: BoxShape.circle,
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(8.sp),
-                  child: Image.asset(
-                    'assets/norification.png',
-                    fit: BoxFit.contain,
+            child: Center(
+              child: IconButton(
+                onPressed: () {},
+                icon: Container(
+                  width: 35,
+                  height: 35,
+                  decoration: BoxDecoration(
+                    color: Color(0xff1c1c1c),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: SizedBox(
+                      width: 20.w,
+                      height: 20.h,
+                      child: Image.asset(
+                        'assets/norification.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
               ),

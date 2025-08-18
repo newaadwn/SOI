@@ -226,7 +226,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
                       },
                     ),
                     // 하단 여백 추가 (스크롤 범위 확장)
-                    SizedBox(height: 200.h),
+                    SizedBox(height: 20.h),
                   ],
                 ),
               ),

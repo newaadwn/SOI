@@ -246,122 +246,128 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
               ),
               SizedBox(height: 38.h),
               // 친구 목록
-              friendController.isLoading
-                  ? Center(
-                    child: CircularProgressIndicator(color: Colors.white),
-                  )
-                  : !friendController.isInitialized
-                  ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(color: Colors.white),
-                        SizedBox(height: 16.h),
-                        Text(
-                          '친구 목록을 불러오는 중...',
-                          style: TextStyle(
-                            color: const Color(0xff666666),
-                            fontSize: 14.sp,
+              Expanded(
+                child:
+                    friendController.isLoading
+                        ? Center(
+                          child: CircularProgressIndicator(color: Colors.white),
+                        )
+                        : !friendController.isInitialized
+                        ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircularProgressIndicator(color: Colors.white),
+                              SizedBox(height: 16.h),
+                              Text(
+                                '친구 목록을 불러오는 중...',
+                                style: TextStyle(
+                                  color: const Color(0xff666666),
+                                  fontSize: 14.sp,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
-                  )
-                  : displayFriends.isEmpty
-                  ? Center(
-                    child: Text(
-                      _searchController.text.isEmpty
-                          ? '친구가 없습니다'
-                          : '검색 결과가 없습니다',
-                      style: TextStyle(
-                        color: const Color(0xff666666),
-                        fontSize: 16.sp,
-                      ),
-                    ),
-                  )
-                  : Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 20.w),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xff1c1c1c),
-                        borderRadius: BorderRadius.circular(12.r),
-                      ),
-                      child: Column(
-                        children: [
-                          SizedBox(height: (16.3).h),
-                          Material(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(8.r),
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.pushNamed(
-                                  context,
-                                  '/contact_manager',
-                                );
-                              },
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 18.w,
-                                  vertical: 12.h,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      width: 44,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Color(0xff4a4a4a),
-                                      ),
-                                      child: Icon(
-                                        Icons.add,
-                                        size: 25.sp,
-                                        color: Colors.white,
+                        )
+                        : displayFriends.isEmpty
+                        ? Center(
+                          child: Text(
+                            _searchController.text.isEmpty
+                                ? '친구가 없습니다'
+                                : '검색 결과가 없습니다',
+                            style: TextStyle(
+                              color: const Color(0xff666666),
+                              fontSize: 16.sp,
+                            ),
+                          ),
+                        )
+                        : SingleChildScrollView(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 20.w),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xff1c1c1c),
+                                borderRadius: BorderRadius.circular(12.r),
+                              ),
+                              child: Column(
+                                children: [
+                                  SizedBox(height: (16.3).h),
+                                  Material(
+                                    color: Colors.transparent,
+                                    borderRadius: BorderRadius.circular(8.r),
+                                    child: InkWell(
+                                      onTap: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          '/contact_manager',
+                                        );
+                                      },
+                                      child: Container(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 18.w,
+                                          vertical: 12.h,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 44,
+                                              height: 44,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: Color(0xff4a4a4a),
+                                              ),
+                                              child: Icon(
+                                                Icons.add,
+                                                size: 25.sp,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                            SizedBox(width: 12.w),
+                                            Text(
+                                              "친구 추가",
+                                              style: TextStyle(
+                                                color: Color(0xffd9d9d9),
+                                                fontSize: 16.sp,
+                                                fontWeight: FontWeight.w400,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                    SizedBox(width: 12.w),
-                                    Text(
-                                      "친구 추가",
-                                      style: TextStyle(
-                                        color: Color(0xffd9d9d9),
-                                        fontSize: 16.sp,
-                                        fontWeight: FontWeight.w400,
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                                  ),
+
+                                  Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children:
+                                        displayFriends.asMap().entries.map((
+                                          entry,
+                                        ) {
+                                          final index = entry.key;
+                                          final friend = entry.value;
+                                          final isSelected = _selectedFriendUids
+                                              .contains(friend.userId);
+
+                                          return _buildFriendItem(
+                                            friend: friend,
+                                            isSelected: isSelected,
+                                            index: index,
+                                            isLast:
+                                                index ==
+                                                displayFriends.length - 1,
+                                            onTap:
+                                                () => _toggleFriendSelection(
+                                                  friend.userId,
+                                                ),
+                                          );
+                                        }).toList(),
+                                  ),
+                                ],
                               ),
                             ),
                           ),
-
-                          Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children:
-                                displayFriends.asMap().entries.map((entry) {
-                                  final index = entry.key;
-                                  final friend = entry.value;
-                                  final isSelected = _selectedFriendUids
-                                      .contains(friend.userId);
-
-                                  return _buildFriendItem(
-                                    friend: friend,
-                                    isSelected: isSelected,
-                                    index: index,
-                                    isLast: index == displayFriends.length - 1,
-                                    onTap:
-                                        () => _toggleFriendSelection(
-                                          friend.userId,
-                                        ),
-                                  );
-                                }).toList(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-
-              // 확인 버튼을 위한 여유 공간
-              const Spacer(),
+                        ),
+              ),
 
               // 확인 버튼
               Container(

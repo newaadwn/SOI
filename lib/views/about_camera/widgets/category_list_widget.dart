@@ -43,17 +43,14 @@ class CategoryListWidget extends StatelessWidget {
             crossAxisSpacing: 8.w, // 아이템 간 좌우 간격 추가
             mainAxisSpacing: 15.h, // 세로 간격만 유지
           ),
-          padding: EdgeInsets.symmetric(
-            horizontal: 18.h, // 좌우 패딩 추가
-            vertical: 12.w, // 상하 패딩 추가
-          ),
+          padding: EdgeInsets.symmetric(horizontal: 18.h, vertical: 12.w),
 
           itemCount: categories.isEmpty ? 1 : categories.length + 1,
           itemBuilder: (context, index) {
             // 첫 번째 아이템은 항상 '추가하기' 버튼
             if (index == 0) {
               return CategoryItemWidget(
-                icon: Icons.add,
+                image: "assets/plus_icon.png",
                 label: '추가하기',
                 onTap: addCategoryPressed,
               );
