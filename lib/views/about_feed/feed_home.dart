@@ -6,6 +6,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/photo_controller.dart';
 import '../../controllers/audio_controller.dart';
+import '../../controllers/comment_audio_controller.dart';
 import '../../controllers/comment_record_controller.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/comment_record_model.dart';
@@ -33,10 +34,10 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   final Map<String, String> _userNames = {};
   final Map<String, bool> _profileLoadingStates = {};
 
-  // 음성 댓글 상태 관리
+  // 음성 댓글 상태 관리 (다중 댓글 지원)
   final Map<String, bool> _voiceCommentActiveStates = {};
   final Map<String, bool> _voiceCommentSavedStates = {};
-  final Map<String, String> _savedCommentIds = {};
+  final Map<String, List<String>> _savedCommentIds = {}; // 사진별 여러 댓글 ID 저장
 
   // 임시 음성 댓글 데이터 (파형 클릭 시 저장용)
   final Map<String, Map<String, dynamic>> _pendingVoiceComments = {};
@@ -44,10 +45,14 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   // 임시 프로필 위치 (음성 댓글 저장 전 드래그된 위치)
   final Map<String, Offset> _pendingProfilePositions = {};
 
-  // 프로필 이미지 관리
-  final Map<String, Offset?> _profileImagePositions = {};
-  final Map<String, String> _commentProfileImageUrls = {};
-  final Map<String, String> _droppedProfileImageUrls = {};
+  // 프로필 이미지 관리 (다중 댓글 지원)
+  final Map<String, Offset?> _profileImagePositions = {}; // 임시 위치용 (기존 호환성)
+  final Map<String, String> _commentProfileImageUrls = {}; // 임시용 (기존 호환성)
+  final Map<String, String> _droppedProfileImageUrls = {}; // 임시용 (기존 호환성)
+
+  // 댓글별 개별 관리 (새로운 구조)
+  final Map<String, Offset> _commentPositions = {}; // 댓글 ID -> 위치
+  final Map<String, String> _commentProfileUrls = {}; // 댓글 ID -> 프로필 URL
 
   // 실시간 스트림 관리
   final Map<String, List<CommentRecordModel>> _photoComments = {};
@@ -56,6 +61,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
   // 컨트롤러 참조
   AuthController? _authController;
+  CommentAudioController? _commentAudioController;
 
   @override
   void initState() {
@@ -64,6 +70,12 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _authController = Provider.of<AuthController>(context, listen: false);
       _authController!.addListener(_onAuthControllerChanged);
+
+      // CommentAudioController 초기화
+      _commentAudioController = Provider.of<CommentAudioController>(
+        context,
+        listen: false,
+      );
     });
   }
 
@@ -71,11 +83,19 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _authController ??= Provider.of<AuthController>(context, listen: false);
+    _commentAudioController ??= Provider.of<CommentAudioController>(
+      context,
+      listen: false,
+    );
   }
 
   @override
   void dispose() {
     _authController?.removeListener(_onAuthControllerChanged);
+
+    // CommentAudioController 정리
+    _commentAudioController?.stopAllComments();
+
     for (var subscription in _commentStreams.values) {
       subscription.cancel();
     }
@@ -370,7 +390,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     }
   }
 
-  /// 댓글 업데이트 처리
+  /// 댓글 업데이트 처리 (다중 댓글 지원)
   void _handleCommentsUpdate(
     String photoId,
     String currentUserId,
@@ -382,63 +402,104 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       });
     }
 
-    final userComment =
+    // 현재 사용자의 모든 댓글 처리 (다중 댓글 지원)
+    final userComments =
         comments
             .where((comment) => comment.recorderUser == currentUserId)
-            .firstOrNull;
+            .toList();
 
-    if (userComment != null) {
+    if (userComments.isNotEmpty) {
       if (mounted) {
         setState(() {
-          //_voiceCommentSavedStates[photoId] = true;
-          _savedCommentIds[photoId] = userComment.id;
+          // 사진별 댓글 ID 목록 업데이트 (중복 방지 및 정렬)
+          final existingCommentIds = _savedCommentIds[photoId] ?? [];
+          final newCommentIds = userComments.map((c) => c.id).toSet().toList();
 
-          if (userComment.profileImageUrl.isNotEmpty) {
-            _commentProfileImageUrls[photoId] = userComment.profileImageUrl;
+          // 기존 댓글과 새 댓글을 합치되 중복 제거
+          final allCommentIds =
+              [...existingCommentIds, ...newCommentIds].toSet().toList();
+          allCommentIds.sort(); // 일관된 순서 보장
+          _savedCommentIds[photoId] = allCommentIds;
+
+          // 각 댓글의 위치와 프로필 정보 저장 (기존 위치 절대 덮어쓰지 않음)
+          for (final comment in userComments) {
+            // 기존에 위치가 저장되어 있으면 절대 변경하지 않음
+            if (_commentPositions.containsKey(comment.id)) {
+              debugPrint(
+                '📌 Feed - 기존 댓글 위치 보존: ${comment.id}, 위치: ${_commentPositions[comment.id]}',
+              );
+              continue;
+            }
+
+            // 새로운 댓글인 경우에만 위치 설정
+            if (comment.relativePosition != null) {
+              _commentPositions[comment.id] = comment.relativePosition!;
+              debugPrint(
+                '📍 Feed - 새 댓글 위치 설정: ${comment.id}, 위치: ${comment.relativePosition}',
+              );
+            } else {
+              // Firestore에서 위치 정보가 없는 경우 기본값
+              _commentPositions[comment.id] = Offset.zero;
+              debugPrint(
+                '⚠️ Feed - 댓글 위치 없음, 기본값 설정: ${comment.id}, 위치: Offset.zero',
+              );
+            }
+
+            // 프로필 이미지 URL 업데이트 (새 댓글인 경우에만)
+            if (comment.profileImageUrl.isNotEmpty &&
+                !_commentProfileUrls.containsKey(comment.id)) {
+              _commentProfileUrls[comment.id] = comment.profileImageUrl;
+            }
           }
 
-          if (userComment.relativePosition != null) {
+          // 기존 호환성을 위해 마지막 댓글의 정보를 기존 변수에도 저장
+          final lastComment = userComments.last;
+          if (lastComment.profileImageUrl.isNotEmpty) {
+            _commentProfileImageUrls[photoId] = lastComment.profileImageUrl;
+          }
+
+          if (lastComment.relativePosition != null) {
             // relativePosition 필드에서 상대 위치 데이터를 읽어옴
             Offset relativePosition;
 
-            if (userComment.relativePosition is Map<String, dynamic>) {
+            if (lastComment.relativePosition is Map<String, dynamic>) {
               // Map 형태의 상대 위치 데이터를 Offset으로 변환
               relativePosition = PositionConverter.mapToRelativePosition(
-                userComment.relativePosition as Map<String, dynamic>,
+                lastComment.relativePosition as Map<String, dynamic>,
               );
               debugPrint(
-                '📥 Feed - relativePosition Map 형태 읽음: ${userComment.relativePosition} → $relativePosition',
+                '📥 Feed - relativePosition Map 형태 읽음: ${lastComment.relativePosition} → $relativePosition',
               );
             } else {
               // 이미 Offset 형태
-              relativePosition = userComment.relativePosition!;
+              relativePosition = lastComment.relativePosition!;
               debugPrint(
                 '📥 Feed - relativePosition Offset 형태 읽음: $relativePosition',
               );
             }
 
             _profileImagePositions[photoId] = relativePosition;
-            _droppedProfileImageUrls[photoId] = userComment.profileImageUrl;
-          } else if (userComment.profilePosition != null) {
+            _droppedProfileImageUrls[photoId] = lastComment.profileImageUrl;
+          } else if (lastComment.profilePosition != null) {
             // 하위 호환성을 위한 기존 profilePosition 처리 (향후 제거 예정)
             Offset relativePosition;
 
-            if (userComment.profilePosition is Map<String, dynamic>) {
+            if (lastComment.profilePosition is Map<String, dynamic>) {
               relativePosition = PositionConverter.mapToRelativePosition(
-                userComment.profilePosition as Map<String, dynamic>,
+                lastComment.profilePosition as Map<String, dynamic>,
               );
               debugPrint(
-                '📥 Feed - 하위호환 profilePosition Map 형태 읽음: ${userComment.profilePosition} → $relativePosition',
+                '📥 Feed - 하위호환 profilePosition Map 형태 읽음: ${lastComment.profilePosition} → $relativePosition',
               );
             } else {
-              relativePosition = userComment.profilePosition!;
+              relativePosition = lastComment.profilePosition!;
               debugPrint(
                 '📥 Feed - 하위호환 profilePosition Offset 형태 읽음: $relativePosition',
               );
             }
 
             _profileImagePositions[photoId] = relativePosition;
-            _droppedProfileImageUrls[photoId] = userComment.profileImageUrl;
+            _droppedProfileImageUrls[photoId] = lastComment.profileImageUrl;
           }
         });
       }
@@ -542,7 +603,14 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
       final profileImageUrl = await authController
           .getUserProfileImageUrlWithCache(currentUserId);
-      final currentProfilePosition = _profileImagePositions[photoId];
+
+      // 현재 드래그된 위치를 사용 (각 댓글마다 고유한 위치)
+      final currentProfilePosition =
+          _profileImagePositions[photoId] ??
+          _pendingProfilePositions[photoId] ??
+          const Offset(0.5, 0.5); // 기본 중앙 위치
+
+      debugPrint('💾 Feed - 댓글 저장할 위치: $currentProfilePosition');
 
       final commentRecord = await commentRecordController.createCommentRecord(
         audioFilePath: pendingData['audioPath'],
@@ -560,19 +628,32 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         if (mounted) {
           setState(() {
             _voiceCommentSavedStates[photoId] = true;
-            _savedCommentIds[photoId] = commentRecord.id;
-            _pendingVoiceComments.remove(photoId); // 임시 데이터 삭제
-          });
 
-          // 댓글 저장 완료 후 대기 중인 프로필 위치가 있다면 업데이트
-          final pendingPosition = _pendingProfilePositions[photoId];
-          if (pendingPosition != null) {
-            Future.delayed(const Duration(milliseconds: 200), () {
-              _updateProfilePositionInFirestore(photoId, pendingPosition);
-              // 위치 업데이트 후 임시 위치 정리
-              _pendingProfilePositions.remove(photoId);
-            });
-          }
+            // 다중 댓글 지원: 기존 댓글 목록에 새 댓글 추가 (중복 방지)
+            if (_savedCommentIds[photoId] == null) {
+              _savedCommentIds[photoId] = [commentRecord.id];
+            } else {
+              // 중복 확인 후 추가
+              if (!_savedCommentIds[photoId]!.contains(commentRecord.id)) {
+                _savedCommentIds[photoId]!.add(commentRecord.id);
+              }
+            }
+
+            // 새 댓글의 고유 위치 저장 (기존 댓글 위치에 영향 없음)
+            _commentPositions[commentRecord.id] = currentProfilePosition;
+            _commentProfileUrls[commentRecord.id] = profileImageUrl;
+
+            // 임시 데이터 삭제
+            _pendingVoiceComments.remove(photoId);
+            _pendingProfilePositions.remove(photoId);
+
+            debugPrint(
+              '📝 Feed - 댓글 저장: ${commentRecord.id}, 위치: ${_commentPositions[commentRecord.id]}, 전체 댓글: ${_savedCommentIds[photoId]}',
+            );
+
+            // 다음 댓글을 위해 위치 초기화 (기존 댓글은 건드리지 않음)
+            _profileImagePositions[photoId] = null;
+          });
         }
       } else {
         if (mounted) {
@@ -639,14 +720,24 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     // 음성 댓글이 이미 저장된 경우에만 즉시 Firestore 업데이트
     final isSaved = _voiceCommentSavedStates[photoId] == true;
     if (isSaved) {
-      _updateProfilePositionInFirestore(photoId, relativePosition);
+      // 가장 최근 댓글에 위치 업데이트
+      final commentIds = _savedCommentIds[photoId];
+      if (commentIds != null && commentIds.isNotEmpty) {
+        final latestCommentId = commentIds.last;
+        _updateProfilePositionInFirestore(
+          photoId,
+          relativePosition,
+          latestCommentId,
+        );
+      }
     }
   }
 
   /// Firestore에 프로필 위치 업데이트
   Future<void> _updateProfilePositionInFirestore(
     String photoId,
-    Offset position, {
+    Offset position,
+    String latestCommentId, {
     int retryCount = 0,
     int maxRetries = 3,
   }) async {
@@ -659,6 +750,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           return _updateProfilePositionInFirestore(
             photoId,
             position,
+            latestCommentId,
             retryCount: retryCount + 1,
           );
         } else {
@@ -678,15 +770,23 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       }
 
       // 저장된 댓글 ID 확인 및 사용
-      final savedCommentId = _savedCommentIds[photoId];
+      final savedCommentIds = _savedCommentIds[photoId];
+      String targetCommentId = latestCommentId;
 
-      if (savedCommentId != null && savedCommentId.isNotEmpty) {
+      if (targetCommentId.isEmpty) {
+        // 파라미터가 없으면 저장된 댓글 목록에서 가장 최근 댓글 사용
+        if (savedCommentIds != null && savedCommentIds.isNotEmpty) {
+          targetCommentId = savedCommentIds.last;
+        }
+      }
+
+      if (targetCommentId.isNotEmpty) {
         // 상대 위치를 Map 형태로 변환해서 Firestore에 저장
         PositionConverter.relativePositionToMap(position);
 
         final success = await commentRecordController
             .updateRelativeProfilePosition(
-              commentId: savedCommentId,
+              commentId: targetCommentId,
               photoId: photoId,
               relativePosition: position, // 상대 위치로 전달
             );
@@ -704,7 +804,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         return _updateProfilePositionInFirestore(
           photoId,
           position,
-          retryCount: retryCount + 1,
+          latestCommentId,
         );
       }
 

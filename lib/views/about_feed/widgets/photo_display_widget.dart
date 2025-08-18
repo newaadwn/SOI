@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../controllers/audio_controller.dart';
+import '../../../controllers/comment_audio_controller.dart';
 import '../../../models/photo_data_model.dart';
 import '../../../models/comment_record_model.dart';
 import '../../../utils/format_utils.dart';
@@ -179,8 +180,8 @@ class PhotoDisplayWidget extends StatelessWidget {
 
                   // 프로필 이미지 크기(27x27)의 절반만큼 보정하여 중심점으로 조정
                   final adjustedPosition = Offset(
-                    localPosition.dx + 13.5, // 드래그되는 프로필의 중심점으로 조정
-                    localPosition.dy + 13.5, // 드래그되는 프로필의 중심점으로 조정
+                    localPosition.dx + 13.5,
+                    localPosition.dy + 13.5,
                   );
 
                   // 디버그 로그 추가
@@ -191,7 +192,6 @@ class PhotoDisplayWidget extends StatelessWidget {
                   debugPrint('  - Adjusted position: $adjustedPosition');
                   debugPrint('  - CommentId: ${details.data}');
 
-                  // 부모로 드롭 이벤트 전달 (한 번만 호출)
                   onProfileImageDragged(photo.id, adjustedPosition);
                 },
                 builder: (context, candidateData, rejectedData) {
@@ -391,23 +391,37 @@ class PhotoDisplayWidget extends StatelessWidget {
                             top:
                                 clampedPosition.dy -
                                 13.5, // clampPosition이 이미 중심점을 고려하므로 좌상단으로 조정
-                            child: Consumer<AuthController>(
-                              builder: (context, authController, child) {
+                            child: Consumer2<
+                              AuthController,
+                              CommentAudioController
+                            >(
+                              builder: (
+                                context,
+                                authController,
+                                commentAudioController,
+                                child,
+                              ) {
+                                // 현재 댓글이 재생 중인지 확인
+                                final isCurrentCommentPlaying =
+                                    commentAudioController.isCommentPlaying(
+                                      comment.id,
+                                    );
+
                                 return InkWell(
                                   onTap: () async {
                                     if (comment.audioUrl.isNotEmpty) {
                                       try {
-                                        final audioController =
-                                            Provider.of<AudioController>(
-                                              context,
-                                              listen: false,
+                                        // CommentAudioController 사용하여 개별 댓글 재생
+                                        await commentAudioController
+                                            .toggleComment(
+                                              comment.id,
+                                              comment.audioUrl,
                                             );
-                                        await audioController.toggleAudio(
-                                          comment.audioUrl,
-                                          commentId: comment.id,
+                                        debugPrint(
+                                          '🎵 Feed - 음성 댓글 재생 토글: ${comment.id}',
                                         );
                                       } catch (e) {
-                                        debugPrint('❌ Feed - 음성 재생 실패: $e');
+                                        debugPrint('❌ Feed - 음성 댓글 재생 실패: $e');
                                       }
                                     }
                                   },
@@ -416,6 +430,14 @@ class PhotoDisplayWidget extends StatelessWidget {
                                     height: 27,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
+                                      // 재생 중인 댓글은 흰색 테두리 표시
+                                      border:
+                                          isCurrentCommentPlaying
+                                              ? Border.all(
+                                                color: Colors.white,
+                                                width: 2,
+                                              )
+                                              : null,
                                     ),
                                     child:
                                         comment.profileImageUrl.isNotEmpty

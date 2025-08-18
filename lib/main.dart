@@ -33,6 +33,7 @@ import 'views/about_friends/friend_management_screen.dart';
 import 'controllers/auth_controller.dart';
 import 'controllers/category_controller.dart';
 import 'controllers/audio_controller.dart';
+import 'controllers/comment_audio_controller.dart';
 import 'package:flutter/rendering.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'views/home_navigator_screen.dart';
@@ -120,6 +121,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider(create: (_) => AuthController()),
         ChangeNotifierProvider(create: (_) => CategoryController()),
         ChangeNotifierProvider(create: (_) => AudioController()),
+        ChangeNotifierProvider(create: (_) => CommentAudioController()),
         ChangeNotifierProvider(create: (_) => CommentRecordController()),
         ChangeNotifierProvider(create: (_) => PhotoController()),
         ChangeNotifierProvider(create: (_) => ContactController()),
