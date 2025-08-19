@@ -148,53 +148,48 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
             _loadProfileImages(categoryId, mates);
           }
 
+          // 데이터가 있으면 스크롤 가능한 화면으로 만들기
           return Padding(
-            padding: EdgeInsets.only(left: 15.65.w, right: 10.65.w),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: 0.h),
-              child: SingleChildScrollView(
-                physics: AlwaysScrollableScrollPhysics(),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.77,
-                        mainAxisSpacing: 10.h, // 세로 간격
-                        crossAxisSpacing: 15.w, // 가로 간격
-                      ),
-                      itemCount: sharedCategories.length,
-                      itemBuilder: (context, index) {
-                        final category = sharedCategories[index];
-                        final categoryId = category.id;
+            padding: EdgeInsets.only(left: (15.65).w, right: (10.65).w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(), // 이것은 유지
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 0.75,
+                    mainAxisSpacing: 15.h,
+                    crossAxisSpacing: 15.w,
+                  ),
+                  itemCount: sharedCategories.length,
+                  itemBuilder: (context, index) {
+                    final category = sharedCategories[index];
+                    final categoryId = category.id;
 
-                        return ArchiveCardWidget(
-                          categoryId: categoryId,
-                          isEditMode: widget.isEditMode,
-                          isEditing:
-                              widget.isEditMode &&
-                              widget.editingCategoryId == categoryId,
-                          editingController:
-                              widget.isEditMode &&
-                                      widget.editingCategoryId == categoryId
-                                  ? widget.editingController
-                                  : null,
-                          onStartEdit: () {
-                            if (widget.onStartEdit != null) {
-                              widget.onStartEdit!(categoryId, category.name);
-                            }
-                          },
-                        );
+                    return ArchiveCardWidget(
+                      categoryId: categoryId,
+                      isEditMode: widget.isEditMode,
+                      isEditing:
+                          widget.isEditMode &&
+                          widget.editingCategoryId == categoryId,
+                      editingController:
+                          widget.isEditMode &&
+                                  widget.editingCategoryId == categoryId
+                              ? widget.editingController
+                              : null,
+                      onStartEdit: () {
+                        if (widget.onStartEdit != null) {
+                          widget.onStartEdit!(categoryId, category.name);
+                        }
                       },
-                    ),
-                    // 하단 여백 추가 (스크롤 범위 확장)
-                    SizedBox(height: 20.h),
-                  ],
+                    );
+                  },
                 ),
-              ),
+                // 하단 여백을 더 크게 늘리기
+                SizedBox(height: 100.h), // 20.h에서 100.h로 증가
+              ],
             ),
           );
         },

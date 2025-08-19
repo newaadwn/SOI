@@ -185,50 +185,47 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
           // 데이터가 있으면 화면을 스크롤할 수 있도록 만듭니다.
           return Padding(
             padding: EdgeInsets.only(left: (15.65).w, right: (10.65).w),
-            child: SingleChildScrollView(
-              physics: AlwaysScrollableScrollPhysics(),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: 0.h),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.77,
-                        mainAxisSpacing: 10.h, // 세로 간격
-                        crossAxisSpacing: 15.w, // 가로 간격
-                      ),
-                      itemCount: categories.length,
-                      itemBuilder: (context, index) {
-                        final category = categories[index];
-                        final categoryId = category.id;
-
-                        return ArchiveCardWidget(
-                          categoryId: categoryId,
-                          isEditMode: widget.isEditMode,
-                          isEditing:
-                              widget.isEditMode &&
-                              widget.editingCategoryId == categoryId,
-                          editingController:
-                              widget.isEditMode &&
-                                      widget.editingCategoryId == categoryId
-                                  ? widget.editingController
-                                  : null,
-                          onStartEdit: () {
-                            if (widget.onStartEdit != null) {
-                              widget.onStartEdit!(categoryId, category.name);
-                            }
-                          },
-                        );
-                      },
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: 0.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.75,
+                      mainAxisSpacing: 15.h,
+                      crossAxisSpacing: 15.w,
                     ),
-                    // 하단 여백 추가 (스크롤 범위 확장)
-                    SizedBox(height: 20.h),
-                  ],
-                ),
+                    itemCount: categories.length,
+                    itemBuilder: (context, index) {
+                      final category = categories[index];
+                      final categoryId = category.id;
+
+                      return ArchiveCardWidget(
+                        categoryId: categoryId,
+                        isEditMode: widget.isEditMode,
+                        isEditing:
+                            widget.isEditMode &&
+                            widget.editingCategoryId == categoryId,
+                        editingController:
+                            widget.isEditMode &&
+                                    widget.editingCategoryId == categoryId
+                                ? widget.editingController
+                                : null,
+                        onStartEdit: () {
+                          if (widget.onStartEdit != null) {
+                            widget.onStartEdit!(categoryId, category.name);
+                          }
+                        },
+                      );
+                    },
+                  ),
+                  // 하단 여백 추가 (스크롤 범위 확장)
+                  SizedBox(height: 20.h),
+                ],
               ),
             ),
           );

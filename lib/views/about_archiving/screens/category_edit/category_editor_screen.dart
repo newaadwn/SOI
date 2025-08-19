@@ -29,7 +29,6 @@ class CategoryEditorScreen extends StatefulWidget {
 
 class _CategoryEditorScreenState extends State<CategoryEditorScreen>
     with WidgetsBindingObserver {
-  bool _notificationEnabled = true;
   bool _isExpanded = false;
 
   // 친구 정보 캐시
@@ -274,14 +273,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
                   SizedBox(height: 12),
 
                   // 알림설정 섹션
-                  NotificationSettingSection(
-                    enabled: _notificationEnabled,
-                    onChanged: (value) {
-                      setState(() {
-                        _notificationEnabled = value;
-                      });
-                    },
-                  ),
+                  NotificationSettingSection(),
                   SizedBox(height: 24.h),
 
                   // 친구 추가 섹션

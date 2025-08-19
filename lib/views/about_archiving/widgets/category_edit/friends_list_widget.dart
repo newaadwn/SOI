@@ -37,12 +37,7 @@ class FriendsListWidget extends StatelessWidget {
     return Container(
       width: double.infinity,
 
-      padding: EdgeInsets.only(
-        left: 18.w,
-        top: 20.3.h,
-        bottom: 12.h,
-        right: 18.w,
-      ),
+      padding: EdgeInsets.only(left: 18.w, top: 20.3.h, right: 18.w),
       decoration: BoxDecoration(
         color: const Color(0xFF1c1c1c),
         borderRadius: BorderRadius.circular(12),
@@ -68,8 +63,8 @@ class FriendsListWidget extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: const Color(0xFF323232),
@@ -104,18 +99,26 @@ class FriendsListWidget extends StatelessWidget {
             ),
           ] else ...[
             // 친구 목록을 ListView로 구성
-            ListView.separated(
+            ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
               itemCount:
-                  displayMates.length +
-                  (hasMore ? 1 : 0) +
-                  (isExpanded && totalMates > maxDisplayCount ? 1 : 0),
-              separatorBuilder: (context, index) => SizedBox(height: 8.h),
+                  (displayMates.length * 2) + // 친구들과 그 사이 간격들
+                  (hasMore ? 2 : 0) + // 더보기 버튼과 그 앞 간격
+                  (isExpanded && totalMates > maxDisplayCount ? 2 : 0) -
+                  1, // 접기 버튼과 그 앞 간격, 마지막 간격 제거
               itemBuilder: (context, index) {
+                // 홀수 인덱스는 간격
+                if (index.isOdd) {
+                  return SizedBox(height: 17.h);
+                }
+
+                // 짝수 인덱스는 실제 아이템
+                final itemIndex = index ~/ 2;
+
                 // 친구 아이템들
-                if (index < displayMates.length) {
-                  final mateUid = displayMates[index];
+                if (itemIndex < displayMates.length) {
+                  final mateUid = displayMates[itemIndex];
                   final friendInfo = friendsInfo[mateUid];
                   // 로딩 중이거나 정보가 없을 때 로딩 상태로 표시
                   final isLoadingThis = isLoadingFriends || friendInfo == null;
@@ -128,14 +131,14 @@ class FriendsListWidget extends StatelessWidget {
                 }
 
                 // "+더보기" 버튼
-                if (hasMore && index == displayMates.length) {
+                if (hasMore && itemIndex == displayMates.length) {
                   return GestureDetector(
                     onTap: onExpandToggle,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Divider(color: const Color(0xFF666666), indent: 0),
-                        SizedBox(height: 4.h),
+                        SizedBox(height: 2.h), // 간격 줄임
                         Padding(
                           padding: EdgeInsets.only(left: 18.w),
                           child: Text(
@@ -161,8 +164,8 @@ class FriendsListWidget extends StatelessWidget {
                       child: Row(
                         children: [
                           Container(
-                            width: 40.w,
-                            height: 40.w,
+                            width: 44,
+                            height: 44,
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
                               color: const Color(0xFF444444),
@@ -267,108 +270,105 @@ class _FriendListItem extends StatelessWidget {
       );
     }
 
-    return Container(
-      padding: EdgeInsets.only(bottom: 17.h),
-      child: Row(
-        children: [
-          // 프로필 이미지
-          Container(
-            width: 44.w,
-            height: 44.w,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: const Color(0xFF666666),
-            ),
-            child:
-                friendInfo?.profileImage != null &&
-                        friendInfo!.profileImage.isNotEmpty
-                    ? ClipOval(
-                      child: CachedNetworkImage(
-                        imageUrl: friendInfo!.profileImage,
-                        width: 40.w,
-                        height: 40.w,
-                        fit: BoxFit.cover,
-                        placeholder:
-                            (context, url) => Container(
-                              width: 40.w,
-                              height: 40.w,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: const Color(0xFFffffff),
-                              ),
-                            ),
-                        errorWidget:
-                            (context, url, error) => Container(
-                              width: 40.w,
-                              height: 40.w,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: const Color(0xFFffffff),
-                              ),
-                            ),
-                      ),
-                    )
-                    : Container(
+    return Row(
+      children: [
+        // 프로필 이미지
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF666666),
+          ),
+          child:
+              friendInfo?.profileImage != null &&
+                      friendInfo!.profileImage.isNotEmpty
+                  ? ClipOval(
+                    child: CachedNetworkImage(
+                      imageUrl: friendInfo!.profileImage,
                       width: 40.w,
                       height: 40.w,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFFffffff),
-                      ),
+                      fit: BoxFit.cover,
+                      placeholder:
+                          (context, url) => Container(
+                            width: 40.w,
+                            height: 40.w,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFFffffff),
+                            ),
+                          ),
+                      errorWidget:
+                          (context, url, error) => Container(
+                            width: 40.w,
+                            height: 40.w,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFFffffff),
+                            ),
+                          ),
                     ),
-          ),
-          SizedBox(width: 12.w),
-          // 텍스트 정보
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // 이름
-                Text(
-                  friendInfo?.name ??
-                      (isLoading || friendInfo == null
-                          ? '로딩 중...'
-                          : '이름을 알 수 없습니다'),
-                  style: TextStyle(
-                    color:
-                        friendInfo?.name != null
-                            ? Color(0xffd9d9d9)
-                            : Color(0xFF888888),
-                    fontSize: 16.sp,
-                    fontWeight: FontWeight.w400,
-                    fontFamily: 'Pretendard',
-                    height: 1.0,
+                  )
+                  : Container(
+                    width: 40.w,
+                    height: 40.w,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: const Color(0xFFffffff),
+                    ),
                   ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
+        ),
+        SizedBox(width: 12.w),
+        // 텍스트 정보
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 이름
+              Text(
+                friendInfo?.name ??
+                    (isLoading || friendInfo == null
+                        ? '로딩 중...'
+                        : '이름을 알 수 없습니다'),
+                style: TextStyle(
+                  color:
+                      friendInfo?.name != null
+                          ? Color(0xffd9d9d9)
+                          : Color(0xFF888888),
+                  fontSize: 16.sp,
+                  fontWeight: FontWeight.w400,
+                  fontFamily: 'Pretendard',
+                  height: 1.0,
                 ),
-                SizedBox(height: (4.76).h),
-                // ID
-                Text(
-                  friendInfo?.id ??
-                      (isLoading || friendInfo == null
-                          ? '정보를 가져오는 중...'
-                          : '알 수 없음'),
-                  style: TextStyle(
-                    color:
-                        friendInfo?.id != null
-                            ? const Color(0xFFAAAAAA)
-                            : const Color(0xFF666666),
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w400,
-                    fontFamily: 'Pretendard',
-                    height: 1.0,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+              SizedBox(height: (4.76).h),
+              // ID
+              Text(
+                friendInfo?.id ??
+                    (isLoading || friendInfo == null
+                        ? '정보를 가져오는 중...'
+                        : '알 수 없음'),
+                style: TextStyle(
+                  color:
+                      friendInfo?.id != null
+                          ? const Color(0xFFAAAAAA)
+                          : const Color(0xFF666666),
+                  fontSize: 12.sp,
+                  fontWeight: FontWeight.w400,
+                  fontFamily: 'Pretendard',
+                  height: 1.0,
                 ),
-              ],
-            ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

@@ -1,16 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
-class NotificationSettingSection extends StatelessWidget {
-  final bool enabled;
-  final ValueChanged<bool> onChanged;
+class NotificationSettingSection extends StatefulWidget {
+  const NotificationSettingSection({super.key});
 
-  const NotificationSettingSection({
-    super.key,
-    required this.enabled,
-    required this.onChanged,
-  });
+  @override
+  State<NotificationSettingSection> createState() =>
+      _NotificationSettingSectionState();
+}
 
+class _NotificationSettingSectionState
+    extends State<NotificationSettingSection> {
+  bool _isNotificationEnabled = false;
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -34,16 +35,45 @@ class NotificationSettingSection extends StatelessWidget {
               ),
             ),
           ),
-          Switch(
-            value: enabled,
-            onChanged: onChanged,
-            activeColor: Colors.black,
-            activeTrackColor: const Color(0xFFf9f9f9),
-            inactiveThumbColor: Colors.black,
-            inactiveTrackColor: const Color(0xFFf9f9f9),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isNotificationEnabled = !_isNotificationEnabled;
+              });
+            },
+            child: _notificationSwitch(_isNotificationEnabled),
           ),
         ],
       ),
     );
   }
+}
+
+Widget _notificationSwitch(bool isNotificationEnabled) {
+  return AnimatedContainer(
+    duration: const Duration(milliseconds: 200),
+    width: 50.w,
+    height: 26.h,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(13.r),
+      color:
+          isNotificationEnabled
+              ? const Color(0xffffffff)
+              : const Color(0xff5a5a5a),
+    ),
+    child: AnimatedAlign(
+      duration: const Duration(milliseconds: 200),
+      alignment:
+          isNotificationEnabled ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        width: 22.w,
+        height: 22.h,
+        margin: EdgeInsets.symmetric(horizontal: 2.w),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color(0xff000000),
+        ),
+      ),
+    ),
+  );
 }

@@ -11,8 +11,8 @@ class CategoryInfoSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      height: 75.h,
-      padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 16.h),
+      height: 62.h,
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
       decoration: BoxDecoration(
         color: const Color(0xFF1c1c1c),
         borderRadius: BorderRadius.circular(12),
@@ -39,7 +39,7 @@ class CategoryInfoSection extends StatelessWidget {
                 fontWeight: FontWeight.w600,
                 fontFamily: 'Pretendard Variable',
               ),
-              overflow: TextOverflow.ellipsis,
+              overflow: TextOverflow.visible,
               maxLines: 1,
             ),
           ),

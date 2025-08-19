@@ -197,7 +197,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           'categoryName': category.name,
           'categoryId': category.id,
         });
-        debugPrint('  - 사진 추가: ${photo.id} in ${category.name}');
       }
 
       setState(() {
@@ -417,32 +416,27 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
           // 기존 댓글과 새 댓글을 합치되 중복 제거
           final allCommentIds =
-              [...existingCommentIds, ...newCommentIds].toSet().toList();
-          allCommentIds.sort(); // 일관된 순서 보장
-          _savedCommentIds[photoId] = allCommentIds;
+              <dynamic>{...existingCommentIds, ...newCommentIds}.toList();
+
+          // 댓글 id를 정렬하는 함수
+          allCommentIds.sort();
+
+          // 중복 제거된 댓글 ID 목록 저장
+          _savedCommentIds[photoId] = allCommentIds.cast<String>();
 
           // 각 댓글의 위치와 프로필 정보 저장 (기존 위치 절대 덮어쓰지 않음)
           for (final comment in userComments) {
             // 기존에 위치가 저장되어 있으면 절대 변경하지 않음
             if (_commentPositions.containsKey(comment.id)) {
-              debugPrint(
-                '📌 Feed - 기존 댓글 위치 보존: ${comment.id}, 위치: ${_commentPositions[comment.id]}',
-              );
               continue;
             }
 
             // 새로운 댓글인 경우에만 위치 설정
             if (comment.relativePosition != null) {
               _commentPositions[comment.id] = comment.relativePosition!;
-              debugPrint(
-                '📍 Feed - 새 댓글 위치 설정: ${comment.id}, 위치: ${comment.relativePosition}',
-              );
             } else {
               // Firestore에서 위치 정보가 없는 경우 기본값
               _commentPositions[comment.id] = Offset.zero;
-              debugPrint(
-                '⚠️ Feed - 댓글 위치 없음, 기본값 설정: ${comment.id}, 위치: Offset.zero',
-              );
             }
 
             // 프로필 이미지 URL 업데이트 (새 댓글인 경우에만)
@@ -467,15 +461,9 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
               relativePosition = PositionConverter.mapToRelativePosition(
                 lastComment.relativePosition as Map<String, dynamic>,
               );
-              debugPrint(
-                '📥 Feed - relativePosition Map 형태 읽음: ${lastComment.relativePosition} → $relativePosition',
-              );
             } else {
               // 이미 Offset 형태
               relativePosition = lastComment.relativePosition!;
-              debugPrint(
-                '📥 Feed - relativePosition Offset 형태 읽음: $relativePosition',
-              );
             }
 
             _profileImagePositions[photoId] = relativePosition;
@@ -488,14 +476,8 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
               relativePosition = PositionConverter.mapToRelativePosition(
                 lastComment.profilePosition as Map<String, dynamic>,
               );
-              debugPrint(
-                '📥 Feed - 하위호환 profilePosition Map 형태 읽음: ${lastComment.profilePosition} → $relativePosition',
-              );
             } else {
               relativePosition = lastComment.profilePosition!;
-              debugPrint(
-                '📥 Feed - 하위호환 profilePosition Offset 형태 읽음: $relativePosition',
-              );
             }
 
             _profileImagePositions[photoId] = relativePosition;
@@ -516,7 +498,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
             _photoComments[photoId] = [];
           }
         });
-        debugPrint('🧹 Feed - 현재 사용자 댓글 없음, 상태 초기화');
       }
     }
   }
@@ -524,7 +505,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   /// 오디오 재생/일시정지 토글
   Future<void> _toggleAudio(PhotoDataModel photo) async {
     if (photo.audioUrl.isEmpty) {
-      debugPrint('오디오 URL이 없습니다');
       return;
     }
 
@@ -534,7 +514,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         listen: false,
       ).toggleAudio(photo.audioUrl);
     } catch (e) {
-      debugPrint('오디오 재생 오류: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -563,7 +542,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     int? duration,
   ) async {
     if (audioPath == null || waveformData == null || duration == null) {
-      debugPrint('❌ 음성 댓글 데이터가 유효하지 않습니다');
       return;
     }
 
@@ -575,15 +553,12 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         'duration': duration,
       };
     });
-
-    debugPrint('✅ 음성 댓글 임시 저장 완료 - 사진: $photoId');
   }
 
   /// 실제 음성 댓글 저장 (파형 클릭 시 호출)
   Future<void> _saveVoiceComment(String photoId) async {
     final pendingData = _pendingVoiceComments[photoId];
     if (pendingData == null) {
-      debugPrint('❌ 저장할 음성 댓글 데이터가 없습니다');
       return;
     }
 
@@ -599,18 +574,12 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         throw Exception('로그인된 사용자를 찾을 수 없습니다.');
       }
 
-      debugPrint('🎤 음성 댓글 실제 저장 시작 - 사진: $photoId, 사용자: $currentUserId');
-
       final profileImageUrl = await authController
           .getUserProfileImageUrlWithCache(currentUserId);
 
       // 현재 드래그된 위치를 사용 (각 댓글마다 고유한 위치)
       final currentProfilePosition =
-          _profileImagePositions[photoId] ??
-          _pendingProfilePositions[photoId] ??
-          const Offset(0.5, 0.5); // 기본 중앙 위치
-
-      debugPrint('💾 Feed - 댓글 저장할 위치: $currentProfilePosition');
+          _profileImagePositions[photoId] ?? _pendingProfilePositions[photoId];
 
       final commentRecord = await commentRecordController.createCommentRecord(
         audioFilePath: pendingData['audioPath'],
@@ -619,12 +588,10 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         waveformData: pendingData['waveformData'],
         duration: pendingData['duration'],
         profileImageUrl: profileImageUrl,
-        relativePosition: currentProfilePosition, // relativePosition 필드 사용
+        relativePosition: currentProfilePosition,
       );
 
       if (commentRecord != null) {
-        debugPrint('✅ 음성 댓글 실제 저장 완료 - ID: ${commentRecord.id}');
-
         if (mounted) {
           setState(() {
             _voiceCommentSavedStates[photoId] = true;
@@ -640,16 +607,12 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
             }
 
             // 새 댓글의 고유 위치 저장 (기존 댓글 위치에 영향 없음)
-            _commentPositions[commentRecord.id] = currentProfilePosition;
+            _commentPositions[commentRecord.id] = currentProfilePosition!;
             _commentProfileUrls[commentRecord.id] = profileImageUrl;
 
             // 임시 데이터 삭제
             _pendingVoiceComments.remove(photoId);
             _pendingProfilePositions.remove(photoId);
-
-            debugPrint(
-              '📝 Feed - 댓글 저장: ${commentRecord.id}, 위치: ${_commentPositions[commentRecord.id]}, 전체 댓글: ${_savedCommentIds[photoId]}',
-            );
 
             // 다음 댓글을 위해 위치 초기화 (기존 댓글은 건드리지 않음)
             _profileImagePositions[photoId] = null;
@@ -661,15 +624,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('음성 댓글 저장 실패: $e'),
-            backgroundColor: const Color(0xFF5A5A5A),
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      debugPrint("음성 댓글 저장 중 오류 발생: $e");
     }
   }
 
@@ -861,12 +816,12 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             CircularProgressIndicator(color: Colors.white),
-            SizedBox(height: 16),
+            SizedBox(height: 16.h),
             Text('사진을 불러오는 중...', style: TextStyle(color: Colors.white70)),
           ],
         ),
@@ -874,21 +829,21 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     }
 
     if (_allPhotos.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(Icons.photo_camera_outlined, color: Colors.white54, size: 80),
-            SizedBox(height: 16),
+            SizedBox(height: 16.h),
             Text(
               '아직 사진이 없어요',
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 18,
+                fontSize: 18.sp,
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 8),
+            SizedBox(height: 8.h),
             Text(
               '친구들과 카테고리를 만들고\n첫 번째 사진을 공유해보세요!',
               style: TextStyle(color: Colors.white70),
@@ -924,7 +879,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       CircularProgressIndicator(color: Colors.white),
-                      SizedBox(height: 16),
+                      SizedBox(height: 16.h),
                       Text(
                         '더 많은 사진을 불러오는 중...',
                         style: TextStyle(color: Colors.white70),
@@ -942,12 +897,15 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           // 추가 로딩 인디케이터 (하단)
           if (_isLoadingMore)
             Positioned(
-              bottom: 50,
+              bottom: 50.w,
               left: 0,
               right: 0,
               child: Center(
                 child: Container(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 16.w,
+                    vertical: 8.h,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(20),
@@ -956,17 +914,17 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(
-                        width: 16,
-                        height: 16,
+                        width: 16.w,
+                        height: 16.h,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Colors.white,
                         ),
                       ),
-                      SizedBox(width: 8),
+                      SizedBox(width: 8.w),
                       Text(
                         '추가 로딩 중...',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
+                        style: TextStyle(color: Colors.white, fontSize: 12.sp),
                       ),
                     ],
                   ),

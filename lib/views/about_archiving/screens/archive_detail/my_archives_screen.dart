@@ -151,50 +151,47 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
 
           return Padding(
             padding: EdgeInsets.only(left: 15.65.w, right: 10.65.w),
-            child: SingleChildScrollView(
-              physics: AlwaysScrollableScrollPhysics(),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: 0.h),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GridView.builder(
-                      physics: const NeverScrollableScrollPhysics(),
-                      shrinkWrap: true,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        childAspectRatio: 0.77,
-                        mainAxisSpacing: 10.h, // 세로 간격
-                        crossAxisSpacing: 15.w, // 가로 간격
-                      ),
-                      itemCount: userCategories.length,
-                      itemBuilder: (context, index) {
-                        final category = userCategories[index];
-                        final categoryId = category.id;
-
-                        return ArchiveCardWidget(
-                          categoryId: categoryId,
-                          isEditMode: widget.isEditMode,
-                          isEditing:
-                              widget.isEditMode &&
-                              widget.editingCategoryId == categoryId,
-                          editingController:
-                              widget.isEditMode &&
-                                      widget.editingCategoryId == categoryId
-                                  ? widget.editingController
-                                  : null,
-                          onStartEdit: () {
-                            if (widget.onStartEdit != null) {
-                              widget.onStartEdit!(categoryId, category.name);
-                            }
-                          },
-                        );
-                      },
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: 0.h),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GridView.builder(
+                    physics: const NeverScrollableScrollPhysics(),
+                    shrinkWrap: true,
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.77,
+                      mainAxisSpacing: 10.h, // 세로 간격
+                      crossAxisSpacing: 15.w, // 가로 간격
                     ),
-                    // 하단 여백 추가 (화면 크기별)
-                    SizedBox(height: 20.h),
-                  ],
-                ),
+                    itemCount: userCategories.length,
+                    itemBuilder: (context, index) {
+                      final category = userCategories[index];
+                      final categoryId = category.id;
+
+                      return ArchiveCardWidget(
+                        categoryId: categoryId,
+                        isEditMode: widget.isEditMode,
+                        isEditing:
+                            widget.isEditMode &&
+                            widget.editingCategoryId == categoryId,
+                        editingController:
+                            widget.isEditMode &&
+                                    widget.editingCategoryId == categoryId
+                                ? widget.editingController
+                                : null,
+                        onStartEdit: () {
+                          if (widget.onStartEdit != null) {
+                            widget.onStartEdit!(categoryId, category.name);
+                          }
+                        },
+                      );
+                    },
+                  ),
+                  // 하단 여백 추가 (화면 크기별)
+                  SizedBox(height: 20.h),
+                ],
               ),
             ),
           );

@@ -263,25 +263,36 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
   // ==================== Helper Methods ====================
 
-  /// AuthController 인스턴스 가져오기
+  // AuthController 인스턴스 가져오기
   AuthController get _getAuthController =>
       Provider.of<AuthController>(context, listen: false);
 
-  /// AudioController 인스턴스 가져오기
+  // AudioController 인스턴스 가져오기
   AudioController get _getAudioController =>
       Provider.of<AudioController>(context, listen: false);
 
-  /// SnackBar 표시 헬퍼
+  // SnackBar 표시 헬퍼
   void _showSnackBar(String message, {Color? backgroundColor}) {
     if (!mounted) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: TextStyle(fontFamily: "Pretendard")),
+        content: Container(
+          height: 30.h,
+          alignment: Alignment.center,
+          child: Text(
+            message,
+            style: TextStyle(fontFamily: "Pretendard", fontSize: 14.sp),
+          ),
+        ),
         backgroundColor: backgroundColor ?? const Color(0xFF5A5A5A),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
       ),
     );
   }
+
+  // ...existing code...
 
   // ==================== Core Methods ====================
   void _onPageChanged(int index) {
@@ -960,7 +971,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                   SizedBox(width: 25.w),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-
                     children: [
                       // 사용자 닉네임
                       Container(
@@ -989,7 +999,27 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                       ),
                     ],
                   ),
-                  Spacer(), // 남은 공간을 채우기 위한 Spacer
+                  Spacer(),
+
+                  // 좋아요 버튼 - Material + InkWell
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(50.w),
+                      onTap: () {},
+                      child: Padding(
+                        padding: EdgeInsets.all(4.w),
+                        child: Image.asset(
+                          "assets/like_icon.png",
+                          width: 33.w,
+                          height: 33.h,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  SizedBox(width: 4.w), // 간격 조정
+                  // 더보기 버튼 - Material + InkWell
                   MenuAnchor(
                     style: MenuStyle(
                       backgroundColor: WidgetStatePropertyAll(
@@ -1012,18 +1042,25 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                       MenuController controller,
                       Widget? child,
                     ) {
-                      return IconButton(
-                        onPressed: () {
-                          if (controller.isOpen) {
-                            controller.close();
-                          } else {
-                            controller.open();
-                          }
-                        },
-                        icon: Icon(
-                          Icons.more_vert,
-                          size: 25.sp,
-                          color: Color(0xfff9f9f9),
+                      return Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(50.w),
+                          onTap: () {
+                            if (controller.isOpen) {
+                              controller.close();
+                            } else {
+                              controller.open();
+                            }
+                          },
+                          child: Padding(
+                            padding: EdgeInsets.all(4.w),
+                            child: Icon(
+                              Icons.more_vert,
+                              size: 25.sp,
+                              color: Color(0xfff9f9f9),
+                            ),
+                          ),
                         ),
                       );
                     },
@@ -1078,10 +1115,14 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
               Consumer<AuthController>(
                 builder: (context, authController, child) {
+                  final currentUserId = authController.getUserId;
+                  final isCurrentUserPhoto = currentUserId == photo.userID;
+
                   // 항상 AudioRecorderWidget 표시 (여러 댓글 허용)
                   return AudioRecorderWidget(
                     photoId: photo.id,
                     isCommentMode: true, // 명시적으로 댓글 모드 설정
+                    isCurrentUserPhoto: isCurrentUserPhoto, // 현재 사용자 사진 여부 전달
                     profileImagePosition: _profileImagePositions[photo.id],
                     getProfileImagePosition:
                         () => _profileImagePositions[photo.id],

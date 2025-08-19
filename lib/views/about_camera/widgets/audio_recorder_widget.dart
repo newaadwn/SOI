@@ -54,6 +54,9 @@ class AudioRecorderWidget extends StatefulWidget {
   // ✅ 음성 댓글 위치 설정 완료 후 리셋 콜백
   final VoidCallback? onCommentPositioned;
 
+  // 현재 사용자가 올린 사진인지 여부 (아이콘 변경용)
+  final bool isCurrentUserPhoto;
+
   const AudioRecorderWidget({
     super.key,
     this.onRecordingCompleted,
@@ -66,6 +69,7 @@ class AudioRecorderWidget extends StatefulWidget {
     this.profileImagePosition,
     this.getProfileImagePosition,
     this.onCommentPositioned, // ✅ 새로운 콜백 추가
+    this.isCurrentUserPhoto = true, // 기본값은 true (기존 동작 유지)
   });
 
   @override
@@ -184,7 +188,6 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       List<double> waveformData = List<double>.from(
         recorderController.waveData,
       );
-      debugPrint('🌊 녹음 중 수집된 파형 데이터: ${waveformData.length} samples');
 
       // 파형 데이터 실제 레벨 유지 (정규화 없이) - 절댓값만 적용
       if (waveformData.isNotEmpty) {
@@ -411,19 +414,22 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
   @override
   Widget build(BuildContext context) {
-    //double screenWidth = MediaQuery.of(context).size.width;
-    //sdouble screenHeight = MediaQuery.of(context).size.height;
-
-    // ✅ 상태에 따라 다른 UI 표시
+    // 상태에 따라 다른 UI 표시
     switch (_currentState) {
       case RecordingState.idle:
         // 항상 녹음 버튼 활성화 (여러 댓글 허용)
-        return GestureDetector(
-          onTap: _startRecording,
-          child: Image.asset(
-            'assets/record_icon.png',
-            width: 64, // 반응형 너비
-            height: 64, // 반응형 높이
+        return Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(50),
+            onTap: _startRecording,
+            child: Image.asset(
+              widget.isCurrentUserPhoto
+                  ? 'assets/record_icon.png'
+                  : 'assets/comment.png',
+              width: 64,
+              height: 64,
+            ),
           ),
         );
 
@@ -443,8 +449,8 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
   Widget _buildRecordingUI(String duration) {
     return Container(
-      width: 376.w, // 반응형 너비
-      height: 52.h, // 반응형 높이
+      width: 376.w,
+      height: 52.h,
       decoration: BoxDecoration(
         color: const Color(0xff1c1c1c),
         borderRadius: BorderRadius.circular(14.6),
@@ -472,10 +478,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
           SizedBox(width: 17.w), // 반응형 간격
           Expanded(
             child: AudioWaveforms(
-              size: Size(
-                1,
-                52.h, // 반응형 높이
-              ),
+              size: Size(1, 52.h),
               recorderController: recorderController,
               waveStyle: const WaveStyle(
                 waveColor: Colors.white,
@@ -655,10 +658,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         scale: 1.2, // 드래그 중에는 조금 더 크게
         child: Opacity(opacity: 0.8, child: profileWidget),
       ),
-      childWhenDragging: Opacity(
-        opacity: 0.3, // 드래그 중에는 원본을 투명하게
-        child: profileWidget,
-      ),
+      childWhenDragging: Opacity(opacity: 0.3, child: profileWidget),
       onDragEnd: (details) {
         // DragTarget에서 성공적으로 처리된 경우에만 리셋
         if (details.wasAccepted) {

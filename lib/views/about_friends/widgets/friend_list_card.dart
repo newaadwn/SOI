@@ -80,7 +80,7 @@ class FriendListCard extends StatelessWidget {
                                             )
                                             : null,
                                   ),
-                                  SizedBox(width: 9.w),
+                                  SizedBox(width: 12.w),
                                   // 이름 + 서브텍스트 영역
                                   Expanded(
                                     child: Column(
@@ -124,8 +124,6 @@ class FriendListCard extends StatelessWidget {
                           },
                           child: Column(
                             children: [
-                              Divider(height: 1, color: Color(0xff1c1c1c)),
-                              SizedBox(height: (12).h),
                               Row(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [

@@ -729,7 +729,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: TextStyle(
                 fontFamily: 'Pretendard Variable',
                 fontWeight: FontWeight.w400,
-
                 fontSize: 16.sp,
                 color:
                     isRed ? const Color(0xFFFF0000) : const Color(0xFFF9F9F9),

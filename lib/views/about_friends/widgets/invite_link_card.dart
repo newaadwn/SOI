@@ -4,16 +4,13 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 class InviteLinkCard extends StatelessWidget {
   final double scale;
 
-  const InviteLinkCard({
-    super.key,
-    required this.scale,
-  });
+  const InviteLinkCard({super.key, required this.scale});
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 354.w,
-      height: 100.h,
+      width: 354,
+      height: 96,
       child: Card(
         clipBehavior: Clip.antiAliasWithSaveLayer,
         color: const Color(0xff1c1c1c),

@@ -192,8 +192,8 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                     if (!isPinnedForCurrentUser) return SizedBox.shrink();
 
                     return Positioned(
-                      top: (8.0).h,
-                      left: (7.35).w,
+                      top: (5).h,
+                      left: (5).w,
                       child: Container(
                         padding: const EdgeInsets.all(4.0),
                         decoration: BoxDecoration(
@@ -224,8 +224,8 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                     if (!hasNewPhoto) return SizedBox.shrink();
 
                     return Positioned(
-                      top: (8.0).h,
-                      left: (129).w,
+                      top: (3.43).h,
+                      left: (128.35).w,
                       child: Image.asset(
                         'assets/new_icon.png',
                         width: 13.87.w,
