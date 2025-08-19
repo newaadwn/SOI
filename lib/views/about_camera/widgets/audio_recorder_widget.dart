@@ -609,8 +609,8 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
     //double screenHeight = MediaQuery.of(context).size.height;
 
     final profileWidget = Container(
-      width: 27,
-      height: 27,
+      width: 64,
+      height: 64,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
 
@@ -655,7 +655,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       data: _lastSavedCommentId ?? '',
 
       feedback: Transform.scale(
-        scale: 1.2, // 드래그 중에는 조금 더 크게
+        scale: 1.0, // 드래그 중에는 조금 더 크게
         child: Opacity(opacity: 0.8, child: profileWidget),
       ),
       childWhenDragging: Opacity(opacity: 0.3, child: profileWidget),

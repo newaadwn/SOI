@@ -1,20 +1,17 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-
 import '../../../../controllers/audio_controller.dart';
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/comment_record_controller.dart';
 import '../../../../controllers/photo_controller.dart';
 import '../../../../models/comment_record_model.dart';
 import '../../../../models/photo_data_model.dart';
-import '../../../../utils/format_utils.dart';
 import '../../../../utils/position_converter.dart';
 import '../../../about_camera/widgets/audio_recorder_widget.dart';
-import '../../widgets/common/wave_form_widget/custom_waveform_widget.dart';
+import '../../widgets/photo_detail_widget/photo_display_widget.dart';
+import '../../widgets/photo_detail_widget/user_info_row_widget.dart';
 
 class PhotoDetailScreen extends StatefulWidget {
   final List<PhotoDataModel> photos;
@@ -47,8 +44,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
   // 음성 댓글 관련 맵들
   final Map<String, List<CommentRecordModel>> _photoComments = {};
-  final Map<String, Offset?> _profileImagePositions =
-      {}; // 현재 사용자의 드래그 위치만 임시 저장
+  final Map<String, Offset?> _profileImagePositions = {};
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
   _commentStreams = {};
 
@@ -201,20 +197,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
             _profileImagePositions[photoId] = relativePosition;
             _droppedProfileImageUrls[photoId] = userComment.profileImageUrl;
-          } else if (userComment.profilePosition != null) {
-            // 하위 호환성을 위한 기존 profilePosition 처리 (향후 제거 예정)
-            Offset relativePosition;
-
-            if (userComment.profilePosition is Map<String, dynamic>) {
-              relativePosition = PositionConverter.mapToRelativePosition(
-                userComment.profilePosition as Map<String, dynamic>,
-              );
-            } else {
-              relativePosition = userComment.profilePosition!;
-            }
-
-            _profileImagePositions[photoId] = relativePosition;
-            _droppedProfileImageUrls[photoId] = userComment.profileImageUrl;
           }
         });
       }
@@ -325,18 +307,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       }
     } catch (e) {
       debugPrint('❌ Photo Detail - 댓글 직접 로드 실패: $e');
-    }
-  }
-
-  // 오디오 재생/일시정지
-  Future<void> _toggleAudio() async {
-    final currentPhoto = widget.photos[_currentIndex];
-    if (currentPhoto.audioUrl.isEmpty) return;
-
-    try {
-      await _getAudioController.toggleAudio(currentPhoto.audioUrl);
-    } catch (e) {
-      _showSnackBar('음성 파일을 재생할 수 없습니다: $e');
     }
   }
 
@@ -494,58 +464,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     _subscribeToVoiceCommentsForCurrentPhoto();
   }
 
-  // 파형 위젯 빌드
-  Widget _buildWaveformWidgetWithProgress(PhotoDataModel photo) {
-    if (photo.audioUrl.isEmpty ||
-        photo.waveformData == null ||
-        photo.waveformData!.isEmpty) {
-      return Container(
-        height: MediaQuery.sizeOf(context).height * 0.038,
-        alignment: Alignment.center,
-        child: Text(
-          '오디오 없음',
-          style: TextStyle(
-            color: Colors.white70,
-            fontSize: MediaQuery.sizeOf(context).width * 0.027,
-          ),
-        ),
-      );
-    }
-
-    return Consumer<AudioController>(
-      builder: (context, audioController, child) {
-        final isCurrentAudio =
-            audioController.isPlaying &&
-            audioController.currentPlayingAudioUrl == photo.audioUrl;
-
-        double progress = 0.0;
-        if (isCurrentAudio &&
-            audioController.currentDuration.inMilliseconds > 0) {
-          progress = (audioController.currentPosition.inMilliseconds /
-                  audioController.currentDuration.inMilliseconds)
-              .clamp(0.0, 1.0);
-        }
-
-        return GestureDetector(
-          onTap: _toggleAudio,
-          child: Container(
-            alignment: Alignment.center,
-            child: CustomWaveformWidget(
-              waveformData: photo.waveformData!,
-              color: const Color(0xff5a5a5a),
-              activeColor: Colors.white,
-              progress: progress,
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -565,551 +485,38 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         controller: _pageController,
         itemCount: widget.photos.length,
         scrollDirection: Axis.vertical,
-        onPageChanged: _onPageChanged, // 페이지 변경 감지
+        onPageChanged: _onPageChanged,
         itemBuilder: (context, index) {
           final photo = widget.photos[index];
           return Column(
             children: [
-              // 사진 이미지 + 오디오 오버레이
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16), // 반응형 반지름
-                child: Builder(
-                  builder: (builderContext) {
-                    return DragTarget<String>(
-                      onWillAcceptWithDetails: (details) {
-                        // DragTarget is being approached with data: ${details.data}
-                        // commentId 문자열이 들어오면 허용
-                        return (details.data).isNotEmpty;
-                      },
-                      onAcceptWithDetails: (details) {
-                        // 드롭된 좌표를 사진 내 상대 좌표로 변환
-                        final RenderBox renderBox =
-                            builderContext.findRenderObject() as RenderBox;
-                        final localPosition = renderBox.globalToLocal(
-                          details.offset,
-                        );
+              // 사진 이미지 + 오디오 오버레이 (PhotoDisplayWidget으로 분리)
+              PhotoDisplayWidget(
+                photo: photo,
+                comments: _photoComments[photo.id] ?? [],
+                userProfileImageUrl: _userProfileImageUrl,
+                isLoadingProfile: _isLoadingProfile,
+                profileImageRefreshKey: _profileImageRefreshKey,
+                onProfilePositionUpdate: (commentId, position) {
+                  // 사진 영역 내 상대 좌표로 저장
+                  setState(() {
+                    _profileImagePositions[photo.id] = position;
+                  });
 
-                        final modifiedPositionX = localPosition.dx + 13.5;
-                        final modifiedPositionY = localPosition.dy + 13.5;
-
-                        // 프로필 이미지 크기(27x27)의 절반만큼 보정하여 중심점으로 조정
-                        final adjustedPosition = Offset(
-                          modifiedPositionX,
-                          modifiedPositionY,
-                        );
-
-                        // 사진 영역 내 상대 좌표로 저장
-                        setState(() {
-                          _profileImagePositions[photo.id] = adjustedPosition;
-                        });
-
-                        // Firestore에 위치 업데이트
-                        final droppedCommentId = details.data;
-                        _updateProfilePositionInFirestore(
-                          photo.id,
-                          droppedCommentId,
-                          adjustedPosition,
-                        );
-                      },
-                      builder: (context, candidateData, rejectedData) {
-                        return Stack(
-                          alignment: Alignment.bottomCenter,
-                          children: [
-                            // 사진 이미지
-                            SizedBox(
-                              width: 354.w, // 반응형 너비
-                              height: 500.h, // 반응형 높이
-                              child: CachedNetworkImage(
-                                imageUrl: photo.imageUrl,
-                                fit: BoxFit.cover,
-                                placeholder:
-                                    (context, url) =>
-                                        Container(color: Colors.grey[900]),
-                                errorWidget:
-                                    (context, url, error) => const Icon(
-                                      Icons.error,
-                                      color: Colors.white,
-                                    ),
-                              ),
-                            ),
-
-                            // 모든 댓글의 드롭된 프로필 이미지들 표시 (상대 좌표 사용)
-                            ...(() {
-                              final comments = _photoComments[photo.id] ?? [];
-
-                              final commentsWithPosition =
-                                  comments
-                                      .where(
-                                        (comment) =>
-                                            comment.relativePosition != null ||
-                                            comment.profilePosition != null,
-                                      )
-                                      .toList();
-
-                              return commentsWithPosition.map((comment) {
-                                // 상대 좌표를 절대 좌표로 변환
-                                final imageSize = Size(354.w, 500.h);
-                                Offset absolutePosition;
-
-                                if (comment.relativePosition != null) {
-                                  // 새로운 상대 좌표 사용
-                                  absolutePosition =
-                                      PositionConverter.toAbsolutePosition(
-                                        comment.relativePosition!,
-                                        imageSize,
-                                      );
-                                } else if (comment.profilePosition != null) {
-                                  // 기존 절대 좌표 사용 (하위호환성)
-                                  absolutePosition = comment.profilePosition!;
-                                } else {
-                                  return Container();
-                                }
-
-                                // 프로필 이미지가 화면을 벗어나지 않도록 위치 조정
-                                final clampedPosition =
-                                    PositionConverter.clampPosition(
-                                      absolutePosition,
-                                      imageSize,
-                                    );
-
-                                return Positioned(
-                                  left: clampedPosition.dx - 13.5,
-                                  top: clampedPosition.dy - 13.5,
-                                  child: Consumer<AuthController>(
-                                    builder: (context, authController, child) {
-                                      return InkWell(
-                                        onTap: () async {
-                                          final audioController =
-                                              Provider.of<AudioController>(
-                                                context,
-                                                listen: false,
-                                              );
-                                          if (comment.audioUrl.isNotEmpty) {
-                                            await audioController.toggleAudio(
-                                              comment.audioUrl,
-                                              commentId: comment.id,
-                                            );
-                                          }
-                                        },
-                                        child: Container(
-                                          width: 27,
-                                          height: 27,
-                                          decoration: BoxDecoration(
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child:
-                                              comment.profileImageUrl.isNotEmpty
-                                                  ? ClipOval(
-                                                    child: CachedNetworkImage(
-                                                      imageUrl:
-                                                          comment
-                                                              .profileImageUrl,
-                                                      width: 27,
-                                                      height: 27,
-                                                      key: ValueKey(
-                                                        'detail_profile_${comment.profileImageUrl}_$_profileImageRefreshKey',
-                                                      ),
-                                                      fit: BoxFit.cover,
-                                                      placeholder:
-                                                          (
-                                                            context,
-                                                            url,
-                                                          ) => Container(
-                                                            width: 27,
-                                                            height: 27,
-                                                            decoration: BoxDecoration(
-                                                              color:
-                                                                  Colors
-                                                                      .grey[700],
-                                                              shape:
-                                                                  BoxShape
-                                                                      .circle,
-                                                            ),
-                                                            child: Icon(
-                                                              Icons.person,
-                                                              color:
-                                                                  Colors.white,
-                                                              size: 14.sp,
-                                                            ),
-                                                          ),
-                                                      errorWidget:
-                                                          (
-                                                            context,
-                                                            error,
-                                                            stackTrace,
-                                                          ) => Container(
-                                                            width: 27,
-                                                            height: 27,
-                                                            decoration: BoxDecoration(
-                                                              color:
-                                                                  Colors
-                                                                      .grey[700],
-                                                              shape:
-                                                                  BoxShape
-                                                                      .circle,
-                                                            ),
-                                                            child: Icon(
-                                                              Icons.person,
-                                                              color:
-                                                                  Colors.white,
-                                                              size: 14.sp,
-                                                            ),
-                                                          ),
-                                                    ),
-                                                  )
-                                                  : Container(
-                                                    width: 27,
-                                                    height: 27,
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.grey[700],
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: Icon(
-                                                      Icons.person,
-                                                      color: Colors.white,
-                                                      size: 14.sp,
-                                                    ),
-                                                  ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                );
-                              });
-                            })(),
-
-                            // 오디오 컨트롤 오버레이 (하단에 배치)
-                            if (photo.audioUrl.isNotEmpty)
-                              Positioned(
-                                bottom: 14.h,
-                                left: 20.w,
-                                right: 56.w,
-                                child: Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 5.w,
-                                    vertical: 5.h,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Color(
-                                      0xff000000,
-                                    ).withValues(alpha: 0.4),
-                                    borderRadius: BorderRadius.circular(13.6),
-                                  ),
-                                  // 사진을 찍은 사용자가 녹음한 오디오의 파형을 비롯한 여러가지 정보를 표시하는 부분
-                                  child: Row(
-                                    children: [
-                                      // 왼쪽 프로필 이미지
-                                      Container(
-                                        width: 27,
-                                        height: 27,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Builder(
-                                          builder: (context) {
-                                            // 파형을 표시하는 부분에서는 사진을 올린 사용자의 프로필 이미지가 나오게 함
-                                            String profileImageToShow =
-                                                _userProfileImageUrl;
-
-                                            return _isLoadingProfile
-                                                ? CircleAvatar(
-                                                  radius: (screenWidth * 0.038),
-                                                  backgroundColor: Colors.grey,
-                                                  child: SizedBox(
-                                                    width: 27,
-                                                    height: 27,
-                                                    child:
-                                                        CircularProgressIndicator(
-                                                          strokeWidth: 2,
-                                                          color: Colors.white,
-                                                        ),
-                                                  ),
-                                                )
-                                                : profileImageToShow.isNotEmpty
-                                                ? Consumer<AuthController>(
-                                                  builder: (
-                                                    context,
-                                                    authController,
-                                                    child,
-                                                  ) {
-                                                    return CachedNetworkImage(
-                                                      imageUrl:
-                                                          profileImageToShow,
-                                                      key: ValueKey(
-                                                        'audio_profile_${profileImageToShow}_$_profileImageRefreshKey',
-                                                      ), // 리프레시 키를 사용한 캐시 무효화
-                                                      imageBuilder:
-                                                          (
-                                                            context,
-                                                            imageProvider,
-                                                          ) => CircleAvatar(
-                                                            radius: 16,
-                                                            backgroundImage:
-                                                                imageProvider,
-                                                          ),
-                                                      placeholder:
-                                                          (
-                                                            context,
-                                                            url,
-                                                          ) => CircleAvatar(
-                                                            radius: 16,
-                                                            backgroundColor:
-                                                                Colors.grey,
-                                                            child: SizedBox(
-                                                              width: 27,
-                                                              height: 27,
-                                                              child: CircularProgressIndicator(
-                                                                strokeWidth: 2,
-                                                                color:
-                                                                    Colors
-                                                                        .white,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                      errorWidget:
-                                                          (
-                                                            context,
-                                                            url,
-                                                            error,
-                                                          ) => CircleAvatar(
-                                                            radius: 16,
-                                                            backgroundColor:
-                                                                Colors.grey,
-                                                            child: SizedBox(
-                                                              width: 27,
-                                                              height: 27,
-                                                              child: Icon(
-                                                                Icons.person,
-                                                                color:
-                                                                    Colors
-                                                                        .white,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                    );
-                                                  },
-                                                )
-                                                : CircleAvatar(
-                                                  radius: 16,
-                                                  backgroundColor: Colors.grey,
-                                                  child: SizedBox(
-                                                    width: 27,
-                                                    height: 27,
-                                                    child: Icon(
-                                                      Icons.person,
-                                                      color: Colors.white,
-                                                    ),
-                                                  ),
-                                                );
-                                          },
-                                        ),
-                                      ),
-                                      SizedBox(width: (13.79).w),
-                                      // 가운데 파형 (progress 포함)
-                                      Expanded(
-                                        child: SizedBox(
-                                          height: 35.h,
-                                          child:
-                                              _buildWaveformWidgetWithProgress(
-                                                photo,
-                                              ),
-                                        ),
-                                      ),
-
-                                      // 오른쪽 재생 시간 (실시간 업데이트)
-                                      Consumer<AudioController>(
-                                        builder: (
-                                          context,
-                                          audioController,
-                                          child,
-                                        ) {
-                                          // 현재 사진의 오디오가 재생 중인지 확인
-                                          final isCurrentAudio =
-                                              audioController.isPlaying &&
-                                              audioController
-                                                      .currentPlayingAudioUrl ==
-                                                  photo.audioUrl;
-
-                                          // 실시간 재생 시간 사용
-                                          Duration displayDuration =
-                                              Duration.zero;
-                                          if (isCurrentAudio) {
-                                            displayDuration =
-                                                audioController.currentPosition;
-                                          }
-
-                                          return Text(
-                                            FormatUtils.formatDuration(
-                                              displayDuration,
-                                            ),
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: (11.86).sp,
-                                              fontWeight: FontWeight.w500,
-                                              fontFamily:
-                                                  GoogleFonts.inter()
-                                                      .fontFamily,
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                ),
+                  // Firestore에 위치 업데이트
+                  _updateProfilePositionInFirestore(
+                    photo.id,
+                    commentId,
+                    position,
+                  );
+                },
               ),
               SizedBox(height: (11.5).h), // 반응형 간격
-              // 사진 아래 정보 섹션 (닉네임과 날짜만)
-              Row(
-                children: [
-                  SizedBox(width: 25.w),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // 사용자 닉네임
-                      Container(
-                        height: 22.h,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          '@${_userName.isNotEmpty ? _userName : photo.userID}',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16.sp,
-                            fontFamily: "Pretendard",
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-
-                      // 날짜
-                      Text(
-                        FormatUtils.formatDate(photo.createdAt),
-                        style: TextStyle(
-                          color: Color(0xffcccccc),
-                          fontSize: 14.sp,
-                          fontFamily: "Pretendard",
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Spacer(),
-
-                  // 좋아요 버튼 - Material + InkWell
-                  Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(50.w),
-                      onTap: () {},
-                      child: Padding(
-                        padding: EdgeInsets.all(4.w),
-                        child: Image.asset(
-                          "assets/like_icon.png",
-                          width: 33.w,
-                          height: 33.h,
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  SizedBox(width: 4.w), // 간격 조정
-                  // 더보기 버튼 - Material + InkWell
-                  MenuAnchor(
-                    style: MenuStyle(
-                      backgroundColor: WidgetStatePropertyAll(
-                        Colors.transparent,
-                      ),
-                      shadowColor: WidgetStatePropertyAll(Colors.transparent),
-                      surfaceTintColor: WidgetStatePropertyAll(
-                        Colors.transparent,
-                      ),
-                      elevation: WidgetStatePropertyAll(0),
-                      side: WidgetStatePropertyAll(BorderSide.none),
-                      shape: WidgetStatePropertyAll(
-                        RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(9.14),
-                        ),
-                      ),
-                    ),
-                    builder: (
-                      BuildContext context,
-                      MenuController controller,
-                      Widget? child,
-                    ) {
-                      return Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(50.w),
-                          onTap: () {
-                            if (controller.isOpen) {
-                              controller.close();
-                            } else {
-                              controller.open();
-                            }
-                          },
-                          child: Padding(
-                            padding: EdgeInsets.all(4.w),
-                            child: Icon(
-                              Icons.more_vert,
-                              size: 25.sp,
-                              color: Color(0xfff9f9f9),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                    menuChildren: [
-                      MenuItemButton(
-                        onPressed: () {
-                          _showDeleteDialog(photo);
-                        },
-                        style: ButtonStyle(
-                          shape: WidgetStatePropertyAll(
-                            RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(9.14),
-                              side: BorderSide.none,
-                            ),
-                          ),
-                        ),
-                        child: Container(
-                          width: 173.w,
-                          height: 45.h,
-                          padding: EdgeInsets.only(left: 13.96.w),
-                          decoration: BoxDecoration(
-                            color: Color(0xff323232),
-                            borderRadius: BorderRadius.circular(9.14),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Image.asset(
-                                'assets/trash_red.png',
-                                color: Colors.red,
-                                width: 11.16.sp,
-                                height: 12.56.sp,
-                              ),
-                              SizedBox(width: 8.w),
-                              Text(
-                                '삭제',
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 15.3517.sp,
-                                  fontFamily: "Pretendard",
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+              // 사진 아래 정보 섹션 (UserInfoRowWidget으로 분리)
+              UserInfoRowWidget(
+                photo: photo,
+                userName: _userName,
+                onDeletePressed: () => _showDeleteDialog(photo),
               ),
               SizedBox(height: (31.6).h),
 
