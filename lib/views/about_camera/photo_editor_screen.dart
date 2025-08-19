@@ -319,6 +319,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         userIds: [userId],
         categoryId: categoryId,
         waveformData: waveformData,
+        duration: Duration(
+          seconds: _audioController.recordingDuration,
+        ), // 음성 길이 전달
       );
       debugPrint('오디오와 함께 업로드 완료');
     } else {
@@ -466,6 +469,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
           appBar: AppBar(
             automaticallyImplyLeading: false,
             title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   'SOI',
@@ -479,6 +483,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                 SizedBox(height: 30.h),
               ],
             ),
+
             toolbarHeight: 70.h,
             backgroundColor: Colors.black,
           ),
@@ -500,38 +505,15 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
                             children: [
                               // 이미지 표시 위젯을 DragTarget으로 감싸기 (피드와 동일한 방식)
-                              DragTarget<String>(
-                                onAcceptWithDetails: (details) async {
-                                  // 드롭된 좌표를 사진 내 상대 좌표로 변환 (피드와 동일한 로직)
-                                  final RenderBox renderBox =
-                                      context.findRenderObject() as RenderBox;
-                                  final localPosition = renderBox.globalToLocal(
-                                    details.offset,
-                                  );
-
-                                  // 프로필 이미지가 사진 영역에 드롭됨
-
-                                  // 사진 영역 내 좌표로 저장
-                                  setState(() {
-                                    _profileImagePosition = localPosition;
-                                  });
-                                },
-                                builder: (
-                                  context,
-                                  candidateData,
-                                  rejectedData,
-                                ) {
-                                  return PhotoDisplayWidget(
-                                    imagePath: widget.imagePath,
-                                    downloadUrl: widget.downloadUrl,
-                                    useLocalImage: _useLocalImage,
-                                    useDownloadUrl: _useDownloadUrl,
-                                    width: 354.w,
-                                    height: 500.h,
-                                  );
-                                },
+                              PhotoDisplayWidget(
+                                imagePath: widget.imagePath,
+                                downloadUrl: widget.downloadUrl,
+                                useLocalImage: _useLocalImage,
+                                useDownloadUrl: _useDownloadUrl,
+                                width: 354.w,
+                                height: 500.h,
                               ),
-                              SizedBox(height: (19.h)),
+                              SizedBox(height: (15.h)),
                               // 오디오 녹음 위젯
                               AudioRecorderWidget(
                                 photoId:
@@ -559,8 +541,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
           ),
           bottomSheet: DraggableScrollableSheet(
             controller: _draggableScrollController,
-            initialChildSize: 0.18,
-            minChildSize: 0.18,
+            initialChildSize: 0.19,
+            minChildSize: 0.19,
             maxChildSize: 0.8,
             expand: false,
             builder: (context, scrollController) {

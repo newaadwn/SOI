@@ -56,13 +56,6 @@ class PhotoController extends ChangeNotifier {
     required List<String> userIds,
   }) async {
     try {
-      // debugPrint('PhotoController: 업로드 시작');
-      // debugPrint('  - imageFile: ${imageFile.path}');
-      // debugPrint('  - audioFile: ${audioFile?.path ?? 'null'}');
-      // debugPrint('  - categoryId: $categoryId');
-      // debugPrint('  - userId: $userId');
-      // debugPrint('  - userIds: $userIds');
-
       _isUploading = true;
       _uploadProgress = 0.0;
       _error = null;
@@ -133,6 +126,7 @@ class PhotoController extends ChangeNotifier {
     required List<String> userIds,
     required String categoryId,
     List<double>? waveformData, // 파형 데이터 파라미터 추가
+    Duration? duration, // 음성 길이 파라미터 추가
   }) async {
     try {
       _isUploading = true;
@@ -148,6 +142,7 @@ class PhotoController extends ChangeNotifier {
         userIds: userIds,
         categoryId: categoryId,
         waveformData: waveformData, // 파형 데이터 전달
+        duration: duration, // 음성 길이 전달
       );
 
       _isUploading = false;

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/material.dart';
 import '../models/photo_data_model.dart';
 
 /// Photo Repository - Firebase와 관련된 모든 데이터 액세스 로직을 담당
@@ -139,7 +140,8 @@ class PhotoRepository {
     required String userID,
     required List<String> userIds,
     required String categoryId,
-    List<double>? waveformData, // 파형 데이터 파라미터 추가
+    List<double>? waveformData,
+    Duration? duration,
   }) async {
     try {
       // 기본 데이터 구성
@@ -151,23 +153,17 @@ class PhotoRepository {
         'categoryId': categoryId,
         'createdAt': FieldValue.serverTimestamp(),
         'status': PhotoStatus.active.name,
+        'duration': duration?.inSeconds ?? 0, // 음성 길이 추가 (기본값 0)
       };
 
       // 파형 데이터 처리 및 상세 로그
       if (waveformData != null && waveformData.isNotEmpty) {
         // 유효한 파형 데이터가 있는 경우
         photoData['waveformData'] = waveformData;
-        // debugPrint('✅ 유효한 파형 데이터를 Firestore에 저장');
-        // debugPrint('  - 저장할 데이터 타입: ${waveformData.runtimeType}');
-        // debugPrint('  - 저장할 데이터 길이: ${waveformData.length}');
       } else {
         // 파형 데이터가 없는 경우 빈 배열로 저장
         photoData['waveformData'] = [];
-        // debugPrint('⚠️ 파형 데이터가 없어서 빈 배열로 저장');
       }
-
-      // debugPrint('💾 Firestore에 사진 데이터 저장 시작...');
-      // debugPrint('  - 저장할 필드들: ${photoData.keys.toList()}');
 
       final docRef = await _firestore
           .collection('categories')
@@ -175,22 +171,17 @@ class PhotoRepository {
           .collection('photos')
           .add(photoData);
 
-      // debugPrint('✅ 사진 저장 완료 - PhotoId: ${docRef.id}');
-
       // 카테고리의 firstPhotoUrl 업데이트
       try {
         await _firestore.collection('categories').doc(categoryId).update({
           'firstPhotoUrl': imageUrl,
         });
-        // debugPrint('✅ 카테고리 firstPhotoUrl 업데이트 완료');
       } catch (e) {
-        // debugPrint('⚠️ 카테고리 firstPhotoUrl 업데이트 실패: $e');
+        debugPrint('카테고리 firstPhotoUrl 업데이트 실패: $e');
       }
 
       return docRef.id;
     } catch (e) {
-      // debugPrint('❌ 사진 저장 실패: $e');
-      // debugPrint('📍 스택 트레이스: $stackTrace');
       rethrow;
     }
   }

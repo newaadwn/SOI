@@ -11,6 +11,7 @@ class PhotoDataModel {
   final DateTime createdAt;
   final PhotoStatus status;
   final List<double>? waveformData; // 실제 오디오 파형 데이터 추가
+  final Duration duration; // 음성 길이 (초 단위) 추가
 
   PhotoDataModel({
     required this.id,
@@ -22,6 +23,7 @@ class PhotoDataModel {
     required this.createdAt,
     this.status = PhotoStatus.active,
     this.waveformData, // 파형 데이터 추가
+    this.duration = const Duration(seconds: 0), // 기본값 0초
   });
 
   // Firestore에서 데이터를 가져올 때 사용
@@ -54,6 +56,7 @@ class PhotoDataModel {
         orElse: () => PhotoStatus.active,
       ),
       waveformData: waveformData, // 파형 데이터 추가
+      duration: Duration(seconds: (data['duration'] ?? 0) as int), // 음성 길이 추가
     );
   }
 
@@ -67,6 +70,7 @@ class PhotoDataModel {
       userIds: (data['userIds'] as List?)?.cast<String>() ?? [],
       categoryId: data['categoryId'] ?? '',
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      duration: Duration(seconds: (data['duration'] ?? 0) as int), // 음성 길이 추가
     );
   }
 
@@ -80,6 +84,7 @@ class PhotoDataModel {
       'categoryId': categoryId,
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status.name,
+      'duration': duration.inSeconds, // 음성 길이 추가 (초 단위로 저장)
     };
 
     // waveformData가 있을 때만 추가
@@ -100,6 +105,7 @@ class PhotoDataModel {
       'categoryId': categoryId,
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status.name,
+      'duration': duration.inSeconds, // 음성 길이 추가 (초 단위로 저장)
     };
 
     // waveformData가 있을 때만 추가
@@ -121,6 +127,7 @@ class PhotoDataModel {
     DateTime? createdAt,
     PhotoStatus? status,
     List<double>? waveformData, // 파형 데이터 추가
+    Duration? duration, // 음성 길이 추가
   }) {
     return PhotoDataModel(
       id: id ?? this.id,
@@ -132,11 +139,22 @@ class PhotoDataModel {
       createdAt: createdAt ?? this.createdAt,
       status: status ?? this.status,
       waveformData: waveformData ?? this.waveformData, // 파형 데이터 추가
+      duration: duration ?? this.duration, // 음성 길이 추가
     );
   }
 
   // 기존 PhotoModel 호환성을 위한 getter
   String get getPhotoId => id;
+
+  /// 음성 길이를 MM:SS 형식으로 포맷팅
+  String get formattedDuration {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds.remainder(60);
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  /// 음성이 있는지 확인
+  bool get hasAudio => audioUrl.isNotEmpty && duration > Duration.zero;
 
   @override
   bool operator ==(Object other) =>
@@ -175,6 +193,9 @@ class PhotoDataModel {
         (e) => e.name == photoMap['status'],
         orElse: () => PhotoStatus.active,
       ),
+      duration: Duration(
+        seconds: (photoMap['duration'] ?? 0) as int,
+      ), // 음성 길이 추가
     );
   }
 }

@@ -10,6 +10,7 @@ import '../../../../models/comment_record_model.dart';
 import '../../../../models/photo_data_model.dart';
 import '../../../../utils/position_converter.dart';
 import '../../../about_camera/widgets/audio_recorder_widget.dart';
+import '../../../about_share/share_screen.dart';
 import '../../widgets/photo_detail_widget/photo_display_widget_for_archive.dart';
 import '../../widgets/photo_detail_widget/user_info_row_widget.dart';
 
@@ -480,6 +481,48 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
             fontWeight: FontWeight.w700,
           ),
         ),
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(right: 23.w),
+            child: IconButton(
+              onPressed: () async {
+                final currentPhoto = widget.photos[_currentIndex];
+
+                // PhotoDataModel에서 직접 duration 사용 (더 정확함)
+                Duration audioDuration = currentPhoto.duration;
+
+                // 현재 사진에 오디오가 있다면 길이 정보 가져오기
+                if (currentPhoto.audioUrl.isNotEmpty) {
+                  final audioController = _getAudioController;
+                  // 현재 재생 중인 오디오가 이 사진의 오디오와 같다면 길이 정보 사용
+                  if (audioController.currentPlayingAudioUrl ==
+                      currentPhoto.audioUrl) {
+                    audioDuration = audioController.currentDuration;
+                  }
+                  debugPrint('현재 오디오 길이: ${audioDuration.inSeconds}초');
+                }
+
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (context) => ShareScreen(
+                          imageUrl: currentPhoto.imageUrl,
+                          waveformData: currentPhoto.waveformData,
+                          audioDuration: audioDuration,
+                          categoryName: widget.categoryName,
+                        ),
+                  ),
+                );
+              },
+              icon: Image.asset(
+                'assets/share_icon.png',
+                width: 20.w,
+                height: 20.h,
+              ),
+            ),
+          ),
+        ],
       ),
       body: PageView.builder(
         controller: _pageController,
@@ -488,6 +531,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         onPageChanged: _onPageChanged,
         itemBuilder: (context, index) {
           final photo = widget.photos[index];
+          final authController = _getAuthController;
+          final currentUserId = authController.getUserId;
+          final isCurrentUserPhoto = currentUserId == photo.userID;
+
           return Column(
             children: [
               // 사진 이미지 + 오디오 오버레이 (PhotoDisplayWidget으로 분리)
@@ -516,6 +563,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
               UserInfoRowWidget(
                 photo: photo,
                 userName: _userName,
+                isCurrentUserPhoto: isCurrentUserPhoto,
                 onDeletePressed: () => _showDeleteDialog(photo),
               ),
               SizedBox(height: (31.6).h),
@@ -529,7 +577,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                   return AudioRecorderWidget(
                     photoId: photo.id,
                     isCommentMode: true, // 명시적으로 댓글 모드 설정
-                    isCurrentUserPhoto: isCurrentUserPhoto, // 현재 사용자 사진 여부 전달
+                    // 현재 사용자 사진 여부 전달 --> 이걸로 댓글 아이콘이냐, 음성 아이콘이냐를 결정함
+                    isCurrentUserPhoto: isCurrentUserPhoto,
                     profileImagePosition: _profileImagePositions[photo.id],
                     getProfileImagePosition:
                         () => _profileImagePositions[photo.id],

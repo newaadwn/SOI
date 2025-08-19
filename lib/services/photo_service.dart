@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
+
 import '../models/photo_data_model.dart';
 import '../repositories/photo_repository.dart';
 import 'audio_service.dart';
@@ -104,16 +106,10 @@ class PhotoService {
     required String userID,
     required List<String> userIds,
     required String categoryId,
-    List<double>? waveformData, // 파형 데이터 파라미터 추가
+    List<double>? waveformData,
+    Duration? duration,
   }) async {
     try {
-      // // debugPrint('사진과 오디오 저장 시작');
-      // // debugPrint('📁 ImagePath: $imageFilePath');
-      // // debugPrint('AudioPath: $audioFilePath');
-      // // debugPrint('👤 UserID: $userID');
-      // // debugPrint('📂 CategoryId: $categoryId');
-      // // debugPrint('🌊 제공된 파형 데이터: ${waveformData?.length} samples');
-
       // 1. 이미지 업로드
       // // debugPrint('📤 이미지 업로드 시작...');
       final imageFile = File(imageFilePath);
@@ -149,11 +145,8 @@ class PhotoService {
       // // debugPrint('  - 제공된 waveformData 길이: ${waveformData?.length ?? 0}');
 
       if (waveformData != null && waveformData.isNotEmpty) {
-        // // debugPrint('📊 제공된 파형 데이터 사용: ${waveformData.length} samples');
-        // // debugPrint('  - 첫 몇 개 샘플: ${waveformData.take(5).toList()}');
         finalWaveformData = waveformData;
       } else {
-        // // debugPrint('🌊 제공된 파형 데이터 없음 - 오디오 파일에서 추출 시작...');
         finalWaveformData = await _audioService.extractWaveformData(
           audioFilePath,
         );
@@ -166,6 +159,7 @@ class PhotoService {
         userIds: userIds,
         categoryId: categoryId,
         waveformData: finalWaveformData, // 파형 데이터 전달
+        duration: duration, // 음성 길이 전달
       );
 
       // 카테고리의 최신 사진 정보 업데이트
@@ -174,10 +168,9 @@ class PhotoService {
         uploadedBy: userID,
       );
 
-      // // debugPrint('🎉 사진과 오디오 저장 완료 - PhotoId: $photoId');
       return photoId;
     } catch (e) {
-      // // debugPrint('사진 저장 실패: $e');
+      debugPrint('사진 저장 실패: $e');
       rethrow;
     }
   }
@@ -216,7 +209,6 @@ class PhotoService {
         hasMore: result.hasMore,
       );
     } catch (e) {
-      // // debugPrint('페이지네이션 사진 조회 서비스 오류: $e');
       return (photos: <PhotoDataModel>[], lastPhotoId: null, hasMore: false);
     }
   }
@@ -233,7 +225,6 @@ class PhotoService {
       // 비즈니스 로직: 최신순 정렬 및 필터링
       return _applyPhotoBusinessRules(photos);
     } catch (e) {
-      // // debugPrint('카테고리별 사진 조회 서비스 오류: $e');
       return [];
     }
   }
