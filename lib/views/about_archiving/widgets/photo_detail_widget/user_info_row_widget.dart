@@ -7,12 +7,14 @@ import '../../../../utils/format_utils.dart';
 class UserInfoRowWidget extends StatelessWidget {
   final PhotoDataModel photo;
   final String userName;
+  final bool isCurrentUserPhoto;
   final VoidCallback onDeletePressed;
 
   const UserInfoRowWidget({
     super.key,
     required this.photo,
     required this.userName,
+    required this.isCurrentUserPhoto,
     required this.onDeletePressed,
   });
 
@@ -21,37 +23,39 @@ class UserInfoRowWidget extends StatelessWidget {
     return Row(
       children: [
         SizedBox(width: 25.w),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 사용자 닉네임
-            Container(
-              height: 22.h,
-              alignment: Alignment.centerLeft,
-              child: Text(
-                '@${userName.isNotEmpty ? userName : photo.userID}',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16.sp,
-                  fontFamily: "Pretendard",
-                  fontWeight: FontWeight.w600,
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 사용자 닉네임
+              Container(
+                height: 22.h,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '@${userName.isNotEmpty ? userName : photo.userID}',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16.sp,
+                    fontFamily: "Pretendard",
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.visible, // 긴 텍스트 처리
                 ),
               ),
-            ),
 
-            // 날짜
-            Text(
-              FormatUtils.formatDate(photo.createdAt),
-              style: TextStyle(
-                color: Color(0xffcccccc),
-                fontSize: 14.sp,
-                fontFamily: "Pretendard",
-                fontWeight: FontWeight.w400,
+              // 날짜
+              Text(
+                FormatUtils.formatDate(photo.createdAt),
+                style: TextStyle(
+                  color: Color(0xffcccccc),
+                  fontSize: 14.sp,
+                  fontFamily: "Pretendard",
+                  fontWeight: FontWeight.w400,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-        Spacer(),
 
         // 좋아요 버튼 - Material + InkWell
         Material(
@@ -72,10 +76,9 @@ class UserInfoRowWidget extends StatelessWidget {
           ),
         ),
 
-        SizedBox(width: 4.w),
-
         // 더보기 버튼 - Material + InkWell
-        _buildMoreMenuButton(context),
+        (!isCurrentUserPhoto) ? Container() : _buildMoreMenuButton(context),
+        SizedBox(width: 13.w),
       ],
     );
   }

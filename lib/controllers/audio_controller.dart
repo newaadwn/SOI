@@ -838,17 +838,12 @@ class AudioController extends ChangeNotifier {
   /// 실시간 오디오 재생 (중복 방지)
   Future<void> playRealtimeAudio(String audioUrl) async {
     try {
-      debugPrint('🎵 playRealtimeAudio 시작 - URL: $audioUrl');
-      debugPrint('🎵 현재 재생 중인 URL: $_currentPlayingAudioUrl');
-      debugPrint('🎵 재생 상태: $_isPlaying');
-
       _isLoading = true;
       _error = null;
       notifyListeners();
 
       // 이미 같은 오디오가 재생 중이면 일시정지/재생 토글
       if (_currentPlayingAudioUrl == audioUrl && _isPlaying) {
-        debugPrint('🎵 같은 오디오 재생 중 - 일시정지');
         if (_realtimeAudioPlayer != null) {
           await _realtimeAudioPlayer!.pause();
         }
@@ -859,7 +854,6 @@ class AudioController extends ChangeNotifier {
 
       // 기존과 URL 이 다를 때만 완전 정리
       if (_realtimeAudioPlayer != null && _currentPlayingAudioUrl != audioUrl) {
-        debugPrint('🎵 기존 플레이어 정리 (다른 URL)');
         await _realtimeAudioPlayer!.stop();
         await _realtimeAudioPlayer!.dispose();
         _disposeRealtimeListeners();
@@ -868,7 +862,7 @@ class AudioController extends ChangeNotifier {
       }
 
       // 새 플레이어 생성
-      debugPrint('🎵 새 플레이어 생성');
+
       _initializeRealtimePlayer();
 
       // 새 오디오 재생

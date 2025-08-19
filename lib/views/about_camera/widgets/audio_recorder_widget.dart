@@ -529,7 +529,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       width: 376.w, // 반응형 너비
       height: 52.h, // 반응형 높이
       decoration: BoxDecoration(
-        color: const Color(0xff1c1c1c), // 회색 배경
+        color: const Color(0xff323232), // 회색 배경
         borderRadius: BorderRadius.circular(14.6), // 반응형 반지름
       ),
       child: Row(
