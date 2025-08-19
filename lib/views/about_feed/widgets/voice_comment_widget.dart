@@ -4,7 +4,7 @@ import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/audio_controller.dart';
-import '../../about_archiving/widgets/common/wave_form_widget/custom_waveform_widget.dart';
+import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
 
 /// 음성 댓글 전용 위젯
 ///

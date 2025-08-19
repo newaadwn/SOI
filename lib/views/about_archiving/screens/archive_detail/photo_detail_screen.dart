@@ -10,7 +10,7 @@ import '../../../../models/comment_record_model.dart';
 import '../../../../models/photo_data_model.dart';
 import '../../../../utils/position_converter.dart';
 import '../../../about_camera/widgets/audio_recorder_widget.dart';
-import '../../widgets/photo_detail_widget/photo_display_widget.dart';
+import '../../widgets/photo_detail_widget/photo_display_widget_for_archive.dart';
 import '../../widgets/photo_detail_widget/user_info_row_widget.dart';
 
 class PhotoDetailScreen extends StatefulWidget {

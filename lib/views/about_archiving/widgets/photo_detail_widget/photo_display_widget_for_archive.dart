@@ -10,7 +10,7 @@ import '../../../../models/comment_record_model.dart';
 import '../../../../models/photo_data_model.dart';
 import '../../../../utils/format_utils.dart';
 import '../../../../utils/position_converter.dart';
-import '../common/wave_form_widget/custom_waveform_widget.dart';
+import '../wave_form_widget/custom_waveform_widget.dart';
 
 class PhotoDisplayWidget extends StatelessWidget {
   final PhotoDataModel photo;

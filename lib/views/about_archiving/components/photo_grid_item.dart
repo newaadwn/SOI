@@ -7,7 +7,7 @@ import 'package:shimmer/shimmer.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../models/photo_data_model.dart';
 import '../screens/archive_detail/photo_detail_screen.dart';
-import '../widgets/common/wave_form_widget/custom_waveform_widget.dart';
+import '../widgets/wave_form_widget/custom_waveform_widget.dart';
 
 class PhotoGridItem extends StatefulWidget {
   final PhotoDataModel photo;

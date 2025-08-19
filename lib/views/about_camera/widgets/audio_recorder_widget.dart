@@ -9,7 +9,7 @@ import '../../../controllers/comment_record_controller.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../models/comment_record_model.dart';
 import '../../../utils/position_converter.dart';
-import '../../about_archiving/widgets/common/wave_form_widget/custom_waveform_widget.dart';
+import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
 
 /// 오디오 녹음을 위한 위젯
 ///

@@ -11,11 +11,11 @@ import '../../../../models/auth_model.dart';
 import '../../../../models/category_data_model.dart';
 import '../../../about_friends/friend_list_add_screen.dart';
 import '../../components/exit_button.dart';
-import '../../widgets/category_edit/add_friend_button.dart';
-import '../../widgets/category_edit/category_cover_section.dart';
-import '../../widgets/category_edit/category_info_section.dart';
-import '../../widgets/category_edit/friends_list_widget.dart';
-import '../../widgets/category_edit/notification_setting_section.dart';
+import '../../widgets/category_edit_widget/add_friend_button.dart';
+import '../../widgets/category_edit_widget/category_cover_section.dart';
+import '../../widgets/category_edit_widget/category_info_section.dart';
+import '../../widgets/category_edit_widget/friends_list_widget.dart';
+import '../../widgets/category_edit_widget/notification_setting_section.dart';
 import 'category_cover_photo_selector_screen.dart';
 
 class CategoryEditorScreen extends StatefulWidget {

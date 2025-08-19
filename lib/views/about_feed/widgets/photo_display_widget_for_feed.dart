@@ -9,7 +9,7 @@ import '../../../models/photo_data_model.dart';
 import '../../../models/comment_record_model.dart';
 import '../../../utils/format_utils.dart';
 import '../../../utils/position_converter.dart';
-import '../../about_archiving/widgets/common/wave_form_widget/custom_waveform_widget.dart';
+import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
 
 /// 사진 표시 위젯
 ///

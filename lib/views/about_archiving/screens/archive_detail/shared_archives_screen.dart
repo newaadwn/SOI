@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/category_controller.dart';
 import '../../../../theme/theme.dart';
-import '../../widgets/archive_card/archive_card_widget.dart';
+import '../../widgets/archive_card_widget/archive_card_widget.dart';
 
 class SharedArchivesScreen extends StatefulWidget {
   final bool isEditMode;
