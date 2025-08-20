@@ -1,5 +1,5 @@
 {
     // 기존 Java 설정은 그대로 두거나 필요 없다면 삭제하셔도 됩니다.
     "java.configuration.updateBuildConfiguration": "automatic",
-    "cmake.sourceDirectory": "/Users/mac/Documents/SOI/linux",
+    "cmake.sourceDirectory": "/Users/minchanpark/Documents/SOI/linux",
 }

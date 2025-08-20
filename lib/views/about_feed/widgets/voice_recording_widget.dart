@@ -80,8 +80,7 @@ class VoiceRecordingWidget extends StatelessWidget {
                       autoStart: !shouldStartAsSaved, // 저장된 상태가 아닐 때만 자동 시작
                       startAsSaved: shouldStartAsSaved,
                       profileImageUrl:
-                          commentProfileImageUrls[photo.id] ??
-                          currentUserProfileImage,
+                          currentUserProfileImage, // 이미 fallback 처리된 값 사용
                       enableMultipleComments: true, // 다중 댓글 활성화
                       hasExistingComments:
                           (photoComments[photo.id] ?? []).isNotEmpty,

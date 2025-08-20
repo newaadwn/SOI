@@ -544,6 +544,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                 userProfileImageUrl: _userProfileImageUrl,
                 isLoadingProfile: _isLoadingProfile,
                 profileImageRefreshKey: _profileImageRefreshKey,
+                currentUserId: currentUserId, // 현재 사용자 ID 전달
                 onProfilePositionUpdate: (commentId, position) {
                   // 사진 영역 내 상대 좌표로 저장
                   setState(() {

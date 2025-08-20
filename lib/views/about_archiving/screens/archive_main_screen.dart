@@ -29,6 +29,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   // 컨트롤러들
   final _categoryNameController = TextEditingController();
   final _searchController = TextEditingController();
+  final PageController _pageController = PageController(); // PageView 컨트롤러 추가
 
   // 검색 debounce를 위한 Timer
   Timer? _searchDebounceTimer;
@@ -423,7 +424,17 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                 ),
               ),
             ),
-            Expanded(child: _screens[_selectedIndex]),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: (index) {
+                  setState(() {
+                    _selectedIndex = index;
+                  });
+                },
+                children: _screens,
+              ),
+            ),
 
             if (_isEditMode)
               Padding(
@@ -478,8 +489,16 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
           setState(() {
             _selectedIndex = index;
           });
+          // PageView도 함께 이동 - 부드러운 애니메이션으로 변경
+          _pageController.animateToPage(
+            index,
+            duration: Duration(milliseconds: 1),
+            curve: Curves.easeInOut,
+          );
         },
-        child: Container(
+        child: AnimatedContainer(
+          duration: Duration(milliseconds: 1),
+          curve: Curves.easeInOut,
           padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xff292929) : Colors.transparent,
@@ -615,17 +634,22 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                         GestureDetector(
                           onTap: () async {
                             // add_category_widget.dart와 동일한 방식으로 처리
-                            final result =
-                                await Navigator.push<List<SelectedFriendModel>>(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder:
-                                        (context) =>
-                                            const FriendListAddScreen(),
-                                  ),
-                                );
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) => FriendListAddScreen(
+                                      categoryMemberUids:
+                                          _selectedFriends
+                                              .map((friend) => friend.uid)
+                                              .toList(),
+                                      allowDeselection:
+                                          true, // 새 카테고리 만들기이므로 해제 허용
+                                    ),
+                              ),
+                            );
 
-                            if (result != null && result.isNotEmpty) {
+                            if (result != null) {
                               setModalState(() {
                                 _selectedFriends = result;
                               });
@@ -682,11 +706,17 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                 context,
                                 MaterialPageRoute(
                                   builder:
-                                      (context) => const FriendListAddScreen(),
+                                      (context) => FriendListAddScreen(
+                                        categoryMemberUids:
+                                            _selectedFriends
+                                                .map((friend) => friend.uid)
+                                                .toList(),
+                                        allowDeselection: true,
+                                      ),
                                 ),
                               );
 
-                              if (result != null && result.isNotEmpty) {
+                              if (result != null) {
                                 setModalState(() {
                                   _selectedFriends = result;
                                 });
@@ -879,12 +909,13 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     // 검색 debounce 타이머 정리
     _searchDebounceTimer?.cancel();
 
-    // 검색 리스너만 제거 (Controller는 Provider에서 관리되므로 건드리지 않음)
+    // 컨트롤러들 정리
     _categoryNameController.dispose();
     _editingNameController.dispose(); // 편집 컨트롤러 정리
     _hasTextChangedNotifier.dispose(); // ValueNotifier 정리
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
+    _pageController.dispose(); // PageController 정리
     super.dispose();
   }
 }

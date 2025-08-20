@@ -220,25 +220,20 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   // 업로드 후 화면 전환 메서드
   Future<void> _uploadThenNavigate(String categoryId) async {
     // 로딩 팝업 표시
-    LoadingPopupWidget.show(context, message: '사진을 업로드하고 있습니다\n잠시만 기다려주세요');
+    LoadingPopupWidget.show(context, message: '사진을 업로드하고 있습니다.\n잠시만 기다려주세요');
 
     try {
       // 1. 데이터 추출 (동기적)
       final uploadData = _extractUploadData(categoryId);
       if (uploadData == null) {
-        debugPrint('❌ 업로드 데이터가 없어 화면 전환만 실행');
         // 로딩 팝업 닫기
         LoadingPopupWidget.hide(context);
         _navigateToHome();
         return;
       }
 
-      debugPrint('📤 업로드 시작 - categoryId: $categoryId');
-
       // 2. 업로드 실행 (완료될 때까지 대기)
       await _executeUploadWithExtractedData(uploadData);
-
-      debugPrint('✅ 업로드 완료 - 화면 전환 시작');
 
       // 로딩 팝업 닫기
       LoadingPopupWidget.hide(context);
@@ -248,8 +243,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         _navigateToHome();
       }
     } catch (e) {
-      debugPrint('❌ 업로드 오류: $e');
-
       // 로딩 팝업 닫기
       LoadingPopupWidget.hide(context);
 
@@ -426,10 +419,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         }
       }
 
-      debugPrint('=== 카테고리 생성 정보 ===');
-      debugPrint('카테고리 이름: ${_categoryNameController.text.trim()}');
-      debugPrint('전체 멤버 수: ${mates.length}');
-      debugPrint('멤버 UIDs: $mates');
       // 카테고리 생성 - mates 리스트 준비
 
       // 카테고리 생성
@@ -562,8 +551,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                         )
                         : Center(
                           child: Container(
-                            height: 4.h,
-                            width: 99.w,
+                            height: 3.h,
+                            width: 56.w,
                             margin: EdgeInsets.only(top: 10.h, bottom: 12.h),
                             decoration: BoxDecoration(
                               color: Color(0xffcdcdcd),

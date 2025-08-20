@@ -384,6 +384,11 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
           currentProfilePosition,
           imageSize,
         );
+      } else {
+        // 🎯 위치가 설정되지 않은 경우 null로 저장하여 드래그로만 위치 설정 가능하도록 함
+        // 이렇게 하면 사용자가 반드시 드래그를 통해 원하는 위치에 프로필을 배치해야 함
+        relativePosition = null;
+        debugPrint('💡 음성 댓글 위치 미설정 - 사용자가 드래그를 통해 위치를 설정해야 합니다.');
       }
 
       final commentRecord = await commentRecordController.createCommentRecord(
@@ -393,7 +398,6 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
         waveformData: waveformData,
         duration: duration,
         profileImageUrl: profileImageUrl,
-        profilePosition: null, // 더 이상 절대 좌표는 사용하지 않음
         relativePosition: relativePosition, // 새로운 상대 좌표 방식 사용
       );
 

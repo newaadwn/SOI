@@ -19,6 +19,7 @@ class PhotoDisplayWidget extends StatelessWidget {
   final bool isLoadingProfile;
   final int profileImageRefreshKey;
   final Function(String commentId, Offset position) onProfilePositionUpdate;
+  final String? currentUserId; // 현재 사용자 ID 추가
 
   const PhotoDisplayWidget({
     super.key,
@@ -28,6 +29,7 @@ class PhotoDisplayWidget extends StatelessWidget {
     required this.isLoadingProfile,
     required this.profileImageRefreshKey,
     required this.onProfilePositionUpdate,
+    this.currentUserId, // 현재 사용자 ID 추가
   });
 
   @override
@@ -76,12 +78,13 @@ class PhotoDisplayWidget extends StatelessWidget {
                     ),
                   ),
 
-                  // 모든 댓글의 드롭된 프로필 이미지들 표시 (상대 좌표 사용)
+                  // 현재 사용자의 댓글만 프로필 이미지로 표시 (아카이브는 단일 사용자 댓글만)
                   ...comments
                       .where(
                         (comment) =>
-                            comment.relativePosition != null ||
-                            comment.profilePosition != null,
+                            comment.relativePosition != null &&
+                            currentUserId != null &&
+                            comment.recorderUser == currentUserId,
                       )
                       .map((comment) => _buildCommentProfileImage(comment)),
 
@@ -104,13 +107,17 @@ class PhotoDisplayWidget extends StatelessWidget {
 
   /// 댓글 프로필 이미지 위젯 생성
   Widget _buildCommentProfileImage(CommentRecordModel comment) {
-    // 상대 좌표를 절대 좌표로 변환 (간소화된 로직)
+    // 🎯 위치가 없으면 표시하지 않음 (Feed와 동일한 방식)
+    if (comment.relativePosition == null) {
+      return Container(); // 위치 정보가 없으면 빈 컨테이너 반환
+    }
+
+    // 상대 좌표를 절대 좌표로 변환
     final imageSize = Size(354.w, 500.h);
-    final position = comment.relativePosition ?? comment.profilePosition!;
-    final absolutePosition =
-        comment.relativePosition != null
-            ? PositionConverter.toAbsolutePosition(position, imageSize)
-            : position;
+    final absolutePosition = PositionConverter.toAbsolutePosition(
+      comment.relativePosition!,
+      imageSize,
+    );
     final clampedPosition = PositionConverter.clampPosition(
       absolutePosition,
       imageSize,

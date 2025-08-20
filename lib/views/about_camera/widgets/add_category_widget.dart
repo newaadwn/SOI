@@ -34,7 +34,7 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '카테고리 이름을 입력해주세요',
+            '카테고리 이름을 입력해주세요.',
             style: TextStyle(
               color: Colors.white,
               fontSize: 14.sp,
@@ -58,10 +58,17 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
     // Navigator.push로 결과값 받기
     final result = await Navigator.push<List<SelectedFriendModel>>(
       context,
-      MaterialPageRoute(builder: (context) => const FriendListAddScreen()),
+      MaterialPageRoute(
+        builder:
+            (context) => FriendListAddScreen(
+              allowDeselection: true,
+              categoryMemberUids:
+                  _selectedFriends.map((friend) => friend.uid).toList(),
+            ),
+      ),
     );
 
-    if (result != null && result.isNotEmpty) {
+    if (result != null) {
       setState(() {
         _selectedFriends = result;
       });
@@ -199,22 +206,25 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
                         // 입력 필드
                         TextField(
                           controller: widget.textController,
-                          cursorColor: Color(0xFFCCCCCC),
+                          cursorColor: Color(0xFFF3F3F3),
                           style: TextStyle(
-                            color: Color(0xFFCCCCCC),
-                            fontSize: 16.sp,
+                            color: const Color(0xFFf4f4f4),
+                            fontSize: 15.sp,
+                            fontFamily: 'Pretendard Variable',
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: -0.40,
                           ),
-
                           decoration: InputDecoration(
                             border: UnderlineInputBorder(
                               borderSide: BorderSide.none,
                             ),
-
-                            hintText: '카테고리 이름을 입력하세요',
+                            hintText: '카테고리의 이름을 입력해 주세요.',
                             hintStyle: TextStyle(
-                              color: Color(0xFFCCCCCC),
-                              fontSize: 16.sp,
-                              fontFamily: 'Pretendard',
+                              color: const Color(0xFFcccccc),
+                              fontSize: 14.sp,
+                              fontFamily: 'Pretendard Variable',
+                              fontWeight: FontWeight.w400,
+                              letterSpacing: -0.40,
                             ),
                           ),
                           maxLength: 20,
@@ -240,10 +250,11 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
                                 return Text(
                                   '${value.text.length}/20자',
                                   style: TextStyle(
-                                    color: Color(0xFFCCCCCC),
+                                    color: const Color(0xFFCBCBCB),
                                     fontSize: 12.sp,
+                                    fontFamily: 'Pretendard Variable',
                                     fontWeight: FontWeight.w500,
-                                    fontFamily: 'Pretendard',
+                                    letterSpacing: -0.40,
                                   ),
                                 );
                               },

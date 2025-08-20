@@ -183,10 +183,10 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
           }
 
           // 데이터가 있으면 화면을 스크롤할 수 있도록 만듭니다.
-          return Padding(
-            padding: EdgeInsets.only(left: (15.65).w, right: (10.65).w),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: 0.h),
+          return SingleChildScrollView(
+            physics: AlwaysScrollableScrollPhysics(),
+            child: Padding(
+              padding: EdgeInsets.only(left: 22.w, right: 20.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -195,7 +195,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      childAspectRatio: 0.75,
+                      childAspectRatio: (168.w / 229.h),
                       mainAxisSpacing: 15.h,
                       crossAxisSpacing: 15.w,
                     ),

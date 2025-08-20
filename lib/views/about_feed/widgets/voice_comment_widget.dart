@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../controllers/audio_controller.dart';
 import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
 
@@ -487,19 +488,21 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
   /// 저장된 프로필 이미지 UI
   Widget _buildSavedProfileUI() {
-    // debugPrint('🖼️ 저장된 프로필 이미지 UI 빌드 중: ${widget.profileImageUrl}');
+    // 디버그 로그 추가
 
     final profileWidget = Container(
-      width: 27,
-      height: 27,
+      width: 54,
+      height: 54,
       decoration: BoxDecoration(shape: BoxShape.circle),
       child:
           widget.profileImageUrl != null && widget.profileImageUrl!.isNotEmpty
               ? ClipOval(
-                child: Image.network(
-                  widget.profileImageUrl!,
+                child: CachedNetworkImage(
+                  imageUrl: widget.profileImageUrl!,
+                  width: 54,
+                  height: 54,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
+                  placeholder: (context, url) {
                     return Container(
                       decoration: BoxDecoration(
                         color: Colors.grey[700],
@@ -508,11 +511,20 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
                       child: Icon(Icons.person, color: Colors.white, size: 14),
                     );
                   },
+                  errorWidget: (context, url, error) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.red[700], // 에러 상태 시각적 표시
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.error, color: Colors.white, size: 14),
+                    );
+                  },
                 ),
               )
               : Container(
                 decoration: BoxDecoration(
-                  color: Colors.grey[700],
+                  color: Colors.orange[700], // URL이 없는 경우 시각적 표시
                   shape: BoxShape.circle,
                 ),
                 child: Icon(Icons.person, color: Colors.white, size: 14),
@@ -531,15 +543,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
           opacity: 0.3, // 드래그 중에는 원본을 투명하게
           child: profileWidget,
         ),
-        onDragEnd: (details) {
-          // DragTarget에서 성공적으로 처리된 경우에만 추가 처리
-          if (details.wasAccepted) {
-            // DragTarget에서 이미 위치가 처리되었으므로 여기서는 아무것도 하지 않음
-            debugPrint('✅ 드래그 성공적으로 완료됨');
-          } else {
-            debugPrint('❌ 드래그가 DragTarget에서 거부됨');
-          }
-        },
+
         child: profileWidget,
       );
     }

@@ -82,8 +82,7 @@ class CategoryItemWidget extends StatelessWidget {
       width: dimensions.containerSize,
       height: dimensions.containerSize,
       decoration: BoxDecoration(
-        color:
-            (image != null) ? Colors.white : Colors.transparent, // 추가 버튼은 흰색 배경
+        color: (image != null) ? Colors.white : Colors.transparent,
         shape: BoxShape.circle,
       ),
       child: ClipOval(
@@ -171,13 +170,13 @@ class CategoryItemWidget extends StatelessWidget {
   /// 에러 아이콘 빌드
   Widget _buildErrorIcon(_CategoryDimensions dimensions) {
     return Container(
-      decoration: BoxDecoration(color: Color(0xffc3c1c1)),
-      width: dimensions.containerSize,
-      height: dimensions.containerSize,
+      decoration: BoxDecoration(color: Color(0xff4a4a4a)),
+      width: dimensions.containerSize, // 컨테이너 크기와 일치
+      height: dimensions.containerSize, // 컨테이너 크기와 일치
       child: Icon(
         Icons.image_outlined,
         size: dimensions.iconSize,
-        color: Color(0xff656565),
+        color: Color(0xffcecece),
       ),
     );
   }

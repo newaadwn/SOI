@@ -290,8 +290,10 @@ class _CategoryMembersBottomSheetState
           context,
           MaterialPageRoute(
             builder:
-                (context) =>
-                    FriendListAddScreen(categoryId: widget.category.id),
+                (context) => FriendListAddScreen(
+                  categoryId: widget.category.id,
+                  categoryMemberUids: widget.category.mates,
+                ),
           ),
         );
       },

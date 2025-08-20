@@ -149,10 +149,10 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
             _loadProfileImages(categoryId, mates);
           }
 
-          return Padding(
-            padding: EdgeInsets.only(left: 15.65.w, right: 10.65.w),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(minHeight: 0.h),
+          return SingleChildScrollView(
+            physics: AlwaysScrollableScrollPhysics(),
+            child: Padding(
+              padding: EdgeInsets.only(left: 22.w, right: 20.w),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -161,9 +161,9 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
                     shrinkWrap: true,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      childAspectRatio: 0.77,
-                      mainAxisSpacing: 10.h, // 세로 간격
-                      crossAxisSpacing: 15.w, // 가로 간격
+                      childAspectRatio: (168.w / 229.h),
+                      mainAxisSpacing: 15.h,
+                      crossAxisSpacing: 15.w,
                     ),
                     itemCount: userCategories.length,
                     itemBuilder: (context, index) {

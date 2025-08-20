@@ -12,6 +12,7 @@ class FriendsListWidget extends StatelessWidget {
   final bool isExpanded;
   final VoidCallback onExpandToggle;
   final VoidCallback onCollapseToggle;
+  final VoidCallback? onFriendAdded; // 친구 추가 후 콜백 추가
 
   const FriendsListWidget({
     super.key,
@@ -21,6 +22,7 @@ class FriendsListWidget extends StatelessWidget {
     required this.isExpanded,
     required this.onExpandToggle,
     required this.onCollapseToggle,
+    this.onFriendAdded,
   });
 
   @override
@@ -48,15 +50,24 @@ class FriendsListWidget extends StatelessWidget {
         children: [
           // 헤더
           InkWell(
-            onTap:
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder:
-                        (context) =>
-                            FriendListAddScreen(categoryId: category.id),
-                  ),
+            onTap: () async {
+              // FriendListAddScreen으로 이동
+              await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder:
+                      (context) => FriendListAddScreen(
+                        categoryId: category.id,
+                        categoryMemberUids: category.mates,
+                      ),
                 ),
+              );
+
+              // 돌아온 후 부모에게 새로고침 알림
+              if (onFriendAdded != null) {
+                onFriendAdded!();
+              }
+            },
             borderRadius: BorderRadius.circular(8),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,

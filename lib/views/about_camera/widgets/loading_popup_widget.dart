@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 class LoadingPopupWidget extends StatelessWidget {
   final String message;
@@ -18,51 +19,40 @@ class LoadingPopupWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.sizeOf(context);
-    final screenWidth = screenSize.width;
-    final screenHeight = screenSize.height;
-
     return Material(
       color: Colors.transparent,
       child: Center(
         child: Container(
-          padding: EdgeInsets.all(screenWidth * 0.064),
-          margin: EdgeInsets.symmetric(
-            horizontal: screenWidth * 0.128,
-          ), // 반응형 마진 (50px 기준)
+          width: 314.w,
+          height: 266.h,
           decoration: BoxDecoration(
             color: backgroundColor ?? const Color(0xFF2C2C2C),
-            borderRadius: BorderRadius.circular(screenWidth * 0.032),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.3),
-                blurRadius: screenWidth * 0.025,
-                offset: Offset(0, screenHeight * 0.006),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(14.2),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // 로딩 인디케이터
               SizedBox(
-                width: iconSize ?? screenWidth * 0.128,
-                height: iconSize ?? screenWidth * 0.128,
+                width: 50.w,
+                height: 50.h,
                 child: CircularProgressIndicator(
-                  strokeWidth: screenWidth * 0.01,
+                  strokeWidth: 5.0,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     indicatorColor ?? Colors.white,
                   ),
                 ),
               ),
-              SizedBox(height: screenHeight * 0.024),
+              SizedBox(height: 41.h),
               // 메시지 텍스트
               Text(
                 message,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: textColor ?? Colors.white,
-                  fontSize: screenWidth * 0.041,
+                  color: Color(0xffffffff),
+                  fontSize: 15.78.sp,
                   fontWeight: FontWeight.w500,
                 ),
               ),

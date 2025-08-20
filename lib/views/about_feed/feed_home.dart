@@ -468,20 +468,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
             _profileImagePositions[photoId] = relativePosition;
             _droppedProfileImageUrls[photoId] = lastComment.profileImageUrl;
-          } else if (lastComment.profilePosition != null) {
-            // 하위 호환성을 위한 기존 profilePosition 처리 (향후 제거 예정)
-            Offset relativePosition;
-
-            if (lastComment.profilePosition is Map<String, dynamic>) {
-              relativePosition = PositionConverter.mapToRelativePosition(
-                lastComment.profilePosition as Map<String, dynamic>,
-              );
-            } else {
-              relativePosition = lastComment.profilePosition!;
-            }
-
-            _profileImagePositions[photoId] = relativePosition;
-            _droppedProfileImageUrls[photoId] = lastComment.profileImageUrl;
           }
         });
       }

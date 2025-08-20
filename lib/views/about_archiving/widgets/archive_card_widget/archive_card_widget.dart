@@ -121,11 +121,10 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                             imageUrl: category.categoryPhotoUrl!,
                             cacheKey:
                                 '${category.id}_${category.categoryPhotoUrl}',
-                            width: (146.7),
-                            height: (146.8),
+                            width: (146.7).w,
+                            height: (146.8).h,
                             fit: BoxFit.cover,
-                            fadeInDuration: Duration(milliseconds: 200),
-                            fadeOutDuration: Duration(milliseconds: 100),
+
                             placeholder:
                                 (context, url) => Shimmer.fromColors(
                                   baseColor: Colors.grey.shade800,
@@ -134,8 +133,8 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(6.61),
                                     child: Container(
-                                      width: 146.7.w,
-                                      height: 146.8.h,
+                                      width: (146.7).w,
+                                      height: (146.8).h,
                                       decoration: BoxDecoration(
                                         color: Colors.grey.shade800,
                                         border: Border.all(
@@ -156,8 +155,8 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                                   color: Color(
                                     0xFFcacaca,
                                   ).withValues(alpha: 0.9),
-                                  width: (146.7),
-                                  height: (146.8),
+                                  width: (146.7).w,
+                                  height: (146.8).h,
                                   child: Icon(
                                     Icons.image,
                                     color: Color(0xff5a5a5a),
@@ -167,8 +166,8 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                           )
                           : Container(
                             color: Color(0xFFcacaca).withValues(alpha: 0.9),
-                            width: (146.7),
-                            height: (146.8),
+                            width: (146.7).w,
+                            height: (146.8).h,
                             child: Icon(
                               Icons.image,
                               color: Color(0xff5a5a5a),
@@ -225,7 +224,7 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
 
                     return Positioned(
                       top: (3.43).h,
-                      left: (128.35).w,
+                      left: (130).w,
                       child: Image.asset(
                         'assets/new_icon.png',
                         width: 13.87.w,

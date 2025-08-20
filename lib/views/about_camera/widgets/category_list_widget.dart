@@ -43,7 +43,7 @@ class CategoryListWidget extends StatelessWidget {
             crossAxisSpacing: 8.w, // 아이템 간 좌우 간격 추가
             mainAxisSpacing: 15.h, // 세로 간격만 유지
           ),
-          padding: EdgeInsets.symmetric(horizontal: 18.h, vertical: 12.w),
+          padding: EdgeInsets.symmetric(horizontal: 18.w),
 
           itemCount: categories.isEmpty ? 1 : categories.length + 1,
           itemBuilder: (context, index) {

@@ -14,7 +14,6 @@ class CommentRecordService {
     required List<double> waveformData,
     required int duration,
     required String profileImageUrl, // 프로필 이미지 URL 추가
-    Offset? profilePosition,
     Offset? relativePosition, // 프로필 이미지 상대 위치 (새로운 방식)
   }) async {
     // 1. 입력값 유효성 검사
@@ -38,7 +37,6 @@ class CommentRecordService {
         waveformData: waveformData,
         duration: duration,
         profileImageUrl: profileImageUrl, // 프로필 이미지 URL 전달
-        profilePosition: profilePosition, // 프로필 위치 전달 (하위호환성)
         relativePosition: relativePosition, // 상대 위치 전달 (새로운 방식)
       );
     } catch (e) {

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
-
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/category_controller.dart';
 import '../../../../theme/theme.dart';
@@ -149,47 +148,50 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
           }
 
           // 데이터가 있으면 스크롤 가능한 화면으로 만들기
-          return Padding(
-            padding: EdgeInsets.only(left: (15.65).w, right: (10.65).w),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(), // 이것은 유지
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.75,
-                    mainAxisSpacing: 15.h,
-                    crossAxisSpacing: 15.w,
-                  ),
-                  itemCount: sharedCategories.length,
-                  itemBuilder: (context, index) {
-                    final category = sharedCategories[index];
-                    final categoryId = category.id;
+          return SingleChildScrollView(
+            physics: AlwaysScrollableScrollPhysics(),
+            child: Padding(
+              padding: EdgeInsets.only(left: 22.w, right: 20.w),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  GridView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(), // 이것은 유지
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: (168.w / 229.h),
+                      mainAxisSpacing: 15.h,
+                      crossAxisSpacing: 15.w,
+                    ),
+                    itemCount: sharedCategories.length,
+                    itemBuilder: (context, index) {
+                      final category = sharedCategories[index];
+                      final categoryId = category.id;
 
-                    return ArchiveCardWidget(
-                      categoryId: categoryId,
-                      isEditMode: widget.isEditMode,
-                      isEditing:
-                          widget.isEditMode &&
-                          widget.editingCategoryId == categoryId,
-                      editingController:
-                          widget.isEditMode &&
-                                  widget.editingCategoryId == categoryId
-                              ? widget.editingController
-                              : null,
-                      onStartEdit: () {
-                        if (widget.onStartEdit != null) {
-                          widget.onStartEdit!(categoryId, category.name);
-                        }
-                      },
-                    );
-                  },
-                ),
-                // 하단 여백을 더 크게 늘리기
-                SizedBox(height: 100.h), // 20.h에서 100.h로 증가
-              ],
+                      return ArchiveCardWidget(
+                        categoryId: categoryId,
+                        isEditMode: widget.isEditMode,
+                        isEditing:
+                            widget.isEditMode &&
+                            widget.editingCategoryId == categoryId,
+                        editingController:
+                            widget.isEditMode &&
+                                    widget.editingCategoryId == categoryId
+                                ? widget.editingController
+                                : null,
+                        onStartEdit: () {
+                          if (widget.onStartEdit != null) {
+                            widget.onStartEdit!(categoryId, category.name);
+                          }
+                        },
+                      );
+                    },
+                  ),
+                  // 하단 여백을 더 크게 늘리기
+                  SizedBox(height: 20.h),
+                ],
+              ),
             ),
           );
         },

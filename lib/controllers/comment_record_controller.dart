@@ -26,15 +26,12 @@ class CommentRecordController extends ChangeNotifier {
     required String recorderUser,
     required List<double> waveformData,
     required int duration,
-    required String profileImageUrl, // 프로필 이미지 URL 추가
-    Offset? profilePosition, // 프로필 이미지 위치 추가 (선택적) - 하위호환성용
-    Offset? relativePosition, // 프로필 이미지 상대 위치 (새로운 방식)
+    required String profileImageUrl,
+    Offset? relativePosition,
   }) async {
     try {
       _setLoading(true);
       _clearError();
-
-      // // debugPrint('🎤 음성 댓글 생성 시작 - 사진: $photoId, 녹음자: $recorderUser');
 
       // 파형 데이터 정규화
       final normalizedWaveform = _service.normalizeWaveformData(waveformData);
@@ -45,20 +42,16 @@ class CommentRecordController extends ChangeNotifier {
         recorderUser: recorderUser,
         waveformData: normalizedWaveform,
         duration: duration,
-        profileImageUrl: profileImageUrl, // 프로필 이미지 URL 전달
-        profilePosition: profilePosition, // 프로필 이미지 위치 전달 (하위호환성)
-        relativePosition: relativePosition, // 상대 위치 전달 (새로운 방식)
+        profileImageUrl: profileImageUrl,
+        relativePosition: relativePosition,
       );
 
       // 캐시 업데이트
       _updateCache(photoId, commentRecord);
 
-      // // debugPrint('✅ 음성 댓글 생성 완료 - ID: ${commentRecord.id}');
-
       notifyListeners();
       return commentRecord;
     } catch (e) {
-      // // debugPrint('❌ 음성 댓글 생성 실패: $e');
       _setError('음성 댓글을 저장할 수 없습니다: $e');
       return null;
     } finally {
@@ -75,8 +68,6 @@ class CommentRecordController extends ChangeNotifier {
     try {
       _setLoading(true);
       _clearError();
-
-      // debugPrint('📍 상대 프로필 위치 업데이트 시작 - 댓글: $commentId, 상대위치: $relativePosition');
 
       await _service.updateRelativeProfilePosition(
         commentId: commentId,
@@ -96,11 +87,9 @@ class CommentRecordController extends ChangeNotifier {
         }
       }
 
-      // debugPrint('✅ 상대 프로필 위치 업데이트 완료');
       return true;
     } catch (e) {
       _setError('프로필 위치 업데이트 실패: $e');
-      // debugPrint('❌ 상대 프로필 위치 업데이트 실패: $e');
       return false;
     } finally {
       _setLoading(false);
@@ -116,8 +105,6 @@ class CommentRecordController extends ChangeNotifier {
     try {
       _setLoading(true);
       _clearError();
-
-      // // debugPrint('📍 프로필 위치 업데이트 시작 - 댓글: $commentId, 위치: $profilePosition');
 
       await _service.updateProfilePosition(
         commentId: commentId,
@@ -137,11 +124,9 @@ class CommentRecordController extends ChangeNotifier {
         }
       }
 
-      // // debugPrint('✅ 프로필 위치 업데이트 완료');
       notifyListeners();
       return true;
     } catch (e) {
-      // // debugPrint('❌ 프로필 위치 업데이트 실패: $e');
       _setError('프로필 위치를 업데이트할 수 없습니다: $e');
       return false;
     } finally {

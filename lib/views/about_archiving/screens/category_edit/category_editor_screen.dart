@@ -277,7 +277,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
                   SizedBox(height: 24.h),
 
                   // 친구 추가 섹션
-                  currentCategory.mates.length >= 5
+                  currentCategory.mates.isNotEmpty
                       ? FriendsListWidget(
                         category: currentCategory,
                         friendsInfo: _friendsInfo,
@@ -293,65 +293,31 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
                             _isExpanded = false;
                           });
                         },
+                        onFriendAdded: () {
+                          // 친구 추가 후 정보 새로고침
+                          if (mounted) {
+                            _loadFriendsInfo();
+                          }
+                        },
                       )
                       : AddFriendButton(
                         category: currentCategory,
                         onPressed: () async {
-                          WidgetsBinding.instance.addPostFrameCallback((
-                            _,
-                          ) async {
-                            if (mounted) {
-                              await Navigator.of(context).push(
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) => FriendListAddScreen(
-                                        categoryId: currentCategory.id,
-                                      ),
-                                ),
-                              );
+                          // FriendListAddScreen으로 이동
+                          await Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => FriendListAddScreen(
+                                    categoryId: currentCategory.id,
+                                    categoryMemberUids: currentCategory.mates,
+                                  ),
+                            ),
+                          );
 
-                              // 친구 추가 페이지에서 돌아온 후 데이터 새로고침
-                              if (mounted) {
-                                // 잠시 대기 후 CategoryController 새로고침
-                                await Future.delayed(
-                                  Duration(milliseconds: 1000),
-                                );
-
-                                final categoryController =
-                                    context.read<CategoryController>();
-                                final authController =
-                                    context.read<AuthController>();
-                                final currentUser = authController.currentUser;
-
-                                if (currentUser != null) {
-                                  await categoryController.loadUserCategories(
-                                    currentUser.uid,
-                                    forceReload: true,
-                                  );
-
-                                  // 새로고침된 카테고리 정보 확인 후 친구 정보 로드
-                                  final updatedCategory = categoryController
-                                      .userCategories
-                                      .firstWhere(
-                                        (cat) => cat.id == widget.category.id,
-                                        orElse: () => widget.category,
-                                      );
-
-                                  if (updatedCategory.mates.length !=
-                                      widget.category.mates.length) {
-                                    await Future.delayed(
-                                      Duration(milliseconds: 500),
-                                    );
-                                    _loadFriendsInfo();
-                                  } else {
-                                    Future.delayed(Duration(seconds: 2), () {
-                                      if (mounted) _loadFriendsInfo();
-                                    });
-                                  }
-                                }
-                              }
-                            }
-                          });
+                          // 돌아온 후 친구 정보만 새로고침
+                          if (mounted) {
+                            _loadFriendsInfo();
+                          }
                         },
                       ),
                   SizedBox(height: 24.h),

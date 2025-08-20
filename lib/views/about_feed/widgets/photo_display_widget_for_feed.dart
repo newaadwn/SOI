@@ -149,14 +149,6 @@ class PhotoDisplayWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     // 화면 크기에 맞춘 반응형 이미지 크기 계산
 
-    // 기본적으로 ScreenUtil 값을 사용하되, 화면 비율에 맞춰 조정
-    final baseImageWidth = 354.w;
-    final baseImageHeight = 500.h;
-
-    // 실제 렌더링될 이미지 크기 (반응형)
-    final imageWidth = baseImageWidth;
-    final imageHeight = baseImageHeight;
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -180,17 +172,9 @@ class PhotoDisplayWidget extends StatelessWidget {
 
                   // 프로필 이미지 크기(27x27)의 절반만큼 보정하여 중심점으로 조정
                   final adjustedPosition = Offset(
-                    localPosition.dx + 13.5,
-                    localPosition.dy + 13.5,
+                    localPosition.dx + 32,
+                    localPosition.dy + 32,
                   );
-
-                  // 디버그 로그 추가
-                  debugPrint('🎯 Feed DragTarget 드롭 감지 (Builder Pattern):');
-                  debugPrint('  - Global offset: ${details.offset}');
-                  debugPrint('  - Local position: $localPosition');
-
-                  debugPrint('  - Adjusted position: $adjustedPosition');
-                  debugPrint('  - CommentId: ${details.data}');
 
                   onProfileImageDragged(photo.id, adjustedPosition);
                 },
@@ -202,12 +186,12 @@ class PhotoDisplayWidget extends StatelessWidget {
                       CachedNetworkImage(
                         imageUrl: photo.imageUrl,
                         fit: BoxFit.cover,
-                        width: imageWidth, // 실제 이미지 너비
-                        height: imageHeight, // 실제 이미지 높이
+                        width: 354.w, // 실제 이미지 너비
+                        height: 500.h, // 실제 이미지 높이
                         placeholder: (context, url) {
                           return Container(
-                            width: imageWidth,
-                            height: imageHeight,
+                            width: 354.w,
+                            height: 500.h,
                             color: Colors.grey[900],
                             child: const Center(),
                           );
@@ -223,7 +207,7 @@ class PhotoDisplayWidget extends StatelessWidget {
                             padding: EdgeInsets.symmetric(horizontal: 16.w),
                             constraints: BoxConstraints(
                               minWidth: 60.w, // 최소 너비
-                              maxWidth: imageWidth * 0.8, // 최대 너비 제한
+                              maxWidth: 354.w * 0.8, // 최대 너비 제한
                             ),
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
@@ -325,17 +309,15 @@ class PhotoDisplayWidget extends StatelessWidget {
                         final commentsWithPosition =
                             comments
                                 .where(
-                                  (comment) =>
-                                      comment.relativePosition != null ||
-                                      comment.profilePosition != null,
+                                  (comment) => comment.relativePosition != null,
                                 )
                                 .toList();
 
                         return commentsWithPosition.map((comment) {
                           // 상대 좌표를 절대 좌표로 변환 (실제 렌더링 크기 사용)
                           final actualImageSize = Size(
-                            imageWidth.toDouble(),
-                            imageHeight.toDouble(),
+                            354.w.toDouble(),
+                            500.h.toDouble(),
                           );
                           Offset absolutePosition;
 
@@ -346,18 +328,6 @@ class PhotoDisplayWidget extends StatelessWidget {
                                   comment.relativePosition!,
                                   actualImageSize,
                                 );
-                          } else if (comment.profilePosition != null) {
-                            // 기존 절대 좌표 사용 (하위호환성) - 크기 비율 조정 필요
-                            final originalSize = Size(354.0, 500.0); // 원본 고정 크기
-                            final scaleX =
-                                actualImageSize.width / originalSize.width;
-                            final scaleY =
-                                actualImageSize.height / originalSize.height;
-
-                            absolutePosition = Offset(
-                              comment.profilePosition!.dx * scaleX,
-                              comment.profilePosition!.dy * scaleY,
-                            );
                           } else {
                             return Container(); // 위치 정보가 없으면 빈 컨테이너
                           }
@@ -369,28 +339,9 @@ class PhotoDisplayWidget extends StatelessWidget {
                                 actualImageSize,
                               );
 
-                          // 디버깅을 위한 로그 추가
-                          debugPrint('🎯 프로필 위치 계산:');
-                          debugPrint(
-                            '  - comment.relativePosition: ${comment.relativePosition}',
-                          );
-                          debugPrint('  - actualImageSize: $actualImageSize');
-                          debugPrint('  - absolutePosition: $absolutePosition');
-                          debugPrint('  - clampedPosition: $clampedPosition');
-                          debugPrint(
-                            '  - final left: ${clampedPosition.dx - 13.5}',
-                          );
-                          debugPrint(
-                            '  - final top: ${clampedPosition.dy - 13.5}',
-                          );
-
                           return Positioned(
-                            left:
-                                clampedPosition.dx -
-                                13.5, // clampPosition이 이미 중심점을 고려하므로 좌상단으로 조정
-                            top:
-                                clampedPosition.dy -
-                                13.5, // clampPosition이 이미 중심점을 고려하므로 좌상단으로 조정
+                            left: clampedPosition.dx - 13.5,
+                            top: clampedPosition.dy - 13.5,
                             child: Consumer2<
                               AuthController,
                               CommentAudioController
@@ -417,9 +368,6 @@ class PhotoDisplayWidget extends StatelessWidget {
                                               comment.id,
                                               comment.audioUrl,
                                             );
-                                        debugPrint(
-                                          '🎵 Feed - 음성 댓글 재생 토글: ${comment.id}',
-                                        );
                                       } catch (e) {
                                         debugPrint('❌ Feed - 음성 댓글 재생 실패: $e');
                                       }
@@ -456,11 +404,6 @@ class PhotoDisplayWidget extends StatelessWidget {
                                                         color: Colors.grey[700],
                                                         shape: BoxShape.circle,
                                                       ),
-                                                      child: Icon(
-                                                        Icons.person,
-                                                        color: Colors.white,
-                                                        size: 14,
-                                                      ),
                                                     ),
                                                 errorWidget:
                                                     (
@@ -474,11 +417,6 @@ class PhotoDisplayWidget extends StatelessWidget {
                                                         color: Colors.grey[700],
                                                         shape: BoxShape.circle,
                                                       ),
-                                                      child: Icon(
-                                                        Icons.person,
-                                                        color: Colors.white,
-                                                        size: 14,
-                                                      ),
                                                     ),
                                               ),
                                             )
@@ -488,11 +426,6 @@ class PhotoDisplayWidget extends StatelessWidget {
                                               decoration: BoxDecoration(
                                                 color: Colors.grey[700],
                                                 shape: BoxShape.circle,
-                                              ),
-                                              child: Icon(
-                                                Icons.person,
-                                                color: Colors.white,
-                                                size: 14,
                                               ),
                                             ),
                                   ),
