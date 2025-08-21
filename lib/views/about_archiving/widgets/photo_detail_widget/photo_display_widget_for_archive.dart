@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../controllers/audio_controller.dart';
@@ -83,18 +82,15 @@ class PhotoDisplayWidget extends StatelessWidget {
                       .where(
                         (comment) =>
                             comment.relativePosition != null &&
-                            currentUserId != null &&
-                            comment.recorderUser == currentUserId,
+                            currentUserId != null,
                       )
                       .map((comment) => _buildCommentProfileImage(comment)),
 
                   // 오디오 컨트롤 오버레이 (하단에 배치)
                   if (photo.audioUrl.isNotEmpty)
                     Positioned(
-                      bottom: 14.h,
-                      left: 20.w,
-                      right: 56.w,
-                      child: _buildAudioControlOverlay(screenWidth),
+                      bottom: 16.h,
+                      child: _buildAudioControlOverlay(screenWidth, context),
                     ),
                 ],
               );
@@ -207,55 +203,100 @@ class PhotoDisplayWidget extends StatelessWidget {
   }
 
   /// 오디오 컨트롤 오버레이 위젯
-  Widget _buildAudioControlOverlay(double screenWidth) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 5.w, vertical: 5.h),
-      decoration: BoxDecoration(
-        color: Color(0xff000000).withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(13.6),
-      ),
+  Widget _buildAudioControlOverlay(double screenWidth, BuildContext context) {
+    return SizedBox(
+      height: 50.h,
       child: Row(
         children: [
-          // 왼쪽 프로필 이미지
-          Container(
-            width: 27,
-            height: 27,
-            decoration: BoxDecoration(shape: BoxShape.circle),
-            child: _buildAudioProfileImage(screenWidth),
+          GestureDetector(
+            onTap: () => _toggleAudio(context),
+            child:
+                photo.audioUrl.isNotEmpty
+                    ? Container(
+                      width: 278.w,
+                      height: 40.h,
+                      decoration: BoxDecoration(
+                        color: Color(0xff000000).withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(25),
+                      ),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // 왼쪽 프로필 이미지 (작은 버전)
+                          Container(
+                            width: 27.w,
+                            height: 27.w,
+                            decoration: BoxDecoration(shape: BoxShape.circle),
+                            child: ClipOval(
+                              child: _buildAudioProfileImage(screenWidth),
+                            ),
+                          ),
+                          SizedBox(width: (17).w),
+
+                          // 가운데 파형 (progress 포함)
+                          SizedBox(
+                            width: (144.62).w,
+                            height: 32.h,
+                            child: _buildWaveformWidgetWithProgress(),
+                          ),
+
+                          SizedBox(width: (17).w),
+
+                          // 오른쪽 재생 시간 (실시간 업데이트)
+                          SizedBox(
+                            width: 45.w,
+                            child: Consumer<AudioController>(
+                              builder: (context, audioController, child) {
+                                final isCurrentAudio =
+                                    audioController.isPlaying &&
+                                    audioController.currentPlayingAudioUrl ==
+                                        photo.audioUrl;
+
+                                Duration displayDuration = Duration.zero;
+                                if (isCurrentAudio) {
+                                  displayDuration =
+                                      audioController.currentPosition;
+                                }
+
+                                return Text(
+                                  FormatUtils.formatDuration(
+                                    (isCurrentAudio)
+                                        ? displayDuration
+                                        : photo.duration,
+                                  ),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12.sp,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                    : Container(),
           ),
-          SizedBox(width: (13.79).w),
-
-          // 가운데 파형 (progress 포함)
-          Expanded(
-            child: SizedBox(
-              height: 35.h,
-              child: _buildWaveformWidgetWithProgress(),
-            ),
-          ),
-
-          // 오른쪽 재생 시간 (실시간 업데이트)
-          Consumer<AudioController>(
-            builder: (context, audioController, child) {
-              final isCurrentAudio =
-                  audioController.isPlaying &&
-                  audioController.currentPlayingAudioUrl == photo.audioUrl;
-
-              Duration displayDuration = Duration.zero;
-              if (isCurrentAudio) {
-                displayDuration = audioController.currentPosition;
-              }
-
-              return Text(
-                FormatUtils.formatDuration(displayDuration),
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: (11.86).sp,
-                  fontWeight: FontWeight.w500,
-                  fontFamily: GoogleFonts.inter().fontFamily,
-                ),
-              );
-            },
-          ),
+          //SizedBox(width: 16.w), // 오디오와 댓글 아이콘 사이 간격
+          // 댓글 아이콘 영역 (고정 width)
+          SizedBox(
+            width: 60.w,
+            child:
+                comments.isNotEmpty
+                    ? Center(
+                      child: IconButton(
+                        onPressed: () {},
+                        icon: Image.asset(
+                          "assets/comment_profile_icon.png",
+                          width: 25.w,
+                          height: 25.h,
+                        ),
+                      ),
+                    )
+                    : Container(),
+          ), // 댓글이 없으면 빈 컨테이너
         ],
       ),
     );
@@ -263,65 +304,56 @@ class PhotoDisplayWidget extends StatelessWidget {
 
   /// 오디오 프로필 이미지 위젯
   Widget _buildAudioProfileImage(double screenWidth) {
-    return isLoadingProfile
-        ? CircleAvatar(
-          radius: (screenWidth * 0.038),
-          backgroundColor: Colors.grey,
-          child: SizedBox(
-            width: 27,
-            height: 27,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: Colors.white,
-            ),
-          ),
-        )
-        : userProfileImageUrl.isNotEmpty
-        ? Consumer<AuthController>(
-          builder: (context, authController, child) {
-            return CachedNetworkImage(
-              imageUrl: userProfileImageUrl,
-              key: ValueKey(
-                'audio_profile_${userProfileImageUrl}_$profileImageRefreshKey',
+    final profileSize = screenWidth * 0.085;
+
+    return Container(
+      width: profileSize,
+      height: profileSize,
+      decoration: BoxDecoration(shape: BoxShape.circle),
+      child:
+          isLoadingProfile
+              ? CircleAvatar(
+                radius: profileSize / 2 - 2,
+                backgroundColor: Colors.grey[700],
+                child: SizedBox(
+                  width: profileSize * 0.4,
+                  height: profileSize * 0.4,
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              )
+              : ClipOval(
+                child:
+                    userProfileImageUrl.isNotEmpty
+                        ? CachedNetworkImage(
+                          imageUrl: userProfileImageUrl,
+                          width: profileSize - 4,
+                          height: profileSize - 4,
+                          fit: BoxFit.cover,
+                          key: ValueKey(
+                            'audio_profile_${userProfileImageUrl}_$profileImageRefreshKey',
+                          ),
+                          placeholder:
+                              (context, url) => _buildPlaceholder(profileSize),
+                          errorWidget:
+                              (context, url, error) =>
+                                  _buildPlaceholder(profileSize),
+                        )
+                        : _buildPlaceholder(profileSize),
               ),
-              imageBuilder:
-                  (context, imageProvider) =>
-                      CircleAvatar(radius: 16, backgroundImage: imageProvider),
-              placeholder:
-                  (context, url) => CircleAvatar(
-                    radius: 16,
-                    backgroundColor: Colors.grey,
-                    child: SizedBox(
-                      width: 27,
-                      height: 27,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-              errorWidget:
-                  (context, url, error) => CircleAvatar(
-                    radius: 16,
-                    backgroundColor: Colors.grey,
-                    child: SizedBox(
-                      width: 27,
-                      height: 27,
-                      child: Icon(Icons.person, color: Colors.white),
-                    ),
-                  ),
-            );
-          },
-        )
-        : CircleAvatar(
-          radius: 16,
-          backgroundColor: Colors.grey,
-          child: SizedBox(
-            width: 27,
-            height: 27,
-            child: Icon(Icons.person, color: Colors.white),
-          ),
-        );
+    );
+  }
+
+  /// 플레이스홀더 아바타 빌드
+  Widget _buildPlaceholder(double profileSize) {
+    return Container(
+      width: profileSize - 4,
+      height: profileSize - 4,
+      color: Colors.grey[700],
+      child: Icon(Icons.person, color: Colors.white, size: profileSize * 0.4),
+    );
   }
 
   /// 파형 위젯 생성
@@ -330,11 +362,11 @@ class PhotoDisplayWidget extends StatelessWidget {
         photo.waveformData == null ||
         photo.waveformData!.isEmpty) {
       return Container(
-        height: 35.h,
+        height: 32,
         alignment: Alignment.center,
-        child: Text(
+        child: const Text(
           '오디오 없음',
-          style: TextStyle(color: Colors.white70, fontSize: 12.sp),
+          style: TextStyle(color: Colors.white70, fontSize: 10),
         ),
       );
     }
@@ -353,16 +385,13 @@ class PhotoDisplayWidget extends StatelessWidget {
               .clamp(0.0, 1.0);
         }
 
-        return GestureDetector(
-          onTap: () => _toggleAudio(context),
-          child: Container(
-            alignment: Alignment.center,
-            child: CustomWaveformWidget(
-              waveformData: photo.waveformData!,
-              color: const Color(0xff5a5a5a),
-              activeColor: Colors.white,
-              progress: progress,
-            ),
+        return Container(
+          alignment: Alignment.center,
+          child: CustomWaveformWidget(
+            waveformData: photo.waveformData!,
+            color: (isCurrentAudio) ? Color(0xff5a5a5a) : Color(0xffffffff),
+            activeColor: Colors.white,
+            progress: progress,
           ),
         );
       },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../services/camera_service.dart';
 import 'photo_editor_screen.dart';
@@ -346,8 +347,7 @@ class _CameraScreenState extends State<CameraScreen>
               style: TextStyle(
                 color: Color(0xfff9f9f9),
                 fontSize: 20.sp,
-                fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w600,
+                fontFamily: GoogleFonts.inter().fontFamily,
               ),
             ),
             SizedBox(height: 30.h),
@@ -538,8 +538,8 @@ class _CameraScreenState extends State<CameraScreen>
                 onPressed: _takePicture,
                 icon: Image.asset(
                   "assets/take_picture.png",
-                  width: 65.w,
-                  height: 65.h,
+                  width: 65,
+                  height: 65,
                 ),
               ),
 

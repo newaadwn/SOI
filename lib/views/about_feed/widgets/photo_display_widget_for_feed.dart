@@ -68,16 +68,13 @@ class PhotoDisplayWidget extends StatelessWidget {
               .clamp(0.0, 1.0);
         }
 
-        return GestureDetector(
-          onTap: () => onToggleAudio(photo),
-          child: Container(
-            alignment: Alignment.center,
-            child: CustomWaveformWidget(
-              waveformData: photo.waveformData!,
-              color: const Color(0xff5a5a5a),
-              activeColor: Colors.white,
-              progress: progress,
-            ),
+        return Container(
+          alignment: Alignment.center,
+          child: CustomWaveformWidget(
+            waveformData: photo.waveformData!,
+            color: (isCurrentAudio) ? Color(0xff5a5a5a) : Color(0xffffffff),
+            activeColor: Colors.white,
+            progress: progress,
           ),
         );
       },
@@ -202,105 +199,156 @@ class PhotoDisplayWidget extends StatelessWidget {
                         padding: EdgeInsets.only(top: 16.h),
                         child: IntrinsicWidth(
                           child: Container(
-                            // width 제거 - 텍스트 길이에 따라 동적으로 조정
-                            height: 32.h,
-                            padding: EdgeInsets.symmetric(horizontal: 16.w),
-                            constraints: BoxConstraints(
-                              minWidth: 60.w, // 최소 너비
-                              maxWidth: 354.w * 0.8, // 최대 너비 제한
-                            ),
-                            alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: Colors.black.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(20),
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                            child: Text(
-                              categoryName,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.9),
-                                fontSize: 16.sp,
-                                fontWeight: FontWeight.w600,
+                            child: Padding(
+                              padding: EdgeInsets.only(left: 15.w, right: 15.w),
+                              child: Text(
+                                categoryName,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontSize: 16.sp,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1, // 한 줄로 제한
                               ),
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1, // 한 줄로 제한
                             ),
                           ),
                         ),
                       ),
 
                       // 오디오 컨트롤 오버레이 (photo_detail처럼)
-                      if (photo.audioUrl.isNotEmpty)
-                        Positioned(
-                          bottom: 16.h,
-                          left: 20.w,
-                          right: 20.w,
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 12.w,
-                              vertical: 8.h,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Color(0xff000000).withValues(alpha: 0.4),
-                              borderRadius: BorderRadius.circular(25),
-                            ),
-                            child: Row(
-                              children: [
-                                // 왼쪽 프로필 이미지 (작은 버전)
-                                Container(
-                                  width: 33.w,
-                                  height: 33.w,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: ClipOval(
-                                    child: _buildUserProfileWidget(context),
-                                  ),
-                                ),
-                                SizedBox(width: 12.w),
+                      Positioned(
+                        bottom: 16.h,
+                        child: SizedBox(
+                          height: 50.h,
+                          child: Row(
+                            children: [
+                              // 오디오 영역 (고정 width)
+                              SizedBox(
+                                width: 278.w,
+                                child:
+                                    photo.audioUrl.isNotEmpty
+                                        ? GestureDetector(
+                                          onTap: () => onToggleAudio(photo),
+                                          child: Container(
+                                            width: 278.w,
+                                            height: 40.h,
+                                            decoration: BoxDecoration(
+                                              color: Color(
+                                                0xff000000,
+                                              ).withValues(alpha: 0.4),
+                                              borderRadius:
+                                                  BorderRadius.circular(25),
+                                            ),
+                                            child: Row(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.center,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                // 왼쪽 프로필 이미지 (작은 버전)
+                                                Container(
+                                                  width: 27.w,
+                                                  height: 27.w,
+                                                  decoration: BoxDecoration(
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: ClipOval(
+                                                    child:
+                                                        _buildUserProfileWidget(
+                                                          context,
+                                                        ),
+                                                  ),
+                                                ),
+                                                SizedBox(width: (17).w),
 
-                                // 가운데 파형 (progress 포함)
-                                Expanded(
-                                  child: SizedBox(
-                                    height: 34.h,
-                                    child: _buildWaveformWidgetWithProgress(),
-                                  ),
-                                ),
+                                                // 가운데 파형 (progress 포함)
+                                                SizedBox(
+                                                  width: (144.62).w,
+                                                  height: 32.h,
+                                                  child:
+                                                      _buildWaveformWidgetWithProgress(),
+                                                ),
 
-                                SizedBox(width: 12.w),
+                                                SizedBox(width: (17).w),
 
-                                // 오른쪽 재생 시간 (실시간 업데이트)
-                                Consumer<AudioController>(
-                                  builder: (context, audioController, child) {
-                                    // 현재 사진의 오디오가 재생 중인지 확인
-                                    final isCurrentAudio =
-                                        audioController.isPlaying &&
-                                        audioController
-                                                .currentPlayingAudioUrl ==
-                                            photo.audioUrl;
+                                                // 오른쪽 재생 시간 (실시간 업데이트)
+                                                SizedBox(
+                                                  width: 45.w,
+                                                  child: Consumer<
+                                                    AudioController
+                                                  >(
+                                                    builder: (
+                                                      context,
+                                                      audioController,
+                                                      child,
+                                                    ) {
+                                                      // 현재 사진의 오디오가 재생 중인지 확인
+                                                      final isCurrentAudio =
+                                                          audioController
+                                                              .isPlaying &&
+                                                          audioController
+                                                                  .currentPlayingAudioUrl ==
+                                                              photo.audioUrl;
 
-                                    // 실시간 재생 시간 사용
-                                    Duration displayDuration = Duration.zero;
-                                    if (isCurrentAudio) {
-                                      displayDuration =
-                                          audioController.currentPosition;
-                                    }
+                                                      // 실시간 재생 시간 사용
+                                                      Duration displayDuration =
+                                                          Duration.zero;
+                                                      if (isCurrentAudio) {
+                                                        displayDuration =
+                                                            audioController
+                                                                .currentPosition;
+                                                      }
 
-                                    return Text(
-                                      FormatUtils.formatDuration(
-                                        displayDuration,
-                                      ),
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 12.sp,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
+                                                      return Text(
+                                                        FormatUtils.formatDuration(
+                                                          (isCurrentAudio)
+                                                              ? displayDuration
+                                                              : photo.duration,
+                                                        ),
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 12.sp,
+                                                          fontWeight:
+                                                              FontWeight.w500,
+                                                        ),
+                                                      );
+                                                    },
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        )
+                                        : Container(), // 오디오가 없으면 빈 컨테이너
+                              ),
+
+                              //SizedBox(width: 16.w), // 오디오와 댓글 아이콘 사이 간격
+                              // 댓글 아이콘 영역 (고정 width)
+                              SizedBox(
+                                width: 60.w,
+                                child:
+                                    (photoComments[photo.id] ?? []).isNotEmpty
+                                        ? Center(
+                                          child: IconButton(
+                                            onPressed: () {},
+                                            icon: Image.asset(
+                                              "assets/comment_profile_icon.png",
+                                              width: 25.w,
+                                              height: 25.h,
+                                            ),
+                                          ),
+                                        )
+                                        : Container(), // 댓글이 없으면 빈 컨테이너
+                              ),
+                            ],
                           ),
                         ),
+                      ),
 
                       // 모든 댓글의 드롭된 프로필 이미지들 표시 (상대 좌표 사용)
                       ...(() {

@@ -251,9 +251,9 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                               style: TextStyle(
                                 color: const Color(0xFFF9F9F9),
                                 fontSize: 14.sp,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.bold,
                                 letterSpacing: -0.4,
-                                fontFamily: 'Pretendard',
+                                fontFamily: "Pretendard",
                               ),
                               cursorColor: Color(0xfff9f9f9),
                               cursorHeight: 13.h,
@@ -294,9 +294,9 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                                   style: TextStyle(
                                     color: const Color(0xFFF9F9F9),
                                     fontSize: 14.sp,
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.bold,
+                                    fontFamily: "Pretendard",
                                     letterSpacing: -0.4,
-                                    fontFamily: 'Pretendard',
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -366,20 +366,20 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
             ClipRRect(
               borderRadius: BorderRadius.circular(6.61),
               child: Container(
-                width: 146.7.w,
-                height: 146.8.h,
+                width: (146.7).w,
+                height: (146.8).h,
                 color: Colors.grey.shade800,
               ),
             ),
-            SizedBox(height: 10.h),
+            SizedBox(height: (10).h),
             // 텍스트 라인
             Align(
               alignment: Alignment.centerLeft,
               child: Padding(
                 padding: EdgeInsets.only(left: 14.w),
                 child: Container(
-                  width: 90.w,
-                  height: 12.h,
+                  width: (90).w,
+                  height: (12).h,
                   decoration: BoxDecoration(
                     color: Colors.grey.shade700,
                     borderRadius: BorderRadius.circular(4),

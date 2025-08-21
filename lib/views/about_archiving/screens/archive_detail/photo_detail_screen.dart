@@ -12,7 +12,7 @@ import '../../../../utils/position_converter.dart';
 import '../../../about_camera/widgets/audio_recorder_widget.dart';
 import '../../../about_share/share_screen.dart';
 import '../../widgets/photo_detail_widget/photo_display_widget_for_archive.dart';
-import '../../widgets/photo_detail_widget/user_info_row_widget.dart';
+import '../../widgets/photo_detail_widget/user_info_row_widget_for_archiving.dart';
 
 class PhotoDetailScreen extends StatefulWidget {
   final List<PhotoDataModel> photos;

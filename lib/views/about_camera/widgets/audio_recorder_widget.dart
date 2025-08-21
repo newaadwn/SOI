@@ -418,188 +418,182 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // 상태에 따라 다른 UI 표시
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        return ScaleTransition(
+          scale: animation,
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+      child: _buildCurrentStateWidget(),
+    );
+  }
+
+  /// 현재 상태에 맞는 위젯을 반환
+  Widget _buildCurrentStateWidget() {
     switch (_currentState) {
       case RecordingState.idle:
-        // 항상 녹음 버튼 활성화 (여러 댓글 허용)
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(50),
-            onTap: _startRecording,
-            child: Image.asset(
-              widget.isCurrentUserPhoto
-                  ? 'assets/record_icon.png'
-                  : 'assets/comment.png',
-              width: 64,
-              height: 64,
+        return Container(
+          key: const ValueKey('idle'), // AnimatedSwitcher를 위한 고유 키
+          height: 52, // 녹음 UI와 동일한 높이
+          alignment: Alignment.center, // 중앙 정렬
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(50),
+              onTap: _startRecording,
+              child: Image.asset(
+                widget.isCurrentUserPhoto
+                    ? 'assets/record_icon.png'
+                    : 'assets/comment.png',
+                width: 64.w,
+                height: 64.h,
+              ),
             ),
           ),
         );
 
       case RecordingState.recording:
         return Selector<AudioController, String>(
+          key: const ValueKey('audio-ui'),
           selector:
               (context, controller) => controller.formattedRecordingDuration,
           builder: (context, duration, child) {
-            return _buildRecordingUI(duration);
+            return SizedBox(
+              height: 52, // 녹음 UI와 동일한 높이
+              child: _buildAudioUI(
+                backgroundColor: const Color(0xff1c1c1c),
+                isRecording: true,
+                duration: duration,
+              ),
+            );
           },
         );
 
       case RecordingState.recorded:
-        return _buildPlaybackUI();
+        return SizedBox(
+          key: const ValueKey('audio-ui'),
+          height: 52,
+          child: _buildAudioUI(
+            backgroundColor: const Color(0xff323232),
+            isRecording: false,
+          ),
+        );
     }
   }
 
-  Widget _buildRecordingUI(String duration) {
-    return Container(
+  Widget _buildAudioUI({
+    required Color backgroundColor,
+    required bool isRecording,
+    String? duration,
+  }) {
+    // 프로필 모드일 때는 전체 UI를 프로필 이미지로 완전히 대체
+    if (!isRecording && _isProfileMode) {
+      return _buildFullProfileModeUI();
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      key: const ValueKey('idle'),
+      curve: Curves.easeInOut,
       width: 376.w,
-      height: 52.h,
+
       decoration: BoxDecoration(
-        color: const Color(0xff1c1c1c),
+        color: backgroundColor,
         borderRadius: BorderRadius.circular(14.6),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          SizedBox(width: 14.w), // 반응형 간격
+          SizedBox(width: 14.w),
+          // 쓰레기통 아이콘
           GestureDetector(
-            onTap: _stopRecording,
+            onTap: isRecording ? _stopRecording : _deleteRecording,
             child: Container(
-              width: 32.w, // 반응형 너비
-              height: 32.h, // 반응형 높이
+              width: 32.w,
+              height: 32.h,
               decoration: BoxDecoration(
                 color: Colors.grey.shade800,
                 shape: BoxShape.circle,
               ),
-              child: Image.asset(
-                'assets/trash.png',
-                width: 32.w, // 반응형 너비
-                height: 32.h, // 반응형 높이
-              ),
+              child: Image.asset('assets/trash.png', width: 32.w, height: 32.h),
             ),
           ),
-          SizedBox(width: 17.w), // 반응형 간격
+          SizedBox(width: 17.w),
+          // 파형 표시 영역
           Expanded(
-            child: AudioWaveforms(
-              size: Size(1, 52.h),
-              recorderController: recorderController,
-              waveStyle: const WaveStyle(
-                waveColor: Colors.white,
-                extendWaveform: true,
-                showMiddleLine: false,
-              ),
-            ),
+            child:
+                isRecording
+                    ? AudioWaveforms(
+                      size: Size(1, 52.h),
+                      recorderController: recorderController,
+                      waveStyle: const WaveStyle(
+                        waveColor: Colors.white,
+                        extendWaveform: true,
+                        showMiddleLine: false,
+                      ),
+                    )
+                    : _buildWaveformDisplay(),
           ),
-          SizedBox(width: (13.15).w), // 반응형 간격
+          SizedBox(width: 13.w),
+          // 시간 표시
           SizedBox(
-            width: 40.w,
-            child: Text(
-              duration,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12.sp,
-                fontFamily: "Pretendard",
-              ),
-            ),
+            width: 45.w,
+            child:
+                isRecording
+                    ? Text(
+                      duration ?? '00:00',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12.sp,
+                        fontFamily: "Pretendard",
+                      ),
+                    )
+                    : StreamBuilder<int>(
+                      stream:
+                          playerController?.onCurrentDurationChanged ??
+                          const Stream.empty(),
+                      builder: (context, snapshot) {
+                        final currentDurationMs = snapshot.data ?? 0;
+                        final currentDuration = Duration(
+                          milliseconds: currentDurationMs,
+                        );
+                        final minutes = currentDuration.inMinutes;
+                        final seconds = currentDuration.inSeconds % 60;
+                        return Text(
+                          '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.sp,
+                            fontFamily: "Pretendard",
+                          ),
+                        );
+                      },
+                    ),
           ),
+          // 우측 버튼 (녹음 중지 또는 재생/일시정지)
           Padding(
             padding: EdgeInsets.only(right: 19.w),
             child: IconButton(
-              onPressed: () {
-                _stopAndPreparePlayback();
-              },
-              icon: Icon(
-                Icons.stop,
-                color: Colors.white,
-                size: 28.sp, // 반응형 아이콘 크기
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // 재생 UI 빌드 (녹음 완료 후) - 프로필 모드일 때 완전히 대체
-  Widget _buildPlaybackUI() {
-    // 🎯 프로필 모드일 때는 전체 UI를 프로필 이미지로 완전히 대체
-    if (_isProfileMode) {
-      return _buildFullProfileModeUI();
-    }
-
-    // 기존 녹음 UI (파형 모드)
-    return Container(
-      width: 376.w, // 반응형 너비
-      height: 52.h, // 반응형 높이
-      decoration: BoxDecoration(
-        color: const Color(0xff323232), // 회색 배경
-        borderRadius: BorderRadius.circular(14.6), // 반응형 반지름
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          SizedBox(width: 14.w), // 반응형 간격
-          // 쓰레기통 아이콘 (삭제)
-          GestureDetector(
-            onTap: _deleteRecording,
-            child: Container(
-              width: 32.w, // 반응형 너비
-              height: 32.h, // 반응형 높이
-              decoration: BoxDecoration(
-                color: Colors.grey.shade800,
-                shape: BoxShape.circle,
-              ),
-              child: Image.asset('assets/trash.png'),
-            ),
-          ),
-
-          SizedBox(width: 17.w), // 반응형 간격
-          // 재생 파형 (클릭하면 프로필 모드로 전환)
-          Expanded(child: _buildWaveformDisplay()),
-          SizedBox(width: (13.15).w), // 반응형 간격
-          // 재생 시간 표시
-          StreamBuilder<int>(
-            stream:
-                playerController?.onCurrentDurationChanged ??
-                const Stream.empty(),
-            builder: (context, snapshot) {
-              final currentDurationMs = snapshot.data ?? 0;
-              final currentDuration = Duration(milliseconds: currentDurationMs);
-              final minutes = currentDuration.inMinutes;
-              final seconds = currentDuration.inSeconds % 60;
-              return SizedBox(
-                width: 40.w,
-                child: Text(
-                  '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12.sp,
-                    fontFamily: "Pretendard",
-                  ),
-                ),
-              );
-            },
-          ),
-
-          // 재생/일시정지 버튼
-          Padding(
-            padding: EdgeInsets.only(right: 19.w),
-            child: IconButton(
-              onPressed: _togglePlayback,
-              icon: StreamBuilder<PlayerState>(
-                stream:
-                    playerController?.onPlayerStateChanged ??
-                    const Stream.empty(),
-                builder: (context, snapshot) {
-                  final isPlaying = snapshot.data?.isPlaying ?? false;
-                  return Icon(
-                    isPlaying ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white,
-                    size: 28.sp, // 반응형 아이콘 크기
-                  );
-                },
-              ),
+              onPressed:
+                  isRecording ? _stopAndPreparePlayback : _togglePlayback,
+              icon:
+                  isRecording
+                      ? Icon(Icons.stop, color: Colors.white, size: 28.sp)
+                      : StreamBuilder<PlayerState>(
+                        stream:
+                            playerController?.onPlayerStateChanged ??
+                            const Stream.empty(),
+                        builder: (context, snapshot) {
+                          final isPlaying = snapshot.data?.isPlaying ?? false;
+                          return Icon(
+                            isPlaying ? Icons.pause : Icons.play_arrow,
+                            color: Colors.white,
+                            size: 28.sp,
+                          );
+                        },
+                      ),
             ),
           ),
         ],

@@ -439,8 +439,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             GestureDetector(
               onTap: _updateProfileImage,
               child: Container(
-                width: 96.w,
-                height: 96.h,
+                width: 96,
+                height: 96,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   color: Color(0xFFD9D9D9),
@@ -453,8 +453,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: CachedNetworkImage(
                             imageUrl: _profileImageUrl!,
                             fit: BoxFit.cover,
-                            width: 96.w,
-                            height: 96.h,
+                            width: 96,
+                            height: 96,
                             errorWidget: (context, error, stackTrace) {
                               return Icon(
                                 Icons.person,
@@ -474,8 +474,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     // 업로딩 중일 때 로딩 표시
                     if (context.watch<AuthController>().isUploading)
                       Container(
-                        width: 96.w,
-                        height: 96.h,
+                        width: 96,
+                        height: 96,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: Colors.black.withValues(alpha: 0.5),
@@ -500,7 +500,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   'assets/pencil.png',
                   width: (25.41).w,
                   height: (25.41).h,
-                  fit: BoxFit.cover,
+                  fit: BoxFit.contain,
                 ),
               ),
             ),

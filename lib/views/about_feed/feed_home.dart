@@ -11,7 +11,7 @@ import '../../controllers/comment_record_controller.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/comment_record_model.dart';
 import '../../utils/position_converter.dart';
-import 'widgets/user_info_widget.dart';
+import 'widgets/user_info_row_widget_for_feed.dart';
 import 'widgets/voice_recording_widget.dart';
 import 'widgets/photo_display_widget_for_feed.dart';
 

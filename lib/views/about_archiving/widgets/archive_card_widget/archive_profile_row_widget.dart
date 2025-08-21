@@ -16,6 +16,7 @@ class ArchiveProfileRowWidget extends StatelessWidget {
     return Consumer<AuthController>(
       builder: (context, authController, child) {
         // mates가 없거나 비어있으면 기본 이미지 하나만 표시
+        debugPrint("mates: ${mates.toString()}");
         if (mates.isEmpty) {
           return Shimmer.fromColors(
             baseColor: Colors.grey[400]!,
@@ -106,6 +107,11 @@ class ArchiveProfileRowWidget extends StatelessWidget {
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           color: Colors.grey[400],
+                                        ),
+                                        child: Icon(
+                                          Icons.person,
+                                          color: Colors.white,
+                                          size: 19,
                                         ),
                                       ),
                                     ),

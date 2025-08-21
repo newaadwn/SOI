@@ -228,7 +228,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
   Widget _buildRecordingUI(String duration) {
     return Container(
       width: 354.w, // 반응형 너비
-      height: 41.h, // 반응형 높이
+      height: 52.h, // 반응형 높이
       decoration: BoxDecoration(
         color: const Color(0xff1c1c1c),
         borderRadius: BorderRadius.circular(14.6),
@@ -236,13 +236,13 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          SizedBox(width: 18.w), // 반응형 간격
+          SizedBox(width: (7).w),
           // 쓰레기통 아이콘 (녹음 취소)
           GestureDetector(
             onTap: _deleteRecording,
             child: Container(
-              width: 32.w, // 반응형 너비
-              height: 32.h, // 반응형 높이
+              width: 22.w, // 반응형 너비
+              height: 22.h, // 반응형 높이
               decoration: BoxDecoration(
                 color: Colors.grey.shade800,
                 shape: BoxShape.circle,
@@ -254,10 +254,10 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
               ),
             ),
           ),
-          SizedBox(width: 17.w), // 반응형 간격
+          SizedBox(width: 10.w),
           // 실시간 파형
           AudioWaveforms(
-            size: Size(170.w, 41.h),
+            size: Size((207.93).w, 41.h),
             recorderController: _recorderController,
             waveStyle: const WaveStyle(
               waveColor: Colors.white,
@@ -265,7 +265,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
               showMiddleLine: false,
             ),
           ),
-          SizedBox(width: (13.15).w), // 반응형 간격
+
           // 녹음 시간
           SizedBox(
             width: 40.w,
@@ -303,7 +303,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
   Widget _buildPlaybackUI() {
     return Container(
       width: 354.w, // 반응형 너비
-      height: 41.h, // 반응형 높이
+      height: 52.h, // 반응형 높이
       decoration: BoxDecoration(
         color: const Color(0xff1c1c1c), // 회색 배경
         borderRadius: BorderRadius.circular(14.6), // 반응형 반지름
@@ -311,25 +311,19 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          SizedBox(width: 18.w), // 반응형 간격 (녹음 UI와 동일)
+          SizedBox(width: (7).w),
           // 쓰레기통 아이콘 (삭제)
           GestureDetector(
             onTap: _deleteRecording,
             child: Container(
-              width: 32.w, // 반응형 너비
-              height: 32.h, // 반응형 높이
               decoration: BoxDecoration(
                 color: Colors.grey.shade800,
                 shape: BoxShape.circle,
               ),
-              child: Image.asset(
-                'assets/trash.png',
-                width: 32.w, // 반응형 너비
-                height: 32.h, // 반응형 높이
-              ),
+              child: Image.asset('assets/trash.png', width: 22.w, height: 22.h),
             ),
           ),
-          SizedBox(width: 17.w), // 반응형 간격 (녹음 UI와 동일)
+          SizedBox(width: 10.w), // 반응형 간격 (녹음 UI와 동일)
           // 재생 파형 (회색 배경에 흰색으로 채워짐) - 클릭 시 저장
           GestureDetector(
             onTap: () {
@@ -338,7 +332,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
               _markAsSaved();
             },
             child: SizedBox(
-              width: 170.w, // AudioWaveforms와 동일한 고정 크기
+              width: (207.93).w, // AudioWaveforms와 동일한 고정 크기
               height: 41.h, // AudioWaveforms와 동일한 고정 크기
               child:
                   _waveformData != null && _waveformData!.isNotEmpty
@@ -382,10 +376,10 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
                       ),
             ),
           ),
-          SizedBox(width: (13.15).w), // 반응형 간격 (녹음 UI와 동일)
+
           // 재생 시간
           SizedBox(
-            width: 40.w, // 반응형 너비 (녹음 UI와 동일)
+            width: 40.w,
             child: StreamBuilder<int>(
               stream:
                   _playerController?.onCurrentDurationChanged ??
@@ -452,15 +446,6 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
     // 저장 완료 콜백 호출
     widget.onSaved?.call();
-
-    // debugPrint('✅ 음성 댓글이 저장 완료 상태로 변경됨 - 컨트롤러 정리 완료');
-
-    // 주석 처리: 자동 초기화 제거 - 프로필 드래그 후 수동으로 초기화되어야 함
-    // Future.delayed(const Duration(milliseconds: 500), () {
-    //   if (mounted && widget.enableMultipleComments) {
-    //     widget.onSaveCompleted?.call();
-    //   }
-    // });
   }
 
   /// 컨트롤러들을 정리하는 메서드
@@ -553,14 +538,33 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // 상태에 따라 다른 UI 표시
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        return ScaleTransition(
+          scale: animation,
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+      child: _buildCurrentStateWidget(),
+    );
+  }
+
+  /// 현재 상태에 맞는 위젯을 반환
+  Widget _buildCurrentStateWidget() {
     switch (_currentState) {
       case VoiceCommentState.idle:
         // comment.png 표시 (기존 feed_home.dart에서 처리)
-        return const SizedBox.shrink();
+        return Container(
+          key: const ValueKey('recording-ui'),
+          height: 52.h, // 녹음 UI와 동일한 높이
+          alignment: Alignment.center, // 중앙 정렬
+          child: const SizedBox.shrink(),
+        );
 
       case VoiceCommentState.recording:
         return Selector<AudioController, String>(
+          key: const ValueKey('recording-ui'), // recording과 recorded에서 같은 키 사용
           selector:
               (context, controller) => controller.formattedRecordingDuration,
           builder: (context, duration, child) {
@@ -569,10 +573,16 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
         );
 
       case VoiceCommentState.recorded:
-        return _buildPlaybackUI();
+        return Container(
+          key: const ValueKey('recording-ui'), // recording과 같은 키 사용 -> UI 교체 방지
+          child: _buildPlaybackUI(),
+        );
 
       case VoiceCommentState.saved:
-        return _buildSavedProfileUI();
+        return Container(
+          key: const ValueKey('saved'),
+          child: _buildSavedProfileUI(),
+        );
     }
   }
 }

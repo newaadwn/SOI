@@ -248,9 +248,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               Text(
                 'SOI',
                 style: TextStyle(
-                  color: AppTheme.lightTheme.colorScheme.secondary,
+                  color: Color(0xfff9f9f9),
                   fontSize: 20.sp,
-                  fontWeight: FontWeight.w600,
                   fontFamily: GoogleFonts.inter().fontFamily,
                 ),
               ),
@@ -364,9 +363,9 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _buildChip('전체', 0),
-                      SizedBox(width: 8.w),
+                      SizedBox(width: 16.w),
                       _buildChip('개인앨범', 1),
-                      SizedBox(width: 8.w),
+                      SizedBox(width: 16.w),
                       _buildChip('공유앨범', 2),
                     ],
                   ),
@@ -483,7 +482,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   Widget _buildChip(String label, int index) {
     final isSelected = _selectedIndex == index;
 
-    return Expanded(
+    return IntrinsicWidth(
       child: GestureDetector(
         onTap: () {
           setState(() {
@@ -499,7 +498,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         child: AnimatedContainer(
           duration: Duration(milliseconds: 1),
           curve: Curves.easeInOut,
-          padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 8.h),
+          height: 34.h,
+          padding: EdgeInsets.only(top: 3.h, right: 13.w, left: 13.w),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xff292929) : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
@@ -509,7 +509,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               label,
               style: TextStyle(
                 color: Colors.white,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.bold,
                 fontSize: 16.sp,
                 fontFamily: 'Pretendard',
               ),

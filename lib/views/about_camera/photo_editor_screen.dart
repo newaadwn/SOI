@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import 'package:provider/provider.dart';
 import '../../controllers/audio_controller.dart';
@@ -465,7 +466,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                   style: TextStyle(
                     color: Color(0xfff9f9f9),
                     fontSize: 20.sp,
-                    fontFamily: 'Pretendard',
+                    fontFamily: GoogleFonts.inter().fontFamily,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
