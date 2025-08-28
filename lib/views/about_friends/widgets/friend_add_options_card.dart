@@ -2,19 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_boxicons/flutter_boxicons.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../controllers/contact_controller.dart';
+import '../add_friend_by_id_screen.dart';
 
 class FriendAddOptionsCard extends StatelessWidget {
   final double scale;
   final ContactController contactController;
   final VoidCallback onToggleChange;
-  final VoidCallback onAddByIdTap;
 
   const FriendAddOptionsCard({
     super.key,
     required this.scale,
     required this.contactController,
     required this.onToggleChange,
-    required this.onAddByIdTap,
   });
 
   @override
@@ -101,7 +100,11 @@ class FriendAddOptionsCard extends StatelessWidget {
 
           // ID로 추가 하기
           InkWell(
-            onTap: onAddByIdTap,
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AddFriendByIdScreen()),
+              );
+            },
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 12.h),
               child: Row(

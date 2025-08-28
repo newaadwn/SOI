@@ -467,138 +467,145 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        iconTheme: const IconThemeData(color: Colors.white),
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) async {
+        // 뒤로가기 동작(제스처/버튼/아이콘) 시 오디오 정지
+        await _stopAudio();
+      },
+      child: Scaffold(
         backgroundColor: Colors.black,
-        title: Text(
-          widget.categoryName,
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 20.sp,
-            fontFamily: "Pretendard",
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: EdgeInsets.only(right: 23.w),
-            child: IconButton(
-              onPressed: () async {
-                final currentPhoto = widget.photos[_currentIndex];
-
-                // PhotoDataModel에서 직접 duration 사용 (더 정확함)
-                Duration audioDuration = currentPhoto.duration;
-
-                // 현재 사진에 오디오가 있다면 길이 정보 가져오기
-                if (currentPhoto.audioUrl.isNotEmpty) {
-                  final audioController = _getAudioController;
-                  // 현재 재생 중인 오디오가 이 사진의 오디오와 같다면 길이 정보 사용
-                  if (audioController.currentPlayingAudioUrl ==
-                      currentPhoto.audioUrl) {
-                    audioDuration = audioController.currentDuration;
-                  }
-                  debugPrint('현재 오디오 길이: ${audioDuration.inSeconds}초');
-                }
-
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder:
-                        (context) => ShareScreen(
-                          imageUrl: currentPhoto.imageUrl,
-                          waveformData: currentPhoto.waveformData,
-                          audioDuration: audioDuration,
-                          categoryName: widget.categoryName,
-                        ),
-                  ),
-                );
-              },
-              icon: Image.asset(
-                'assets/share_icon.png',
-                width: 20.w,
-                height: 20.h,
-              ),
+        appBar: AppBar(
+          iconTheme: const IconThemeData(color: Colors.white),
+          backgroundColor: Colors.black,
+          title: Text(
+            widget.categoryName,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20.sp,
+              fontFamily: "Pretendard",
+              fontWeight: FontWeight.w700,
             ),
           ),
-        ],
-      ),
-      body: PageView.builder(
-        controller: _pageController,
-        itemCount: widget.photos.length,
-        scrollDirection: Axis.vertical,
-        onPageChanged: _onPageChanged,
-        itemBuilder: (context, index) {
-          final photo = widget.photos[index];
-          final authController = _getAuthController;
-          final currentUserId = authController.getUserId;
-          final isCurrentUserPhoto = currentUserId == photo.userID;
+          actions: [
+            Padding(
+              padding: EdgeInsets.only(right: 23.w),
+              child: IconButton(
+                onPressed: () async {
+                  final currentPhoto = widget.photos[_currentIndex];
 
-          return Column(
-            children: [
-              // 사진 이미지 + 오디오 오버레이 (PhotoDisplayWidget으로 분리)
-              PhotoDisplayWidget(
-                photo: photo,
-                comments: _photoComments[photo.id] ?? [],
-                userProfileImageUrl: _userProfileImageUrl,
-                isLoadingProfile: _isLoadingProfile,
-                profileImageRefreshKey: _profileImageRefreshKey,
-                currentUserId: currentUserId, // 현재 사용자 ID 전달
-                onProfilePositionUpdate: (commentId, position) {
-                  // 사진 영역 내 상대 좌표로 저장
-                  setState(() {
-                    _profileImagePositions[photo.id] = position;
-                  });
+                  // PhotoDataModel에서 직접 duration 사용 (더 정확함)
+                  Duration audioDuration = currentPhoto.duration;
 
-                  // Firestore에 위치 업데이트
-                  _updateProfilePositionInFirestore(
-                    photo.id,
-                    commentId,
-                    position,
+                  // 현재 사진에 오디오가 있다면 길이 정보 가져오기
+                  if (currentPhoto.audioUrl.isNotEmpty) {
+                    final audioController = _getAudioController;
+                    // 현재 재생 중인 오디오가 이 사진의 오디오와 같다면 길이 정보 사용
+                    if (audioController.currentPlayingAudioUrl ==
+                        currentPhoto.audioUrl) {
+                      audioDuration = audioController.currentDuration;
+                    }
+                    debugPrint('현재 오디오 길이: ${audioDuration.inSeconds}초');
+                  }
+
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => ShareScreen(
+                            imageUrl: currentPhoto.imageUrl,
+                            waveformData: currentPhoto.waveformData,
+                            audioDuration: audioDuration,
+                            categoryName: widget.categoryName,
+                          ),
+                    ),
                   );
                 },
+                icon: Image.asset(
+                  'assets/share_icon.png',
+                  width: 20.w,
+                  height: 20.h,
+                ),
               ),
-              SizedBox(height: (11.5).h), // 반응형 간격
-              // 사진 아래 정보 섹션 (UserInfoRowWidget으로 분리)
-              UserInfoRowWidget(
-                photo: photo,
-                userName: _userName,
-                isCurrentUserPhoto: isCurrentUserPhoto,
-                onDeletePressed: () => _showDeleteDialog(photo),
-              ),
-              SizedBox(height: (31.6).h),
+            ),
+          ],
+        ),
+        body: PageView.builder(
+          controller: _pageController,
+          itemCount: widget.photos.length,
+          scrollDirection: Axis.vertical,
+          onPageChanged: _onPageChanged,
+          itemBuilder: (context, index) {
+            final photo = widget.photos[index];
+            final authController = _getAuthController;
+            final currentUserId = authController.getUserId;
+            final isCurrentUserPhoto = currentUserId == photo.userID;
 
-              Consumer<AuthController>(
-                builder: (context, authController, child) {
-                  final currentUserId = authController.getUserId;
-                  final isCurrentUserPhoto = currentUserId == photo.userID;
+            return Column(
+              children: [
+                // 사진 이미지 + 오디오 오버레이 (PhotoDisplayWidget으로 분리)
+                PhotoDisplayWidget(
+                  photo: photo,
+                  comments: _photoComments[photo.id] ?? [],
+                  userProfileImageUrl: _userProfileImageUrl,
+                  isLoadingProfile: _isLoadingProfile,
+                  profileImageRefreshKey: _profileImageRefreshKey,
+                  currentUserId: currentUserId, // 현재 사용자 ID 전달
+                  onProfilePositionUpdate: (commentId, position) {
+                    // 사진 영역 내 상대 좌표로 저장
+                    setState(() {
+                      _profileImagePositions[photo.id] = position;
+                    });
 
-                  // 항상 AudioRecorderWidget 표시 (여러 댓글 허용)
-                  return AudioRecorderWidget(
-                    photoId: photo.id,
-                    isCommentMode: true, // 명시적으로 댓글 모드 설정
-                    // 현재 사용자 사진 여부 전달 --> 이걸로 댓글 아이콘이냐, 음성 아이콘이냐를 결정함
-                    isCurrentUserPhoto: isCurrentUserPhoto,
-                    profileImagePosition: _profileImagePositions[photo.id],
-                    getProfileImagePosition:
-                        () => _profileImagePositions[photo.id],
-                    // 위치 드래그 콜백은 UI 반영만 (commentId 없이 Firestore 호출 금지)
-                    onProfileImageDragged: (Offset position) {
-                      setState(() {
-                        _profileImagePositions[photo.id] = position;
-                      });
-                    },
-                    onCommentSaved: (commentRecord) {
-                      // 새 댓글이 저장되면 음성 댓글 목록 새로고침
-                      _subscribeToVoiceCommentsForCurrentPhoto();
-                    },
-                  );
-                },
-              ),
-            ],
-          );
-        },
+                    // Firestore에 위치 업데이트
+                    _updateProfilePositionInFirestore(
+                      photo.id,
+                      commentId,
+                      position,
+                    );
+                  },
+                ),
+                SizedBox(height: (11.5).h), // 반응형 간격
+                // 사진 아래 정보 섹션 (UserInfoRowWidget으로 분리)
+                UserInfoRowWidget(
+                  photo: photo,
+                  userName: _userName,
+                  isCurrentUserPhoto: isCurrentUserPhoto,
+                  onDeletePressed: () => _showDeleteDialog(photo),
+                ),
+                SizedBox(height: (31.6).h),
+
+                Consumer<AuthController>(
+                  builder: (context, authController, child) {
+                    final currentUserId = authController.getUserId;
+                    final isCurrentUserPhoto = currentUserId == photo.userID;
+
+                    // 항상 AudioRecorderWidget 표시 (여러 댓글 허용)
+                    return AudioRecorderWidget(
+                      photoId: photo.id,
+                      isCommentMode: true, // 명시적으로 댓글 모드 설정
+                      // 현재 사용자 사진 여부 전달 --> 이걸로 댓글 아이콘이냐, 음성 아이콘이냐를 결정함
+                      isCurrentUserPhoto: isCurrentUserPhoto,
+                      profileImagePosition: _profileImagePositions[photo.id],
+                      getProfileImagePosition:
+                          () => _profileImagePositions[photo.id],
+                      // 위치 드래그 콜백은 UI 반영만 (commentId 없이 Firestore 호출 금지)
+                      onProfileImageDragged: (Offset position) {
+                        setState(() {
+                          _profileImagePositions[photo.id] = position;
+                        });
+                      },
+                      onCommentSaved: (commentRecord) {
+                        // 새 댓글이 저장되면 음성 댓글 목록 새로고침
+                        _subscribeToVoiceCommentsForCurrentPhoto();
+                      },
+                    );
+                  },
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }

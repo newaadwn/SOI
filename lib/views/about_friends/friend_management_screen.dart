@@ -17,7 +17,6 @@ import 'widgets/invite_link_card.dart';
 import 'widgets/friend_request_card.dart';
 import 'widgets/friend_list_card.dart';
 import 'widgets/friend_suggest_card.dart';
-import 'dialogs/add_by_id_dialog.dart';
 import 'dialogs/permission_settings_dialog.dart';
 
 class FriendManagementScreen extends StatefulWidget {
@@ -265,92 +264,6 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
     );
   }
 
-  /// ID로 친구 추가 처리
-  Future<void> _addFriendById(String id) async {
-    try {
-      // 로딩 상태 표시
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder:
-            (context) => const Center(
-              child: CircularProgressIndicator(color: Colors.white),
-            ),
-      );
-
-      // UserMatchingController를 통해 사용자 검색
-      final userMatchingController = Provider.of<UserMatchingController>(
-        context,
-        listen: false,
-      );
-
-      // 입력된 ID로 사용자 검색 (Controller를 통한 비즈니스 로직 처리)
-      final searchResult = await userMatchingController.searchUserById(id);
-
-      // 로딩 다이얼로그 닫기
-      if (mounted) Navigator.of(context).pop();
-
-      if (searchResult == null) {
-        // 사용자를 찾을 수 없는 경우
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('ID "$id"를 찾을 수 없습니다'),
-              backgroundColor: const Color(0xFF5A5A5A),
-            ),
-          );
-        }
-        return;
-      }
-
-      // FriendRequestController를 통해 친구 요청 전송
-      final friendRequestController = Provider.of<FriendRequestController>(
-        context,
-        listen: false,
-      );
-
-      final success = await friendRequestController.sendFriendRequest(
-        receiverUid: searchResult.single.uid,
-        message: 'ID로 친구 요청을 보냅니다.',
-      );
-
-      if (mounted) {
-        if (success) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${searchResult.single.id}님에게 친구 요청을 보냈습니다'),
-              backgroundColor: const Color(0xFF5A5A5A),
-            ),
-          );
-        } else {
-          // 에러 메시지는 FriendRequestController에서 처리됨
-          final errorMessage =
-              friendRequestController.error ?? '친구 요청 전송에 실패했습니다';
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              backgroundColor: const Color(0xFF5A5A5A),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      // 로딩 다이얼로그가 열려있다면 닫기
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('친구 추가 중 오류가 발생했습니다: $e'),
-            backgroundColor: const Color(0xFF5A5A5A),
-          ),
-        );
-      }
-    }
-  }
-
   /// 앱 설정 화면 열기
   Future<void> _openAppSettings() async {
     try {
@@ -417,8 +330,6 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
                   scale: scale,
                   contactController: contactController,
                   onToggleChange: () => _handleToggleChange(contactController),
-                  onAddByIdTap:
-                      () => AddByIdDialog.show(context, scale, _addFriendById),
                 ),
 
                 SizedBox(height: 24.h),

@@ -25,16 +25,14 @@ class UserMatchingController extends ChangeNotifier {
   // 추천 친구 (매칭 결과)
   List<ContactMatchResult> _contactMatches = [];
   List<UserSearchModel> _recommendedFriends = [];
-  final Map<String, bool> _processingRecommendations =
-      {}; // userId -> isProcessing
+  final Map<String, bool> _processingRecommendations = {};
   bool _isLoadingRecommendations = false;
 
   // 사용자 검색
   List<UserSearchModel> _searchResults = [];
   String _currentSearchQuery = '';
   bool _isSearching = false;
-  final Map<String, bool> _processingSearchResults =
-      {}; // userId -> isProcessing
+  final Map<String, bool> _processingSearchResults = {};
 
   // 매칭 통계
   MatchingStats? _matchingStats;
