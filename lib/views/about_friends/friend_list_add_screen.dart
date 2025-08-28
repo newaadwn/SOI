@@ -237,6 +237,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                       color: const Color(0xfff9f9f9),
                       fontSize: 16.sp,
                     ),
+                    cursorColor: const Color(0xfff9f9f9),
                     decoration: InputDecoration(
                       hintText: '친구 검색하기',
                       hintStyle: TextStyle(
@@ -251,10 +252,6 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                         size: 24.w,
                       ),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 20.w,
-                        vertical: 12.h,
-                      ),
                     ),
                   ),
                 ),
@@ -363,8 +360,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                                           final isSelected = _selectedFriendUids
                                               .contains(friend.userId);
                                           final isAlreadyMember =
-                                              !widget
-                                                  .allowDeselection && // 새 카테고리 만들기가 아닌 경우에만
+                                              !widget.allowDeselection &&
                                               widget.categoryMemberUids
                                                       ?.contains(
                                                         friend.userId,
@@ -393,7 +389,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                         ),
               ),
 
-              // 확인 버튼
+              // 완료 버튼
               Container(
                 width: double.infinity,
                 padding: EdgeInsets.all(16.w),
@@ -457,6 +453,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
   }) {
     return GestureDetector(
       onTap: isAlreadyMember ? null : onTap, // 이미 멤버이고 해제 불가인 경우만 터치 불가
+      behavior: HitTestBehavior.opaque, // 빈 공간에서도 탭 감지되도록 설정
       child: Container(
         padding: EdgeInsets.symmetric(horizontal: 18.w, vertical: 12.h),
         child: Row(
@@ -497,11 +494,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                   Text(
                     friend.name,
                     style: TextStyle(
-                      color:
-                      /* isAlreadyMember
-                              ? const Color(0xff999999)
-                              : */
-                      const Color(0xfff9f9f9),
+                      color: const Color(0xfff9f9f9),
                       fontSize: 16.sp,
                       fontWeight: FontWeight.w500,
                     ),
@@ -514,11 +507,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                       Text(
                         friend.id,
                         style: TextStyle(
-                          color:
-                          /* isAlreadyMember
-                                  ? const Color(0xff666666)
-                                  : */
-                          const Color(0xff999999),
+                          color: const Color(0xff999999),
                           fontSize: 14.sp,
                         ),
                         maxLines: 1,
@@ -538,7 +527,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                 shape: BoxShape.circle,
                 color:
                     isAlreadyMember
-                        ? Color(0xffffffff) // 이미 추가된 경우 흰색
+                        ? Color(0xffffffff)
                         : isSelected
                         ? Color(0xffffffff)
                         : Color(0xff5a5a5a),
@@ -547,7 +536,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                 Icons.check,
                 color:
                     isAlreadyMember
-                        ? Color(0xff000000) // 이미 추가된 경우 검은색 체크
+                        ? Color(0xff000000)
                         : isSelected
                         ? Color(0xff000000)
                         : Color(0xfff9f9f9),

@@ -157,8 +157,6 @@ class PhotoDisplayWidget extends StatelessWidget {
             builder: (builderContext) {
               return DragTarget<String>(
                 onWillAcceptWithDetails: (details) {
-                  // DragTarget is being approached with data: ${details.data}
-                  // commentId 문자열이 들어오면 허용
                   return (details.data).isNotEmpty;
                 },
                 onAcceptWithDetails: (details) {
@@ -203,17 +201,25 @@ class PhotoDisplayWidget extends StatelessWidget {
                               color: Colors.black.withValues(alpha: 0.5),
                               borderRadius: BorderRadius.circular(16),
                             ),
-                            child: Padding(
-                              padding: EdgeInsets.only(left: 15.w, right: 15.w),
-                              child: Text(
-                                categoryName,
-                                style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  fontSize: 16.sp,
-                                  fontWeight: FontWeight.w600,
+                            alignment: Alignment.center,
+                            child: Center(
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  left: 15.w,
+                                  right: 15.w,
+                                  top: 1.h,
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1, // 한 줄로 제한
+                                child: Text(
+                                  categoryName,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 16.sp,
+                                    fontWeight: FontWeight.w600,
+                                    fontFamily: "Pretendard",
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                  maxLines: 1, // 한 줄로 제한
+                                ),
                               ),
                             ),
                           ),
@@ -426,56 +432,78 @@ class PhotoDisplayWidget extends StatelessWidget {
                                     height: 27,
                                     decoration: BoxDecoration(
                                       shape: BoxShape.circle,
-                                      // 재생 중인 댓글은 흰색 테두리 표시
-                                      border:
-                                          isCurrentCommentPlaying
-                                              ? Border.all(
-                                                color: Colors.white,
-                                                width: 2,
-                                              )
-                                              : null,
+                                      border: Border.all(
+                                        color:
+                                            isCurrentCommentPlaying
+                                                ? Colors.white
+                                                : Colors.transparent,
+                                        width: 1,
+                                      ),
                                     ),
-                                    child:
-                                        comment.profileImageUrl.isNotEmpty
-                                            ? ClipOval(
-                                              child: CachedNetworkImage(
-                                                imageUrl:
-                                                    comment.profileImageUrl,
-                                                width: 27,
-                                                height: 27,
-                                                fit: BoxFit.cover,
-                                                placeholder:
-                                                    (context, url) => Container(
-                                                      width: 27,
-                                                      height: 27,
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.grey[700],
-                                                        shape: BoxShape.circle,
-                                                      ),
+                                    child: Stack(
+                                      children: [
+                                        // 프로필 이미지 (크기 고정)
+                                        ClipOval(
+                                          child:
+                                              comment.profileImageUrl.isNotEmpty
+                                                  ? CachedNetworkImage(
+                                                    imageUrl:
+                                                        comment.profileImageUrl,
+                                                    width: 27,
+                                                    height: 27,
+                                                    fit: BoxFit.cover,
+                                                    placeholder:
+                                                        (
+                                                          context,
+                                                          url,
+                                                        ) => Container(
+                                                          width: 27,
+                                                          height: 27,
+                                                          decoration:
+                                                              BoxDecoration(
+                                                                color:
+                                                                    Colors
+                                                                        .grey[700],
+                                                                shape:
+                                                                    BoxShape
+                                                                        .circle,
+                                                              ),
+                                                        ),
+                                                    errorWidget:
+                                                        (
+                                                          context,
+                                                          error,
+                                                          stackTrace,
+                                                        ) => Container(
+                                                          width: 27,
+                                                          height: 27,
+                                                          decoration:
+                                                              BoxDecoration(
+                                                                color:
+                                                                    Colors
+                                                                        .grey[700],
+                                                                shape:
+                                                                    BoxShape
+                                                                        .circle,
+                                                              ),
+                                                        ),
+                                                  )
+                                                  : Container(
+                                                    width: 27,
+                                                    height: 27,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.grey[700],
+                                                      shape: BoxShape.circle,
                                                     ),
-                                                errorWidget:
-                                                    (
-                                                      context,
-                                                      error,
-                                                      stackTrace,
-                                                    ) => Container(
-                                                      width: 27,
-                                                      height: 27,
-                                                      decoration: BoxDecoration(
-                                                        color: Colors.grey[700],
-                                                        shape: BoxShape.circle,
-                                                      ),
+                                                    child: Icon(
+                                                      Icons.person,
+                                                      color: Colors.white,
+                                                      size: 18,
                                                     ),
-                                              ),
-                                            )
-                                            : Container(
-                                              width: 27,
-                                              height: 27,
-                                              decoration: BoxDecoration(
-                                                color: Colors.grey[700],
-                                                shape: BoxShape.circle,
-                                              ),
-                                            ),
+                                                  ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 );
                               },

@@ -348,6 +348,7 @@ class _CameraScreenState extends State<CameraScreen>
                 color: Color(0xfff9f9f9),
                 fontSize: 20.sp,
                 fontFamily: GoogleFonts.inter().fontFamily,
+                fontWeight: FontWeight.bold,
               ),
             ),
             SizedBox(height: 30.h),
@@ -383,6 +384,7 @@ class _CameraScreenState extends State<CameraScreen>
                 icon: Container(
                   width: 35,
                   height: 35,
+                  padding: EdgeInsets.only(bottom: 3.h),
                   decoration: BoxDecoration(
                     color: Color(0xff1c1c1c),
                     shape: BoxShape.circle,

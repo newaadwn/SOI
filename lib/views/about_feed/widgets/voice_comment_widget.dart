@@ -60,6 +60,9 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
   List<double>? _waveformData;
   DateTime? _recordingStartTime; // 녹음 시작 시간 추가
 
+  /// 이전 녹음 상태 (애니메이션 제어용)
+  VoiceCommentState? _lastState;
+
   /// 외부에서 저장 완료를 알리는 메서드
   void markAsSaved() {
     if (mounted) {
@@ -122,10 +125,12 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
       await _audioController.startRecording();
 
       setState(() {
+        _lastState = _currentState;
         _currentState = VoiceCommentState.recording;
       });
     } catch (e) {
       setState(() {
+        _lastState = _currentState;
         _currentState = VoiceCommentState.idle;
       });
     }
@@ -161,6 +166,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
         );
 
         setState(() {
+          _lastState = _currentState;
           _currentState = VoiceCommentState.recorded;
           _waveformData = waveformData;
         });
@@ -189,6 +195,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
       // 상태 초기화
       setState(() {
+        _lastState = _currentState;
         _currentState = VoiceCommentState.idle;
         _waveformData = null;
       });
@@ -204,8 +211,13 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
   /// 재생/일시정지 토글
   Future<void> _togglePlayback() async {
+    // null 체크와 mounted 체크 추가
+    if (!mounted || _playerController == null) {
+      return;
+    }
+
     try {
-      if (_playerController?.playerState.isPlaying == true) {
+      if (_playerController!.playerState.isPlaying) {
         await _playerController!.pausePlayer();
         // debugPrint('재생 일시정지');
       } else {
@@ -218,7 +230,9 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
           // debugPrint('재생 시작');
         }
       }
-      setState(() {}); // UI 갱신
+      if (mounted) {
+        setState(() {}); // UI 갱신
+      }
     } catch (e) {
       // debugPrint('재생/일시정지 오류: $e');
     }
@@ -236,39 +250,37 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          SizedBox(width: (7).w),
+          SizedBox(width: 7.w),
           // 쓰레기통 아이콘 (녹음 취소)
           GestureDetector(
             onTap: _deleteRecording,
             child: Container(
-              width: 22.w, // 반응형 너비
-              height: 22.h, // 반응형 높이
+              width: 32.w,
+              height: 32.h,
               decoration: BoxDecoration(
                 color: Colors.grey.shade800,
                 shape: BoxShape.circle,
               ),
-              child: Image.asset(
-                'assets/trash.png',
-                width: 32.w, // 반응형 너비
-                height: 32.h, // 반응형 높이
+              child: Image.asset('assets/trash.png', width: 32.w, height: 32.h),
+            ),
+          ),
+          SizedBox(width: 17.w),
+          // 실시간 파형
+          Expanded(
+            child: AudioWaveforms(
+              size: Size(1, 52.h),
+              recorderController: _recorderController,
+              waveStyle: const WaveStyle(
+                waveColor: Colors.white,
+                extendWaveform: true,
+                showMiddleLine: false,
               ),
             ),
           ),
-          SizedBox(width: 10.w),
-          // 실시간 파형
-          AudioWaveforms(
-            size: Size((207.93).w, 41.h),
-            recorderController: _recorderController,
-            waveStyle: const WaveStyle(
-              waveColor: Colors.white,
-              extendWaveform: true,
-              showMiddleLine: false,
-            ),
-          ),
-
+          SizedBox(width: 13.w),
           // 녹음 시간
           SizedBox(
-            width: 40.w,
+            width: 45.w,
             child: Text(
               duration,
               style: TextStyle(
@@ -283,15 +295,9 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
           // 중지 버튼
           Padding(
             padding: EdgeInsets.only(right: 19.w),
-            child: GestureDetector(
-              onTap: () {
-                _stopAndPreparePlayback();
-              },
-              child: Icon(
-                Icons.stop,
-                color: Colors.white,
-                size: 28.sp, // 반응형 아이콘 크기
-              ),
+            child: IconButton(
+              onPressed: _stopAndPreparePlayback,
+              icon: Icon(Icons.stop, color: Colors.white, size: 28.sp),
             ),
           ),
         ],
@@ -301,39 +307,41 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
   /// 재생 UI (AudioRecorderWidget과 동일)
   Widget _buildPlaybackUI() {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
       width: 354.w, // 반응형 너비
       height: 52.h, // 반응형 높이
       decoration: BoxDecoration(
-        color: const Color(0xff1c1c1c), // 회색 배경
+        color: const Color(0xff323232), // 회색 배경
         borderRadius: BorderRadius.circular(14.6), // 반응형 반지름
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          SizedBox(width: (7).w),
+          SizedBox(width: 7.w),
           // 쓰레기통 아이콘 (삭제)
           GestureDetector(
             onTap: _deleteRecording,
             child: Container(
+              width: 32.w,
+              height: 32.h,
               decoration: BoxDecoration(
                 color: Colors.grey.shade800,
                 shape: BoxShape.circle,
               ),
-              child: Image.asset('assets/trash.png', width: 22.w, height: 22.h),
+              child: Image.asset('assets/trash.png', width: 32.w, height: 32.h),
             ),
           ),
-          SizedBox(width: 10.w), // 반응형 간격 (녹음 UI와 동일)
-          // 재생 파형 (회색 배경에 흰색으로 채워짐) - 클릭 시 저장
-          GestureDetector(
-            onTap: () {
-              // 파형 클릭 시 저장 요청 후 프로필로 전환
-              widget.onSaveRequested?.call();
-              _markAsSaved();
-            },
-            child: SizedBox(
-              width: (207.93).w, // AudioWaveforms와 동일한 고정 크기
-              height: 41.h, // AudioWaveforms와 동일한 고정 크기
+          SizedBox(width: 17.w),
+          // 재생 파형 - 클릭 시 저장
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                // 파형 클릭 시 저장 요청 후 프로필로 전환
+                widget.onSaveRequested?.call();
+                _markAsSaved();
+              },
               child:
                   _waveformData != null && _waveformData!.isNotEmpty
                       ? StreamBuilder<int>(
@@ -341,8 +349,12 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
                             _playerController?.onCurrentDurationChanged ??
                             const Stream.empty(),
                         builder: (context, positionSnapshot) {
+                          // mounted와 _playerController null 체크 추가
+                          if (!mounted || _playerController == null) {
+                            return Container();
+                          }
+
                           final currentPosition = positionSnapshot.data ?? 0;
-                          // maxDuration을 사용하여 총 길이 가져오기
                           final totalDuration =
                               _playerController?.maxDuration ?? 1;
                           final progress =
@@ -353,38 +365,61 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
                                   )
                                   : 0.0;
 
-                          return Container(
-                            alignment: Alignment.center,
-                            child: CustomWaveformWidget(
-                              waveformData: _waveformData!,
-                              color: const Color(0xff5a5a5a),
-                              activeColor: Colors.white,
-                              progress: progress,
-                            ),
+                          // _waveformData가 여전히 null이 아닌지 다시 확인
+                          if (_waveformData == null || _waveformData!.isEmpty) {
+                            return Container();
+                          }
+
+                          return CustomWaveformWidget(
+                            waveformData: _waveformData!,
+                            color: Colors.grey,
+                            activeColor: Colors.white,
+                            progress: progress,
                           );
                         },
                       )
                       : Container(
-                        alignment: Alignment.center,
-                        child: Text(
-                          '파형 없음',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 12.sp,
+                        height: 52.h,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade700,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '파형 없음',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 14.sp,
+                              fontFamily: "Pretendard",
+                            ),
                           ),
                         ),
                       ),
             ),
           ),
-
+          SizedBox(width: 13.w),
           // 재생 시간
           SizedBox(
-            width: 40.w,
+            width: 45.w,
             child: StreamBuilder<int>(
               stream:
                   _playerController?.onCurrentDurationChanged ??
                   const Stream.empty(),
               builder: (context, snapshot) {
+                // mounted와 _playerController null 체크 추가
+                if (!mounted || _playerController == null) {
+                  return Text(
+                    '00:00',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.sp,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: -0.40,
+                    ),
+                  );
+                }
+
                 final currentDurationMs = snapshot.data ?? 0;
                 final currentDuration = Duration(
                   milliseconds: currentDurationMs,
@@ -404,24 +439,35 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
               },
             ),
           ),
-
           // 재생/일시정지 버튼
           Padding(
-            padding: EdgeInsets.only(right: 19.w), // 녹음 UI와 동일
+            padding: EdgeInsets.only(right: 19.w),
             child: StreamBuilder<PlayerState>(
               stream:
                   _playerController?.onPlayerStateChanged ??
                   const Stream.empty(),
               builder: (context, snapshot) {
+                // mounted와 _playerController null 체크 추가
+                if (!mounted || _playerController == null) {
+                  return IconButton(
+                    onPressed: null,
+                    icon: Icon(
+                      Icons.play_arrow,
+                      color: Colors.white54,
+                      size: 28.sp,
+                    ),
+                  );
+                }
+
                 final playerState = snapshot.data;
                 final isPlaying = playerState?.isPlaying ?? false;
 
-                return GestureDetector(
-                  onTap: _togglePlayback,
-                  child: Icon(
+                return IconButton(
+                  onPressed: _togglePlayback,
+                  icon: Icon(
                     isPlaying ? Icons.pause : Icons.play_arrow,
                     color: Colors.white,
-                    size: 28.sp, // 녹음 UI와 동일
+                    size: 28.sp,
                   ),
                 );
               },
@@ -436,12 +482,20 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
   void _markAsSaved() {
     // debugPrint(' 음성 댓글 상태 변경: ${_currentState.toString()} → saved');
 
-    // 컨트롤러들을 완전히 정리하고 초기화
-    _cleanupControllers();
-
+    // 애니메이션을 위해 _lastState 설정
     setState(() {
+      _lastState = _currentState;
       _currentState = VoiceCommentState.saved;
-      _waveformData = null; // 파형 데이터 정리
+    });
+
+    // 상태 변경 후 컨트롤러들을 정리 (애니메이션 후에)
+    Future.delayed(Duration(milliseconds: 400), () {
+      if (mounted) {
+        _cleanupControllers();
+        setState(() {
+          _waveformData = null; // 파형 데이터 정리
+        });
+      }
     });
 
     // 저장 완료 콜백 호출
@@ -538,6 +592,17 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // recording에서 recorded로 바뀔 때만 애니메이션 비활성화
+    // recorded에서 saved로 바뀔 때는 애니메이션 활성화
+    bool shouldAnimate =
+        !(_lastState == VoiceCommentState.recording &&
+            _currentState == VoiceCommentState.recorded);
+
+    if (!shouldAnimate) {
+      // 애니메이션 없이 즉시 전환 (recording → recorded만)
+      return _buildCurrentStateWidget();
+    }
+
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 300),
       transitionBuilder: (Widget child, Animation<double> animation) {
@@ -552,11 +617,22 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
   /// 현재 상태에 맞는 위젯을 반환
   Widget _buildCurrentStateWidget() {
+    // recording에서 recorded로 전환할 때 같은 키를 사용하여 애니메이션 방지
+    String widgetKey;
+    if (_lastState == VoiceCommentState.recording &&
+        _currentState == VoiceCommentState.recorded) {
+      widgetKey = 'audio-ui-no-animation';
+    } else if (_currentState == VoiceCommentState.saved) {
+      widgetKey = 'profile-mode'; // 프로필 모드용 고유 키 (recorded에서 전환 시 애니메이션)
+    } else {
+      widgetKey = _currentState.toString();
+    }
+
     switch (_currentState) {
       case VoiceCommentState.idle:
         // comment.png 표시 (기존 feed_home.dart에서 처리)
         return Container(
-          key: const ValueKey('recording-ui'),
+          key: ValueKey(widgetKey),
           height: 52.h, // 녹음 UI와 동일한 높이
           alignment: Alignment.center, // 중앙 정렬
           child: const SizedBox.shrink(),
@@ -564,7 +640,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
       case VoiceCommentState.recording:
         return Selector<AudioController, String>(
-          key: const ValueKey('recording-ui'), // recording과 recorded에서 같은 키 사용
+          key: ValueKey(widgetKey),
           selector:
               (context, controller) => controller.formattedRecordingDuration,
           builder: (context, duration, child) {
@@ -573,14 +649,11 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
         );
 
       case VoiceCommentState.recorded:
-        return Container(
-          key: const ValueKey('recording-ui'), // recording과 같은 키 사용 -> UI 교체 방지
-          child: _buildPlaybackUI(),
-        );
+        return Container(key: ValueKey(widgetKey), child: _buildPlaybackUI());
 
       case VoiceCommentState.saved:
         return Container(
-          key: const ValueKey('saved'),
+          key: ValueKey(widgetKey),
           child: _buildSavedProfileUI(),
         );
     }

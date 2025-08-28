@@ -4,7 +4,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../controllers/audio_controller.dart';
-import '../../../../controllers/auth_controller.dart';
 import '../../../../models/comment_record_model.dart';
 import '../../../../models/photo_data_model.dart';
 import '../../../../utils/format_utils.dart';
@@ -19,6 +18,7 @@ class PhotoDisplayWidget extends StatelessWidget {
   final int profileImageRefreshKey;
   final Function(String commentId, Offset position) onProfilePositionUpdate;
   final String? currentUserId; // 현재 사용자 ID 추가
+  final VoidCallback? onPageChanged; // 페이지 변경 콜백 추가
 
   const PhotoDisplayWidget({
     super.key,
@@ -29,6 +29,7 @@ class PhotoDisplayWidget extends StatelessWidget {
     required this.profileImageRefreshKey,
     required this.onProfilePositionUpdate,
     this.currentUserId, // 현재 사용자 ID 추가
+    this.onPageChanged, // 페이지 변경 콜백 추가
   });
 
   @override
@@ -122,14 +123,15 @@ class PhotoDisplayWidget extends StatelessWidget {
     return Positioned(
       left: clampedPosition.dx - 13.5,
       top: clampedPosition.dy - 13.5,
-      child: Consumer<AuthController>(
-        builder: (context, authController, child) {
+      child: Consumer<AudioController>(
+        builder: (context, audioController, child) {
+          // 현재 댓글이 재생 중인지 확인
+          final isCurrentCommentPlaying =
+              audioController.isPlaying &&
+              audioController.currentPlayingAudioUrl == comment.audioUrl;
+
           return InkWell(
             onTap: () async {
-              final audioController = Provider.of<AudioController>(
-                context,
-                listen: false,
-              );
               if (comment.audioUrl.isNotEmpty) {
                 await audioController.toggleAudio(
                   comment.audioUrl,
@@ -140,7 +142,26 @@ class PhotoDisplayWidget extends StatelessWidget {
             child: Container(
               width: 27,
               height: 27,
-              decoration: BoxDecoration(shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color:
+                      isCurrentCommentPlaying
+                          ? Colors.white
+                          : Colors.transparent,
+                  width: 2, // 테두리 굵기를 2로 설정
+                ),
+                boxShadow:
+                    isCurrentCommentPlaying
+                        ? [
+                          BoxShadow(
+                            color: Colors.white.withValues(alpha: 0.5),
+                            blurRadius: 4,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                        : null, // 재생 중일 때 그림자 효과 추가
+              ),
               child:
                   comment.profileImageUrl.isNotEmpty
                       ? ClipOval(
@@ -411,6 +432,19 @@ class PhotoDisplayWidget extends StatelessWidget {
     } catch (e) {
       // 에러 처리는 상위 위젯에서 담당
       debugPrint('오디오 재생 오류: $e');
+    }
+  }
+
+  /// 모든 오디오 중지 (페이지 변경 시 호출)
+  static Future<void> stopAllAudio(BuildContext context) async {
+    try {
+      final audioController = Provider.of<AudioController>(
+        context,
+        listen: false,
+      );
+      await audioController.stopAudio();
+    } catch (e) {
+      debugPrint('오디오 중지 오류: $e');
     }
   }
 }

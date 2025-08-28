@@ -795,6 +795,22 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     }
   }
 
+  void _stopAllAudio() {
+    // 1. 게시물 오디오 중지
+    final audioController = Provider.of<AudioController>(
+      context,
+      listen: false,
+    );
+    audioController.stopAudio();
+
+    // 2. 음성 댓글 오디오 중지
+    final commentAudioController = Provider.of<CommentAudioController>(
+      context,
+      listen: false,
+    );
+    commentAudioController.stopAllComments();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(backgroundColor: Colors.black, body: _buildBody());
@@ -856,6 +872,9 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                   !_isLoadingMore) {
                 _loadMorePhotos();
               }
+
+              // 페이지 변경 시 모든 오디오 중지
+              _stopAllAudio();
             },
             itemBuilder: (context, index) {
               // 로딩 인디케이터 표시

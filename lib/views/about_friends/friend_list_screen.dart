@@ -360,7 +360,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
         height: 88.h,
 
         decoration: BoxDecoration(
-          color: Color(0xff323232),
+          color: Color(0xff363636),
           borderRadius: BorderRadius.circular(9.14),
         ),
         child: Column(
@@ -369,20 +369,24 @@ class _FriendListScreenState extends State<FriendListScreen> {
             InkWell(
               onTap: () {
                 debugPrint("친구 삭제");
-                // 해당 친구의 MenuController를 찾아서 닫기
+
                 final controller = _menuControllers[friendUserId];
                 if (controller != null && controller.isOpen) {
                   controller.close();
                 }
               },
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+
                 children: [
                   SizedBox(width: 13.96.w),
-                  Image.asset(
-                    'assets/trash_bin.png',
-
-                    width: 11.16.sp,
-                    height: 12.56.sp,
+                  Padding(
+                    padding: EdgeInsets.only(bottom: 1.h),
+                    child: Image.asset(
+                      'assets/trash_bin.png',
+                      width: (11.16).sp,
+                      height: (12.56).sp,
+                    ),
                   ),
                   SizedBox(width: 8.w),
                   Text(
@@ -396,22 +400,21 @@ class _FriendListScreenState extends State<FriendListScreen> {
                 ],
               ),
             ),
-            Divider(color: Color(0xff5a5a5a)),
+            Divider(color: Color(0xff5a5a5a), thickness: 1.sp),
             InkWell(
               onTap: () {
                 debugPrint("차단");
-                // 해당 친구의 MenuController를 찾아서 닫기
                 final controller = _menuControllers[friendUserId];
                 if (controller != null && controller.isOpen) {
                   controller.close();
                 }
               },
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   SizedBox(width: 13.96.w),
                   Image.asset(
                     'assets/block.png',
-
                     width: 11.16.sp,
                     height: 12.56.sp,
                   ),
@@ -419,7 +422,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
                   Text(
                     '차단',
                     style: TextStyle(
-                      color: Colors.red,
+                      color: Color(0xfff40202),
                       fontSize: 15.3517.sp,
                       fontFamily: "Pretendard",
                     ),

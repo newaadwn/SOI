@@ -251,6 +251,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                   color: Color(0xfff9f9f9),
                   fontSize: 20.sp,
                   fontFamily: GoogleFonts.inter().fontFamily,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
               SizedBox(height: 30.h),
