@@ -3,14 +3,14 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_swift_camera/controllers/comment_record_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../../controllers/auth_controller.dart';
-import '../../../controllers/audio_controller.dart';
-import '../../../controllers/comment_audio_controller.dart';
-import '../../../models/photo_data_model.dart';
-import '../../../models/comment_record_model.dart';
-import '../../../utils/format_utils.dart';
-import '../../../utils/position_converter.dart';
-import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
+import '../controllers/auth_controller.dart';
+import '../controllers/audio_controller.dart';
+import '../controllers/comment_audio_controller.dart';
+import '../models/photo_data_model.dart';
+import '../models/comment_record_model.dart';
+import '../utils/format_utils.dart';
+import '../utils/position_converter.dart';
+import '../views/about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
 
 /// 사진 표시 위젯
 ///
@@ -656,7 +656,7 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                       final targetId = _selectedCommentId!;
                                       try {
                                         await _commentRecordController
-                                            .deleteCommentRecord(
+                                            .hardDeleteCommentRecord(
                                               targetId,
                                               widget.photo.id,
                                             );

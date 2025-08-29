@@ -237,6 +237,35 @@ class CommentRecordController extends ChangeNotifier {
     }
   }
 
+  /// 음성 댓글 하드 삭제 (UI 선반영, 백그라운드 처리)
+  Future<bool> hardDeleteCommentRecord(String commentId, String photoId) async {
+    // Optimistic: 현재 캐시 상태 저장
+    final previousList = List<CommentRecordModel>.from(
+      _commentCache[photoId] ?? [],
+    );
+    try {
+      _clearError();
+
+      // UI 즉시 제거
+      _commentRecords.removeWhere((c) => c.id == commentId);
+      if (_commentCache.containsKey(photoId)) {
+        _commentCache[photoId]!.removeWhere((c) => c.id == commentId);
+      }
+      notifyListeners();
+
+      // 백그라운드 실행 (await 하되 로딩 표시 최소화)
+      await _service.hardDeleteCommentRecord(commentId);
+      return true;
+    } catch (e) {
+      // 롤백
+      _commentCache[photoId] = previousList;
+      _commentRecords = previousList;
+      _setError('음성 댓글 영구 삭제 실패: $e');
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// 특정 사진의 댓글 수 반환
   int getCommentCountByPhotoId(String photoId) {
     return _commentCache[photoId]?.length ?? 0;

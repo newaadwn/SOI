@@ -78,6 +78,18 @@ class CommentRecordService {
     }
   }
 
+  /// 음성 댓글 하드 삭제 (문서 + 스토리지 파일)
+  Future<void> hardDeleteCommentRecord(String commentId) async {
+    if (commentId.isEmpty) {
+      throw ServiceException('유효하지 않은 댓글 ID입니다');
+    }
+    try {
+      await _repository.hardDeleteCommentRecord(commentId);
+    } catch (e) {
+      throw ServiceException('음성 댓글 하드 삭제 실패', originalError: e);
+    }
+  }
+
   /// 사용자별 음성 댓글들 조회
   Future<List<CommentRecordModel>> getCommentRecordsByUser(
     String userId,

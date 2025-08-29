@@ -60,9 +60,11 @@ void main() async {
         forceRecaptchaFlow: false,
       );
     } catch (authError) {
-      // debugPrint('Firebase Auth 설정 실패: $authError');
+      rethrow;
     }
-  } catch (e) {}
+  } catch (e) {
+    rethrow;
+  }
 
   // 에러 핸들링 추가
   FlutterError.onError = (FlutterErrorDetails details) {

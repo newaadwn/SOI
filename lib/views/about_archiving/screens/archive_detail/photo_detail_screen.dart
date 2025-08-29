@@ -10,7 +10,7 @@ import '../../../../models/comment_record_model.dart';
 import '../../../../models/photo_data_model.dart';
 import '../../../../utils/position_converter.dart';
 import '../../../about_share/share_screen.dart';
-import '../../../../comment_wodget/photo_card_widget_common.dart';
+import '../../../../widget_common/photo_card_widget_common.dart';
 
 class PhotoDetailScreen extends StatefulWidget {
   final List<PhotoDataModel> photos;

@@ -166,6 +166,38 @@ class CommentRecordRepository {
     }
   }
 
+  /// 음성 댓글 하드 삭제 (Firestore 문서 + Storage 파일 실제 삭제)
+  ///
+  /// UI에서는 즉시 제거(optimistic) 후, 백그라운드에서 실행하도록 사용할 수 있음.
+  Future<void> hardDeleteCommentRecord(String commentId) async {
+    try {
+      final docRef = _firestore.collection(_collectionName).doc(commentId);
+      final snapshot = await docRef.get();
+      if (!snapshot.exists) return; // 이미 없음
+
+      String audioUrl = '';
+      try {
+        final data = snapshot.data() as Map<String, dynamic>;
+        audioUrl = data['audioUrl'] as String? ?? '';
+      } catch (_) {}
+
+      // 1) Storage 파일 삭제 (파일 없거나 권한 문제면 무시)
+      if (audioUrl.isNotEmpty) {
+        try {
+          final ref = _storage.refFromURL(audioUrl);
+          await ref.delete();
+        } catch (e) {
+          debugPrint('⚠️ Storage 파일 삭제 실패(무시): $e');
+        }
+      }
+
+      // 2) Firestore 문서 삭제
+      await docRef.delete();
+    } catch (e) {
+      throw Exception('음성 댓글 하드 삭제 실패: $e');
+    }
+  }
+
   /// 음성 댓글 수정
   Future<CommentRecordModel> updateCommentRecord(
     CommentRecordModel commentRecord,

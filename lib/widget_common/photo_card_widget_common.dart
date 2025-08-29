@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../models/photo_data_model.dart';
 import '../models/comment_record_model.dart';
-import '../views/about_feed/widgets/user_info_row_widget_for_feed.dart';
+import 'user_info_row_widget.dart';
 import 'voice_recording_widget.dart';
-import '../views/about_feed/widgets/photo_display_widget_for_feed.dart';
+import 'photo_display_widget.dart';
 
 class PhotoCardWidgetCommon extends StatefulWidget {
   final PhotoDataModel photo;

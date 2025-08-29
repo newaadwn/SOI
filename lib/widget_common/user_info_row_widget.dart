@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../../models/photo_data_model.dart';
-import '../../../utils/format_utils.dart';
+import '../models/photo_data_model.dart';
+import '../utils/format_utils.dart';
 
 /// 사용자 정보 표시 위젯 (아이디와 날짜)
 ///
