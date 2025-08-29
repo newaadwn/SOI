@@ -27,6 +27,9 @@ enum RecordingState {
 class AudioRecorderWidget extends StatefulWidget {
   // 콜백 함수 시그니처 변경: 파일 경로와 파형 데이터 함께 전달
   final Function(String?, List<double>?)? onRecordingCompleted;
+  // 추가: 녹음 종료(파일/파형/길이) 상세 콜백 (feed 업로드 로직 재사용 용도)
+  final Function(String audioFilePath, List<double> waveformData, int duration)?
+  onRecordingFinished;
 
   // CommentRecord 저장 완료 콜백
   final Function(CommentRecordModel)? onCommentSaved;
@@ -61,6 +64,7 @@ class AudioRecorderWidget extends StatefulWidget {
   const AudioRecorderWidget({
     super.key,
     this.onRecordingCompleted,
+    this.onRecordingFinished,
     this.onCommentSaved,
     this.autoStart = false, // 기본값은 false
     this.photoId, // 선택적 파라미터
@@ -791,6 +795,15 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget> {
       // 콜백 호출
       if (widget.onRecordingCompleted != null) {
         widget.onRecordingCompleted!(_recordedFilePath, waveformData);
+      }
+      if (widget.onRecordingFinished != null &&
+          _recordedFilePath != null &&
+          waveformData.isNotEmpty) {
+        widget.onRecordingFinished!(
+          _recordedFilePath!,
+          waveformData,
+          _audioController.recordingDuration,
+        );
       }
     } catch (e) {
       // setState() 호출 전 mounted 체크

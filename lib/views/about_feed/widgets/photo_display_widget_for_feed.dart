@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:flutter_swift_camera/controllers/comment_record_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../controllers/auth_controller.dart';
@@ -15,9 +16,11 @@ import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.da
 ///
 /// 피드에서 사진 이미지와 관련된 모든 UI를 담당합니다.
 /// 사진, 카테고리 정보, 오디오 컨트롤, 드롭된 프로필 이미지 등을 포함합니다.
-class PhotoDisplayWidget extends StatelessWidget {
+class PhotoDisplayWidget extends StatefulWidget {
   final PhotoDataModel photo;
   final String categoryName;
+  // Archive 여부에 따라 카테고리 라벨 숨김
+  final bool isArchive;
   final Map<String, Offset?> profileImagePositions;
   final Map<String, String> droppedProfileImageUrls;
   final Map<String, List<CommentRecordModel>> photoComments;
@@ -30,6 +33,7 @@ class PhotoDisplayWidget extends StatelessWidget {
     super.key,
     required this.photo,
     required this.categoryName,
+    this.isArchive = false,
     required this.profileImagePositions,
     required this.droppedProfileImageUrls,
     required this.photoComments,
@@ -39,11 +43,26 @@ class PhotoDisplayWidget extends StatelessWidget {
     required this.onToggleAudio,
   });
 
+  @override
+  State<PhotoDisplayWidget> createState() => _PhotoDisplayWidgetState();
+}
+
+class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
+  // 선택된(롱프레스) 음성 댓글 ID 및 위치
+  String? _selectedCommentId;
+  Offset? _selectedCommentPosition; // 스택(이미지) 내부 좌표 (아바타 중심)
+  bool _showActionOverlay = false; // 선택된 댓글 아래로 마스킹 & 팝업 표시 여부
+  // 해당 사진(위젯 인스턴스)에서 음성 댓글 프로필 표시 여부
+  bool _isShowingComments = false; // 기본은 숨김
+
+  final CommentRecordController _commentRecordController =
+      CommentRecordController();
+
   /// 커스텀 파형 위젯을 빌드하는 메서드 (실시간 progress 포함)
   Widget _buildWaveformWidgetWithProgress() {
-    if (photo.audioUrl.isEmpty ||
-        photo.waveformData == null ||
-        photo.waveformData!.isEmpty) {
+    if (widget.photo.audioUrl.isEmpty ||
+        widget.photo.waveformData == null ||
+        widget.photo.waveformData!.isEmpty) {
       return Container(
         height: 32,
         alignment: Alignment.center,
@@ -58,7 +77,7 @@ class PhotoDisplayWidget extends StatelessWidget {
       builder: (context, audioController, child) {
         final isCurrentAudio =
             audioController.isPlaying &&
-            audioController.currentPlayingAudioUrl == photo.audioUrl;
+            audioController.currentPlayingAudioUrl == widget.photo.audioUrl;
 
         double progress = 0.0;
         if (isCurrentAudio &&
@@ -71,7 +90,7 @@ class PhotoDisplayWidget extends StatelessWidget {
         return Container(
           alignment: Alignment.center,
           child: CustomWaveformWidget(
-            waveformData: photo.waveformData!,
+            waveformData: widget.photo.waveformData!,
             color: (isCurrentAudio) ? Color(0xff5a5a5a) : Color(0xffffffff),
             activeColor: Colors.white,
             progress: progress,
@@ -83,14 +102,14 @@ class PhotoDisplayWidget extends StatelessWidget {
 
   /// 사용자 프로필 이미지 위젯 빌드
   Widget _buildUserProfileWidget(BuildContext context) {
-    final userId = photo.userID;
+    final userId = widget.photo.userID;
     final screenWidth = MediaQuery.of(context).size.width;
     final profileSize = screenWidth * 0.085;
 
     return Consumer<AuthController>(
       builder: (context, authController, child) {
-        final isLoading = profileLoadingStates[userId] ?? false;
-        final profileImageUrl = userProfileImages[userId] ?? '';
+        final isLoading = widget.profileLoadingStates[userId] ?? false;
+        final profileImageUrl = widget.userProfileImages[userId] ?? '';
 
         return Container(
           width: profileSize,
@@ -144,8 +163,6 @@ class PhotoDisplayWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 화면 크기에 맞춘 반응형 이미지 크기 계산
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -165,13 +182,16 @@ class PhotoDisplayWidget extends StatelessWidget {
                       builderContext.findRenderObject() as RenderBox;
                   final localPosition = renderBox.globalToLocal(details.offset);
 
-                  // 프로필 이미지 크기(27x27)의 절반만큼 보정하여 중심점으로 조정
+                  // 프로필 크기(64)의 반지름만큼 보정하여 중심점으로 조정
                   final adjustedPosition = Offset(
                     localPosition.dx + 32,
                     localPosition.dy + 32,
                   );
 
-                  onProfileImageDragged(photo.id, adjustedPosition);
+                  widget.onProfileImageDragged(
+                    widget.photo.id,
+                    adjustedPosition,
+                  );
                 },
                 builder: (context, candidateData, rejectedData) {
                   return Stack(
@@ -179,7 +199,7 @@ class PhotoDisplayWidget extends StatelessWidget {
                     children: [
                       // 배경 이미지
                       CachedNetworkImage(
-                        imageUrl: photo.imageUrl,
+                        imageUrl: widget.photo.imageUrl,
                         fit: BoxFit.cover,
                         width: 354.w, // 실제 이미지 너비
                         height: 500.h, // 실제 이미지 높이
@@ -192,39 +212,68 @@ class PhotoDisplayWidget extends StatelessWidget {
                           );
                         },
                       ),
-                      // 카테고리 정보
-                      Padding(
-                        padding: EdgeInsets.only(top: 16.h),
-                        child: IntrinsicWidth(
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.5),
-                              borderRadius: BorderRadius.circular(16),
+                      // 댓글 보기 토글 시(롱프레스 액션 오버레이 아닐 때) 살짝 어둡게 마스킹하여 아바타 대비 확보
+                      if (_isShowingComments && !_showActionOverlay)
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: Container(
+                              color: Colors.black.withValues(alpha: 0.4),
                             ),
-                            alignment: Alignment.center,
-                            child: Center(
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  left: 15.w,
-                                  right: 15.w,
-                                  top: 1.h,
-                                ),
-                                child: Text(
-                                  categoryName,
-                                  style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.9),
-                                    fontSize: 16.sp,
-                                    fontWeight: FontWeight.w600,
-                                    fontFamily: "Pretendard",
+                          ),
+                        ),
+                      // 선택된 댓글이 있을 때 전체 마스킹 (선택된 것만 위에 남김)
+                      if (_showActionOverlay)
+                        Positioned.fill(
+                          child: GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                _showActionOverlay = false;
+                                _selectedCommentId = null;
+                                _selectedCommentPosition = null;
+                              });
+                            },
+                            child: Container(
+                              color: Color(0xffd9d9d9).withValues(alpha: .3),
+                            ),
+                          ),
+                        ),
+
+                      // 카테고리 정보
+                      if (!widget.isArchive)
+                        Padding(
+                          padding: EdgeInsets.only(top: 16.h),
+                          child: IntrinsicWidth(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              alignment: Alignment.center,
+                              child: Center(
+                                child: Padding(
+                                  padding: EdgeInsets.only(
+                                    left: 15.w,
+                                    right: 15.w,
+                                    top: 1.h,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
-                                  maxLines: 1, // 한 줄로 제한
+                                  child: Text(
+                                    widget.categoryName,
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(
+                                        alpha: 0.9,
+                                      ),
+                                      fontSize: 16.sp,
+                                      fontWeight: FontWeight.w600,
+                                      fontFamily: "Pretendard",
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                    maxLines: 1, // 한 줄로 제한
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
 
                       // 오디오 컨트롤 오버레이 (photo_detail처럼)
                       Positioned(
@@ -237,9 +286,12 @@ class PhotoDisplayWidget extends StatelessWidget {
                               SizedBox(
                                 width: 278.w,
                                 child:
-                                    photo.audioUrl.isNotEmpty
+                                    widget.photo.audioUrl.isNotEmpty
                                         ? GestureDetector(
-                                          onTap: () => onToggleAudio(photo),
+                                          onTap:
+                                              () => widget.onToggleAudio(
+                                                widget.photo,
+                                              ),
                                           child: Container(
                                             width: 278.w,
                                             height: 40.h,
@@ -299,7 +351,9 @@ class PhotoDisplayWidget extends StatelessWidget {
                                                               .isPlaying &&
                                                           audioController
                                                                   .currentPlayingAudioUrl ==
-                                                              photo.audioUrl;
+                                                              widget
+                                                                  .photo
+                                                                  .audioUrl;
 
                                                       // 실시간 재생 시간 사용
                                                       Duration displayDuration =
@@ -314,7 +368,9 @@ class PhotoDisplayWidget extends StatelessWidget {
                                                         FormatUtils.formatDuration(
                                                           (isCurrentAudio)
                                                               ? displayDuration
-                                                              : photo.duration,
+                                                              : widget
+                                                                  .photo
+                                                                  .duration,
                                                         ),
                                                         style: TextStyle(
                                                           color: Colors.white,
@@ -338,10 +394,20 @@ class PhotoDisplayWidget extends StatelessWidget {
                               SizedBox(
                                 width: 60.w,
                                 child:
-                                    (photoComments[photo.id] ?? []).isNotEmpty
+                                    (widget.photoComments[widget.photo.id] ??
+                                                [])
+                                            .isNotEmpty
                                         ? Center(
                                           child: IconButton(
-                                            onPressed: () {},
+                                            onPressed: () {
+                                              setState(() {
+                                                _isShowingComments =
+                                                    !_isShowingComments;
+                                              });
+                                              debugPrint(
+                                                '댓글 아이콘 클릭됨: $_isShowingComments (photo: \'${widget.photo.id}\')',
+                                              );
+                                            },
                                             icon: Image.asset(
                                               "assets/comment_profile_icon.png",
                                               width: 25.w,
@@ -358,7 +424,11 @@ class PhotoDisplayWidget extends StatelessWidget {
 
                       // 모든 댓글의 드롭된 프로필 이미지들 표시 (상대 좌표 사용)
                       ...(() {
-                        final comments = photoComments[photo.id] ?? [];
+                        if (!_isShowingComments) {
+                          return <Widget>[]; // 숨김 상태에서는 아무 것도 렌더링하지 않음
+                        }
+                        final comments =
+                            widget.photoComments[widget.photo.id] ?? [];
 
                         final commentsWithPosition =
                             comments
@@ -368,6 +438,12 @@ class PhotoDisplayWidget extends StatelessWidget {
                                 .toList();
 
                         return commentsWithPosition.map((comment) {
+                          // 오버레이 중이면 선택된 댓글 외에는 숨김
+                          if (_showActionOverlay &&
+                              _selectedCommentId != null &&
+                              comment.id != _selectedCommentId) {
+                            return const SizedBox.shrink();
+                          }
                           // 상대 좌표를 절대 좌표로 변환 (실제 렌더링 크기 사용)
                           final actualImageSize = Size(
                             354.w.toDouble(),
@@ -396,121 +472,251 @@ class PhotoDisplayWidget extends StatelessWidget {
                           return Positioned(
                             left: clampedPosition.dx - 13.5,
                             top: clampedPosition.dy - 13.5,
-                            child: Consumer2<
-                              AuthController,
-                              CommentAudioController
-                            >(
-                              builder: (
-                                context,
-                                authController,
-                                commentAudioController,
-                                child,
-                              ) {
-                                // 현재 댓글이 재생 중인지 확인
-                                final isCurrentCommentPlaying =
-                                    commentAudioController.isCommentPlaying(
-                                      comment.id,
-                                    );
-
-                                return InkWell(
-                                  onTap: () async {
-                                    if (comment.audioUrl.isNotEmpty) {
-                                      try {
-                                        // CommentAudioController 사용하여 개별 댓글 재생
-                                        await commentAudioController
-                                            .toggleComment(
-                                              comment.id,
-                                              comment.audioUrl,
-                                            );
-                                      } catch (e) {
-                                        debugPrint('❌ Feed - 음성 댓글 재생 실패: $e');
-                                      }
-                                    }
-                                  },
-                                  child: Container(
-                                    width: 27,
-                                    height: 27,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color:
-                                            isCurrentCommentPlaying
-                                                ? Colors.white
-                                                : Colors.transparent,
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Stack(
-                                      children: [
-                                        // 프로필 이미지 (크기 고정)
-                                        ClipOval(
-                                          child:
-                                              comment.profileImageUrl.isNotEmpty
-                                                  ? CachedNetworkImage(
-                                                    imageUrl:
-                                                        comment.profileImageUrl,
-                                                    width: 27,
-                                                    height: 27,
-                                                    fit: BoxFit.cover,
-                                                    placeholder:
-                                                        (
-                                                          context,
-                                                          url,
-                                                        ) => Container(
-                                                          width: 27,
-                                                          height: 27,
-                                                          decoration:
-                                                              BoxDecoration(
-                                                                color:
-                                                                    Colors
-                                                                        .grey[700],
-                                                                shape:
-                                                                    BoxShape
-                                                                        .circle,
-                                                              ),
-                                                        ),
-                                                    errorWidget:
-                                                        (
-                                                          context,
-                                                          error,
-                                                          stackTrace,
-                                                        ) => Container(
-                                                          width: 27,
-                                                          height: 27,
-                                                          decoration:
-                                                              BoxDecoration(
-                                                                color:
-                                                                    Colors
-                                                                        .grey[700],
-                                                                shape:
-                                                                    BoxShape
-                                                                        .circle,
-                                                              ),
-                                                        ),
-                                                  )
-                                                  : Container(
-                                                    width: 27,
-                                                    height: 27,
-                                                    decoration: BoxDecoration(
-                                                      color: Colors.grey[700],
-                                                      shape: BoxShape.circle,
-                                                    ),
-                                                    child: Icon(
-                                                      Icons.person,
-                                                      color: Colors.white,
-                                                      size: 18,
-                                                    ),
-                                                  ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                            child: GestureDetector(
+                              onLongPress: () {
+                                // 롱프레스 시 선택 & 마스킹 + 액션 팝업 노출
+                                setState(() {
+                                  _selectedCommentId = comment.id;
+                                  _selectedCommentPosition = clampedPosition;
+                                  _showActionOverlay = true;
+                                });
+                                debugPrint(
+                                  'Long press detected on comment: ${comment.id}',
                                 );
                               },
+                              child: Consumer2<
+                                AuthController,
+                                CommentAudioController
+                              >(
+                                builder: (
+                                  context,
+                                  authController,
+                                  commentAudioController,
+                                  child,
+                                ) {
+                                  // 현재 댓글이 재생 중인지 확인
+                                  final isCurrentCommentPlaying =
+                                      commentAudioController.isCommentPlaying(
+                                        comment.id,
+                                      );
+                                  final isSelected =
+                                      _showActionOverlay &&
+                                      _selectedCommentId == comment.id;
+
+                                  return InkWell(
+                                    onTap: () async {
+                                      if (comment.audioUrl.isNotEmpty) {
+                                        try {
+                                          // CommentAudioController 사용하여 개별 댓글 재생
+                                          await commentAudioController
+                                              .toggleComment(
+                                                comment.id,
+                                                comment.audioUrl,
+                                              );
+                                        } catch (e) {
+                                          debugPrint(
+                                            '❌ Feed - 음성 댓글 재생 실패: $e',
+                                          );
+                                        }
+                                      }
+                                    },
+                                    child: Container(
+                                      width: 27,
+                                      height: 27,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        boxShadow:
+                                            isSelected
+                                                ? [
+                                                  BoxShadow(
+                                                    color: Colors.black
+                                                        .withValues(
+                                                          alpha: 0.45,
+                                                        ),
+                                                    blurRadius: 6,
+                                                    spreadRadius: 1,
+                                                  ),
+                                                ]
+                                                : null,
+                                        border: Border.all(
+                                          color:
+                                              isSelected
+                                                  ? Colors.white
+                                                  : isCurrentCommentPlaying
+                                                  ? Colors.white
+                                                  : Colors.transparent,
+                                          width: isSelected ? 2.2 : 1,
+                                        ),
+                                      ),
+                                      child: Stack(
+                                        children: [
+                                          ClipOval(
+                                            child:
+                                                comment
+                                                        .profileImageUrl
+                                                        .isNotEmpty
+                                                    ? CachedNetworkImage(
+                                                      imageUrl:
+                                                          comment
+                                                              .profileImageUrl,
+                                                      width: 27,
+                                                      height: 27,
+                                                      fit: BoxFit.cover,
+                                                      placeholder:
+                                                          (
+                                                            context,
+                                                            url,
+                                                          ) => Container(
+                                                            width: 27,
+                                                            height: 27,
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  Colors
+                                                                      .grey[700],
+                                                              shape:
+                                                                  BoxShape
+                                                                      .circle,
+                                                            ),
+                                                          ),
+                                                      errorWidget:
+                                                          (
+                                                            context,
+                                                            error,
+                                                            stackTrace,
+                                                          ) => Container(
+                                                            width: 27,
+                                                            height: 27,
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  Colors
+                                                                      .grey[700],
+                                                              shape:
+                                                                  BoxShape
+                                                                      .circle,
+                                                            ),
+                                                          ),
+                                                    )
+                                                    : Container(
+                                                      width: 27,
+                                                      height: 27,
+                                                      decoration: BoxDecoration(
+                                                        color: Colors.grey[700],
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Icon(
+                                                        Icons.person,
+                                                        color: Colors.white,
+                                                        size: 18,
+                                                      ),
+                                                    ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           );
                         });
                       })(),
+                      // 선택된 댓글에 대한 작은 액션 팝업 (삭제 등) - 이미지 영역 안에 직접 렌더
+                      if (_showActionOverlay &&
+                          _selectedCommentId != null &&
+                          _selectedCommentPosition != null)
+                        Builder(
+                          builder: (context) {
+                            final imageWidth = 354.w.toDouble();
+                            final popupWidth = 180.0;
+
+                            // 기본 위치: 선택된 아바타 오른쪽 살짝 아래
+                            double left = _selectedCommentPosition!.dx;
+                            double top = _selectedCommentPosition!.dy + 20;
+                            // 화면 밖으로 나가지 않도록 클램프
+                            if (left + popupWidth > imageWidth) {
+                              left = imageWidth - popupWidth - 8;
+                            }
+
+                            return Positioned(
+                              left: left,
+                              top: top,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: Container(
+                                  width: 173.w,
+                                  height: 45.h,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1C1C1C),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: InkWell(
+                                    borderRadius: BorderRadius.circular(14),
+                                    onTap: () async {
+                                      if (_selectedCommentId == null) return;
+                                      final targetId = _selectedCommentId!;
+                                      try {
+                                        await _commentRecordController
+                                            .deleteCommentRecord(
+                                              targetId,
+                                              widget.photo.id,
+                                            );
+                                      } catch (e) {
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            SnackBar(
+                                              content: Text('댓글 삭제 실패: $e'),
+                                              behavior:
+                                                  SnackBarBehavior.floating,
+                                              duration: const Duration(
+                                                seconds: 2,
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      } finally {
+                                        if (mounted) {
+                                          setState(() {
+                                            // 오버레이 및 선택 해제 + 기본 화면 복귀 위해 댓글 표시도 종료
+                                            _showActionOverlay = false;
+                                            _selectedCommentId = null;
+                                            _selectedCommentPosition = null;
+                                            _isShowingComments = false; // 배경 원복
+                                          });
+                                        }
+                                      }
+                                    },
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.start,
+                                      children: [
+                                        SizedBox(width: 13.96.w),
+                                        Image.asset(
+                                          "assets/trash_red.png",
+                                          width: 11.2.w,
+                                          height: 12.6.h,
+                                        ),
+                                        SizedBox(width: 12.59.w),
+                                        Text(
+                                          '댓글 삭제',
+                                          style: TextStyle(
+                                            fontSize: 15.sp,
+                                            fontWeight: FontWeight.w500,
+                                            color: Color(0xffff0000),
+                                            fontFamily: 'Pretendard',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                     ],
                   );
                 },

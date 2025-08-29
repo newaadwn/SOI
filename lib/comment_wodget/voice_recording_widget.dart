@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
-import '../../../controllers/auth_controller.dart';
-import '../../../models/photo_data_model.dart';
-import '../../../models/comment_record_model.dart';
+import '../controllers/auth_controller.dart';
+import '../models/photo_data_model.dart';
+import '../models/comment_record_model.dart';
 import 'voice_comment_widget.dart';
 
 /// 음성 녹음 위젯
@@ -42,6 +42,8 @@ class VoiceRecordingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isCurrentUser =
+        context.read<AuthController>().currentUser?.uid == photo.userID;
     return SizedBox(
       height: 90.h, // 고정된 높이 설정
       child: AnimatedSwitcher(
@@ -130,11 +132,18 @@ class VoiceRecordingWidget extends StatelessWidget {
                   alignment: Alignment.center, // 중앙 정렬
                   child: IconButton(
                     onPressed: () => onToggleVoiceComment(photo.id),
-                    icon: Image.asset(
-                      width: 54.w,
-                      height: 54.h,
-                      'assets/comment.png',
-                    ),
+                    icon:
+                        isCurrentUser
+                            ? Image.asset(
+                              width: 54.w,
+                              height: 54.h,
+                              'assets/comment.png',
+                            )
+                            : Image.asset(
+                              width: 54.w,
+                              height: 54.h,
+                              'assets/record_icon.png',
+                            ),
                   ),
                 ),
       ),

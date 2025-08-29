@@ -9,10 +9,8 @@ import '../../../../controllers/photo_controller.dart';
 import '../../../../models/comment_record_model.dart';
 import '../../../../models/photo_data_model.dart';
 import '../../../../utils/position_converter.dart';
-import '../../../about_camera/widgets/audio_recorder_widget.dart';
 import '../../../about_share/share_screen.dart';
-import '../../widgets/photo_detail_widget/photo_display_widget_for_archive.dart';
-import '../../widgets/photo_detail_widget/user_info_row_widget_for_archiving.dart';
+import '../../../../comment_wodget/photo_card_widget_common.dart';
 
 class PhotoDetailScreen extends StatefulWidget {
   final List<PhotoDataModel> photos;
@@ -33,254 +31,203 @@ class PhotoDetailScreen extends StatefulWidget {
 }
 
 class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
-  // 상태 관리 변수들
+  late final PageController _pageController;
   late int _currentIndex;
+
+  // 사용자 프로필 관련
   String _userProfileImageUrl = '';
   String _userName = '';
   bool _isLoadingProfile = true;
   int _profileImageRefreshKey = 0;
 
-  // 컨트롤러 참조
+  // 컨트롤러
   AuthController? _authController;
 
-  // 음성 댓글 관련 맵들
+  // 상태 맵 (Feed 구조와 동일)
   final Map<String, List<CommentRecordModel>> _photoComments = {};
   final Map<String, Offset?> _profileImagePositions = {};
+  final Map<String, String> _droppedProfileImageUrls = {};
+  final Map<String, bool> _voiceCommentActiveStates = {};
+  final Map<String, bool> _voiceCommentSavedStates = {};
+  final Map<String, String> _commentProfileImageUrls = {};
+  final Map<String, String> _userProfileImages = {};
+  final Map<String, bool> _profileLoadingStates = {};
+  final Map<String, String> _userNames = {};
+  final Map<String, CommentRecordModel> _pendingVoiceComments = {};
+  final Map<String, Offset> _pendingProfilePositions = {};
+  final Map<String, String> _savedCommentIds = {};
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
   _commentStreams = {};
-
-  // Feed와 동일한 음성 댓글 상태 관리 변수들 추가
-  final Map<String, bool> _voiceCommentSavedStates = {};
-  final Map<String, String> _savedCommentIds = {};
-  final Map<String, String> _commentProfileImageUrls = {};
-  final Map<String, String> _droppedProfileImageUrls = {};
-
-  // PageController를 상태로 유지 (build마다 새로 생성 방지)
-  late final PageController _pageController;
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
-    _pageController = PageController(initialPage: widget.initialIndex);
+    _pageController = PageController(initialPage: _currentIndex);
+    _authController = Provider.of<AuthController>(context, listen: false);
+    _authController?.addListener(_onAuthControllerChanged);
     _loadUserProfileImage();
     _subscribeToVoiceCommentsForCurrentPhoto();
-
-    // 초기 사진의 댓글도 직접 로드
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _loadCommentsForPhoto(widget.photos[_currentIndex].id);
-    });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    // AuthController 참조 저장 및 리스너 등록
-    if (_authController == null) {
-      _authController = Provider.of<AuthController>(context, listen: false);
-      _authController!.addListener(_onAuthControllerChanged);
-    }
+    _loadCommentsForPhoto(widget.photos[_currentIndex].id);
   }
 
   @override
   void dispose() {
-    // 모든 스트림 구독 취소
-    for (final subscription in _commentStreams.values) {
-      subscription.cancel();
+    for (final sub in _commentStreams.values) {
+      sub.cancel();
     }
     _commentStreams.clear();
-
-    // AuthController 리스너 제거 (저장된 참조 사용)
     _authController?.removeListener(_onAuthControllerChanged);
+    _pageController.dispose();
     super.dispose();
   }
 
-  /// AuthController 변경 감지 시 프로필 이미지 리프레시
-  void _onAuthControllerChanged() async {
-    // AuthController has changed - refresh profile images to reflect updates
-    setState(() => _profileImageRefreshKey++);
-    await _loadUserProfileImage();
-    _subscribeToVoiceCommentsForCurrentPhoto();
-  }
-
-  // 사용자 프로필 정보 로드
-  Future<void> _loadUserProfileImage() async {
-    final currentPhoto = widget.photos[_currentIndex];
-
-    try {
-      final authController = _getAuthController;
-      final profileImageUrl = await authController.getUserProfileImageUrlById(
-        currentPhoto.userID,
-      );
-      final userInfo = await authController.getUserInfo(currentPhoto.userID);
-
-      if (mounted) {
-        setState(() {
-          _userProfileImageUrl = profileImageUrl;
-          _userName = userInfo?.id ?? currentPhoto.userID;
-          _isLoadingProfile = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _userName = currentPhoto.userID;
-          _isLoadingProfile = false;
-        });
-      }
-    }
-  }
-
-  /// 현재 사진의 음성 댓글을 실시간으로 구독하여 위치 동기화
-  void _subscribeToVoiceCommentsForCurrentPhoto() {
-    final photoId = widget.photos[_currentIndex].id;
-
-    try {
-      _commentStreams[photoId]?.cancel();
-
-      // 현재 사용자 ID 가져오기
-      final currentUserId = _authController?.currentUser?.uid;
-      if (currentUserId == null) {
-        return;
-      }
-
-      _commentStreams[photoId] = CommentRecordController()
-          .getCommentRecordsStream(photoId)
-          .listen(
-            (comments) =>
-                _handleCommentsUpdate(photoId, currentUserId, comments),
-          );
-    } catch (e) {
-      debugPrint('❌ Photo Detail - 실시간 댓글 구독 시작 실패 - 사진 $photoId: $e');
-    }
-  }
-
-  /// 댓글 업데이트 처리
-  void _handleCommentsUpdate(
-    String photoId,
-    String currentUserId,
-    List<CommentRecordModel> comments,
-  ) {
-    if (!mounted) return;
-
-    setState(() {
-      _photoComments[photoId] = comments;
-    });
-
-    // 현재 사용자의 댓글 찾기 (Feed와 동일한 로직)
-    final userComment =
-        comments
-            .where((comment) => comment.recorderUser == currentUserId)
-            .firstOrNull;
-
-    if (userComment != null) {
-      if (mounted) {
-        setState(() {
-          _voiceCommentSavedStates[photoId] = true;
-          _savedCommentIds[photoId] = userComment.id;
-
-          if (userComment.profileImageUrl.isNotEmpty) {
-            _commentProfileImageUrls[photoId] = userComment.profileImageUrl;
-          }
-
-          // relativePosition 필드 우선 사용 (Feed와 동일한 로직)
-          if (userComment.relativePosition != null) {
-            Offset relativePosition;
-
-            if (userComment.relativePosition is Map<String, dynamic>) {
-              relativePosition = PositionConverter.mapToRelativePosition(
-                userComment.relativePosition as Map<String, dynamic>,
-              );
-            } else {
-              relativePosition = userComment.relativePosition!;
-            }
-
-            _profileImagePositions[photoId] = relativePosition;
-            _droppedProfileImageUrls[photoId] = userComment.profileImageUrl;
-          }
-        });
-      }
-    } else {
-      // 현재 사용자의 댓글이 없는 경우 상태 초기화 (Feed와 동일한 로직)
-      if (mounted) {
-        setState(() {
-          _voiceCommentSavedStates[photoId] = false;
-          _savedCommentIds.remove(photoId);
-          _profileImagePositions[photoId] = null;
-          _commentProfileImageUrls.remove(photoId);
-          _droppedProfileImageUrls.remove(photoId);
-        });
-      }
-    }
-  }
-
-  /// Firestore에 프로필 위치 업데이트 (상대 좌표 사용)
-  /// 이제 recorderUser 단일 댓글이 아닌 특정 commentId 에 대해 위치를 저장하도록 개선
-  Future<void> _updateProfilePositionInFirestore(
-    String photoId,
-    String commentId,
-    Offset absolutePosition,
-  ) async {
-    try {
-      if (commentId.isEmpty) {
-        return;
-      }
-
-      final imageSize = Size(354.w, 500.h);
-
-      final relativePosition = PositionConverter.toRelativePosition(
-        absolutePosition,
-        imageSize,
-      );
-
-      await CommentRecordController().updateRelativeProfilePosition(
-        commentId: commentId,
-        photoId: photoId,
-        relativePosition: relativePosition,
-      );
-    } catch (e) {
-      debugPrint('❌ 프로필 위치 업데이트 오류: $e');
-    }
-  }
-
-  // ==================== Helper Methods ====================
-
-  // AuthController 인스턴스 가져오기
-  AuthController get _getAuthController =>
-      Provider.of<AuthController>(context, listen: false);
-
-  // AudioController 인스턴스 가져오기
-  AudioController get _getAudioController =>
-      Provider.of<AudioController>(context, listen: false);
-
-  // SnackBar 표시 헬퍼
-  void _showSnackBar(String message, {Color? backgroundColor}) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Container(
-          height: 30.h,
-          alignment: Alignment.center,
-          child: Text(
-            message,
-            style: TextStyle(fontFamily: "Pretendard", fontSize: 14.sp),
+  // ================= UI =================
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        iconTheme: const IconThemeData(color: Colors.white),
+        backgroundColor: Colors.black,
+        title: Text(
+          widget.categoryName,
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 20.sp,
+            fontFamily: 'Pretendard',
+            fontWeight: FontWeight.w700,
           ),
         ),
-        backgroundColor: backgroundColor ?? const Color(0xFF5A5A5A),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(right: 23.w),
+            child: IconButton(
+              onPressed: () async {
+                final currentPhoto = widget.photos[_currentIndex];
+                Duration audioDuration = currentPhoto.duration;
+                if (currentPhoto.audioUrl.isNotEmpty) {
+                  final audioController = _getAudioController;
+                  if (audioController.currentPlayingAudioUrl ==
+                      currentPhoto.audioUrl) {
+                    audioDuration = audioController.currentDuration;
+                  }
+                }
+                if (!mounted) return;
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder:
+                        (_) => ShareScreen(
+                          imageUrl: currentPhoto.imageUrl,
+                          waveformData: currentPhoto.waveformData,
+                          audioDuration: audioDuration,
+                          categoryName: widget.categoryName,
+                        ),
+                  ),
+                );
+              },
+              icon: Image.asset(
+                'assets/share_icon.png',
+                width: 20.w,
+                height: 20.h,
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.photos.length,
+        scrollDirection: Axis.vertical,
+        onPageChanged: _onPageChanged,
+        itemBuilder: (context, index) {
+          final photo = widget.photos[index];
+          final authController = _getAuthController;
+          final currentUserId = authController.getUserId;
+          final isOwner = currentUserId == photo.userID;
+
+          // 사용자 캐시 채우기
+          if (!_userProfileImages.containsKey(photo.userID)) {
+            _userProfileImages[photo.userID] = _userProfileImageUrl;
+            _profileLoadingStates[photo.userID] = _isLoadingProfile;
+            _userNames[photo.userID] = _userName;
+          }
+
+          return PhotoCardWidgetCommon(
+            photo: photo,
+            categoryName: widget.categoryName,
+            categoryId: widget.categoryId,
+            index: index,
+            isOwner: isOwner,
+            isArchive: true,
+            profileImagePositions: _profileImagePositions,
+            droppedProfileImageUrls: _droppedProfileImageUrls,
+            photoComments: _photoComments,
+            userProfileImages: _userProfileImages,
+            profileLoadingStates: _profileLoadingStates,
+            userNames: _userNames,
+            voiceCommentActiveStates: _voiceCommentActiveStates,
+            voiceCommentSavedStates: _voiceCommentSavedStates,
+            commentProfileImageUrls: _commentProfileImageUrls,
+            onToggleAudio: _toggleAudio,
+            onToggleVoiceComment: _toggleVoiceComment,
+            onVoiceCommentCompleted: (
+              photoId,
+              audioPath,
+              waveformData,
+              duration,
+            ) {
+              if (audioPath != null &&
+                  waveformData != null &&
+                  duration != null) {
+                _onVoiceCommentRecordingFinished(
+                  photoId,
+                  audioPath,
+                  waveformData,
+                  duration,
+                );
+              }
+            },
+            onVoiceCommentDeleted: (photoId) {
+              setState(() {
+                _voiceCommentActiveStates[photoId] = false;
+                _pendingVoiceComments.remove(photoId);
+                _pendingProfilePositions.remove(photoId);
+              });
+            },
+            onProfileImageDragged: (photoId, absolutePosition) {
+              CommentRecordModel? userComment;
+              final list = _photoComments[photoId];
+              if (list != null) {
+                for (final c in list) {
+                  if (c.recorderUser == currentUserId) {
+                    userComment = c;
+                    break;
+                  }
+                }
+              }
+              if (userComment != null) {
+                _onProfileImageDragged(
+                  photoId,
+                  userComment.id,
+                  absolutePosition,
+                );
+              }
+            },
+            onSaveRequested: _onSaveRequested,
+            onSaveCompleted: _onSaveCompleted,
+            onDeletePressed: () => _showDeleteDialog(photo),
+            onLikePressed: _onLikePressed,
+          );
+        },
       ),
     );
   }
 
-  // ...existing code...
-
-  // ==================== Core Methods ====================
+  // ================= Logic =================
   void _onPageChanged(int index) {
     final newPhotoId = widget.photos[index].id;
-
     setState(() {
       _currentIndex = index;
       _profileImageRefreshKey++;
@@ -288,152 +235,359 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     _stopAudio();
     _loadUserProfileImage();
     _subscribeToVoiceCommentsForCurrentPhoto();
-
-    // 새 페이지의 댓글을 강제로 한 번 로드
     _loadCommentsForPhoto(newPhotoId);
   }
 
-  /// 특정 사진의 댓글을 직접 로드 (실시간 스트림과 별개)
   Future<void> _loadCommentsForPhoto(String photoId) async {
     try {
-      final commentController = CommentRecordController();
-      await commentController.loadCommentRecordsByPhotoId(photoId);
-      final comments = commentController.getCommentsByPhotoId(photoId);
-
-      if (mounted) {
-        final currentUserId = _authController?.currentUser?.uid;
-        if (currentUserId != null) {
-          _handleCommentsUpdate(photoId, currentUserId, comments);
-        }
+      final controller = CommentRecordController();
+      await controller.loadCommentRecordsByPhotoId(photoId);
+      final comments = controller.getCommentsByPhotoId(photoId);
+      final currentUserId = _authController?.currentUser?.uid;
+      if (currentUserId != null) {
+        _handleCommentsUpdate(photoId, currentUserId, comments);
       }
     } catch (e) {
-      debugPrint('❌ Photo Detail - 댓글 직접 로드 실패: $e');
+      debugPrint('❌ 댓글 직접 로드 실패: $e');
     }
   }
 
-  // 오디오 정지
-  Future<void> _stopAudio() async {
-    await _getAudioController.stopAudio();
+  void _onAuthControllerChanged() {
+    if (!mounted) return;
+    setState(() => _profileImageRefreshKey++);
+    _loadUserProfileImage();
+    _subscribeToVoiceCommentsForCurrentPhoto();
   }
 
-  // 삭제 다이얼로그 표시
+  Future<void> _loadUserProfileImage() async {
+    final currentPhoto = widget.photos[_currentIndex];
+    try {
+      final auth = _getAuthController;
+      final profileImageUrl = await auth.getUserProfileImageUrlById(
+        currentPhoto.userID,
+      );
+      final userInfo = await auth.getUserInfo(currentPhoto.userID);
+      if (!mounted) return;
+      setState(() {
+        _userProfileImageUrl = profileImageUrl;
+        _userName = userInfo?.id ?? currentPhoto.userID;
+        _isLoadingProfile = false;
+        _userProfileImages[currentPhoto.userID] = profileImageUrl;
+        _profileLoadingStates[currentPhoto.userID] = false;
+        _userNames[currentPhoto.userID] = _userName;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _userName = currentPhoto.userID;
+        _isLoadingProfile = false;
+        _userProfileImages[currentPhoto.userID] = '';
+        _profileLoadingStates[currentPhoto.userID] = false;
+        _userNames[currentPhoto.userID] = currentPhoto.userID;
+      });
+    }
+  }
+
+  void _subscribeToVoiceCommentsForCurrentPhoto() {
+    final photoId = widget.photos[_currentIndex].id;
+    try {
+      _commentStreams[photoId]?.cancel();
+      final currentUserId = _authController?.currentUser?.uid;
+      if (currentUserId == null) return;
+      _commentStreams[photoId] = CommentRecordController()
+          .getCommentRecordsStream(photoId)
+          .listen(
+            (comments) =>
+                _handleCommentsUpdate(photoId, currentUserId, comments),
+          );
+    } catch (e) {
+      debugPrint('❌ 실시간 댓글 구독 실패($photoId): $e');
+    }
+  }
+
+  void _handleCommentsUpdate(
+    String photoId,
+    String currentUserId,
+    List<CommentRecordModel> comments,
+  ) {
+    if (!mounted) return;
+    setState(() {
+      _photoComments[photoId] = comments;
+    });
+    CommentRecordModel? userComment;
+    for (final c in comments) {
+      if (c.recorderUser == currentUserId) {
+        userComment = c;
+        break;
+      }
+    }
+    if (userComment != null) {
+      final uc = userComment; // non-null local
+      setState(() {
+        _voiceCommentSavedStates[photoId] = true;
+        _savedCommentIds[photoId] = uc.id;
+        if (uc.profileImageUrl.isNotEmpty) {
+          _commentProfileImageUrls[photoId] = uc.profileImageUrl;
+        }
+        final dynamic rp = uc.relativePosition;
+        if (rp is Map<String, dynamic>) {
+          final rel = PositionConverter.mapToRelativePosition(rp);
+          _profileImagePositions[photoId] = rel;
+          _droppedProfileImageUrls[photoId] = uc.profileImageUrl;
+        } else if (rp is Offset) {
+          _profileImagePositions[photoId] = rp;
+          _droppedProfileImageUrls[photoId] = uc.profileImageUrl;
+        }
+      });
+    } else {
+      setState(() {
+        _voiceCommentSavedStates[photoId] = false;
+        _savedCommentIds.remove(photoId);
+        _profileImagePositions[photoId] = null;
+        _commentProfileImageUrls.remove(photoId);
+        _droppedProfileImageUrls.remove(photoId);
+      });
+    }
+  }
+
+  void _onProfileImageDragged(
+    String photoId,
+    String commentId,
+    Offset absolutePosition,
+  ) {
+    final imageSize = Size(354.w, 500.h);
+    final relativePosition = PositionConverter.toRelativePosition(
+      absolutePosition,
+      imageSize,
+    );
+    if (mounted) {
+      setState(() {
+        _profileImagePositions[photoId] = relativePosition;
+      });
+    }
+    if (commentId.isNotEmpty) {
+      _updateProfilePositionInFirestore(photoId, commentId, absolutePosition);
+    }
+  }
+
+  Future<void> _updateProfilePositionInFirestore(
+    String photoId,
+    String commentId,
+    Offset absolutePosition,
+  ) async {
+    try {
+      if (commentId.isEmpty) return;
+      final imageSize = Size(354.w, 500.h);
+      final relativePosition = PositionConverter.toRelativePosition(
+        absolutePosition,
+        imageSize,
+      );
+      await CommentRecordController().updateRelativeProfilePosition(
+        commentId: commentId,
+        photoId: photoId,
+        relativePosition: relativePosition,
+      );
+    } catch (e) {
+      debugPrint('❌ 프로필 위치 업데이트 실패: $e');
+    }
+  }
+
+  void _toggleAudio(PhotoDataModel photo) async {
+    if (photo.audioUrl.isEmpty) return;
+    try {
+      await _getAudioController.toggleAudio(photo.audioUrl);
+    } catch (e) {
+      debugPrint('❌ 오디오 토글 실패: $e');
+    }
+  }
+
+  void _toggleVoiceComment(String photoId) {
+    setState(() {
+      _voiceCommentActiveStates[photoId] =
+          !(_voiceCommentActiveStates[photoId] ?? false);
+    });
+  }
+
+  Future<void> _onVoiceCommentRecordingFinished(
+    String photoId,
+    String audioPath,
+    List<double> waveformData,
+    int duration,
+  ) async {
+    // Feed와 동일하게: 녹음 완료 시 즉시 저장하지 않고, 사용자가 파형을 눌러 저장하도록 대기.
+    try {
+      final userId = _authController?.currentUser?.uid;
+      if (userId == null) return;
+      // 임시 상태 저장 (사용자가 저장하기 전까지 active 상태 유지)
+      // relativePosition은 저장 시점에 초기(center)로 부여.
+      _pendingVoiceComments[photoId] = CommentRecordModel(
+        id: 'pending',
+        audioUrl: audioPath, // 로컬 경로 (저장 시 업로드 처리될 것으로 가정)
+        recorderUser: userId,
+        photoId: photoId,
+        waveformData: waveformData,
+        duration: duration,
+        profileImageUrl: _userProfileImageUrl,
+        createdAt: DateTime.now(),
+        relativePosition: const Offset(0.5, 0.5),
+      );
+      if (mounted) {
+        setState(() {
+          _voiceCommentSavedStates[photoId] = false;
+          _voiceCommentActiveStates[photoId] = true; // 위젯 유지
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ 음성 댓글 임시 저장 준비 실패: $e');
+    }
+  }
+
+  void _onSaveRequested(String photoId) async {
+    // 사용자가 파형을 눌러 저장하려 할 때 호출. pending 있으면 실제 저장.
+    final pending = _pendingVoiceComments[photoId];
+    if (pending == null) return;
+    try {
+      final userId = _authController?.currentUser?.uid;
+      if (userId == null) return;
+      final controller = CommentRecordController();
+      final comment = await controller.createCommentRecord(
+        audioFilePath: pending.audioUrl,
+        photoId: photoId,
+        recorderUser: userId,
+        waveformData: pending.waveformData,
+        duration: pending.duration,
+        profileImageUrl: pending.profileImageUrl,
+        relativePosition: pending.relativePosition,
+      );
+      if (comment != null && mounted) {
+        setState(() {
+          _voiceCommentSavedStates[photoId] = true;
+          _savedCommentIds[photoId] = comment.id;
+          _commentProfileImageUrls[photoId] = comment.profileImageUrl;
+          _profileImagePositions[photoId] = pending.relativePosition;
+          _droppedProfileImageUrls[photoId] = comment.profileImageUrl;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ 음성 댓글 저장 실패(사용자 요청): $e');
+    }
+  }
+
+  void _onSaveCompleted(String photoId) {
+    // 저장 후 액티브 종료 및 pending 정리
+    setState(() {
+      _voiceCommentActiveStates[photoId] = false;
+      _pendingVoiceComments.remove(photoId);
+    });
+  }
+
+  void _onLikePressed() {}
+
   void _showDeleteDialog(PhotoDataModel photo) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          backgroundColor: Color(0xff323232),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+      builder:
+          (ctx) => AlertDialog(
+            backgroundColor: const Color(0xff323232),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(height: 17.h),
+                Text(
+                  '사진 삭제',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 19.8.sp,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12.h),
+                Text(
+                  '사진 삭제하면 더 이상 해당 카테고리에서 확인할 수 없으며 삭제 후 복구가 \n불가능합니다.',
+                  style: TextStyle(
+                    color: const Color(0xfff9f9f9),
+                    fontFamily: 'Pretendard',
+                    fontSize: 15.8.sp,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: 12.h),
+                SizedBox(
+                  width: 185.5.w,
+                  height: 38.h,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _deletePhoto(photo);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xfff5f5f5),
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14.2),
+                      ),
+                    ),
+                    child: Text(
+                      '삭제',
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w600,
+                        fontSize: 17.8.sp,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 13.h),
+                SizedBox(
+                  width: 185.5.w,
+                  height: 38.h,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xff5a5a5a),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14.2),
+                      ),
+                    ),
+                    child: Text(
+                      '취소',
+                      style: TextStyle(
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w500,
+                        fontSize: 17.8.sp,
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 14.h),
+              ],
+            ),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SizedBox(height: 17.h),
-              // 제목
-              Text(
-                '사진 삭제',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontFamily: "Pretendard",
-                  fontWeight: FontWeight.w500,
-                  fontSize: 19.8.sp,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 12.h),
-              // 설명
-              Text(
-                '사진 삭제하면 더 이상 해당 카테고리에서 확인할 수 없으며 삭제 후 복구가 \n불가능합니다.',
-                style: TextStyle(
-                  color: Color(0xfff9f9f9),
-                  fontFamily: "Pretendard",
-                  fontSize: 15.8.sp,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 12.h),
-              // 버튼들
-              SizedBox(
-                width: (185.5).w,
-                height: 38.h,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _deletePhoto(photo);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xfff5f5f5),
-                    foregroundColor: Colors.black,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14.2),
-                    ),
-                  ),
-
-                  child: Text(
-                    '삭제',
-                    style: TextStyle(
-                      fontFamily: "Pretendard",
-                      fontWeight: FontWeight.w600,
-                      fontSize: (17.8).sp,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 13.h),
-              SizedBox(
-                width: (185.5).w,
-                height: 38.h,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xff5a5a5a),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14.2),
-                    ),
-                  ),
-                  child: Text(
-                    '취소',
-                    style: TextStyle(
-                      fontFamily: "Pretendard",
-                      fontWeight: FontWeight.w500,
-                      fontSize: (17.8).sp,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: 14.h),
-            ],
-          ),
-        );
-      },
     );
   }
 
-  // 사진 삭제 실행
   Future<void> _deletePhoto(PhotoDataModel photo) async {
     try {
-      final authController = _getAuthController;
-      final currentUserId = authController.getUserId;
-
+      final auth = _getAuthController;
+      final currentUserId = auth.getUserId;
       if (currentUserId == null) {
         _showSnackBar('사용자 인증이 필요합니다.');
         return;
       }
-
-      // PhotoController를 통해 사진 삭제
-      final photoController = PhotoController();
-      final success = await photoController.deletePhoto(
+      final success = await PhotoController().deletePhoto(
         categoryId: widget.categoryId,
         photoId: photo.id,
         userId: currentUserId,
         permanentDelete: true,
       );
-
       if (!mounted) return;
-
       if (success) {
         _showSnackBar('사진이 삭제되었습니다.');
         _handleSuccessfulDeletion(photo);
@@ -445,168 +599,47 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     }
   }
 
-  /// 성공적인 삭제 후 UI 처리
   void _handleSuccessfulDeletion(PhotoDataModel photo) {
-    // 마지막 사진인 경우 이전 화면으로 돌아가기
     if (widget.photos.length <= 1) {
       Navigator.of(context).pop();
       return;
     }
-
-    // 다른 사진들이 남아있는 경우 현재 사진을 목록에서 제거하고 페이지 조정
     setState(() {
       widget.photos.removeWhere((p) => p.id == photo.id);
       if (_currentIndex >= widget.photos.length) {
         _currentIndex = widget.photos.length - 1;
       }
     });
-
     _loadUserProfileImage();
     _subscribeToVoiceCommentsForCurrentPhoto();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return PopScope(
-      canPop: true,
-      onPopInvokedWithResult: (didPop, result) async {
-        // 뒤로가기 동작(제스처/버튼/아이콘) 시 오디오 정지
-        await _stopAudio();
-      },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        appBar: AppBar(
-          iconTheme: const IconThemeData(color: Colors.white),
-          backgroundColor: Colors.black,
-          title: Text(
-            widget.categoryName,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20.sp,
-              fontFamily: "Pretendard",
-              fontWeight: FontWeight.w700,
-            ),
+  Future<void> _stopAudio() async {
+    await _getAudioController.stopAudio();
+  }
+
+  void _showSnackBar(String message, {Color? backgroundColor}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Container(
+          height: 30.h,
+          alignment: Alignment.center,
+          child: Text(
+            message,
+            style: TextStyle(fontFamily: 'Pretendard', fontSize: 14.sp),
           ),
-          actions: [
-            Padding(
-              padding: EdgeInsets.only(right: 23.w),
-              child: IconButton(
-                onPressed: () async {
-                  final currentPhoto = widget.photos[_currentIndex];
-
-                  // PhotoDataModel에서 직접 duration 사용 (더 정확함)
-                  Duration audioDuration = currentPhoto.duration;
-
-                  // 현재 사진에 오디오가 있다면 길이 정보 가져오기
-                  if (currentPhoto.audioUrl.isNotEmpty) {
-                    final audioController = _getAudioController;
-                    // 현재 재생 중인 오디오가 이 사진의 오디오와 같다면 길이 정보 사용
-                    if (audioController.currentPlayingAudioUrl ==
-                        currentPhoto.audioUrl) {
-                      audioDuration = audioController.currentDuration;
-                    }
-                    debugPrint('현재 오디오 길이: ${audioDuration.inSeconds}초');
-                  }
-
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder:
-                          (context) => ShareScreen(
-                            imageUrl: currentPhoto.imageUrl,
-                            waveformData: currentPhoto.waveformData,
-                            audioDuration: audioDuration,
-                            categoryName: widget.categoryName,
-                          ),
-                    ),
-                  );
-                },
-                icon: Image.asset(
-                  'assets/share_icon.png',
-                  width: 20.w,
-                  height: 20.h,
-                ),
-              ),
-            ),
-          ],
         ),
-        body: PageView.builder(
-          controller: _pageController,
-          itemCount: widget.photos.length,
-          scrollDirection: Axis.vertical,
-          onPageChanged: _onPageChanged,
-          itemBuilder: (context, index) {
-            final photo = widget.photos[index];
-            final authController = _getAuthController;
-            final currentUserId = authController.getUserId;
-            final isCurrentUserPhoto = currentUserId == photo.userID;
-
-            return Column(
-              children: [
-                // 사진 이미지 + 오디오 오버레이 (PhotoDisplayWidget으로 분리)
-                PhotoDisplayWidget(
-                  photo: photo,
-                  comments: _photoComments[photo.id] ?? [],
-                  userProfileImageUrl: _userProfileImageUrl,
-                  isLoadingProfile: _isLoadingProfile,
-                  profileImageRefreshKey: _profileImageRefreshKey,
-                  currentUserId: currentUserId, // 현재 사용자 ID 전달
-                  onProfilePositionUpdate: (commentId, position) {
-                    // 사진 영역 내 상대 좌표로 저장
-                    setState(() {
-                      _profileImagePositions[photo.id] = position;
-                    });
-
-                    // Firestore에 위치 업데이트
-                    _updateProfilePositionInFirestore(
-                      photo.id,
-                      commentId,
-                      position,
-                    );
-                  },
-                ),
-                SizedBox(height: (11.5).h), // 반응형 간격
-                // 사진 아래 정보 섹션 (UserInfoRowWidget으로 분리)
-                UserInfoRowWidget(
-                  photo: photo,
-                  userName: _userName,
-                  isCurrentUserPhoto: isCurrentUserPhoto,
-                  onDeletePressed: () => _showDeleteDialog(photo),
-                ),
-                SizedBox(height: (31.6).h),
-
-                Consumer<AuthController>(
-                  builder: (context, authController, child) {
-                    final currentUserId = authController.getUserId;
-                    final isCurrentUserPhoto = currentUserId == photo.userID;
-
-                    // 항상 AudioRecorderWidget 표시 (여러 댓글 허용)
-                    return AudioRecorderWidget(
-                      photoId: photo.id,
-                      isCommentMode: true, // 명시적으로 댓글 모드 설정
-                      // 현재 사용자 사진 여부 전달 --> 이걸로 댓글 아이콘이냐, 음성 아이콘이냐를 결정함
-                      isCurrentUserPhoto: isCurrentUserPhoto,
-                      profileImagePosition: _profileImagePositions[photo.id],
-                      getProfileImagePosition:
-                          () => _profileImagePositions[photo.id],
-                      // 위치 드래그 콜백은 UI 반영만 (commentId 없이 Firestore 호출 금지)
-                      onProfileImageDragged: (Offset position) {
-                        setState(() {
-                          _profileImagePositions[photo.id] = position;
-                        });
-                      },
-                      onCommentSaved: (commentRecord) {
-                        // 새 댓글이 저장되면 음성 댓글 목록 새로고침
-                        _subscribeToVoiceCommentsForCurrentPhoto();
-                      },
-                    );
-                  },
-                ),
-              ],
-            );
-          },
-        ),
+        backgroundColor: backgroundColor ?? const Color(0xFF5A5A5A),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.r)),
       ),
     );
   }
+
+  // Getters
+  AuthController get _getAuthController =>
+      Provider.of<AuthController>(context, listen: false);
+  AudioController get _getAudioController =>
+      Provider.of<AudioController>(context, listen: false);
 }

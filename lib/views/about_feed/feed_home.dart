@@ -11,9 +11,7 @@ import '../../controllers/comment_record_controller.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/comment_record_model.dart';
 import '../../utils/position_converter.dart';
-import 'widgets/user_info_row_widget_for_feed.dart';
-import 'widgets/voice_recording_widget.dart';
-import 'widgets/photo_display_widget_for_feed.dart';
+import '../../comment_wodget/photo_card_widget_common.dart';
 
 class FeedHomeScreen extends StatefulWidget {
   const FeedHomeScreen({super.key});
@@ -646,12 +644,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       imageSize,
     );
 
-    // 디버그 로그 추가
-    debugPrint('📍 Feed - 드래그 위치 변환:');
-    debugPrint('  - 절대 위치: $absolutePosition');
-    debugPrint('  - 이미지 크기: $imageSize');
-    debugPrint('  - 상대 위치: $relativePosition');
-
     // UI에 즉시 반영 (임시 위치)
     setState(() {
       _profileImagePositions[photoId] = relativePosition;
@@ -818,16 +810,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
   Widget _buildBody() {
     if (_isLoading) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(color: Colors.white),
-            SizedBox(height: 16.h),
-            Text('사진을 불러오는 중...', style: TextStyle(color: Colors.white70)),
-          ],
-        ),
-      );
+      return Center(child: CircularProgressIndicator(color: Colors.white));
     }
 
     if (_allPhotos.isEmpty) {
@@ -877,112 +860,93 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
               _stopAllAudio();
             },
             itemBuilder: (context, index) {
-              // 로딩 인디케이터 표시
-              if (index >= _allPhotos.length) {
-                return Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(color: Colors.white),
-                      SizedBox(height: 16.h),
-                      Text(
-                        '더 많은 사진을 불러오는 중...',
-                        style: TextStyle(color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                );
-              }
-
               final photoData = _allPhotos[index];
-              return _buildPhotoCard(photoData, index);
+              final PhotoDataModel photo = photoData['photo'] as PhotoDataModel;
+              final String categoryName = photoData['categoryName'] as String;
+              final String categoryId = photoData['categoryId'] as String;
+              final currentUserId = _authController?.getUserId;
+              final isOwner =
+                  currentUserId != null && currentUserId == photo.userID;
+
+              return PhotoCardWidgetCommon(
+                photo: photo,
+                categoryName: categoryName,
+                categoryId: categoryId,
+                index: index,
+                isOwner: isOwner,
+                profileImagePositions: _profileImagePositions,
+                droppedProfileImageUrls: _droppedProfileImageUrls,
+                photoComments: _photoComments,
+                userProfileImages: _userProfileImages,
+                profileLoadingStates: _profileLoadingStates,
+                userNames: _userNames,
+                voiceCommentActiveStates: _voiceCommentActiveStates,
+                voiceCommentSavedStates: _voiceCommentSavedStates,
+                commentProfileImageUrls: _commentProfileImageUrls,
+                onToggleAudio: _toggleAudio,
+                onToggleVoiceComment: _toggleVoiceComment,
+                onVoiceCommentCompleted: _onVoiceCommentCompleted,
+                onVoiceCommentDeleted: _onVoiceCommentDeleted,
+                onProfileImageDragged: _onProfileImageDragged,
+                onSaveRequested: _saveVoiceComment,
+                onSaveCompleted: _onSaveCompleted,
+                onDeletePressed: () async {
+                  try {
+                    final photoController = Provider.of<PhotoController>(
+                      context,
+                      listen: false,
+                    );
+                    final authController = Provider.of<AuthController>(
+                      context,
+                      listen: false,
+                    );
+                    final userId = authController.getUserId;
+                    if (userId == null) return;
+
+                    final success = await photoController.deletePhoto(
+                      categoryId: categoryId,
+                      photoId: photo.id,
+                      userId: userId,
+                    );
+                    if (success && mounted) {
+                      setState(() {
+                        _allPhotos.removeAt(index);
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('사진이 삭제되었습니다.'),
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    } else if (!success && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('사진 삭제에 실패했습니다.'),
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    throw Exception('사진 삭제 중 오류 발생: $e');
+                  }
+                },
+                onLikePressed: () {
+                  // TODO: 좋아요 토글 구현 (서비스/컨트롤러 추가 필요)
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('좋아요 기능 준비 중입니다.'),
+                      duration: Duration(seconds: 1),
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                },
+              );
             },
           ),
-
-          // 추가 로딩 인디케이터 (하단)
-          if (_isLoadingMore)
-            Positioned(
-              bottom: 50.w,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: 16.w,
-                    vertical: 8.h,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.8),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      SizedBox(
-                        width: 16.w,
-                        height: 16.h,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      ),
-                      SizedBox(width: 8.w),
-                      Text(
-                        '추가 로딩 중...',
-                        style: TextStyle(color: Colors.white, fontSize: 12.sp),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
         ],
       ),
-    );
-  }
-
-  Widget _buildPhotoCard(Map<String, dynamic> photoData, int index) {
-    final PhotoDataModel photo = photoData['photo'] as PhotoDataModel;
-    final String categoryName = photoData['categoryName'] as String;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        SizedBox(height: 90.h),
-
-        // 사진 표시 위젯
-        PhotoDisplayWidget(
-          photo: photo,
-          categoryName: categoryName,
-          profileImagePositions: _profileImagePositions,
-          droppedProfileImageUrls: _droppedProfileImageUrls,
-          photoComments: _photoComments,
-          userProfileImages: _userProfileImages,
-          profileLoadingStates: _profileLoadingStates,
-          onProfileImageDragged: _onProfileImageDragged,
-          onToggleAudio: _toggleAudio,
-        ),
-        SizedBox(height: 12.h),
-        // 사용자 정보 위젯 (아이디와 날짜)
-        UserInfoWidget(photo: photo, userNames: _userNames),
-        SizedBox(height: (10).h),
-        // 음성 녹음 위젯
-        VoiceRecordingWidget(
-          photo: photo,
-          voiceCommentActiveStates: _voiceCommentActiveStates,
-          voiceCommentSavedStates: _voiceCommentSavedStates,
-          commentProfileImageUrls: _commentProfileImageUrls,
-          userProfileImages: _userProfileImages,
-          photoComments: _photoComments,
-          onToggleVoiceComment: _toggleVoiceComment,
-          onVoiceCommentCompleted: _onVoiceCommentCompleted,
-          onVoiceCommentDeleted: _onVoiceCommentDeleted,
-          onProfileImageDragged: _onProfileImageDragged,
-          onSaveRequested: _saveVoiceComment,
-          onSaveCompleted: _onSaveCompleted, // 저장 완료 후 초기화 콜백
-        ),
-      ],
     );
   }
 }
