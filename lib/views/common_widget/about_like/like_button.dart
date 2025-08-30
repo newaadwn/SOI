@@ -8,7 +8,7 @@ import '../about_emoji/emoji_overay_manager.dart';
 class LikeButton extends StatefulWidget {
   final String photoId;
 
-  const LikeButton({required this.photoId});
+  const LikeButton({super.key, required this.photoId});
 
   @override
   State<LikeButton> createState() => _LikeButtonState();

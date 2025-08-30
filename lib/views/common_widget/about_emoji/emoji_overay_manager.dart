@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/emoji_reaction_model.dart';
-import '../emoji_picker_overlay.dart';
+import 'emoji_picker_overlay.dart';
 
 /// 이모티콘 오버레이를 표시하는 유틸리티 클래스
 class EmojiOverlayManager {
