@@ -8,6 +8,7 @@ import 'controllers/photo_controller.dart';
 import 'controllers/friend_request_controller.dart';
 import 'controllers/friend_controller.dart';
 import 'controllers/user_matching_controller.dart';
+import 'controllers/emoji_reaction_controller.dart';
 import 'services/friend_request_service.dart';
 import 'services/friend_service.dart';
 import 'services/user_matching_service.dart';
@@ -119,6 +120,7 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider(create: (_) => CommentRecordController()),
         ChangeNotifierProvider(create: (_) => PhotoController()),
         ChangeNotifierProvider(create: (_) => ContactController()),
+        ChangeNotifierProvider(create: (_) => EmojiReactionController()),
 
         // 친구 관리 관련 컨트롤러들
         ChangeNotifierProvider(

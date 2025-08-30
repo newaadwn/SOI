@@ -11,7 +11,7 @@ import '../../controllers/comment_record_controller.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/comment_record_model.dart';
 import '../../utils/position_converter.dart';
-import '../../widget_common/photo_card_widget_common.dart';
+import '../common_widget/photo_card_widget_common.dart';
 
 class FeedHomeScreen extends StatefulWidget {
   const FeedHomeScreen({super.key});

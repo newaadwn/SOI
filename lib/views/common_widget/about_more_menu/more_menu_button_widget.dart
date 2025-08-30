@@ -1,94 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../models/photo_data_model.dart';
-import '../utils/format_utils.dart';
-
-/// 사용자 정보 표시 위젯 (아이디와 날짜)
-///
-/// 피드에서 사진 하단에 표시되는 사용자 닉네임과 날짜 정보를 담당합니다.
-class UserInfoWidget extends StatelessWidget {
-  final PhotoDataModel photo;
-  final Map<String, String> userNames;
-  final bool isCurrentUserPhoto; // 현재 사용자 사진인지 여부
-  final VoidCallback? onDeletePressed; // 삭제 콜백 (피드 갱신 위해 상위 전달)
-  final VoidCallback? onLikePressed; // 좋아요 콜백 (추후 구현용)
-  final bool isLiked; // 좋아요 상태 (간단 표시)
-
-  const UserInfoWidget({
-    super.key,
-    required this.photo,
-    required this.userNames,
-    this.isCurrentUserPhoto = false,
-    this.onDeletePressed,
-    this.onLikePressed,
-    this.isLiked = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(width: 23.w),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                height: 22.h,
-                alignment: Alignment.centerLeft,
-                child: Text(
-                  '@${userNames[photo.userID] ?? photo.userID}',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16.sp,
-                    fontFamily: "Pretendard",
-                    fontWeight: FontWeight.w600,
-                  ),
-                  overflow: TextOverflow.visible,
-                ),
-              ),
-              Text(
-                FormatUtils.formatRelativeTime(photo.createdAt),
-                style: TextStyle(
-                  color: const Color(0xffcccccc),
-                  fontSize: 14.sp,
-                  fontFamily: "Pretendard",
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
-        ),
-        // 좋아요 버튼
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            borderRadius: BorderRadius.circular(50.w),
-            onTap: onLikePressed,
-            child: Padding(
-              padding: EdgeInsets.all(4.w),
-              child: Image.asset(
-                'assets/like_icon.png',
-                width: 33.w,
-                height: 33.h,
-                color: isLiked ? Colors.redAccent : null,
-              ),
-            ),
-          ),
-        ),
-        // 더보기 (현재 사용자 소유 사진일 때만)
-        if (isCurrentUserPhoto)
-          _MoreMenuButton(onDeletePressed: onDeletePressed),
-        SizedBox(width: 13.w),
-      ],
-    );
-  }
-}
 
 /// 피드 더보기 메뉴 (삭제 전 확인 다이얼로그 표시)
-class _MoreMenuButton extends StatelessWidget {
+class MoreMenuButton extends StatelessWidget {
   final VoidCallback? onDeletePressed;
-  const _MoreMenuButton({this.onDeletePressed});
+  const MoreMenuButton({super.key, this.onDeletePressed});
 
   @override
   Widget build(BuildContext context) {

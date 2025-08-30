@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
-import '../controllers/auth_controller.dart';
-import '../models/photo_data_model.dart';
-import '../models/comment_record_model.dart';
+import '../../controllers/auth_controller.dart';
+import '../../models/photo_data_model.dart';
+import '../../models/comment_record_model.dart';
 import 'voice_comment_widget.dart';
 
 /// 음성 녹음 위젯

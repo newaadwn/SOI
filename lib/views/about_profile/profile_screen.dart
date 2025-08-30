@@ -650,10 +650,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildSettingsItem('개인정보 처리방침'),
               Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem('서비스 이용 약관'),
+
               Divider(height: 1, color: const Color(0xFF323232)),
-              _buildSettingsItem('오픈소스 라이선스'),
-              Divider(height: 1, color: const Color(0xFF323232)),
-              _buildSettingsItem('앱 버전', value: '3.1'),
+              _buildSettingsItem('앱 버전', value: '1.0.0'),
             ],
           ),
         ),
