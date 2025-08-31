@@ -65,7 +65,10 @@ class UserInfoWidget extends StatelessWidget {
           ),
         ),
         // 좋아요 버튼 (이모티콘 선택 기능 추가)
-        SizedBox(height: 50.h, child: LikeButton(photoId: photo.id)),
+        SizedBox(
+          height: 50.h,
+          child: LikeButton(photoId: photo.id, categoryId: photo.categoryId),
+        ),
 
         IconButton(
           onPressed: () {
@@ -77,7 +80,10 @@ class UserInfoWidget extends StatelessWidget {
               builder: (ctx) {
                 return ChangeNotifierProvider.value(
                   value: recordController,
-                  child: VoiceCommentListSheet(photoId: photo.id),
+                  child: VoiceCommentListSheet(
+                    photoId: photo.id,
+                    categoryId: photo.categoryId,
+                  ),
                 );
               },
             );
