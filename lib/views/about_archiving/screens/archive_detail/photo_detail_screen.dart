@@ -141,6 +141,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         itemCount: widget.photos.length,
         scrollDirection: Axis.vertical,
         onPageChanged: _onPageChanged,
+
         itemBuilder: (context, index) {
           final photo = widget.photos[index];
           final authController = _getAuthController;

@@ -42,8 +42,6 @@ class VoiceRecordingWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isCurrentUser =
-        context.read<AuthController>().currentUser?.uid == photo.userID;
     return SizedBox(
       height: 90.h, // 고정된 높이 설정
       child: AnimatedSwitcher(
@@ -132,18 +130,11 @@ class VoiceRecordingWidget extends StatelessWidget {
                   alignment: Alignment.center, // 중앙 정렬
                   child: IconButton(
                     onPressed: () => onToggleVoiceComment(photo.id),
-                    icon:
-                        isCurrentUser
-                            ? Image.asset(
-                              width: 54.w,
-                              height: 54.h,
-                              'assets/record_icon.png',
-                            )
-                            : Image.asset(
-                              width: 54.w,
-                              height: 54.h,
-                              'assets/comment.png',
-                            ),
+                    icon: Image.asset(
+                      width: 54.w,
+                      height: 54.h,
+                      'assets/comment.png',
+                    ),
                   ),
                 ),
       ),

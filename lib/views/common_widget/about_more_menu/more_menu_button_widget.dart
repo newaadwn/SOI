@@ -41,7 +41,7 @@ class MoreMenuButton extends StatelessWidget {
             final confirmed = await showDialog<bool>(
               context: context,
               barrierDismissible: true,
-              builder: (ctx) {
+              builder: (context) {
                 return AlertDialog(
                   backgroundColor: const Color(0xff323232),
                   shape: RoundedRectangleBorder(
@@ -78,7 +78,7 @@ class MoreMenuButton extends StatelessWidget {
                         height: 38.h,
                         child: ElevatedButton(
                           onPressed: () {
-                            Navigator.of(ctx).pop(true); // confirm
+                            Navigator.of(context).pop(true); // confirm
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xfff5f5f5),
@@ -102,7 +102,7 @@ class MoreMenuButton extends StatelessWidget {
                         width: (185.5).w,
                         height: 38.h,
                         child: ElevatedButton(
-                          onPressed: () => Navigator.of(ctx).pop(false),
+                          onPressed: () => Navigator.of(context).pop(false),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xff5a5a5a),
                             foregroundColor: Colors.white,
@@ -145,6 +145,14 @@ class MoreMenuButton extends StatelessWidget {
             decoration: BoxDecoration(
               color: const Color(0xff323232),
               borderRadius: BorderRadius.circular(9.14),
+              boxShadow: [
+                BoxShadow(
+                  color: Color(0x3F000000),
+                  blurRadius: 12.98,
+                  offset: Offset(0, 0),
+                  spreadRadius: 2.79,
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,

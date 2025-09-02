@@ -67,12 +67,7 @@ class _ShareScreenState extends State<ShareScreen> {
         format: ui.ImageByteFormat.png,
       );
 
-      if (byteData == null) {
-        _showErrorMessage('이미지 생성에 실패했습니다.');
-        return;
-      }
-
-      Uint8List pngBytes = byteData.buffer.asUint8List();
+      Uint8List pngBytes = byteData!.buffer.asUint8List();
 
       // 갤러리에 저장
       final result = await ImageGallerySaver.saveImage(
