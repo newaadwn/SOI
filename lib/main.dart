@@ -39,6 +39,7 @@ import 'package:flutter/rendering.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'views/home_navigator_screen.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -66,6 +67,12 @@ void main() async {
   } catch (e) {
     rethrow;
   }
+
+  const supabaseUrl = 'https://bobyanticgtadhimszzi.supabase.co';
+  const supabaseKey = String.fromEnvironment(
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvYnlhbnRpY2d0YWRoaW1zenppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjY4OTczMSwiZXhwIjoyMDcyMjY1NzMxfQ.OX6W_GY2ZFE5z9HMrB9Xf1-MCAsJuWBHUh_EFw6JSIM',
+  );
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseKey);
 
   // 에러 핸들링 추가
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -98,6 +105,16 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     // Firebase가 초기화되지 않았으면 로딩 화면 표시

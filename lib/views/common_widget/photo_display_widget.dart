@@ -54,6 +54,7 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
   bool _showActionOverlay = false; // 선택된 댓글 아래로 마스킹 & 팝업 표시 여부
   // 해당 사진(위젯 인스턴스)에서 음성 댓글 프로필 표시 여부
   bool _isShowingComments = false; // 기본은 숨김
+  bool _autoOpenedOnce = false; // 최초 자동 열림 1회 제어
 
   final CommentRecordController _commentRecordController =
       CommentRecordController();
@@ -159,6 +160,30 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
       color: Colors.grey[700],
       child: Icon(Icons.person, color: Colors.white, size: profileSize * 0.4),
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant PhotoDisplayWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 최초로 현재 사용자 댓글이 생긴 시점에 한 번만 자동 표시
+    if (!_autoOpenedOnce) {
+      try {
+        final authController = context.read<AuthController?>();
+        final uid = authController?.currentUser?.uid;
+        if (uid != null) {
+          final comments =
+              widget.photoComments[widget.photo.id] ??
+              const <CommentRecordModel>[];
+          final hasUserComment = comments.any((c) => c.recorderUser == uid);
+          if (hasUserComment) {
+            setState(() {
+              _isShowingComments = true; // 한번 자동으로 켜기
+              _autoOpenedOnce = true; // 재자동 방지
+            });
+          }
+        }
+      } catch (_) {}
+    }
   }
 
   @override

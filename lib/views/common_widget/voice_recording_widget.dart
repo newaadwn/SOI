@@ -137,12 +137,12 @@ class VoiceRecordingWidget extends StatelessWidget {
                             ? Image.asset(
                               width: 54.w,
                               height: 54.h,
-                              'assets/comment.png',
+                              'assets/record_icon.png',
                             )
                             : Image.asset(
                               width: 54.w,
                               height: 54.h,
-                              'assets/record_icon.png',
+                              'assets/comment.png',
                             ),
                   ),
                 ),

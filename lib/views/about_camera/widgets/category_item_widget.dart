@@ -39,7 +39,7 @@ class CategoryItemWidget extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             _buildCircularContainer(dimensions, isSelected),
-            SizedBox(height: dimensions.spacing),
+            SizedBox(height: 12.h),
             _buildCategoryLabel(dimensions),
           ],
         ),
@@ -64,7 +64,7 @@ class CategoryItemWidget extends StatelessWidget {
       itemWidth: itemWidth,
       containerSize: (itemWidth * 0.75).clamp(50.0, 65.0), // 아이템 너비의 75%
       margin: 0, // margin 제거
-      spacing: (screenWidth * 0.015).clamp(5.0, 8.0), // 이미지와 텍스트 간 간격 줄임
+
       borderWidth: (screenWidth * 0.005).clamp(2.0, 3.0),
       iconSize: (itemWidth * 0.4).clamp(25.0, 32.0), // 컨테이너 크기에 비례
       smallIconSize: (itemWidth * 0.3).clamp(20.0, 26.0),
@@ -150,11 +150,14 @@ class CategoryItemWidget extends StatelessWidget {
         color: Color(0xff404040).withValues(alpha: 0.7), // 피그마와 동일한 투명도
         shape: BoxShape.circle,
       ),
-      child: Center(
-        child: SizedBox(
-          width: 45.4.w,
-          height: 45.4.h,
-          child: Center(child: Image.asset('assets/send_imoji.png')),
+      child: Padding(
+        padding: EdgeInsets.only(bottom: 3.h, left: 3.w),
+        child: Center(
+          child: SizedBox(
+            width: 45.4.w,
+            height: 45.4.h,
+            child: Center(child: Image.asset('assets/send_imoji.png')),
+          ),
         ),
       ),
     );
@@ -190,7 +193,7 @@ class CategoryItemWidget extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
         fontSize: 12.sp,
-        fontWeight: FontWeight.w500, // 피그마 디자인에 맞춘 폰트 웨이트
+        fontWeight: FontWeight.w700, // 피그마 디자인에 맞춘 폰트 웨이트
         fontFamily: 'Pretendard',
         color: Colors.white,
         height: 1.0, // 줄 간격 조정
@@ -205,7 +208,7 @@ class _CategoryDimensions {
   final double itemWidth;
   final double containerSize;
   final double margin;
-  final double spacing;
+
   final double borderWidth;
   final double iconSize;
   final double smallIconSize;
@@ -216,7 +219,7 @@ class _CategoryDimensions {
     required this.itemWidth,
     required this.containerSize,
     required this.margin,
-    required this.spacing,
+
     required this.borderWidth,
     required this.iconSize,
     required this.smallIconSize,

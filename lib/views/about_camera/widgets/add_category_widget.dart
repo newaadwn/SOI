@@ -117,6 +117,7 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
                 SizedBox(
                   width: 51.w,
                   height: 25.h,
+
                   child: ElevatedButton(
                     onPressed: _handleSavePressed,
                     style: ElevatedButton.styleFrom(
@@ -125,7 +126,8 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
                         borderRadius: BorderRadius.circular(16.5),
                       ),
                       elevation: 0,
-                      padding: EdgeInsets.zero,
+                      // 저장 텍스트의 위치를 조정할 때는 여기서 <--
+                      padding: EdgeInsets.only(top: (2.5).h),
                     ),
                     child: Text(
                       '저장',

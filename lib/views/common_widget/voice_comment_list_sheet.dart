@@ -39,6 +39,7 @@ class VoiceCommentListSheet extends StatelessWidget {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+
         children: [
           Text(
             title,
@@ -49,7 +50,7 @@ class VoiceCommentListSheet extends StatelessWidget {
               fontFamily: 'Pretendard',
             ),
           ),
-          SizedBox(height: 20.h),
+
           // 통합 ListView: (리액션들 + 음성 댓글) 하나의 스크롤
           Consumer2<EmojiReactionController, CommentRecordController>(
             builder: (context, reactionController, recordController, _) {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
+import '../../../../controllers/auth_controller.dart';
 import '../../../../models/category_data_model.dart';
 
 class CategoryInfoSection extends StatelessWidget {
@@ -9,6 +11,9 @@ class CategoryInfoSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final userId =
+        Provider.of<AuthController>(context, listen: false).getUserId ??
+        '카테고리 이름 오류';
     return Container(
       width: double.infinity,
       height: 62.h,
@@ -32,7 +37,7 @@ class CategoryInfoSection extends StatelessWidget {
           ),
           Flexible(
             child: Text(
-              category.name,
+              category.getDisplayName(userId),
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16.sp,

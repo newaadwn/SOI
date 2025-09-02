@@ -56,7 +56,7 @@ class MoreMenuButton extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.white,
                           fontFamily: 'Pretendard',
-                          fontWeight: FontWeight.w500,
+                          fontWeight: FontWeight.bold,
                           fontSize: 19.8.sp,
                         ),
                         textAlign: TextAlign.center,

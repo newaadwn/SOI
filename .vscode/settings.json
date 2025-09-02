@@ -1,5 +1,27 @@
 {
-    // 기존 Java 설정은 그대로 두거나 필요 없다면 삭제하셔도 됩니다.
-    "java.configuration.updateBuildConfiguration": "automatic",
-    "cmake.sourceDirectory": "/Users/minchanpark/Documents/SOI/linux",
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  },
+  "cmake.sourceDirectory": "/Users/minchanpark/Documents/SOI/linux",
+  "deno.enable": true,
+  "deno.enablePaths": [
+    "supabase/functions"
+  ],
+  "deno.lint": true,
+  "deno.unstable": [
+    "bare-node-builtins",
+    "byonm",
+    "sloppy-imports",
+    "unsafe-proto",
+    "webgpu",
+    "broadcast-channel",
+    "worker-options",
+    "cron",
+    "kv",
+    "ffi",
+    "fs",
+    "http",
+    "net"
+  ],
+  "java.configuration.updateBuildConfiguration": "automatic"
 }

@@ -303,7 +303,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                               ),
                               child: Column(
                                 children: [
-                                  SizedBox(height: (16.3).h),
+                                  SizedBox(height: (14).h),
                                   Material(
                                     color: Colors.transparent,
                                     borderRadius: BorderRadius.circular(8.r),
@@ -317,7 +317,6 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                                       child: Container(
                                         padding: EdgeInsets.symmetric(
                                           horizontal: 18.w,
-                                          vertical: 12.h,
                                         ),
                                         child: Row(
                                           children: [
@@ -338,9 +337,10 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                                             Text(
                                               "친구 추가",
                                               style: TextStyle(
-                                                color: Color(0xffd9d9d9),
+                                                color: const Color(0xfff9f9f9),
                                                 fontSize: 16.sp,
-                                                fontWeight: FontWeight.w400,
+                                                fontWeight: FontWeight.w900,
+                                                fontFamily: 'Pretendard',
                                               ),
                                             ),
                                           ],
@@ -426,6 +426,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                       style: TextStyle(
                         fontSize: 18.sp,
                         fontWeight: FontWeight.w600,
+                        fontFamily: 'Pretendard',
                         color:
                             _selectedFriendUids.isNotEmpty
                                 ? Colors.black
@@ -479,6 +480,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                             color: const Color(0xfff9f9f9),
                             fontSize: 18.sp,
                             fontWeight: FontWeight.w600,
+                            fontFamily: 'Pretendard',
                           ),
                         )
                         : null,
@@ -497,6 +499,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                       color: const Color(0xfff9f9f9),
                       fontSize: 16.sp,
                       fontWeight: FontWeight.w500,
+                      fontFamily: 'Pretendard',
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -509,6 +512,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
                         style: TextStyle(
                           color: const Color(0xff999999),
                           fontSize: 14.sp,
+                          fontFamily: 'Pretendard',
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

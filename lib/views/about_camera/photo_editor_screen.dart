@@ -561,7 +561,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                             ),
                           ),
                         ),
-
+                    //드래그 핸들과 카테고리 아이템 사이 간격 벌리긴
+                    SizedBox(height: 4.h),
                     // 콘텐츠 영역: 조건에 따라 카테고리 목록 또는 카테고리 추가 UI 표시
                     Expanded(
                       child: AnimatedSwitcher(

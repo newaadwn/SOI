@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_swift_camera/views/about_feed/feed_home.dart';
-import 'package:provider/provider.dart';
 import '../theme/theme.dart';
-import '../controllers/auth_controller.dart';
-import '../services/deep_link_service.dart';
 import 'about_archiving/screens/archive_main_screen.dart';
 import 'about_camera/camera_screen.dart';
 import 'package:antdesign_icons/antdesign_icons.dart';
@@ -26,26 +23,9 @@ class _HomePageNavigationBarState extends State<HomePageNavigationBar> {
   void initState() {
     super.initState();
     _currentPageIndex = widget.currentPageIndex;
-
-    // 앱이 실행될 때 잘못된 프로필 이미지 URL을 확인하고 정리
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _cleanInvalidProfileImages();
-      // Deep Link 서비스 초기화
-      DeepLinkService.initialize(context);
-    });
   }
 
   // 잘못된 프로필 이미지 URL을 확인하고 정리하는 함수
-  Future<void> _cleanInvalidProfileImages() async {
-    try {
-      final authViewModel = Provider.of<AuthController>(context, listen: false);
-      if (authViewModel.currentUser != null) {
-        await authViewModel.cleanInvalidProfileImageUrl();
-      }
-    } catch (e) {
-      // debugPrint('프로필 이미지 정리 중 오류 발생: $e');
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

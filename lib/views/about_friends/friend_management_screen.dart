@@ -12,6 +12,7 @@ import '../../controllers/user_matching_controller.dart';
 import '../../controllers/friend_request_controller.dart';
 import '../../services/contact_service.dart';
 import '../../services/user_matching_service.dart';
+import '../../services/supabase_deeplink_service.dart';
 import 'widgets/friend_add_options_card.dart';
 import 'widgets/invite_link_card.dart';
 import 'widgets/friend_request_card.dart';
@@ -607,16 +608,44 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         }
         return;
       }
-      // 스마트 초대 링크 생성 (현재 사용자 정보 포함)
-      // TODO: 실제 Firebase Auth에서 현재 사용자 정보 가져오기
+
       final currentUserName = authController.currentUser?.displayName ?? '사용자';
       final currentUserId = authController.currentUser?.uid;
 
-      final inviteLink =
-          'https://soi-sns.web.app/invite.html?'
-          'inviter=${Uri.encodeComponent(currentUserName)}'
-          '&inviterId=${Uri.encodeComponent(currentUserId!)}'
-          '&invitee=${Uri.encodeComponent(contact.displayName)}';
+      if (currentUserId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('로그인이 필요합니다'),
+              backgroundColor: const Color(0xFF5A5A5A),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Supabase로 친구 초대 링크 생성
+      final inviteLink = await SupabaseDeeplinkService.createFriendInviteLink(
+        inviterName: currentUserName,
+        inviterId: currentUserId,
+        inviteeName: contact.displayName,
+        inviterProfileImage: authController.currentUser?.photoURL,
+      );
+
+      if (inviteLink == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                '딥링크 서비스가 현재 사용할 수 없습니다. Supabase Edge Function이 배포되지 않았거나 네트워크 오류가 발생했습니다.',
+              ),
+              backgroundColor: const Color(0xFF5A5A5A),
+              duration: Duration(seconds: 4),
+            ),
+          );
+        }
+        return;
+      }
 
       final message =
           '안녕하세요! $currentUserName님이 SOI 앱에서 친구가 되고 싶어해요! 아래 링크로 SOI를 시작해보세요: $inviteLink';

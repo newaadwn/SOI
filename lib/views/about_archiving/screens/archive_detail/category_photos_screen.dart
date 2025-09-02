@@ -57,6 +57,10 @@ class _CategoryPhotosScreenState extends State<CategoryPhotosScreen> {
       listen: false,
     );
 
+    final userId =
+        Provider.of<AuthController>(context, listen: false).getUserId ??
+        '카테고리 이름 오류';
+
     return StreamBuilder<CategoryDataModel?>(
       stream: categoryController.streamSingleCategory(widget.category.id),
       builder: (context, categorySnapshot) {
@@ -71,7 +75,8 @@ class _CategoryPhotosScreenState extends State<CategoryPhotosScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  currentCategory.name,
+                  // 사용자별 커스텀 이름 우선 적용
+                  currentCategory.getDisplayName(userId),
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 20.sp,

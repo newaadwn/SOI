@@ -500,7 +500,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
           duration: Duration(milliseconds: 1),
           curve: Curves.easeInOut,
           height: 34.h,
-          padding: EdgeInsets.only(top: 3.h, right: 13.w, left: 13.w),
+          padding: EdgeInsets.only(top: 3.h, right: 17.w, left: 17.w),
           decoration: BoxDecoration(
             color: isSelected ? const Color(0xff292929) : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
@@ -591,10 +591,12 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                             Container(
                               width: 51.w,
                               height: 25.h,
+                              alignment: Alignment.center,
                               decoration: BoxDecoration(
                                 color: const Color(0xFF323232),
                                 borderRadius: BorderRadius.circular(16.5),
                               ),
+                              padding: EdgeInsets.only(top: 2.h),
                               child: TextButton(
                                 onPressed: () {
                                   _createNewCategory();
