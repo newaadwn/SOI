@@ -30,29 +30,27 @@ class LoadingPopupWidget extends StatelessWidget {
             borderRadius: BorderRadius.circular(14.2),
           ),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
+              SizedBox(height: 50.h),
               // 로딩 인디케이터
               SizedBox(
-                width: 50.w,
-                height: 50.h,
+                width: 50,
+                height: 50,
                 child: CircularProgressIndicator(
-                  strokeWidth: 5.0,
+                  strokeWidth: 3.0,
                   valueColor: AlwaysStoppedAnimation<Color>(
                     indicatorColor ?? Colors.white,
                   ),
                 ),
               ),
-              SizedBox(height: 41.h),
+              SizedBox(height: 60.h),
               // 메시지 텍스트
               Text(
                 message,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Color(0xffffffff),
-                  fontSize: 15.78.sp,
+                  fontSize: 15.sp,
                   fontWeight: FontWeight.w500,
                 ),
               ),

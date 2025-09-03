@@ -21,11 +21,11 @@ class FeedHomeScreen extends StatefulWidget {
 }
 
 class _FeedHomeScreenState extends State<FeedHomeScreen> {
-  // 매니저 인스턴스들
-  late final FeedDataManager _feedDataManager;
-  late final VoiceCommentStateManager _voiceCommentStateManager;
-  late final ProfileCacheManager _profileCacheManager;
-  late final FeedAudioManager _feedAudioManager;
+  // 매니저 인스턴스들 - nullable로 변경하여 초기화 에러 방지
+  FeedDataManager? _feedDataManager;
+  VoiceCommentStateManager? _voiceCommentStateManager;
+  ProfileCacheManager? _profileCacheManager;
+  FeedAudioManager? _feedAudioManager;
 
   // 컨트롤러 참조
   AuthController? _authController;
@@ -42,23 +42,23 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     _feedAudioManager = FeedAudioManager();
 
     // 상태 변경 콜백 설정
-    _feedDataManager.setOnStateChanged(() {
+    _feedDataManager?.setOnStateChanged(() {
       if (mounted) setState(() {});
     });
-    _voiceCommentStateManager.setOnStateChanged(() {
+    _voiceCommentStateManager?.setOnStateChanged(() {
       if (mounted) setState(() {});
     });
-    _profileCacheManager.setOnStateChanged(() {
+    _profileCacheManager?.setOnStateChanged(() {
       if (mounted) setState(() {});
     });
 
     // 사진 로드 완료 시 프로필/댓글 구독 콜백 설정
-    _feedDataManager.setOnPhotosLoaded((newPhotos) {
+    _feedDataManager?.setOnPhotosLoaded((newPhotos) {
       final currentUserId = _authController?.getUserId ?? '';
       for (Map<String, dynamic> photoData in newPhotos) {
         final PhotoDataModel photo = photoData['photo'] as PhotoDataModel;
-        _profileCacheManager.loadUserProfileForPhoto(photo.userID, context);
-        _voiceCommentStateManager.subscribeToVoiceCommentsForPhoto(
+        _profileCacheManager?.loadUserProfileForPhoto(photo.userID, context);
+        _voiceCommentStateManager?.subscribeToVoiceCommentsForPhoto(
           photo.id,
           currentUserId,
         );
@@ -87,7 +87,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       await _loadCurrentUserProfile(_authController!, currentUserId);
     }
 
-    await _feedDataManager.loadUserCategoriesAndPhotos(context);
+    await _feedDataManager?.loadUserCategoriesAndPhotos(context);
   }
 
   /// 현재 사용자 프로필 로드
@@ -95,13 +95,14 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     AuthController authController,
     String currentUserId,
   ) async {
-    if (!_profileCacheManager.userProfileImages.containsKey(currentUserId)) {
+    if (_profileCacheManager?.userProfileImages.containsKey(currentUserId) !=
+        true) {
       try {
         final currentUserProfileImage = await authController
             .getUserProfileImageUrlWithCache(currentUserId);
-        _profileCacheManager.userProfileImages[currentUserId] =
+        _profileCacheManager?.userProfileImages[currentUserId] =
             currentUserProfileImage;
-        _profileCacheManager.setOnStateChanged(() {
+        _profileCacheManager?.setOnStateChanged(() {
           if (mounted) setState(() {});
         });
       } catch (e) {
@@ -128,10 +129,10 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     _commentAudioController?.stopAllComments();
 
     // 매니저들 정리
-    _feedDataManager.dispose();
-    _voiceCommentStateManager.dispose();
-    _profileCacheManager.dispose();
-    _feedAudioManager.dispose();
+    _feedDataManager?.dispose();
+    _voiceCommentStateManager?.dispose();
+    _profileCacheManager?.dispose();
+    _feedAudioManager?.dispose();
 
     super.dispose();
   }
@@ -141,7 +142,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     final currentUser = _authController?.currentUser;
     if (_authController != null && currentUser != null && mounted) {
       // ProfileCacheManager를 통해 현재 사용자 프로필 로드
-      await _profileCacheManager.loadCurrentUserProfile(
+      await _profileCacheManager?.loadCurrentUserProfile(
         _authController!,
         currentUser.uid,
       );
@@ -152,20 +153,28 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   Future<void> refreshUserProfileImage(String userId) async {
     final authController = Provider.of<AuthController>(context, listen: false);
     try {
-      _profileCacheManager.loadingStates[userId] = true;
-      _profileCacheManager.setOnStateChanged(() {
+      if (_profileCacheManager?.loadingStates != null) {
+        _profileCacheManager!.loadingStates[userId] = true;
+      }
+      _profileCacheManager?.setOnStateChanged(() {
         if (mounted) setState(() {});
       });
       final profileImageUrl = await authController
           .getUserProfileImageUrlWithCache(userId);
-      _profileCacheManager.userProfileImages[userId] = profileImageUrl;
-      _profileCacheManager.loadingStates[userId] = false;
-      _profileCacheManager.setOnStateChanged(() {
+      if (_profileCacheManager?.userProfileImages != null) {
+        _profileCacheManager!.userProfileImages[userId] = profileImageUrl;
+      }
+      if (_profileCacheManager?.loadingStates != null) {
+        _profileCacheManager!.loadingStates[userId] = false;
+      }
+      _profileCacheManager?.setOnStateChanged(() {
         if (mounted) setState(() {});
       });
     } catch (e) {
-      _profileCacheManager.loadingStates[userId] = false;
-      _profileCacheManager.setOnStateChanged(() {
+      if (_profileCacheManager?.loadingStates != null) {
+        _profileCacheManager!.loadingStates[userId] = false;
+      }
+      _profileCacheManager?.setOnStateChanged(() {
         if (mounted) setState(() {});
       });
     }
@@ -173,14 +182,14 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
   /// 더 많은 사진 로드 (무한 스크롤링) - delegate
   Future<void> _loadMorePhotos() async {
-    await _feedDataManager.loadMorePhotos(context);
+    await _feedDataManager?.loadMorePhotos(context);
 
     // 새로 로드된 사진들의 프로필 정보 및 음성 댓글 구독
-    final allPhotos = _feedDataManager.allPhotos;
-    for (Map<String, dynamic> photoData in allPhotos) {
+    final allPhotos = _feedDataManager?.allPhotos;
+    for (Map<String, dynamic> photoData in allPhotos!) {
       final PhotoDataModel photo = photoData['photo'] as PhotoDataModel;
       _loadUserProfileForPhoto(photo.userID);
-      _voiceCommentStateManager.subscribeToVoiceCommentsForPhoto(
+      _voiceCommentStateManager?.subscribeToVoiceCommentsForPhoto(
         photo.id,
         _authController?.getUserId ?? '',
       );
@@ -190,17 +199,17 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   /// 특정 사용자의 프로필 정보를 로드하는 메서드
   Future<void> _loadUserProfileForPhoto(String userId) async {
     // ProfileCacheManager를 통해 로드
-    await _profileCacheManager.loadUserProfileForPhoto(userId, context);
+    await _profileCacheManager?.loadUserProfileForPhoto(userId, context);
   }
 
   /// 오디오 재생/일시정지 토글
   Future<void> _toggleAudio(PhotoDataModel photo) async {
-    await _feedAudioManager.toggleAudio(photo, context);
+    await _feedAudioManager?.toggleAudio(photo, context);
   }
 
   /// 음성 댓글 토글 - delegate to manager
   void _toggleVoiceComment(String photoId) {
-    _voiceCommentStateManager.toggleVoiceComment(photoId);
+    _voiceCommentStateManager?.toggleVoiceComment(photoId);
   }
 
   /// 음성 댓글 녹음 완료 콜백 (임시 저장) - delegate to manager
@@ -210,7 +219,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     List<double>? waveformData,
     int? duration,
   ) async {
-    await _voiceCommentStateManager.onVoiceCommentCompleted(
+    await _voiceCommentStateManager?.onVoiceCommentCompleted(
       photoId,
       audioPath,
       waveformData,
@@ -220,22 +229,22 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
   /// 실제 음성 댓글 저장 (파형 클릭 시 호출) - delegate to manager
   Future<void> _saveVoiceComment(String photoId) async {
-    await _voiceCommentStateManager.saveVoiceComment(photoId, context);
+    await _voiceCommentStateManager?.saveVoiceComment(photoId, context);
   }
 
   /// 음성 댓글 삭제 콜백 - delegate to manager
   void _onVoiceCommentDeleted(String photoId) {
-    _voiceCommentStateManager.onVoiceCommentDeleted(photoId);
+    _voiceCommentStateManager?.onVoiceCommentDeleted(photoId);
   }
 
   /// 음성 댓글 저장 완료 후 위젯 초기화 (추가 댓글을 위한) - delegate to manager
   void _onSaveCompleted(String photoId) {
-    _voiceCommentStateManager.onSaveCompleted(photoId);
+    _voiceCommentStateManager?.onSaveCompleted(photoId);
   }
 
   /// 프로필 이미지 드래그 처리 - delegate to manager
   void _onProfileImageDragged(String photoId, Offset absolutePosition) {
-    _voiceCommentStateManager.onProfileImageDragged(photoId, absolutePosition);
+    _voiceCommentStateManager?.onProfileImageDragged(photoId, absolutePosition);
   }
 
   void _stopAllAudio() {
@@ -260,11 +269,11 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
   }
 
   Widget _buildBody() {
-    if (_feedDataManager.isLoading) {
+    if (_feedDataManager!.isLoading) {
       return Center(child: CircularProgressIndicator(color: Colors.white));
     }
 
-    if (_feedDataManager.allPhotos.isEmpty) {
+    if (_feedDataManager!.allPhotos.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -291,7 +300,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: () => _feedDataManager.loadUserCategoriesAndPhotos(context),
+      onRefresh: () => _feedDataManager!.loadUserCategoriesAndPhotos(context),
       color: Colors.white,
       backgroundColor: Colors.black,
       child: Stack(
@@ -299,13 +308,13 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
           PageView.builder(
             scrollDirection: Axis.vertical,
             itemCount:
-                _feedDataManager.allPhotos.length +
-                (_feedDataManager.hasMoreData ? 1 : 0),
+                _feedDataManager!.allPhotos.length +
+                (_feedDataManager!.hasMoreData ? 1 : 0),
             onPageChanged: (index) {
               // 마지막에서 2번째 페이지에 도달하면 추가 로드
-              if (index >= _feedDataManager.allPhotos.length - 2 &&
-                  _feedDataManager.hasMoreData &&
-                  !_feedDataManager.isLoadingMore) {
+              if (index >= _feedDataManager!.allPhotos.length - 2 &&
+                  _feedDataManager!.hasMoreData &&
+                  !_feedDataManager!.isLoadingMore) {
                 _loadMorePhotos();
               }
 
@@ -313,7 +322,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
               _stopAllAudio();
             },
             itemBuilder: (context, index) {
-              final photoData = _feedDataManager.allPhotos[index];
+              final photoData = _feedDataManager!.allPhotos[index];
               final PhotoDataModel photo = photoData['photo'] as PhotoDataModel;
               final String categoryName = photoData['categoryName'] as String;
               final String categoryId = photoData['categoryId'] as String;
@@ -328,19 +337,19 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                 index: index,
                 isOwner: isOwner,
                 profileImagePositions:
-                    _voiceCommentStateManager.profileImagePositions,
+                    _voiceCommentStateManager!.profileImagePositions,
                 droppedProfileImageUrls:
-                    _voiceCommentStateManager.droppedProfileImageUrls,
-                photoComments: _voiceCommentStateManager.photoComments,
-                userProfileImages: _profileCacheManager.userProfileImages,
-                profileLoadingStates: _profileCacheManager.loadingStates,
-                userNames: _profileCacheManager.userNames,
+                    _voiceCommentStateManager!.droppedProfileImageUrls,
+                photoComments: _voiceCommentStateManager!.photoComments,
+                userProfileImages: _profileCacheManager!.userProfileImages,
+                profileLoadingStates: _profileCacheManager!.loadingStates,
+                userNames: _profileCacheManager!.userNames,
                 voiceCommentActiveStates:
-                    _voiceCommentStateManager.voiceCommentActiveStates,
+                    _voiceCommentStateManager!.voiceCommentActiveStates,
                 voiceCommentSavedStates:
-                    _voiceCommentStateManager.voiceCommentSavedStates,
+                    _voiceCommentStateManager!.voiceCommentSavedStates,
                 commentProfileImageUrls:
-                    _voiceCommentStateManager.commentProfileImageUrls,
+                    _voiceCommentStateManager!.commentProfileImageUrls,
                 onToggleAudio: _toggleAudio,
                 onToggleVoiceComment: _toggleVoiceComment,
                 onVoiceCommentCompleted: _onVoiceCommentCompleted,
@@ -368,7 +377,7 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                     );
                     if (success && mounted) {
                       setState(() {
-                        _feedDataManager.removePhoto(index);
+                        _feedDataManager!.removePhoto(index);
                       });
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(

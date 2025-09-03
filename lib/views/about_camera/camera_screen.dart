@@ -30,6 +30,12 @@ class _CameraScreenState extends State<CameraScreen>
   // 추가: 줌 레벨 관리
   // 기본 줌 레벨
   String currentZoom = '1x';
+  double currentZoomValue = 1.0;
+
+  // 동적 줌 레벨 (디바이스별로 결정됨)
+  List<Map<String, dynamic>> zoomLevels = [
+    {'label': '1x', 'value': 1.0}, // 기본값
+  ];
 
   // 카메라 초기화 Future 추가
   Future<void>? _cameraInitialization;
@@ -84,6 +90,9 @@ class _CameraScreenState extends State<CameraScreen>
           _loadFirstGalleryImage(), // 개선된 갤러리 미리보기 로드
         ]);
 
+        // 디바이스별 사용 가능한 줌 레벨 가져오기
+        await _loadAvailableZoomLevels();
+
         if (mounted) {
           setState(() {
             _isLoading = false;
@@ -99,6 +108,38 @@ class _CameraScreenState extends State<CameraScreen>
           });
         }
       }
+    }
+  }
+
+  // 디바이스별 사용 가능한 줌 레벨 로드
+  Future<void> _loadAvailableZoomLevels() async {
+    try {
+      final availableLevels = await _cameraService.getAvailableZoomLevels();
+
+      if (mounted) {
+        setState(() {
+          zoomLevels =
+              availableLevels.map((level) {
+                if (level == 0.5) {
+                  return {'label': '.5x', 'value': level};
+                } else if (level == 1.0) {
+                  return {'label': '1x', 'value': level};
+                } else if (level == 2.0) {
+                  return {'label': '2x', 'value': level};
+                } else if (level == 3.0) {
+                  return {'label': '3x', 'value': level};
+                } else {
+                  return {
+                    'label': '${level.toStringAsFixed(1)}x',
+                    'value': level,
+                  };
+                }
+              }).toList();
+        });
+      }
+    } catch (e) {
+      // 줌 레벨 로드 실패 시 기본값 유지
+      print('줌 레벨 로드 실패: $e');
     }
   }
 
@@ -325,9 +366,110 @@ class _CameraScreenState extends State<CameraScreen>
   Future<void> _switchCamera() async {
     try {
       await _cameraService.switchCamera();
+
+      // 카메라 전환 후 줌 레벨 다시 로드 (전면/후면 카메라별 지원 줌이 다름)
+      await _loadAvailableZoomLevels();
+
+      // 현재 줌이 새 카메라에서 지원되지 않으면 1x로 리셋
+      final supportedValues =
+          zoomLevels.map((z) => z['value'] as double).toList();
+      if (!supportedValues.contains(currentZoomValue)) {
+        setState(() {
+          currentZoomValue = 1.0;
+          currentZoom = '1x';
+        });
+      }
     } on PlatformException {
       // Camera switching error occurred: ${e.message}
     }
+  }
+
+  // 줌 레벨 변경 요청
+  Future<void> _setZoomLevel(double zoomValue, String zoomLabel) async {
+    try {
+      await _cameraService.setZoom(zoomValue);
+      setState(() {
+        currentZoomValue = zoomValue;
+        currentZoom = zoomLabel;
+      });
+    } on PlatformException catch (e) {
+      // Zoom setting error occurred: ${e.message}
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('줌 설정 중 오류가 발생했습니다: ${e.message}'),
+            backgroundColor: const Color(0xFF5A5A5A),
+          ),
+        );
+      }
+    }
+  }
+
+  // 줌 컨트롤 위젯 빌드
+  Widget _buildZoomControls() {
+    return Container(
+      width: 147.w,
+      height: 50.h,
+      decoration: BoxDecoration(
+        color: Color(0xff000000).withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (int i = 0; i < zoomLevels.length; i++) ...[
+            // 고정된 크기의 컨테이너로 레이아웃 안정화
+            SizedBox(
+              width: 45.w, // 최대 크기로 고정
+              height: 45.h, // 최대 크기로 고정
+              child: GestureDetector(
+                onTap:
+                    () => _setZoomLevel(
+                      zoomLevels[i]['value'],
+                      zoomLevels[i]['label'],
+                    ),
+                child: Center(
+                  child: Container(
+                    width:
+                        zoomLevels[i]['value'] == currentZoomValue
+                            ? 45.w
+                            : 29.w,
+                    height:
+                        zoomLevels[i]['value'] == currentZoomValue
+                            ? 45.h
+                            : 29.h,
+                    decoration: BoxDecoration(
+                      color: Color(0xff2c2c2c),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        zoomLevels[i]['label'],
+                        style: TextStyle(
+                          color:
+                              zoomLevels[i]['value'] == currentZoomValue
+                                  ? Colors.yellow
+                                  : Color(0xffffffff),
+                          fontSize:
+                              zoomLevels[i]['value'] == currentZoomValue
+                                  ? (14.36).sp
+                                  : (12.36).sp,
+                          fontWeight:
+                              zoomLevels[i]['value'] == currentZoomValue
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                          fontFamily: 'Pretendard Variable',
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   @override
@@ -423,10 +565,7 @@ class _CameraScreenState extends State<CameraScreen>
                         height: 500.h,
                         decoration: BoxDecoration(
                           color: Colors.grey.shade800,
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.12),
-                            width: 1.0,
-                          ),
+
                           borderRadius: BorderRadius.circular(16),
                         ),
                       ),
@@ -458,13 +597,23 @@ class _CameraScreenState extends State<CameraScreen>
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: Container(
+                      child: SizedBox(
                         width: 354.w,
                         height: 500.h,
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.white, width: 1.0),
+
+                        child: Stack(
+                          alignment: Alignment.bottomCenter,
+                          children: [
+                            // 카메라 뷰
+                            _cameraService.getCameraView(),
+
+                            // 줌 컨트롤 (상단 중앙)
+                            Padding(
+                              padding: EdgeInsets.only(bottom: 26.h),
+                              child: _buildZoomControls(),
+                            ),
+                          ],
                         ),
-                        child: _cameraService.getCameraView(),
                       ),
                     ),
 

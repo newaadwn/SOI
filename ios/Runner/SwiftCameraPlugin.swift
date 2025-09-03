@@ -10,6 +10,7 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
     var flashMode: AVCaptureDevice.FlashMode = .off
     var isUsingFrontCamera: Bool = false
     var photoCaptureResult: FlutterResult?
+    var currentZoomLevel: Double = 1.0  // 현재 줌 레벨 추적
     
     public static func register(with registrar: FlutterPluginRegistrar) {
         // 플랫폼 채널 등록 및 핸들러 설정
@@ -75,9 +76,10 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
             DispatchQueue.global(qos: .userInitiated).async {
                 session.startRunning()
                 
-                // 세션 시작 후 미러링 적용
-                DispatchQueue.main.async {
+                // ✅ 수정: 세션 안정화 후 미러링 적용
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                     self.applyMirroringToAllConnections()
+                    print("🔧 카메라 세션 시작 후 미러링 설정 완료")
                 }
             }
         } catch {
@@ -96,6 +98,8 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
             switchCamera(result: result)
         case "setFlash":
             setFlash(call: call, result: result)
+        case "setZoom":
+            setZoom(call: call, result: result)
         case "pauseCamera":
             pauseCamera(result: result)
         case "resumeCamera":
@@ -104,6 +108,8 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
             disposeCamera(result: result)
         case "optimizeCamera":
             optimizeCamera(result: result)
+        case "getAvailableZoomLevels":
+            getAvailableZoomLevels(result: result)
         default:
             result(FlutterMethodNotImplemented)
         }
@@ -320,8 +326,11 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
         
         captureSession.commitConfiguration()
         
-        // 카메라 전환 후 미러링 설정 다시 적용
-        applyMirroringToAllConnections()
+        // ✅ 수정: 카메라 전환 후 안정화 시간을 두고 미러링 설정 적용
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.applyMirroringToAllConnections()
+            print("🔧 카메라 전환 완료 - \(self.isUsingFrontCamera ? "전면" : "후면") 카메라, 미러링 재설정")
+        }
         
         result("Camera switched")
     }
@@ -336,6 +345,122 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
         
         flashMode = isOn ? .on : .off
         result("Flash set to \(isOn ? "on" : "off")")
+    }
+    
+    // 줌 설정 - 물리적 렌즈 전환 지원
+    func setZoom(call: FlutterMethodCall, result: @escaping FlutterResult) {
+        guard let args = call.arguments as? [String: Any],
+              let zoomValue = args["zoomValue"] as? Double else {
+            result(FlutterError(code: "INVALID_ARGS", message: "Missing or invalid zoomValue parameter", details: nil))
+            return
+        }
+        
+        guard let captureSession = captureSession else {
+            result(FlutterError(code: "NO_SESSION", message: "No capture session available", details: nil))
+            return
+        }
+        
+        // 전면 카메라는 줌 변경 불가
+        if isUsingFrontCamera {
+            result("Front camera does not support zoom")
+            return
+        }
+        
+        currentZoomLevel = zoomValue
+        
+        // 줌 레벨에 따른 카메라 선택
+        let targetCameraType: AVCaptureDevice.DeviceType
+        let digitalZoomFactor: CGFloat
+        
+        if zoomValue < 0.75 {
+            // 0.5x - 초광각 카메라
+            targetCameraType = .builtInUltraWideCamera
+            digitalZoomFactor = CGFloat(zoomValue * 2.0)  // 0.5x = 1.0 factor on ultra wide
+        } else if zoomValue < 1.5 {
+            // 1.0x - 일반 광각 카메라
+            targetCameraType = .builtInWideAngleCamera
+            digitalZoomFactor = CGFloat(zoomValue)
+        } else {
+            // 2.0x 이상 - 망원 카메라 (있으면) 또는 광각에서 디지털 줌
+            if let _ = AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: .back) {
+                targetCameraType = .builtInTelephotoCamera
+                digitalZoomFactor = CGFloat(zoomValue / 2.0)  // 2.0x = 1.0 factor on telephoto
+            } else {
+                // 망원 없으면 광각에서 디지털 줌
+                targetCameraType = .builtInWideAngleCamera
+                digitalZoomFactor = CGFloat(zoomValue)
+            }
+        }
+        
+        // 목표 카메라 가져오기
+        guard let newDevice = AVCaptureDevice.default(targetCameraType, for: .video, position: .back) else {
+            // 목표 카메라가 없으면 현재 카메라에서 디지털 줌만 적용
+            if let currentDevice = currentDevice {
+                do {
+                    try currentDevice.lockForConfiguration()
+                    let maxZoom = currentDevice.activeFormat.videoMaxZoomFactor
+                    let finalZoom = min(CGFloat(zoomValue), maxZoom)
+                    currentDevice.ramp(toVideoZoomFactor: finalZoom, withRate: 2.0)
+                    currentDevice.unlockForConfiguration()
+                    result("Digital zoom set to \(zoomValue)x")
+                } catch {
+                    result(FlutterError(code: "ZOOM_ERROR", message: error.localizedDescription, details: nil))
+                }
+            }
+            return
+        }
+        
+        // 카메라가 변경되어야 하는 경우
+        if newDevice != currentDevice {
+            captureSession.beginConfiguration()
+            
+            // 기존 입력 제거
+            if let currentInput = captureSession.inputs.first as? AVCaptureDeviceInput {
+                captureSession.removeInput(currentInput)
+            }
+            
+            // 새 입력 추가
+            do {
+                let newInput = try AVCaptureDeviceInput(device: newDevice)
+                if captureSession.canAddInput(newInput) {
+                    captureSession.addInput(newInput)
+                    currentDevice = newDevice
+                }
+                
+                // 디지털 줌 적용
+                try newDevice.lockForConfiguration()
+                let maxZoom = newDevice.activeFormat.videoMaxZoomFactor
+                let finalZoom = min(digitalZoomFactor, maxZoom)
+                newDevice.videoZoomFactor = finalZoom
+                newDevice.unlockForConfiguration()
+                
+            } catch {
+                result(FlutterError(code: "CAMERA_SWITCH_ERROR", message: error.localizedDescription, details: nil))
+                captureSession.commitConfiguration()
+                return
+            }
+            
+            captureSession.commitConfiguration()
+            
+            // 미러링 재설정
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                self.applyMirroringToAllConnections()
+            }
+            
+            result("Zoom set to \(zoomValue)x with camera switch")
+        } else {
+            // 같은 카메라에서 디지털 줌만 조정
+            do {
+                try currentDevice?.lockForConfiguration()
+                let maxZoom = currentDevice?.activeFormat.videoMaxZoomFactor ?? 1.0
+                let finalZoom = min(digitalZoomFactor, maxZoom)
+                currentDevice?.videoZoomFactor = finalZoom
+                currentDevice?.unlockForConfiguration()
+                result("Zoom adjusted to \(zoomValue)x")
+            } catch {
+                result(FlutterError(code: "ZOOM_ERROR", message: error.localizedDescription, details: nil))
+            }
+        }
     }
     
     // 카메라 세션 일시 중지
@@ -362,6 +487,12 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
         if !captureSession.isRunning {
             DispatchQueue.global(qos: .userInitiated).async {
                 captureSession.startRunning()
+                
+                // ✅ 수정: 세션 재개 후 안정화 시간을 두고 미러링 재설정
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                    self.applyMirroringToAllConnections()
+                    print("🔧 카메라 세션 재개 후 미러링 설정 완료")
+                }
             }
         }
         
@@ -407,6 +538,37 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
     }
     
     // MARK: - 이미지 처리 헬퍼 메서드
+    
+    // 사용 가능한 줌 레벨 확인
+    func getAvailableZoomLevels(result: @escaping FlutterResult) {
+        var levels: [Double] = []
+        
+        // 후면 카메라만 줌 지원
+        if !isUsingFrontCamera {
+            // 초광각 카메라 체크 (0.5x)
+            if AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back) != nil {
+                levels.append(0.5)
+            }
+            
+            // 광각 카메라는 항상 있음 (1.0x)
+            levels.append(1.0)
+            
+            // 망원 카메라 체크 (2.0x)
+            if AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: .back) != nil {
+                levels.append(2.0)
+            } else {
+                // 망원이 없으면 디지털 줌으로 2.0x, 3.0x 제공
+                levels.append(2.0)
+                levels.append(3.0)
+            }
+        } else {
+            // 전면 카메라는 줌 미지원
+            levels.append(1.0)
+        }
+        
+        print("📱 사용 가능한 줌 레벨: \(levels)")
+        result(levels)
+    }
 }
 
 // 카메라 미리보기를 위한 플랫폼 뷰 팩토리
@@ -440,23 +602,9 @@ class PreviewView: UIView {
             layer.videoGravity = .resizeAspectFill
             layer.connection?.videoOrientation = .portrait
             
-            // 카메라 타입에 따른 미러링 설정
-            if let connection = layer.connection, connection.isVideoMirroringSupported {
-                connection.automaticallyAdjustsVideoMirroring = false
-                
-                // 전면 카메라에서만 좌우반전 활성화
-                if let session = layer.session {
-                    var isFrontCamera = false
-                    for input in session.inputs {
-                        if let deviceInput = input as? AVCaptureDeviceInput {
-                            isFrontCamera = deviceInput.device.position == .front
-                            break
-                        }
-                    }
-                    connection.isVideoMirrored = isFrontCamera
-                    print("🔧 PreviewView 미러링: \(isFrontCamera ? "전면 카메라 - 활성화" : "후면 카메라 - 비활성화")")
-                }
-            }
+            // ✅ 수정: 미러링 설정을 SwiftCameraPlugin.applyMirroringToAllConnections()에서만 처리
+            // 중복 미러링 설정 제거로 경쟁 상태 방지
+            print("🔧 PreviewView layoutSubviews - 미러링은 플러그인에서 통합 관리")
         }
     }
     
@@ -479,23 +627,9 @@ class CameraPreviewView: NSObject, FlutterPlatformView {
             previewLayer.videoGravity = .resizeAspectFill
             previewLayer.connection?.videoOrientation = .portrait
             
-            // 카메라 타입에 따른 미러링 설정
-            if let connection = previewLayer.connection, connection.isVideoMirroringSupported {
-                connection.automaticallyAdjustsVideoMirroring = false
-                
-                // 현재 입력된 카메라 타입 확인
-                var isFrontCamera = false
-                for input in captureSession.inputs {
-                    if let deviceInput = input as? AVCaptureDeviceInput {
-                        isFrontCamera = deviceInput.device.position == .front
-                        break
-                    }
-                }
-                
-                // 전면 카메라에서만 미러링 활성화
-                connection.isVideoMirrored = isFrontCamera
-                print("🔧 CameraPreviewView 미러링: \(isFrontCamera ? "전면 카메라 - 활성화" : "후면 카메라 - 비활성화")")
-            }
+            // ✅ 수정: 미러링 설정을 SwiftCameraPlugin.applyMirroringToAllConnections()에서만 처리
+            // 중복 미러링 설정 제거로 경쟁 상태 방지
+            print("🔧 CameraPreviewView 초기화 - 미러링은 플러그인에서 통합 관리")
         }
         
         _view.frame = frame

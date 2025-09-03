@@ -43,7 +43,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   final _editingNameController = TextEditingController();
   final ValueNotifier<bool> _hasTextChangedNotifier = ValueNotifier<bool>(
     false,
-  ); // ValueNotifier 사용
+  );
   String _originalText = ''; // 원본 텍스트 저장
 
   // 선택된 친구들 상태 관리
@@ -162,16 +162,18 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   }
 
   void cancelEditMode() {
-    setState(() {
-      // 리스너 제거
-      _editingNameController.removeListener(_onTextChanged);
+    if (mounted) {
+      setState(() {
+        // 리스너 제거
+        _editingNameController.removeListener(_onTextChanged);
 
-      _isEditMode = false;
-      _editingCategoryId = null;
-      _hasTextChangedNotifier.value = false;
-      _originalText = '';
-      _editingNameController.clear();
-    });
+        _isEditMode = false;
+        _editingCategoryId = null;
+        _hasTextChangedNotifier.value = false;
+        _originalText = '';
+        _editingNameController.clear();
+      });
+    }
   }
 
   Future<void> confirmEditMode() async {
@@ -181,12 +183,14 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
     // 빈 텍스트 입력 시에만 에러 메시지 표시
     if (trimmedText.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('이름을 입력해주세요'),
-          backgroundColor: const Color(0xFF5A5A5A),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('이름을 입력해주세요'),
+            backgroundColor: const Color(0xFF5A5A5A),
+          ),
+        );
+      }
       return;
     }
 
@@ -211,19 +215,23 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
       _editingNameController.removeListener(_onTextChanged);
       cancelEditMode();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('내 카테고리 이름이 수정되었습니다'),
-          backgroundColor: const Color(0xFF5A5A5A),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('내 카테고리 이름이 수정되었습니다'),
+            backgroundColor: const Color(0xFF5A5A5A),
+          ),
+        );
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('이름 수정 중 오류가 발생했습니다'),
-          backgroundColor: const Color(0xFF5A5A5A),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('이름 수정 중 오류가 발생했습니다'),
+            backgroundColor: const Color(0xFF5A5A5A),
+          ),
+        );
+      }
     }
   }
 
@@ -361,13 +369,10 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               child: Column(
                 children: [
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildChip('전체', 0),
-                      SizedBox(width: 16.w),
-                      _buildChip('개인앨범', 1),
-                      SizedBox(width: 16.w),
-                      _buildChip('공유앨범', 2),
+                      Expanded(child: _buildChip('전체', 0)),
+                      Expanded(child: _buildChip('개인앨범', 1)),
+                      Expanded(child: _buildChip('공유앨범', 2)),
                     ],
                   ),
                 ],
@@ -499,10 +504,10 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         child: AnimatedContainer(
           duration: Duration(milliseconds: 1),
           curve: Curves.easeInOut,
-          height: 34.h,
+          height: 43.h,
           padding: EdgeInsets.only(top: 3.h, right: 17.w, left: 17.w),
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xff292929) : Colors.transparent,
+            color: isSelected ? const Color(0xFF323232) : Colors.transparent,
             borderRadius: BorderRadius.circular(20),
           ),
           child: Center(
@@ -911,6 +916,9 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   void dispose() {
     // 검색 debounce 타이머 정리
     _searchDebounceTimer?.cancel();
+
+    // 편집 컨트롤러 리스너 안전하게 제거
+    _editingNameController.removeListener(_onTextChanged);
 
     // 컨트롤러들 정리
     _categoryNameController.dispose();

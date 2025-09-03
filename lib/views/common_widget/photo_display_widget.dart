@@ -164,6 +164,11 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // 업로드 직후 empty imageUrl 를 허용하므로(두 단계 업로드) 빈/잘못된 URL 은 플레이스홀더로 처리
+    bool _isValidMainUrl(String url) =>
+        url.isNotEmpty &&
+        (url.startsWith('http://') || url.startsWith('https://'));
+
     // 사진이 바뀌었거나 처음 로드된 경우 댓글 자동 표시 체크
     if (_lastCheckedPhotoId != widget.photo.id) {
       _lastCheckedPhotoId = widget.photo.id;
@@ -223,20 +228,51 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                     alignment: Alignment.topCenter,
                     children: [
                       // 배경 이미지
-                      CachedNetworkImage(
-                        imageUrl: widget.photo.imageUrl,
-                        fit: BoxFit.cover,
-                        width: 354.w, // 실제 이미지 너비
-                        height: 500.h, // 실제 이미지 높이
-                        placeholder: (context, url) {
-                          return Container(
+                      _isValidMainUrl(widget.photo.imageUrl)
+                          ? CachedNetworkImage(
+                            imageUrl: widget.photo.imageUrl,
+                            fit: BoxFit.cover,
+                            width: 354.w, // 실제 이미지 너비
+                            height: 500.h, // 실제 이미지 높이
+                            placeholder: (context, url) {
+                              return Container(
+                                width: 354.w,
+                                height: 500.h,
+                                color: Colors.grey[900],
+                              );
+                            },
+                            errorWidget:
+                                (context, url, error) => Container(
+                                  width: 354.w,
+                                  height: 500.h,
+                                  color: Colors.grey[850],
+                                  alignment: Alignment.center,
+                                  child: const Icon(
+                                    Icons.image_not_supported,
+                                    color: Colors.white54,
+                                    size: 40,
+                                  ),
+                                ),
+                          )
+                          : Container(
                             width: 354.w,
                             height: 500.h,
-                            color: Colors.grey[900],
-                            child: const Center(),
-                          );
-                        },
-                      ),
+                            decoration: BoxDecoration(
+                              color: Colors.grey[900],
+                              borderRadius: BorderRadius.circular(0),
+                            ),
+                            alignment: Alignment.center,
+                            child: const SizedBox(
+                              width: 32,
+                              height: 32,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.6,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white54,
+                                ),
+                              ),
+                            ),
+                          ),
                       // 댓글 보기 토글 시(롱프레스 액션 오버레이 아닐 때) 살짝 어둡게 마스킹하여 아바타 대비 확보
                       if (_isShowingComments && !_showActionOverlay)
                         Positioned.fill(

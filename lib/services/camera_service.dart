@@ -17,6 +17,10 @@ class CameraService {
   bool _isFrontCamera = false;
   bool get isFrontCamera => _isFrontCamera;
 
+  // 사용 가능한 줌 레벨 캐시
+  List<double> _availableZoomLevels = [1.0];
+  List<double> get availableZoomLevels => _availableZoomLevels;
+
   // 갤러리 미리보기 상태 관리
   String? _latestGalleryImagePath;
   bool _isLoadingGalleryImage = false;
@@ -332,32 +336,49 @@ class CameraService {
   Future<void> setFlash(bool isOn) async {
     try {
       await _cameraChannel.invokeMethod('setFlash', {'isOn': isOn});
-    } on PlatformException {
-      // // debugPrint("플래시 설정 오류: ${e.message}");
+    } on PlatformException catch (e) {
+      debugPrint("플래시 설정 오류: ${e.message}");
     }
   }
 
-  Future<void> setZoomLevel(String level) async {
+  // 줌 배율 설정
+  Future<void> setZoom(double zoomValue) async {
     try {
-      await _cameraChannel.invokeMethod('setZoomLevel', {'level': level});
+      await _cameraChannel.invokeMethod('setZoom', {'zoomValue': zoomValue});
     } on PlatformException {
-      // // debugPrint("줌 레벨 설정 오류: ${e.message}");
+      // debugPrint("줌 설정 오류: ${e.message}");
+      rethrow; // 에러를 다시 던져서 UI에서 처리할 수 있도록 함
+    }
+  }
+
+  // 사용 가능한 줌 레벨 가져오기
+  Future<List<double>> getAvailableZoomLevels() async {
+    try {
+      final result = await _cameraChannel.invokeMethod(
+        'getAvailableZoomLevels',
+      );
+      if (result is List) {
+        _availableZoomLevels = result.cast<double>();
+        return _availableZoomLevels;
+      }
+      return [1.0]; // 기본값
+    } on PlatformException catch (e) {
+      debugPrint("줌 레벨 가져오기 오류: ${e.message}");
+      return [1.0]; // 오류 시 기본값
     }
   }
 
   Future<void> setBrightness(double value) async {
     try {
       await _cameraChannel.invokeMethod('setBrightness', {'value': value});
-    } on PlatformException {
-      // // debugPrint("밝기 설정 오류: ${e.message}");
+    } on PlatformException catch (e) {
+      debugPrint("밝기 설정 오류: ${e.message}");
     }
   }
 
   // ✅ 개선된 카메라 초기화 (타이밍 이슈 해결)
   Future<bool> initCamera() async {
     try {
-      // // debugPrint('카메라 초기화 시작...');
-
       // SurfaceProvider 준비 확인을 위한 재시도 로직
       bool result = false;
       int retryCount = 0;
@@ -368,25 +389,27 @@ class CameraService {
         try {
           result = await _cameraChannel.invokeMethod('initCamera');
           if (result) {
-            // // debugPrint('카메라 초기화 성공 (시도 ${retryCount + 1}/$maxRetries)');
             break;
           }
         } catch (e) {
-          // // debugPrint('카메라 초기화 실패 (시도 ${retryCount + 1}/$maxRetries): $e');
+          debugPrint('카메라 초기화 실패 (시도 ${retryCount + 1}/$maxRetries): $e');
         }
 
         retryCount++;
         if (retryCount < maxRetries) {
-          // // debugPrint('${retryDelay.inMilliseconds}ms 후 재시도...');
           await Future.delayed(retryDelay);
         }
       }
 
       _isSessionActive = result;
-      // // debugPrint('카메라 초기화 최종 결과: $result');
+
+      // 카메라 초기화 성공 시 사용 가능한 줌 레벨 가져오기
+      if (result) {
+        await getAvailableZoomLevels();
+      }
+
       return result;
     } on PlatformException {
-      // // debugPrint("카메라 초기화 오류: ${e.message}");
       _isSessionActive = false;
       return false;
     }
@@ -397,10 +420,8 @@ class CameraService {
     try {
       // 카메라가 초기화되지 않았으면 먼저 초기화
       if (!_isSessionActive) {
-        // // debugPrint('카메라가 초기화되지 않아 자동 초기화를 시도합니다...');
         final initialized = await initCamera();
         if (!initialized) {
-          // // debugPrint('카메라 자동 초기화 실패');
           return '';
         }
 
@@ -408,12 +429,9 @@ class CameraService {
         await Future.delayed(Duration(milliseconds: 200));
       }
 
-      // // debugPrint('사진 촬영 시작...');
       final String result = await _cameraChannel.invokeMethod('takePicture');
 
       if (result.isNotEmpty) {
-        // // debugPrint('사진 촬영 성공: $result');
-
         // 전면 카메라 좌우반전은 iOS/Android 네이티브 코드에서 처리됨
         // Flutter에서는 추가 처리 없이 바로 결과 반환
 
@@ -421,13 +439,10 @@ class CameraService {
         Future.microtask(() => refreshGalleryPreview());
 
         return result;
-      } else {
-        // // debugPrint('사진 촬영 실패: 빈 경로 반환');
       }
 
       return result;
     } on PlatformException {
-      // // debugPrint("사진 촬영 오류: ${e.message}");
       return '';
     }
   } // ✅ 개선된 카메라 전환 (안정성 강화 + 전면/후면 상태 추적)
@@ -436,10 +451,8 @@ class CameraService {
     try {
       // 카메라가 초기화되지 않았으면 먼저 초기화
       if (!_isSessionActive) {
-        // // debugPrint('카메라가 초기화되지 않아 자동 초기화를 시도합니다...');
         final initialized = await initCamera();
         if (!initialized) {
-          // // debugPrint('카메라 자동 초기화 실패');
           return;
         }
 
@@ -447,15 +460,12 @@ class CameraService {
         await Future.delayed(Duration(milliseconds: 200));
       }
 
-      // // debugPrint('카메라 전환 시작...');
       await _cameraChannel.invokeMethod('switchCamera');
 
       // 카메라 전환 후 상태 토글
       _isFrontCamera = !_isFrontCamera;
-
-      // // debugPrint('카메라 전환 완료 - 현재: ${_isFrontCamera ? "전면" : "후면"}');
     } on PlatformException {
-      // // debugPrint("카메라 전환 오류: ${e.message}");
+      return;
     }
   }
 
@@ -467,10 +477,7 @@ class CameraService {
       // ✅ 상태 리셋
       _isSessionActive = false;
       _isFrontCamera = false;
-
-      // // debugPrint('카메라 리소스 정리 완료');
     } on PlatformException {
-      // // debugPrint("카메라 리소스 정리 오류: ${e.message}");
       // ✅ 에러가 나도 상태는 리셋
       _isSessionActive = false;
       _isFrontCamera = false;

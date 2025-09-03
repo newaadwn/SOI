@@ -153,42 +153,41 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
             child: SingleChildScrollView(
               controller: widget.scrollController,
               child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 20.h),
+                padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 10.h),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     if (_selectedFriends.isEmpty)
                       // 친구 추가하기 버튼
-                      SizedBox(
-                        width: 129.w,
-                        height: 30.h,
-                        child: ElevatedButton.icon(
-                          onPressed: _handleAddFriends,
-                          icon: Image.asset(
-                            'assets/person_add.png',
-                            width: 17.w,
-                            height: 17.h,
-                            color: Color(0xFFE2E2E2),
+                      GestureDetector(
+                        onTap: _handleAddFriends,
+                        child: Container(
+                          width: 117.w,
+                          height: 35.h,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF323232),
+                            borderRadius: BorderRadius.circular(16.5),
                           ),
-                          label: Text(
-                            '친구 추가하기',
-                            style: TextStyle(
-                              color: Color(0xFFE2E2E2),
-                              fontSize: 12.sp,
-                              fontWeight: FontWeight.w500,
-                              fontFamily: 'Pretendard',
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Color(0xFF323232),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16.5),
-                            ),
-                            elevation: 0,
-                            padding: EdgeInsets.symmetric(
-                              horizontal: 8.w,
-                              vertical: 6.h,
-                            ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Image.asset(
+                                'assets/category_add.png',
+                                width: 17.sp,
+                                height: 17.sp,
+                              ),
+                              SizedBox(width: 6.w),
+                              Text(
+                                '친구 추가하기',
+                                style: TextStyle(
+                                  color: const Color(0xFFE2E2E2),
+                                  fontSize: 14.sp,
+                                  fontWeight: FontWeight.w400,
+                                  fontFamily: 'Pretendard',
+                                  letterSpacing: -0.4,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),

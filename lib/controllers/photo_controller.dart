@@ -160,8 +160,6 @@ class PhotoController extends ChangeNotifier {
     }
   }
 
-  // ==================== 사진 조회 ====================
-
   /// 모든 카테고리에서 사진 초기 로드 (무한 스크롤용)
   Future<void> loadPhotosFromAllCategoriesInitial(
     List<String> categoryIds,

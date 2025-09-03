@@ -10,7 +10,7 @@ class InviteLinkCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       width: 354,
-      height: 96,
+      height: 110,
       child: Card(
         clipBehavior: Clip.antiAliasWithSaveLayer,
         color: const Color(0xff1c1c1c),
@@ -77,7 +77,8 @@ class InviteLinkCard extends StatelessWidget {
             style: TextStyle(
               color: const Color(0xfff9f9f9),
               fontSize: (12).sp,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w800,
+              fontFamily: "Pretendard",
             ),
           ),
         ],

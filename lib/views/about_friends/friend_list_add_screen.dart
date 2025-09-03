@@ -197,7 +197,7 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Color(0xffd9d9d9)),
         title: Text(
-          widget.categoryId != null ? '카테고리에 친구 추가' : '친구 목록',
+          '친구 목록',
           style: TextStyle(
             color: const Color(0xfff9f9f9),
             fontSize: 20.sp,
@@ -223,36 +223,47 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
             children: [
               // 검색 바
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                padding: EdgeInsets.symmetric(horizontal: 19.w),
                 child: Container(
                   width: double.infinity,
-                  height: 47.h,
+                  height: 47,
                   decoration: BoxDecoration(
                     color: const Color(0xff1e1e1e),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: TextField(
-                    controller: _searchController,
-                    style: TextStyle(
-                      color: const Color(0xfff9f9f9),
-                      fontSize: 16.sp,
-                    ),
-                    cursorColor: const Color(0xfff9f9f9),
-                    decoration: InputDecoration(
-                      hintText: '친구 검색하기',
-                      hintStyle: TextStyle(
-                        color: const Color(0xffd9d9d9),
-                        fontSize: 18.sp,
-                        fontWeight: FontWeight.w500,
-                        fontFamily: 'Pretendard',
-                      ),
-                      prefixIcon: Icon(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      SizedBox(width: 7.w),
+                      Icon(
                         Icons.search,
                         color: const Color(0xffd9d9d9),
                         size: 24.w,
                       ),
-                      border: InputBorder.none,
-                    ),
+                      SizedBox(width: 8.w),
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          style: TextStyle(
+                            color: const Color(0xfff9f9f9),
+                            fontSize: 16.sp,
+                          ),
+                          cursorColor: const Color(0xfff9f9f9),
+                          decoration: InputDecoration(
+                            hintText: '친구 검색하기',
+                            hintStyle: TextStyle(
+                              color: const Color(0xffd9d9d9),
+                              fontSize: 16.sp,
+                              fontWeight: FontWeight.w500,
+                              fontFamily: 'Pretendard',
+                            ),
+
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
