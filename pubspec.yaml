@@ -51,7 +51,6 @@ dependencies:
   flutter_screenutil: ^5.9.0
   cached_network_image: ^3.4.1
   shimmer: ^3.0.0
-  firebase_app_check: any
   url_launcher: ^6.3.1
   file_picker: ^8.1.4
   shared_preferences: ^2.3.3

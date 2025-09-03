@@ -1188,17 +1188,8 @@ PODS:
     - abseil/meta/type_traits
     - abseil/xcprivacy
   - abseil/xcprivacy (1.20240722.0)
-  - amplify_auth_cognito (0.0.1):
-    - Flutter
-    - FlutterMacOS
-  - amplify_secure_storage (0.0.1):
-    - Flutter
   - app_links (0.0.2):
     - Flutter
-  - AppCheckCore (11.2.0):
-    - GoogleUtilities/Environment (~> 8.0)
-    - GoogleUtilities/UserDefaults (~> 8.0)
-    - PromisesObjC (~> 2.4)
   - audio_waveforms (0.0.1):
     - Flutter
   - audioplayers_darwin (0.0.1):
@@ -1222,8 +1213,6 @@ PODS:
   - connectivity_plus (0.0.1):
     - Flutter
   - contacts_service (0.2.2):
-    - Flutter
-  - device_info_plus (0.0.1):
     - Flutter
   - DKImagePickerController/Core (4.3.9):
     - DKImagePickerController/ImageDataManager
@@ -1273,11 +1262,6 @@ PODS:
   - Firebase/Storage (12.0.0):
     - Firebase/CoreOnly
     - FirebaseStorage (~> 12.0.0)
-  - firebase_app_check (0.4.0):
-    - Firebase/CoreOnly (~> 12.0.0)
-    - firebase_core
-    - FirebaseAppCheck (~> 12.0.0)
-    - Flutter
   - firebase_auth (6.0.1):
     - Firebase/Auth (= 12.0.0)
     - firebase_core
@@ -1289,12 +1273,6 @@ PODS:
     - Firebase/Storage (= 12.0.0)
     - firebase_core
     - Flutter
-  - FirebaseAppCheck (12.0.0):
-    - AppCheckCore (~> 11.0)
-    - FirebaseAppCheckInterop (~> 12.0.0)
-    - FirebaseCore (~> 12.0.0)
-    - GoogleUtilities/Environment (~> 8.1)
-    - GoogleUtilities/UserDefaults (~> 8.1)
   - FirebaseAppCheckInterop (12.0.0)
   - FirebaseAuth (12.0.0):
     - FirebaseAppCheckInterop (~> 12.0.0)
@@ -1382,9 +1360,6 @@ PODS:
     - GoogleUtilities/Privacy
   - GoogleUtilities/Privacy (8.1.0)
   - GoogleUtilities/Reachability (8.1.0):
-    - GoogleUtilities/Logger
-    - GoogleUtilities/Privacy
-  - GoogleUtilities/UserDefaults (8.1.0):
     - GoogleUtilities/Logger
     - GoogleUtilities/Privacy
   - "gRPC-C++ (1.69.0)":
@@ -1505,8 +1480,6 @@ PODS:
     - nanopb/encode (= 3.30910.0)
   - nanopb/decode (3.30910.0)
   - nanopb/encode (3.30910.0)
-  - package_info_plus (0.4.5):
-    - Flutter
   - path_provider_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -1515,7 +1488,6 @@ PODS:
   - photo_manager (3.7.1):
     - Flutter
     - FlutterMacOS
-  - PromisesObjC (2.4.0)
   - RecaptchaInterop (101.0.0)
   - SDWebImage (5.21.2):
     - SDWebImage/Core (= 5.21.2)
@@ -1534,8 +1506,6 @@ PODS:
     - Flutter
 
 DEPENDENCIES:
-  - amplify_auth_cognito (from `.symlinks/plugins/amplify_auth_cognito/darwin`)
-  - amplify_secure_storage (from `.symlinks/plugins/amplify_secure_storage/ios`)
   - app_links (from `.symlinks/plugins/app_links/ios`)
   - audio_waveforms (from `.symlinks/plugins/audio_waveforms/ios`)
   - audioplayers_darwin (from `.symlinks/plugins/audioplayers_darwin/ios`)
@@ -1544,9 +1514,7 @@ DEPENDENCIES:
   - cloud_functions (from `.symlinks/plugins/cloud_functions/ios`)
   - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
   - contacts_service (from `.symlinks/plugins/contacts_service/ios`)
-  - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
   - file_picker (from `.symlinks/plugins/file_picker/ios`)
-  - firebase_app_check (from `.symlinks/plugins/firebase_app_check/ios`)
   - firebase_auth (from `.symlinks/plugins/firebase_auth/ios`)
   - firebase_core (from `.symlinks/plugins/firebase_core/ios`)
   - firebase_storage (from `.symlinks/plugins/firebase_storage/ios`)
@@ -1557,7 +1525,6 @@ DEPENDENCIES:
   - fluttertoast (from `.symlinks/plugins/fluttertoast/ios`)
   - image_gallery_saver (from `.symlinks/plugins/image_gallery_saver/ios`)
   - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
-  - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - path_provider_foundation (from `.symlinks/plugins/path_provider_foundation/darwin`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - photo_manager (from `.symlinks/plugins/photo_manager/ios`)
@@ -1568,12 +1535,10 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - abseil
-    - AppCheckCore
     - BoringSSL-GRPC
     - DKImagePickerController
     - DKPhotoGallery
     - Firebase
-    - FirebaseAppCheck
     - FirebaseAppCheckInterop
     - FirebaseAuth
     - FirebaseAuthInterop
@@ -1594,17 +1559,12 @@ SPEC REPOS:
     - libwebp
     - Mantle
     - nanopb
-    - PromisesObjC
     - RecaptchaInterop
     - SDWebImage
     - SDWebImageWebPCoder
     - SwiftyGif
 
 EXTERNAL SOURCES:
-  amplify_auth_cognito:
-    :path: ".symlinks/plugins/amplify_auth_cognito/darwin"
-  amplify_secure_storage:
-    :path: ".symlinks/plugins/amplify_secure_storage/ios"
   app_links:
     :path: ".symlinks/plugins/app_links/ios"
   audio_waveforms:
@@ -1621,12 +1581,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/connectivity_plus/ios"
   contacts_service:
     :path: ".symlinks/plugins/contacts_service/ios"
-  device_info_plus:
-    :path: ".symlinks/plugins/device_info_plus/ios"
   file_picker:
     :path: ".symlinks/plugins/file_picker/ios"
-  firebase_app_check:
-    :path: ".symlinks/plugins/firebase_app_check/ios"
   firebase_auth:
     :path: ".symlinks/plugins/firebase_auth/ios"
   firebase_core:
@@ -1647,8 +1603,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/image_gallery_saver/ios"
   image_picker_ios:
     :path: ".symlinks/plugins/image_picker_ios/ios"
-  package_info_plus:
-    :path: ".symlinks/plugins/package_info_plus/ios"
   path_provider_foundation:
     :path: ".symlinks/plugins/path_provider_foundation/darwin"
   permission_handler_apple:
@@ -1664,10 +1618,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   abseil: a05cc83bf02079535e17169a73c5be5ba47f714b
-  amplify_auth_cognito: a5d9cb77abfbe05e3501ad0c45dddc81503e7074
-  amplify_secure_storage: 3edc30177ffefbcee786c408a21c02f8ab9f168e
   app_links: 76b66b60cc809390ca1ad69bfd66b998d2387ac7
-  AppCheckCore: cc8fd0a3a230ddd401f326489c99990b013f0c4f
   audio_waveforms: a6dde7fe7c0ea05f06ffbdb0f7c1b2b2ba6cedcf
   audioplayers_darwin: ccf9c770ee768abb07e26d90af093f7bab1c12ab
   BoringSSL-GRPC: dded2a44897e45f28f08ae87a55ee4bcd19bc508
@@ -1676,16 +1627,13 @@ SPEC CHECKSUMS:
   cloud_functions: 9b2e5ced78e97f80c1dcf7edfb293cf2e19fe71a
   connectivity_plus: cb623214f4e1f6ef8fe7403d580fdad517d2f7dd
   contacts_service: 7c2ed10147f55891576c6a582f431e385d8de92d
-  device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
   DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
   DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
   file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
   Firebase: 800d487043c0557d9faed71477a38d9aafb08a41
-  firebase_app_check: 967c2ec2cf3d109d1ead13889994b62e3868d6d3
   firebase_auth: 4734e8223034e214039a9a805ff2cfb323223e34
   firebase_core: 633e1851ffe1b9ab875f6467a4f574c79cef02e4
   firebase_storage: 5063abf1ea47bad3df367f24314f4cc6c61a1e16
-  FirebaseAppCheck: b91ab9185b0192dabe7efe83d4b66de33f0d83b0
   FirebaseAppCheckInterop: c848d06a04030c9858ef0ae555b82035dbe470d0
   FirebaseAuth: 654e4de84787c45d7265599a651038e854ccb439
   FirebaseAuthInterop: 002da671896af5e8879ae117dc604ed240b86e80
@@ -1713,11 +1661,9 @@ SPEC CHECKSUMS:
   libwebp: 02b23773aedb6ff1fd38cec7a77b81414c6842a8
   Mantle: c5aa8794a29a022dfbbfc9799af95f477a69b62d
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
-  package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   path_provider_foundation: 080d55be775b7414fd5a5ef3ac137b97b097e564
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   photo_manager: 1d80ae07a89a67dfbcae95953a1e5a24af7c3e62
-  PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
   RecaptchaInterop: 11e0b637842dfb48308d242afc3f448062325aba
   SDWebImage: 9f177d83116802728e122410fb25ad88f5c7608a
   SDWebImageWebPCoder: e38c0a70396191361d60c092933e22c20d5b1380

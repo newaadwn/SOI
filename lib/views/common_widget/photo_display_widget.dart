@@ -54,7 +54,7 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
   bool _showActionOverlay = false; // 선택된 댓글 아래로 마스킹 & 팝업 표시 여부
   // 해당 사진(위젯 인스턴스)에서 음성 댓글 프로필 표시 여부
   bool _isShowingComments = false; // 기본은 숨김
-  String? _lastCheckedPhotoId; // 마지막으로 체크한 사진 ID
+  bool _autoOpenedOnce = false; // 최초 자동 열림 1회 제어
 
   final CommentRecordController _commentRecordController =
       CommentRecordController();
@@ -163,36 +163,31 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    // 업로드 직후 empty imageUrl 를 허용하므로(두 단계 업로드) 빈/잘못된 URL 은 플레이스홀더로 처리
-    bool _isValidMainUrl(String url) =>
-        url.isNotEmpty &&
-        (url.startsWith('http://') || url.startsWith('https://'));
-
-    // 사진이 바뀌었거나 처음 로드된 경우 댓글 자동 표시 체크
-    if (_lastCheckedPhotoId != widget.photo.id) {
-      _lastCheckedPhotoId = widget.photo.id;
-
-      // 현재 사용자의 댓글이 있으면 자동으로 댓글 표시
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        try {
-          final authController = context.read<AuthController?>();
-          final uid = authController?.currentUser?.uid;
-          if (uid != null) {
-            final comments =
-                widget.photoComments[widget.photo.id] ??
-                const <CommentRecordModel>[];
-            final hasUserComment = comments.any((c) => c.recorderUser == uid);
-            if (hasUserComment && mounted) {
-              setState(() {
-                _isShowingComments = true;
-              });
-            }
+  void didUpdateWidget(covariant PhotoDisplayWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 최초로 현재 사용자 댓글이 생긴 시점에 한 번만 자동 표시
+    if (!_autoOpenedOnce) {
+      try {
+        final authController = context.read<AuthController?>();
+        final uid = authController?.currentUser?.uid;
+        if (uid != null) {
+          final comments =
+              widget.photoComments[widget.photo.id] ??
+              const <CommentRecordModel>[];
+          final hasUserComment = comments.any((c) => c.recorderUser == uid);
+          if (hasUserComment) {
+            setState(() {
+              _isShowingComments = true; // 한번 자동으로 켜기
+              _autoOpenedOnce = true; // 재자동 방지
+            });
           }
-        } catch (_) {}
-      });
+        }
+      } catch (_) {}
     }
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.center,
@@ -228,51 +223,20 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                     alignment: Alignment.topCenter,
                     children: [
                       // 배경 이미지
-                      _isValidMainUrl(widget.photo.imageUrl)
-                          ? CachedNetworkImage(
-                            imageUrl: widget.photo.imageUrl,
-                            fit: BoxFit.cover,
-                            width: 354.w, // 실제 이미지 너비
-                            height: 500.h, // 실제 이미지 높이
-                            placeholder: (context, url) {
-                              return Container(
-                                width: 354.w,
-                                height: 500.h,
-                                color: Colors.grey[900],
-                              );
-                            },
-                            errorWidget:
-                                (context, url, error) => Container(
-                                  width: 354.w,
-                                  height: 500.h,
-                                  color: Colors.grey[850],
-                                  alignment: Alignment.center,
-                                  child: const Icon(
-                                    Icons.image_not_supported,
-                                    color: Colors.white54,
-                                    size: 40,
-                                  ),
-                                ),
-                          )
-                          : Container(
+                      CachedNetworkImage(
+                        imageUrl: widget.photo.imageUrl,
+                        fit: BoxFit.cover,
+                        width: 354.w, // 실제 이미지 너비
+                        height: 500.h, // 실제 이미지 높이
+                        placeholder: (context, url) {
+                          return Container(
                             width: 354.w,
                             height: 500.h,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[900],
-                              borderRadius: BorderRadius.circular(0),
-                            ),
-                            alignment: Alignment.center,
-                            child: const SizedBox(
-                              width: 32,
-                              height: 32,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.6,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white54,
-                                ),
-                              ),
-                            ),
-                          ),
+                            color: Colors.grey[900],
+                            child: const Center(),
+                          );
+                        },
+                      ),
                       // 댓글 보기 토글 시(롱프레스 액션 오버레이 아닐 때) 살짝 어둡게 마스킹하여 아바타 대비 확보
                       if (_isShowingComments && !_showActionOverlay)
                         Positioned.fill(

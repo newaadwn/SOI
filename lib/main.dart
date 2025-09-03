@@ -68,11 +68,24 @@ void main() async {
     rethrow;
   }
 
-  const supabaseUrl = 'https://bobyanticgtadhimszzi.supabase.co';
-  const supabaseKey = String.fromEnvironment(
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJvYnlhbnRpY2d0YWRoaW1zenppIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NjY4OTczMSwiZXhwIjoyMDcyMjY1NzMxfQ.OX6W_GY2ZFE5z9HMrB9Xf1-MCAsJuWBHUh_EFw6JSIM',
+  // Supabase 설정: 실제 앱에서는 service_role 키를 절대 클라이언트에 두지 말 것.
+  // 아래 값들은 --dart-define 으로 주입하거나(권장) .env 처리 라이브러리 사용.
+  const supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'https://bobyanticgtadhimszzi.supabase.co',
   );
-  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseKey);
+  const supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
+    // 개발 편의용 placeholder; 실제 배포시 dart-define 으로만 주입
+    defaultValue: 'REPLACE_WITH_ANON_PUBLIC_KEY',
+  );
+  if (supabaseAnonKey.isEmpty ||
+      supabaseAnonKey == 'REPLACE_WITH_ANON_PUBLIC_KEY') {
+    debugPrint(
+      '[Supabase][Init] ❌ Missing anon key (SUPABASE_ANON_KEY). Storage uploads will 403.',
+    );
+  }
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
 
   // 에러 핸들링 추가
   FlutterError.onError = (FlutterErrorDetails details) {
