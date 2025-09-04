@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'controllers/comment_record_controller.dart';
 import 'controllers/contact_controller.dart';
 import 'controllers/photo_controller.dart';
@@ -44,6 +45,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 환경 변수 로드
+  await dotenv.load(fileName: ".env");
+
   // 날짜 포맷팅 초기화 (한국어 로케일)
   await initializeDateFormatting('ko_KR', null);
 
@@ -68,24 +72,16 @@ void main() async {
     rethrow;
   }
 
-  // Supabase 설정: 실제 앱에서는 service_role 키를 절대 클라이언트에 두지 말 것.
-  // 아래 값들은 --dart-define 으로 주입하거나(권장) .env 처리 라이브러리 사용.
-  const supabaseUrl = String.fromEnvironment(
-    'SUPABASE_URL',
-    defaultValue: 'https://bobyanticgtadhimszzi.supabase.co',
-  );
-  const supabaseAnonKey = String.fromEnvironment(
-    'SUPABASE_ANON_KEY',
-    // 개발 편의용 placeholder; 실제 배포시 dart-define 으로만 주입
-    defaultValue: 'REPLACE_WITH_ANON_PUBLIC_KEY',
-  );
-  if (supabaseAnonKey.isEmpty ||
-      supabaseAnonKey == 'REPLACE_WITH_ANON_PUBLIC_KEY') {
-    debugPrint(
-      '[Supabase][Init] ❌ Missing anon key (SUPABASE_ANON_KEY). Storage uploads will 403.',
-    );
+  // Supabase 설정: .env 파일에서 환경 변수 로드
+  final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
+  final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+
+  if (supabaseUrl.isEmpty || supabaseAnonKey.isEmpty) {
+    debugPrint('supabse url과 supabase Anon key가 없습니다.');
+  } else {
+    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+    debugPrint('[Supabase][Init] ✅ Initialized successfully');
   }
-  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
 
   // 에러 핸들링 추가
   FlutterError.onError = (FlutterErrorDetails details) {
@@ -192,14 +188,6 @@ class _MyAppState extends State<MyApp> {
       child: ScreenUtilInit(
         designSize: const Size(393, 852),
         child: MaterialApp(
-          builder: (context, child) {
-            return MediaQuery(
-              data: MediaQuery.of(
-                context,
-              ).copyWith(textScaler: TextScaler.linear(1.0)),
-              child: child!,
-            );
-          },
           initialRoute: '/',
           debugShowCheckedModeBanner: false,
           routes: {

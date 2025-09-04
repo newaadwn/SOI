@@ -86,15 +86,7 @@ class PhotoController extends ChangeNotifier {
       _uploadProgress = 1.0;
       notifyListeners();
 
-      // debugPrint('PhotoController: 업로드 결과 - 성공: ${result.isSuccess}');
-      if (!result.isSuccess) {
-        // debugPrint('PhotoController: 업로드 실패 이유: ${result.error}');
-      }
-
       if (result.isSuccess) {
-        // ✅ 성공 시 UI 피드백
-        // debugPrint('사진이 성공적으로 업로드되었습니다.');
-
         // 사진 목록 새로고침
         await loadPhotosByCategory(categoryId);
 
@@ -102,18 +94,15 @@ class PhotoController extends ChangeNotifier {
       } else {
         // ❌ 실패 시 UI 피드백
         _error = result.error;
-        // debugPrint(result.error ?? '사진 업로드에 실패했습니다.');
+
         return false;
       }
     } catch (e) {
-      // debugPrint('사진 업로드 컨트롤러 오류: $e');
       _isUploading = false;
       _uploadProgress = 0.0;
       _error = '사진 업로드 중 오류가 발생했습니다.';
       notifyListeners();
 
-      // ❌ 에러 시 UI 피드백
-      // debugPrint('사진 업로드 중 오류가 발생했습니다.');
       return false;
     }
   }

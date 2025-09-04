@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/photo_data_model.dart';
 
 /// Photo Repository - Firebase와 관련된 모든 데이터 액세스 로직을 담당
@@ -21,21 +22,22 @@ class PhotoRepository {
     required String userId,
     String? customFileName,
   }) async {
+    final supabase = Supabase.instance.client;
     try {
       final fileName =
           customFileName ??
-          '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+          '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.png';
 
-      final storageRef = _storage
-          .ref()
-          .child('photos')
-          .child(categoryId)
-          .child(fileName);
+      // supabase storage에 사진 업로드
+      supabase.storage.from('photos').upload(fileName, imageFile);
 
-      final uploadTask = await storageRef.putFile(imageFile);
-      return await uploadTask.ref.getDownloadURL();
+      // 즉시 공개 URL 생성 (다운로드 API 호출 없음)
+      final publicUrl = supabase.storage.from('photos').getPublicUrl(fileName);
+
+      // 즉시 공개 URL 반환
+      return publicUrl;
     } catch (e) {
-      // debugPrint('이미지 업로드 오류: $e');
+      debugPrint('이미지 업로드 오류: $e');
       return null;
     }
   }
@@ -47,10 +49,10 @@ class PhotoRepository {
     required String userId,
     String? customFileName,
   }) async {
+    final supabase = Supabase.instance.client;
     try {
       // 파일 존재 확인
       if (!await audioFile.exists()) {
-        // debugPrint('❌ 오디오 파일이 존재하지 않습니다: ${audioFile.path}');
         return null;
       }
 
@@ -58,7 +60,6 @@ class PhotoRepository {
       final fileSize = await audioFile.length();
 
       if (fileSize == 0) {
-        // debugPrint('❌ 오디오 파일 크기가 0입니다');
         return null;
       }
 
@@ -67,34 +68,14 @@ class PhotoRepository {
           customFileName ??
           '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
-      // debugPrint('📁 Storage 경로: audio/$categoryId/$fileName');
+      // supabase storage에 사진 업로드
+      supabase.storage.from('photos').upload(fileName, audioFile);
 
-      // Storage 참조 생성
-      final storageRef = _storage
-          .ref()
-          .child('audio')
-          .child(categoryId)
-          .child(fileName);
+      // 즉시 공개 URL 생성 (다운로드 API 호출 없음)
+      final publicUrl = supabase.storage.from('photos').getPublicUrl(fileName);
 
-      // debugPrint('☁️ Firebase Storage에 업로드 시작...');
-
-      // 파일 업로드
-      final uploadTask = storageRef.putFile(audioFile);
-
-      // 업로드 진행률 모니터링
-      uploadTask.snapshotEvents.listen((snapshot) {});
-
-      final taskSnapshot = await uploadTask;
-      // debugPrint('✅ Firebase Storage 업로드 완료');
-
-      // 다운로드 URL 가져오기
-      final downloadUrl = await taskSnapshot.ref.getDownloadURL();
-      // debugPrint('🔗 다운로드 URL: $downloadUrl');
-
-      return downloadUrl;
+      return publicUrl;
     } catch (e) {
-      // debugPrint('❌ 오디오 업로드 오류: $e');
-      // debugPrint('📍 스택 트레이스: $stackTrace');
       return null;
     }
   }

@@ -43,6 +43,8 @@ class PhotoService {
         userId: userId,
       );
 
+      debugPrint("supabase image url: $imageUrl");
+
       if (imageUrl == null) {
         return PhotoUploadResult.failure('이미지 업로드에 실패했습니다.');
       }
@@ -111,7 +113,7 @@ class PhotoService {
   }) async {
     try {
       // 1. 이미지 업로드
-      // // debugPrint('📤 이미지 업로드 시작...');
+
       final imageFile = File(imageFilePath);
       final imageUrl = await _photoRepository.uploadImageToStorage(
         imageFile: imageFile,
@@ -140,9 +142,6 @@ class PhotoService {
 
       // 3. 파형 데이터 처리 (제공된 데이터 우선 사용)
       List<double> finalWaveformData;
-      // // debugPrint('파형 데이터 처리 시작:');
-      // // debugPrint('  - 제공된 waveformData null 여부: ${waveformData == null}');
-      // // debugPrint('  - 제공된 waveformData 길이: ${waveformData?.length ?? 0}');
 
       if (waveformData != null && waveformData.isNotEmpty) {
         finalWaveformData = waveformData;

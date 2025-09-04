@@ -84,6 +84,7 @@ dependencies:
   flutter_contacts: ^1.1.9+2
   image_gallery_saver: ^2.0.3
   supabase_flutter: ^2.10.0
+  flutter_dotenv: ^6.0.0
 
 
 dev_dependencies:
@@ -117,6 +118,7 @@ flutter:
   assets:
     - assets/
     - assets/fonts/PretendardVariable.ttf
+    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
