@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'dart:async';
 import 'controllers/comment_record_controller.dart';
 import 'controllers/contact_controller.dart';
 import 'controllers/photo_controller.dart';
@@ -13,6 +14,7 @@ import 'controllers/emoji_reaction_controller.dart';
 import 'services/friend_request_service.dart';
 import 'services/friend_service.dart';
 import 'services/user_matching_service.dart';
+import 'services/notification_service.dart';
 import 'repositories/friend_request_repository.dart';
 import 'repositories/friend_repository.dart';
 import 'repositories/user_search_repository.dart';
@@ -26,9 +28,11 @@ import 'views/about_camera/camera_screen.dart';
 import 'views/about_feed/feed_home.dart';
 import 'views/about_friends/friend_list_add_screen.dart';
 import 'views/about_friends/friend_list_screen.dart';
+import 'views/about_friends/friend_request_screen.dart';
 import 'views/about_login/register_screen.dart';
 import 'views/about_login/login_screen.dart';
 import 'views/about_login/start_screen.dart';
+import 'views/about_notification/notification_screen.dart';
 import 'views/about_profile/profile_screen.dart';
 import 'views/about_setting/privacy.dart';
 import 'views/about_friends/friend_management_screen.dart';
@@ -36,6 +40,7 @@ import 'controllers/auth_controller.dart';
 import 'controllers/category_controller.dart';
 import 'controllers/audio_controller.dart';
 import 'controllers/comment_audio_controller.dart';
+import 'controllers/notification_controller.dart';
 import 'package:flutter/rendering.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'views/home_navigator_screen.dart';
@@ -114,14 +119,51 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  Timer? _cleanupTimer;
+
   @override
   void initState() {
     super.initState();
+
+    // 앱 시작시 백그라운드 알림 시스템 정리 수행
+    if (widget.firebaseInitialized) {
+      _performSystemMaintenanceOnStart();
+      _startPeriodicCleanup();
+    }
   }
 
   @override
   void dispose() {
+    _cleanupTimer?.cancel();
     super.dispose();
+  }
+
+  /// 앱 시작시 시스템 유지보수 작업 수행
+  void _performSystemMaintenanceOnStart() {
+    // 앱 시작 후 몇 초 후에 백그라운드에서 시스템 정리 수행
+    Future.delayed(const Duration(seconds: 5), () {
+      try {
+        NotificationService().performSystemCleanup().catchError((e) {
+          debugPrint('❌ 시스템 시작시 알림 정리 실패: $e');
+          // 사용자 경험에 영향을 주지 않도록 에러를 무시
+        });
+      } catch (e) {
+        debugPrint('❌ 시스템 정리 작업 초기화 실패: $e');
+      }
+    });
+  }
+
+  /// 정기적인 알림 정리 작업 시작 (24시간마다)
+  void _startPeriodicCleanup() {
+    _cleanupTimer = Timer.periodic(const Duration(hours: 24), (timer) {
+      try {
+        NotificationService().performSystemCleanup().catchError((e) {
+          debugPrint('❌ 정기 알림 정리 실패: $e');
+        });
+      } catch (e) {
+        debugPrint('❌ 정기 정리 작업 실행 실패: $e');
+      }
+    });
   }
 
   @override
@@ -184,6 +226,9 @@ class _MyAppState extends State<MyApp> {
                 userSearchRepository: UserSearchRepository(),
               ),
         ),
+
+        // 알림 관리 컨트롤러
+        ChangeNotifierProvider(create: (_) => NotificationController()),
       ],
       child: ScreenUtilInit(
         designSize: const Size(393, 852),
@@ -211,12 +256,16 @@ class _MyAppState extends State<MyApp> {
             '/contact_manager': (context) => const FriendManagementScreen(),
             '/friend_list_add': (context) => const FriendListAddScreen(),
             '/friend_list': (context) => const FriendListScreen(),
+            '/friend_requests': (context) => const FriendRequestScreen(),
 
             // 피드 홈 라우트
             '/feed_home': (context) => const FeedHomeScreen(),
 
             // 프로필 페이지 라우트
             '/profile_screen': (context) => const ProfileScreen(),
+
+            // 알림 페이지 라우트
+            '/notifications': (context) => const NotificationScreen(),
           },
           theme: ThemeData(iconTheme: IconThemeData(color: Colors.white)),
         ),

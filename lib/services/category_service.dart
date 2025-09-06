@@ -4,11 +4,31 @@ import 'package:flutter/material.dart';
 import '../repositories/category_repository.dart';
 import '../models/category_data_model.dart';
 import '../models/auth_result.dart';
+import 'notification_service.dart';
+import 'photo_service.dart';
 
 /// 비즈니스 로직을 처리하는 Service
 /// Repository를 사용해서 실제 비즈니스 규칙을 적용
 class CategoryService {
+  // Singleton pattern
+  static final CategoryService _instance = CategoryService._internal();
+  factory CategoryService() => _instance;
+  CategoryService._internal();
+
   final CategoryRepository _repository = CategoryRepository();
+
+  // Lazy initialization으로 순환 의존성 방지
+  NotificationService? _notificationService;
+  NotificationService get notificationService {
+    _notificationService ??= NotificationService();
+    return _notificationService!;
+  }
+
+  PhotoService? _photoService;
+  PhotoService get photoService {
+    _photoService ??= PhotoService();
+    return _photoService!;
+  }
 
   // ==================== 비즈니스 로직 ====================
 
@@ -93,6 +113,21 @@ class CategoryService {
       );
 
       final categoryId = await _repository.createCategory(category);
+
+      // 5. 카테고리 초대 알림 생성 (카테고리 생성자가 액터)
+      try {
+        // 첫 번째 메이트를 생성자로 간주
+        final creatorUserId = mates.first;
+        await notificationService.createCategoryInviteNotification(
+          categoryId: categoryId,
+          actorUserId: creatorUserId,
+          recipientUserIds: mates,
+        );
+        debugPrint('🔔 카테고리 초대 알림 생성 완료 - 카테고리: $categoryId');
+      } catch (e) {
+        // 알림 생성 실패는 전체 카테고리 생성을 실패시키지 않음
+        debugPrint('⚠️ 알림 생성 실패 (카테고리 생성은 성공): $e');
+      }
 
       return AuthResult.success(categoryId);
     } catch (e) {
@@ -318,6 +353,17 @@ class CategoryService {
         photoUrl: photoUrl,
       );
 
+      // 관련 알림들의 썸네일 업데이트
+      try {
+        await notificationService.updateCategoryThumbnailInNotifications(
+          categoryId: categoryId,
+          newThumbnailUrl: photoUrl,
+        );
+      } catch (e) {
+        debugPrint('⚠️ 알림 썸네일 업데이트 실패 (표지사진은 성공적으로 업데이트됨): $e');
+        // 표지사진 업데이트는 성공했으므로 계속 진행
+      }
+
       return AuthResult.success(photoUrl);
     } catch (e) {
       return AuthResult.failure('표지사진 업데이트 중 오류가 발생했습니다.');
@@ -339,6 +385,17 @@ class CategoryService {
         photoUrl: photoUrl,
       );
 
+      // 관련 알림들의 썸네일 업데이트
+      try {
+        await notificationService.updateCategoryThumbnailInNotifications(
+          categoryId: categoryId,
+          newThumbnailUrl: photoUrl,
+        );
+      } catch (e) {
+        debugPrint('⚠️ 알림 썸네일 업데이트 실패 (표지사진은 성공적으로 업데이트됨): $e');
+        // 표지사진 업데이트는 성공했으므로 계속 진행
+      }
+
       return AuthResult.success();
     } catch (e) {
       return AuthResult.failure('표지사진 업데이트 중 오류가 발생했습니다.');
@@ -353,6 +410,18 @@ class CategoryService {
       }
 
       await _repository.deleteCategoryPhoto(categoryId);
+
+      // 관련 알림들의 썸네일을 null로 업데이트 (기본 아이콘 표시)
+      try {
+        await notificationService.updateCategoryThumbnailInNotifications(
+          categoryId: categoryId,
+          newThumbnailUrl: '', // 빈 문자열로 설정하여 기본 아이콘 표시
+        );
+      } catch (e) {
+        debugPrint('⚠️ 알림 썸네일 업데이트 실패 (표지사진 삭제는 성공적으로 완료됨): $e');
+        // 표지사진 삭제는 성공했으므로 계속 진행
+      }
+
       return AuthResult.success();
     } catch (e) {
       return AuthResult.failure('표지사진 삭제 중 오류가 발생했습니다.');
@@ -466,6 +535,51 @@ class CategoryService {
       });
     } catch (e) {
       debugPrint('사용자 확인 시간 업데이트 실패: $e');
+    }
+  }
+
+  /// 카테고리 대표사진 삭제 후 최신 사진으로 자동 업데이트
+  Future<void> updateCoverPhotoToLatestAfterDeletion(String categoryId) async {
+    try {
+      if (categoryId.isEmpty) {
+        throw ArgumentError('카테고리 ID가 필요합니다.');
+      }
+
+      // 카테고리의 최신 사진 조회
+      final photos = await photoService.getPhotosByCategory(categoryId);
+
+      if (photos.isNotEmpty) {
+        // 최신 사진으로 대표사진 업데이트 (자동 설정)
+        await _repository.updateCategoryPhoto(
+          categoryId: categoryId,
+          photoUrl: photos.first.imageUrl, // 이미 최신순으로 정렬되어 있음
+        );
+
+        // 관련 알림들의 썸네일 업데이트
+        try {
+          await notificationService.updateCategoryThumbnailInNotifications(
+            categoryId: categoryId,
+            newThumbnailUrl: photos.first.imageUrl,
+          );
+        } catch (e) {
+          debugPrint('⚠️ 알림 썸네일 업데이트 실패: $e');
+        }
+      } else {
+        // 사진이 없으면 대표사진 제거
+        await _repository.deleteCategoryPhoto(categoryId);
+
+        // 관련 알림들의 썸네일을 null로 업데이트
+        try {
+          await notificationService.updateCategoryThumbnailInNotifications(
+            categoryId: categoryId,
+            newThumbnailUrl: '',
+          );
+        } catch (e) {
+          debugPrint('⚠️ 알림 썸네일 업데이트 실패: $e');
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ 삭제 후 대표사진 자동 업데이트 실패: $e');
     }
   }
 }

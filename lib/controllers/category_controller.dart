@@ -103,19 +103,8 @@ class CategoryController extends ChangeNotifier {
   /// 카테고리 데이터를 스트림으로 가져오는 함수
   Stream<List<CategoryDataModel>> streamUserCategories(String userId) {
     return _categoryService.getUserCategoriesStream(userId).map((categories) {
-      // 스트림에서도 사용자별 정렬 적용
-      categories.sort((a, b) {
-        final aIsPinned = a.isPinnedForUser(userId);
-        final bIsPinned = b.isPinnedForUser(userId);
-
-        // 고정된 카테고리를 상단에
-        if (aIsPinned && !bIsPinned) return -1;
-        if (!aIsPinned && bIsPinned) return 1;
-
-        // 같은 고정 상태 내에서는 생성일시 최신순
-        return b.createdAt.compareTo(a.createdAt);
-      });
-
+      // 스트림에서도 사용자별 정렬 적용 (공통 비교 함수 사용)
+      categories.sort((a, b) => _compareCategoriesForUser(a, b, userId));
       return categories;
     });
   }
@@ -746,19 +735,48 @@ class CategoryController extends ChangeNotifier {
     _lastLoadedUserId = null;
   }
 
-  /// 사용자별 고정 상태에 따라 카테고리 정렬
+  /// 사용자별 고정 상태와 새로운 사진 여부에 따라 카테고리 정렬
   void _sortCategoriesForUser(String userId) {
-    _userCategories.sort((a, b) {
-      final aIsPinned = a.isPinnedForUser(userId);
-      final bIsPinned = b.isPinnedForUser(userId);
+    _userCategories.sort((a, b) => _compareCategoriesForUser(a, b, userId));
+  }
 
-      // 고정된 카테고리를 상단에
-      if (aIsPinned && !bIsPinned) return -1;
-      if (!aIsPinned && bIsPinned) return 1;
+  /// 카테고리 비교 로직 (정렬용)
+  int _compareCategoriesForUser(
+    CategoryDataModel a,
+    CategoryDataModel b,
+    String userId,
+  ) {
+    final aIsPinned = a.isPinnedForUser(userId);
+    final bIsPinned = b.isPinnedForUser(userId);
+    final aHasNewPhoto = a.hasNewPhotoForUser(userId);
+    final bHasNewPhoto = b.hasNewPhotoForUser(userId);
 
-      // 같은 고정 상태 내에서는 생성일시 최신순
-      return b.createdAt.compareTo(a.createdAt);
-    });
+    // 1순위: 고정된 카테고리를 상단에
+    if (aIsPinned && !bIsPinned) return -1;
+    if (!aIsPinned && bIsPinned) return 1;
+
+    // 2순위: 같은 고정 상태 내에서는 새로운 사진이 있는 카테고리를 우선
+    if (aIsPinned == bIsPinned) {
+      if (aHasNewPhoto && !bHasNewPhoto) return -1;
+      if (!aHasNewPhoto && bHasNewPhoto) return 1;
+    }
+
+    // 3순위: 같은 조건 내에서는 최신 사진 업로드 시간순 (없으면 생성일시순)
+    if (aIsPinned == bIsPinned && aHasNewPhoto == bHasNewPhoto) {
+      // 최신 사진 업로드 시간이 있으면 그것을 우선 사용
+      if (a.lastPhotoUploadedAt != null && b.lastPhotoUploadedAt != null) {
+        return b.lastPhotoUploadedAt!.compareTo(a.lastPhotoUploadedAt!);
+      } else if (a.lastPhotoUploadedAt != null) {
+        return -1; // a에만 사진 업로드 시간이 있으면 a를 앞으로
+      } else if (b.lastPhotoUploadedAt != null) {
+        return 1; // b에만 사진 업로드 시간이 있으면 b를 앞으로
+      } else {
+        // 둘 다 사진 업로드 시간이 없으면 생성일시 최신순
+        return b.createdAt.compareTo(a.createdAt);
+      }
+    }
+
+    return 0;
   }
 
   // ==================== 검색 기능 ====================

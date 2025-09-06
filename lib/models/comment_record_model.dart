@@ -106,18 +106,4 @@ class CommentRecordModel {
       relativePosition: relativePosition ?? this.relativePosition,
     );
   }
-
-  /// 현재 위치를 가져오기 (상대 좌표 우선, 없으면 절대 좌표)
-  Offset? getCurrentPosition({Size? containerSize}) {
-    if (relativePosition != null) {
-      return relativePosition;
-    }
-
-    return null;
-  }
-
-  @override
-  String toString() {
-    return 'CommentRecordModel(id: $id, photoId: $photoId, recorderUser: $recorderUser, duration: ${duration}ms, profileImageUrl: $profileImageUrl)';
-  }
 }

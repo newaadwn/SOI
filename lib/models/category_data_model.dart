@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart';
 
 /// 카테고리 데이터 모델 (순수 데이터 클래스)
 class CategoryDataModel {
@@ -36,13 +35,6 @@ class CategoryDataModel {
     Map<String, dynamic> data,
     String id,
   ) {
-    debugPrint(
-      '📦 CategoryDataModel.fromFirestore - 카테고리: ${data['name']} ($id)',
-    );
-    debugPrint('  - lastPhotoUploadedBy: ${data['lastPhotoUploadedBy']}');
-    debugPrint('  - lastPhotoUploadedAt: ${data['lastPhotoUploadedAt']}');
-    debugPrint('  - userLastViewedAt: ${data['userLastViewedAt']}');
-
     return CategoryDataModel(
       id: id,
       name: data['name'] ?? '',
@@ -133,8 +125,6 @@ class CategoryDataModel {
 
   /// 특정 사용자에게 새로운 사진이 있는지 확인
   bool hasNewPhotoForUser(String currentUserId) {
-    debugPrint('🔍 새 사진 확인 - 카테고리: $name, 사용자: $currentUserId');
-
     // 마지막 사진 업로드 정보가 없으면 새로운 사진 없음
     if (lastPhotoUploadedBy == null || lastPhotoUploadedAt == null) {
       return false;
@@ -158,11 +148,6 @@ class CategoryDataModel {
     final isNewPhoto = lastPhotoUploadedAt!.isAfter(userLastViewed);
 
     return isNewPhoto;
-  }
-
-  @override
-  String toString() {
-    return 'CategoryDataModel(id: $id, name: $name, mates: $mates';
   }
 
   @override

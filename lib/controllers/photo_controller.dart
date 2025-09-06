@@ -460,4 +460,36 @@ class PhotoController extends ChangeNotifier {
     // debugPrint('📺 PhotoController: 사진 스트림 요청 - CategoryId: $categoryId');
     return _photoService.getPhotosByCategoryStream(categoryId);
   }
+
+  /// 특정 사진을 직접 조회 (알림에서 사용)
+  Future<PhotoDataModel?> getPhotoById({
+    required String categoryId,
+    required String photoId,
+  }) async {
+    try {
+      debugPrint(
+        '📷 PhotoController: 특정 사진 조회 - CategoryId: $categoryId, PhotoId: $photoId',
+      );
+      return await _photoService.getPhotoById(
+        categoryId: categoryId,
+        photoId: photoId,
+      );
+    } catch (e) {
+      debugPrint('❌ PhotoController: 사진 조회 실패 - $e');
+      return null;
+    }
+  }
+
+  /// 카테고리의 모든 사진을 직접 조회 (스트림이 아닌 일회성)
+  Future<List<PhotoDataModel>> getPhotosByCategoryDirect(
+    String categoryId,
+  ) async {
+    try {
+      debugPrint('📷 PhotoController: 카테고리 사진 직접 조회 - CategoryId: $categoryId');
+      return await _photoService.getPhotosByCategory(categoryId);
+    } catch (e) {
+      debugPrint('❌ PhotoController: 카테고리 사진 조회 실패 - $e');
+      return [];
+    }
+  }
 }

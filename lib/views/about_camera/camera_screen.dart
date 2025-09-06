@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:provider/provider.dart';
 import '../../services/camera_service.dart';
+import '../../controllers/notification_controller.dart';
+import '../../controllers/auth_controller.dart';
 import 'photo_editor_screen.dart';
 import 'package:eva_icons_flutter/eva_icons_flutter.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -64,6 +67,7 @@ class _CameraScreenState extends State<CameraScreen>
     // 카메라 초기화를 지연시킴 (첫 빌드에서 UI 블로킹 방지)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initializeCameraAsync();
+      _initializeNotifications(); // 알림 초기화 추가
     });
   }
 
@@ -140,6 +144,28 @@ class _CameraScreenState extends State<CameraScreen>
     } catch (e) {
       // 줌 레벨 로드 실패 시 기본값 유지
       print('줌 레벨 로드 실패: $e');
+    }
+  }
+
+  // 알림 초기화 - 사용자 ID로 알림 구독 시작
+  Future<void> _initializeNotifications() async {
+    try {
+      final authController = Provider.of<AuthController>(
+        context,
+        listen: false,
+      );
+      final notificationController = Provider.of<NotificationController>(
+        context,
+        listen: false,
+      );
+
+      final userId = authController.getUserId;
+      if (userId != null && userId.isNotEmpty) {
+        await notificationController.startListening(userId);
+        debugPrint('📱 CameraScreen: 알림 초기화 완료 - 사용자: $userId');
+      }
+    } catch (e) {
+      debugPrint('❌ CameraScreen: 알림 초기화 실패 - $e');
     }
   }
 
@@ -521,27 +547,50 @@ class _CameraScreenState extends State<CameraScreen>
           Padding(
             padding: EdgeInsets.only(right: 32.w),
             child: Center(
-              child: IconButton(
-                onPressed: () {},
-                icon: Container(
-                  width: 35,
-                  height: 35,
-                  padding: EdgeInsets.only(bottom: 3.h),
-                  decoration: BoxDecoration(
-                    color: Color(0xff1c1c1c),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: SizedBox(
-                      width: 20.w,
-                      height: 20.h,
-                      child: Image.asset(
-                        'assets/norification.png',
-                        fit: BoxFit.contain,
+              child: Consumer<NotificationController>(
+                builder: (context, notificationController, child) {
+                  return IconButton(
+                    onPressed:
+                        () => Navigator.pushNamed(context, '/notifications'),
+                    icon: Container(
+                      width: 35,
+                      height: 35,
+                      padding: EdgeInsets.only(bottom: 3.h),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Color(0xff1c1c1c),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Padding(
+                        padding: EdgeInsets.only(top: 2.h),
+                        child: Stack(
+                          clipBehavior: Clip.none,
+                          alignment: Alignment.center,
+                          children: [
+                            Image.asset(
+                              "assets/notification.png",
+                              width: 25.sp,
+                              height: 25.sp,
+                            ),
+                            if (notificationController.unreadCount > 0)
+                              Positioned(
+                                left: 12.w,
+                                bottom: 17.h,
+                                child: Container(
+                                  width: 8,
+                                  height: 8,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFF0000),
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ),

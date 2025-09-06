@@ -333,24 +333,27 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
   // 화면 전환 메서드 (분리)
   void _navigateToHome() {
-    // 기존 HomePageNavigationBar를 찾아서 돌아가기
-    Navigator.of(context).popUntil((route) {
-      return route.settings.name == '/home_navigation_screen' || route.isFirst;
-    });
+    if (!mounted || _isDisposing) return;
 
-    // 만약 HomePageNavigationBar가 스택에 없다면 새로 생성 (fallback)
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        final currentRoute = ModalRoute.of(context);
-        if (currentRoute?.settings.name != '/home_navigation_screen') {
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(
-              builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
-              settings: RouteSettings(name: '/home_navigation_screen'),
-            ),
-            (route) => false,
-          );
+    // 즉시 화면 전환 (딜레이 없음)
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder:
+            (context) =>
+                HomePageNavigationBar(currentPageIndex: 2), // 아카이브 탭 (인덱스 2)
+        settings: RouteSettings(name: '/home_navigation_screen'),
+      ),
+      (route) => false, // 모든 기존 화면 제거
+    );
+
+    // 백그라운드에서 바텀시트 정리 (화면 전환 후)
+    Future.microtask(() {
+      try {
+        if (_draggableScrollController.isAttached) {
+          _draggableScrollController.jumpTo(0.19);
         }
+      } catch (e) {
+        // 에러 무시 (이미 다른 화면이므로 문제없음)
       }
     });
   }
@@ -661,24 +664,36 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       // 에러 무시
     }
 
-    // 2. DraggableScrollController 정리 - 안전하게 처리
+    // 2. DraggableScrollController 정리 - 더 안전하게 처리
     try {
       if (_draggableScrollController.isAttached) {
-        // 애니메이션 중단을 위해 현재 위치로 즉시 점프
-        _draggableScrollController.jumpTo(_draggableScrollController.size);
+        // 모든 제스처 완료를 위해 잠시 기다린 후 최소 크기로 설정
+        _draggableScrollController.jumpTo(0.19);
+
+        // 다음 프레임에서 dispose 시도
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          try {
+            if (_draggableScrollController.isAttached) {
+              _draggableScrollController.dispose();
+            }
+          } catch (e) {
+            // 에러 무시
+          }
+        });
+      } else {
+        // 이미 detached인 경우 바로 dispose
+        _draggableScrollController.dispose();
       }
     } catch (e) {
-      // 에러 무시
+      // 모든 에러 무시하고 다음 프레임에서 다시 시도
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        try {
+          _draggableScrollController.dispose();
+        } catch (e) {
+          // 최종 에러도 무시
+        }
+      });
     }
-
-    // 3. 다음 프레임에서 controller dispose
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      try {
-        _draggableScrollController.dispose();
-      } catch (e) {
-        // 에러 무시
-      }
-    });
 
     super.dispose();
   }

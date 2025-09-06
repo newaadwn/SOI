@@ -115,11 +115,6 @@ class AudioDataModel {
   }
 
   @override
-  String toString() {
-    return 'AudioDataModel(id: $id, fileName: $fileName, status: $status, duration: ${durationInSeconds}s)';
-  }
-
-  @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is AudioDataModel && other.id == id;

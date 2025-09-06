@@ -11,11 +11,6 @@ class SelectedFriendModel {
   });
 
   @override
-  String toString() {
-    return 'SelectedFriendModel(uid: $uid, name: $name, profileImageUrl: $profileImageUrl)';
-  }
-
-  @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
     return other is SelectedFriendModel &&

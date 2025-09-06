@@ -10,26 +10,6 @@ class EmojiReactionModel {
     this.count = 0,
   });
 
-  EmojiReactionModel copyWith({String? emoji, String? name, int? count}) {
-    return EmojiReactionModel(
-      emoji: emoji ?? this.emoji,
-      name: name ?? this.name,
-      count: count ?? this.count,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {'emoji': emoji, 'name': name, 'count': count};
-  }
-
-  factory EmojiReactionModel.fromJson(Map<String, dynamic> json) {
-    return EmojiReactionModel(
-      emoji: json['emoji'] ?? '',
-      name: json['name'] ?? '',
-      count: json['count'] ?? 0,
-    );
-  }
-
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;

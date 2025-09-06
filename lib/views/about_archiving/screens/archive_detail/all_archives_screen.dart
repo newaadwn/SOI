@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/category_controller.dart';
+import '../../../../models/category_data_model.dart';
 import '../../../../theme/theme.dart';
 import '../../widgets/archive_card_widget/archive_card_widget.dart';
 
@@ -32,6 +33,8 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
   String? nickName;
   final Map<String, List<String>> _categoryProfileImages = {};
   AuthController? _authController; // AuthController 참조 저장
+  Stream<List<CategoryDataModel>>? _categoriesStream;
+  CategoryController? _categoryController;
 
   @override
   void initState() {
@@ -39,10 +42,19 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
     // 이메일이나 닉네임을 미리 가져와요.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _authController = Provider.of<AuthController>(context, listen: false);
+      _categoryController = Provider.of<CategoryController>(
+        context,
+        listen: false,
+      );
+
       _authController!.getIdFromFirestore().then((value) {
         if (mounted) {
           setState(() {
             nickName = value;
+            // 닉네임을 얻었을 때 stream 생성
+            _categoriesStream = _categoryController!.streamUserCategories(
+              value,
+            );
           });
         }
       });
@@ -110,7 +122,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
   @override
   Widget build(BuildContext context) {
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
-    if (nickName == null) {
+    if (nickName == null || _categoriesStream == null) {
       return Scaffold(
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
         body: Center(
@@ -124,31 +136,17 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      body: Consumer<CategoryController>(
-        builder: (context, categoryController, child) {
-          // 사용자 카테고리 로드 (한 번만 로드)
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            categoryController.loadUserCategories(nickName!);
-          });
-
-          // 로딩 중일 때
-          if (categoryController.isLoading &&
-              categoryController.userCategories.isEmpty) {
-            return Center(
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 3.0,
-              ),
-            );
-          }
-
-          // 에러가 생겼을 때
-          if (categoryController.error != null) {
+      body: StreamBuilder<List<CategoryDataModel>>(
+        stream: _categoriesStream!,
+        initialData: _categoryController?.userCategories ?? [],
+        builder: (context, snapshot) {
+          // 에러가 생겼을 때만 에러 표시
+          if (snapshot.hasError) {
             return Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 40.h),
                 child: Text(
-                  categoryController.error!,
+                  '카테고리를 불러오는 중 오류가 발생했습니다.',
                   style: TextStyle(color: Colors.white, fontSize: 16.sp),
                   textAlign: TextAlign.center,
                 ),
@@ -156,18 +154,26 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
             );
           }
 
-          // 필터링된 카테고리 가져오기
-          final categories = categoryController.userCategories;
+          // 카테고리 목록 가져오기 (initialData가 있으면 바로 사용)
+          final categories = snapshot.data ?? [];
 
           // 데이터 없으면
           if (categories.isEmpty) {
+            // 여전히 로딩 중이라면 로딩 표시
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 3.0,
+                ),
+              );
+            }
+
             return Center(
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 40.h),
                 child: Text(
-                  categoryController.searchQuery.isNotEmpty
-                      ? '검색 결과가 없습니다.'
-                      : '등록된 카테고리가 없습니다.',
+                  '등록된 카테고리가 없습니다.',
                   style: TextStyle(color: Colors.white, fontSize: 16.sp),
                   textAlign: TextAlign.center,
                 ),

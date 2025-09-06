@@ -122,29 +122,6 @@ class FriendModel {
     };
   }
 
-  /// 모델 복사 (일부 필드 변경)
-  FriendModel copyWith({
-    String? userId,
-    String? id,
-    String? name,
-    String? profileImageUrl,
-    FriendStatus? status,
-    bool? isFavorite,
-    DateTime? addedAt,
-    DateTime? lastInteraction,
-  }) {
-    return FriendModel(
-      userId: userId ?? this.userId,
-      id: id ?? this.id,
-      name: name ?? this.name,
-      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      status: status ?? this.status,
-      isFavorite: isFavorite ?? this.isFavorite,
-      addedAt: addedAt ?? this.addedAt,
-      lastInteraction: lastInteraction ?? this.lastInteraction,
-    );
-  }
-
   /// 동등성 비교
   @override
   bool operator ==(Object other) {
@@ -172,11 +149,5 @@ class FriendModel {
         isFavorite.hashCode ^
         addedAt.hashCode ^
         lastInteraction.hashCode;
-  }
-
-  /// 디버그용 문자열 표현
-  @override
-  String toString() {
-    return 'FriendModel(userId: $userId, id: $id, name: $name, profileImageUrl: $profileImageUrl, status: $status, isFavorite: $isFavorite, addedAt: $addedAt, lastInteraction: $lastInteraction)';
   }
 }

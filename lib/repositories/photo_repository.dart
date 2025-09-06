@@ -108,7 +108,6 @@ class PhotoRepository {
 
       return docRef.id;
     } catch (e) {
-      // debugPrint('사진 메타데이터 저장 오류: $e');
       return null;
     }
   }
@@ -133,7 +132,7 @@ class PhotoRepository {
         'categoryId': categoryId,
         'createdAt': FieldValue.serverTimestamp(),
         'status': PhotoStatus.active.name,
-        'duration': duration?.inSeconds ?? 0, // 음성 길이 추가 (기본값 0)
+        'duration': duration?.inSeconds ?? 0,
       };
 
       // 파형 데이터 처리 및 상세 로그
@@ -316,8 +315,6 @@ class PhotoRepository {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          // debugPrint('📺 스트림 업데이트 - 사진 개수: ${snapshot.docs.length}');
-
           return snapshot.docs.map((doc) {
             final data = doc.data();
 
@@ -341,7 +338,6 @@ class PhotoRepository {
           .map((doc) => PhotoDataModel.fromFirestore(doc.data(), doc.id))
           .toList();
     } catch (e) {
-      // debugPrint('사용자별 사진 조회 오류: $e');
       return [];
     }
   }

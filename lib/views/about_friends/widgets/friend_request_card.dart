@@ -35,29 +35,30 @@ class FriendRequestCard extends StatelessWidget {
                 // 친구 요청 리스트
                 receivedRequests.isEmpty
                     ? SizedBox(
-                        height: 132.h,
-                        child: Center(
-                          child: Text(
-                            friendRequestController.isLoading
-                                ? '친구 요청을 불러오는 중...'
-                                : '받은 친구 요청이 없습니다',
-                            style: TextStyle(
-                              color: const Color(0xff666666),
-                              fontSize: 14.sp,
-                            ),
+                      height: 132.h,
+                      child: Center(
+                        child: Text(
+                          friendRequestController.isLoading
+                              ? '친구 요청을 불러오는 중...'
+                              : '받은 친구 요청이 없습니다',
+                          style: TextStyle(
+                            color: const Color(0xff666666),
+                            fontSize: 14.sp,
                           ),
                         ),
-                      )
-                    : Column(
-                        children: receivedRequests.map((request) {
-                          return _buildFriendRequestItem(
-                            context,
-                            scale,
-                            request,
-                            friendRequestController,
-                          );
-                        }).toList(),
                       ),
+                    )
+                    : Column(
+                      children:
+                          receivedRequests.map((request) {
+                            return _buildFriendRequestItem(
+                              context,
+                              scale,
+                              request,
+                              friendRequestController,
+                            );
+                          }).toList(),
+                    ),
               ],
             ),
           ),
@@ -83,27 +84,29 @@ class FriendRequestCard extends StatelessWidget {
           CircleAvatar(
             radius: (22).w,
             backgroundColor: const Color(0xff323232),
-            backgroundImage: (request.senderProfileImageUrl != null &&
-                    request.senderProfileImageUrl!.isNotEmpty &&
-                    (request.senderProfileImageUrl!.startsWith('http://') ||
-                        request.senderProfileImageUrl!.startsWith(
-                          'https://',
-                        )))
-                ? NetworkImage(request.senderProfileImageUrl!)
-                : null,
-            child: (request.senderProfileImageUrl == null ||
-                    request.senderProfileImageUrl!.isEmpty)
-                ? Text(
-                    request.senderid.isNotEmpty
-                        ? request.senderid[0].toUpperCase()
-                        : '?',
-                    style: TextStyle(
-                      color: const Color(0xfff9f9f9),
-                      fontSize: (16).sp,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  )
-                : null,
+            backgroundImage:
+                (request.senderProfileImageUrl != null &&
+                        request.senderProfileImageUrl!.isNotEmpty &&
+                        (request.senderProfileImageUrl!.startsWith('http://') ||
+                            request.senderProfileImageUrl!.startsWith(
+                              'https://',
+                            )))
+                    ? NetworkImage(request.senderProfileImageUrl!)
+                    : null,
+            child:
+                (request.senderProfileImageUrl == null ||
+                        request.senderProfileImageUrl!.isEmpty)
+                    ? Text(
+                      request.senderid.isNotEmpty
+                          ? request.senderid[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
+                        color: const Color(0xfff9f9f9),
+                        fontSize: (16).sp,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                    : null,
           ),
           SizedBox(width: (12).w),
 

@@ -36,20 +36,6 @@ class AuthModel {
     );
   }
 
-  /// Firestore에 저장할 Map 변환
-  Map<String, dynamic> toFirestore() {
-    return {
-      'uid': uid,
-      'id': id,
-      'name': name,
-      'phone': phone,
-      'birth_date': birthDate,
-      'profile_image': profileImage,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'lastLogin': Timestamp.fromDate(lastLogin),
-    };
-  }
-
   /// 서버 타임스탬프를 사용하여 Firestore에 저장할 Map 변환
   Map<String, dynamic> toFirestoreWithServerTimestamp({bool isUpdate = false}) {
     final data = {
@@ -61,34 +47,11 @@ class AuthModel {
       'profile_image': profileImage,
       'lastLogin': FieldValue.serverTimestamp(),
     };
-    
+
     if (!isUpdate) {
       data['createdAt'] = FieldValue.serverTimestamp();
     }
-    
-    return data;
-  }
 
-  /// 사용자 정보 업데이트를 위한 copyWith
-  AuthModel copyWith({
-    String? uid,
-    String? id,
-    String? name,
-    String? phone,
-    String? birthDate,
-    String? profileImage,
-    DateTime? createdAt,
-    DateTime? lastLogin,
-  }) {
-    return AuthModel(
-      uid: uid ?? this.uid,
-      id: id ?? this.id,
-      name: name ?? this.name,
-      phone: phone ?? this.phone,
-      birthDate: birthDate ?? this.birthDate,
-      profileImage: profileImage ?? this.profileImage,
-      createdAt: createdAt ?? this.createdAt,
-      lastLogin: lastLogin ?? this.lastLogin,
-    );
+    return data;
   }
 }

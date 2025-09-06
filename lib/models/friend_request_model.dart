@@ -139,34 +139,6 @@ class FriendRequestModel {
     };
   }
 
-  /// 모델 복사 (일부 필드 변경)
-  FriendRequestModel copyWith({
-    String? id,
-    String? senderUid,
-    String? receiverUid,
-    String? senderid,
-    String? senderProfileImageUrl,
-    String? receiverid,
-    FriendRequestStatus? status,
-    String? message,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return FriendRequestModel(
-      id: id ?? this.id,
-      senderUid: senderUid ?? this.senderUid,
-      receiverUid: receiverUid ?? this.receiverUid,
-      senderid: senderid ?? this.senderid,
-      senderProfileImageUrl:
-          senderProfileImageUrl ?? this.senderProfileImageUrl,
-      receiverid: receiverid ?? this.receiverid,
-      status: status ?? this.status,
-      message: message ?? this.message,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
-  }
-
   /// 동등성 비교
   @override
   bool operator ==(Object other) {
@@ -198,11 +170,5 @@ class FriendRequestModel {
         message.hashCode ^
         createdAt.hashCode ^
         updatedAt.hashCode;
-  }
-
-  /// 디버그용 문자열 표현
-  @override
-  String toString() {
-    return 'FriendRequestModel(id: $id, senderUid: $senderUid, receiverUid: $receiverUid, senderid: $senderid, senderProfileImageUrl: $senderProfileImageUrl, receiverid: $receiverid, status: $status, message: $message, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }
