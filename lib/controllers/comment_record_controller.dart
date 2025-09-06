@@ -26,14 +26,12 @@ class CommentRecordController extends ChangeNotifier {
     required String recorderUser,
     required List<double> waveformData,
     required int duration,
-    required String profileImageUrl, // 프로필 이미지 URL 추가
-    Offset? profilePosition, // 프로필 이미지 위치 추가 (선택적)
+    required String profileImageUrl,
+    Offset? relativePosition,
   }) async {
     try {
       _setLoading(true);
       _clearError();
-
-      debugPrint('🎤 음성 댓글 생성 시작 - 사진: $photoId, 녹음자: $recorderUser');
 
       // 파형 데이터 정규화
       final normalizedWaveform = _service.normalizeWaveformData(waveformData);
@@ -44,19 +42,16 @@ class CommentRecordController extends ChangeNotifier {
         recorderUser: recorderUser,
         waveformData: normalizedWaveform,
         duration: duration,
-        profileImageUrl: profileImageUrl, // 프로필 이미지 URL 전달
-        profilePosition: profilePosition, // 프로필 이미지 위치 전달
+        profileImageUrl: profileImageUrl,
+        relativePosition: relativePosition,
       );
 
       // 캐시 업데이트
       _updateCache(photoId, commentRecord);
 
-      debugPrint('✅ 음성 댓글 생성 완료 - ID: ${commentRecord.id}');
-
       notifyListeners();
       return commentRecord;
     } catch (e) {
-      debugPrint('❌ 음성 댓글 생성 실패: $e');
       _setError('음성 댓글을 저장할 수 없습니다: $e');
       return null;
     } finally {
@@ -64,7 +59,44 @@ class CommentRecordController extends ChangeNotifier {
     }
   }
 
-  /// 음성 댓글의 프로필 이미지 위치 업데이트
+  /// 음성 댓글의 프로필 이미지 위치 업데이트 (상대 좌표)
+  Future<bool> updateRelativeProfilePosition({
+    required String commentId,
+    required String photoId,
+    required Offset relativePosition,
+  }) async {
+    try {
+      _setLoading(true);
+      _clearError();
+
+      await _service.updateRelativeProfilePosition(
+        commentId: commentId,
+        relativePosition: relativePosition,
+      );
+
+      // 캐시 업데이트
+      if (_commentCache.containsKey(photoId)) {
+        final commentIndex = _commentCache[photoId]!.indexWhere(
+          (comment) => comment.id == commentId,
+        );
+        if (commentIndex != -1) {
+          final updatedComment = _commentCache[photoId]![commentIndex].copyWith(
+            relativePosition: relativePosition,
+          );
+          _commentCache[photoId]![commentIndex] = updatedComment;
+        }
+      }
+
+      return true;
+    } catch (e) {
+      _setError('프로필 위치 업데이트 실패: $e');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  /// 음성 댓글의 프로필 이미지 위치 업데이트 (기존 절대 좌표 - 하위호환성)
   Future<bool> updateProfilePosition({
     required String commentId,
     required String photoId,
@@ -73,8 +105,6 @@ class CommentRecordController extends ChangeNotifier {
     try {
       _setLoading(true);
       _clearError();
-
-      debugPrint('📍 프로필 위치 업데이트 시작 - 댓글: $commentId, 위치: $profilePosition');
 
       await _service.updateProfilePosition(
         commentId: commentId,
@@ -94,11 +124,9 @@ class CommentRecordController extends ChangeNotifier {
         }
       }
 
-      debugPrint('✅ 프로필 위치 업데이트 완료');
       notifyListeners();
       return true;
     } catch (e) {
-      debugPrint('❌ 프로필 위치 업데이트 실패: $e');
       _setError('프로필 위치를 업데이트할 수 없습니다: $e');
       return false;
     } finally {
@@ -115,7 +143,7 @@ class CommentRecordController extends ChangeNotifier {
       _setLoading(true);
       _clearError();
 
-      debugPrint(' 사용자 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $userId');
+      // // debugPrint(' 사용자 음성 댓글 프로필 이미지 URL 업데이트 시작 - userId: $userId');
 
       await _service.updateUserProfileImageUrl(
         userId: userId,
@@ -125,11 +153,11 @@ class CommentRecordController extends ChangeNotifier {
       // 캐시된 데이터의 프로필 이미지 URL도 업데이트
       _updateCachedProfileImageUrls(userId, newProfileImageUrl);
 
-      debugPrint('✅ 사용자 음성 댓글 프로필 이미지 URL 업데이트 완료');
+      // // debugPrint('✅ 사용자 음성 댓글 프로필 이미지 URL 업데이트 완료');
       notifyListeners();
       return true;
     } catch (e) {
-      debugPrint('❌ 사용자 음성 댓글 프로필 이미지 URL 업데이트 실패: $e');
+      // // debugPrint('❌ 사용자 음성 댓글 프로필 이미지 URL 업데이트 실패: $e');
       _setError('프로필 이미지 URL을 업데이트할 수 없습니다: $e');
       return false;
     } finally {
@@ -169,9 +197,9 @@ class CommentRecordController extends ChangeNotifier {
       _commentRecords = comments;
       _commentCache[photoId] = comments;
 
-      debugPrint('📥 음성 댓글 로드 완료 - 사진: $photoId, 댓글 수: ${comments.length}');
+      // // debugPrint('📥 음성 댓글 로드 완료 - 사진: $photoId, 댓글 수: ${comments.length}');
     } catch (e) {
-      debugPrint('❌ 음성 댓글 로드 실패: $e');
+      // // debugPrint('❌ 음성 댓글 로드 실패: $e');
       _setError('음성 댓글을 불러올 수 없습니다: $e');
     } finally {
       _setLoading(false);
@@ -196,16 +224,45 @@ class CommentRecordController extends ChangeNotifier {
         );
       }
 
-      debugPrint('🗑️ 음성 댓글 삭제 완료 - ID: $commentId');
+      // // debugPrint('🗑️ 음성 댓글 삭제 완료 - ID: $commentId');
 
       notifyListeners();
       return true;
     } catch (e) {
-      debugPrint('❌ 음성 댓글 삭제 실패: $e');
+      // // debugPrint('❌ 음성 댓글 삭제 실패: $e');
       _setError('음성 댓글을 삭제할 수 없습니다: $e');
       return false;
     } finally {
       _setLoading(false);
+    }
+  }
+
+  /// 음성 댓글 하드 삭제 (UI 선반영, 백그라운드 처리)
+  Future<bool> hardDeleteCommentRecord(String commentId, String photoId) async {
+    // Optimistic: 현재 캐시 상태 저장
+    final previousList = List<CommentRecordModel>.from(
+      _commentCache[photoId] ?? [],
+    );
+    try {
+      _clearError();
+
+      // UI 즉시 제거
+      _commentRecords.removeWhere((c) => c.id == commentId);
+      if (_commentCache.containsKey(photoId)) {
+        _commentCache[photoId]!.removeWhere((c) => c.id == commentId);
+      }
+      notifyListeners();
+
+      // 백그라운드 실행 (await 하되 로딩 표시 최소화)
+      await _service.hardDeleteCommentRecord(commentId);
+      return true;
+    } catch (e) {
+      // 롤백
+      _commentCache[photoId] = previousList;
+      _commentRecords = previousList;
+      _setError('음성 댓글 영구 삭제 실패: $e');
+      notifyListeners();
+      return false;
     }
   }
 
@@ -233,9 +290,9 @@ class CommentRecordController extends ChangeNotifier {
       final comments = await _service.getCommentRecordsByUser(userId);
       _commentRecords = comments;
 
-      debugPrint('👤 사용자 음성 댓글 로드 완료 - 사용자: $userId, 댓글 수: ${comments.length}');
+      // // debugPrint('👤 사용자 음성 댓글 로드 완료 - 사용자: $userId, 댓글 수: ${comments.length}');
     } catch (e) {
-      debugPrint('❌ 사용자 음성 댓글 로드 실패: $e');
+      // // debugPrint('❌ 사용자 음성 댓글 로드 실패: $e');
       _setError('사용자 음성 댓글을 불러올 수 없습니다: $e');
     } finally {
       _setLoading(false);
@@ -248,7 +305,7 @@ class CommentRecordController extends ChangeNotifier {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(_error!),
-          backgroundColor: Colors.red,
+          backgroundColor: const Color(0xFF5A5A5A),
           duration: const Duration(seconds: 3),
         ),
       );

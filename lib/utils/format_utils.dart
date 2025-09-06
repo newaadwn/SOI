@@ -35,4 +35,34 @@ class FormatUtils {
     final formatter = NumberFormat('#,###');
     return formatter.format(number);
   }
+
+  /// 현재 시간을 기준으로 경과 시간을 동적으로 포맷팅
+  /// 예: "방금 전", "5분 전", "2시간 전", "3일 전", "2025.08.20"
+  static String formatRelativeTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    // 음수인 경우 (미래 시간) 처리
+    if (difference.isNegative) {
+      return formatDate(dateTime);
+    }
+
+    final seconds = difference.inSeconds;
+    final minutes = difference.inMinutes;
+    final hours = difference.inHours;
+    final days = difference.inDays;
+
+    if (seconds < 60) {
+      return '방금 전';
+    } else if (minutes < 60) {
+      return '$minutes분 전';
+    } else if (hours < 24) {
+      return '$hours시간 전';
+    } else if (days < 7) {
+      return '$days일 전';
+    } else {
+      // 7일 이상 지난 경우 날짜 형식으로 표시
+      return formatDate(dateTime);
+    }
+  }
 }

@@ -71,9 +71,9 @@ import AVFoundation
     // SwiftAudioConverter 등록
     SwiftAudioConverter.register(with: self.registrar(forPlugin: "SwiftAudioConverter")!)
     
-    // 네이티브 오디오 녹음 MethodChannel 설정
-    let controller = window?.rootViewController as! FlutterViewController
-    let audioChannel = FlutterMethodChannel(name: "native_recorder", binaryMessenger: controller.binaryMessenger)
+    // 네이티브 오디오 녹음 MethodChannel 설정 - FlutterPluginRegistry 사용
+    let audioChannel = FlutterMethodChannel(name: "native_recorder", 
+                                           binaryMessenger: self.registrar(forPlugin: "native_recorder")!.messenger())
     let audioRecorder = NativeAudioRecorder()
     
     audioChannel.setMethodCallHandler { (call: FlutterMethodCall, result: @escaping FlutterResult) in

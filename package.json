@@ -1,0 +1,35 @@
+{
+  "name": "soi",
+  "version": "1.0.0",
+  "description": "**SOI (Social Imaging)** - 친구들과 함께 사진과 음성을 공유하는 소셜 이미징 플랫폼",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/newaadwn/SOI.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/newaadwn/SOI/issues"
+  },
+  "homepage": "https://github.com/newaadwn/SOI#readme",
+  "devDependencies": {
+    "@aws-amplify/backend": "^1.16.1",
+    "@aws-amplify/backend-cli": "^1.8.0",
+    "aws-cdk-lib": "^2.204.0",
+    "constructs": "^10.4.2",
+    "esbuild": "^0.25.9",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "aws-amplify": "^6.15.5"
+  }
+}

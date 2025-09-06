@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../models/auth_model.dart';
@@ -15,7 +16,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   AuthModel? _userInfo;
   String? _profileImageUrl;
   bool _isLoading = true;
-  bool _isNotificationEnabled = false; // 알림 설정 상태 추가
+  bool _isNotificationEnabled = false;
 
   @override
   void initState() {
@@ -85,8 +86,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
-            width: 314,
-            height: 234,
+            width: 314.w,
+            height: 234.h,
             decoration: BoxDecoration(
               color: const Color(0xFF323232),
               borderRadius: BorderRadius.circular(14.2),
@@ -94,14 +95,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 // 제목
-                const Padding(
-                  padding: EdgeInsets.only(top: 31.0),
+                Padding(
+                  padding: EdgeInsets.only(top: 31.h),
                   child: Text(
                     '로그아웃 하시겠어요?',
                     style: TextStyle(
                       fontFamily: 'Pretendard Variable',
                       fontWeight: FontWeight.w700,
-                      fontSize: 19.8,
+                      fontSize: (19.8).sp,
                       color: Color(0xFFF9F9F9),
                     ),
                     textAlign: TextAlign.center,
@@ -112,7 +113,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 // 버튼들
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 64.0),
+                  padding: EdgeInsets.symmetric(horizontal: 64.w),
                   child: Column(
                     children: [
                       // 확인 버튼
@@ -122,27 +123,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           await _performLogout();
                         },
                         child: Container(
-                          width: 185.55,
-                          height: 38,
+                          width: (185.55).w,
+                          height: 38.h,
                           decoration: BoxDecoration(
                             color: const Color(0xFFF9F9F9),
                             borderRadius: BorderRadius.circular(14.2),
                           ),
-                          child: const Center(
-                            child: Text(
-                              '확인',
-                              style: TextStyle(
-                                fontFamily: 'Pretendard Variable',
-                                fontWeight: FontWeight.w600,
-                                fontSize: 17.8,
-                                color: Color(0xFF000000),
+                          child: Center(
+                            child: Padding(
+                              padding: EdgeInsets.only(top: 3.h),
+                              child: Text(
+                                '확인',
+                                style: TextStyle(
+                                  fontFamily: 'Pretendard Variable',
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: (17.8).sp,
+                                  color: Color(0xFF000000),
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
 
-                      const SizedBox(height: 14),
+                      SizedBox(height: 14.h),
 
                       // 취소 버튼
                       GestureDetector(
@@ -150,19 +154,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Navigator.of(context).pop(); // 다이얼로그 닫기
                         },
                         child: Container(
-                          width: 185.55,
-                          height: 38,
+                          width: (185.55).w,
+                          height: (38).h,
                           decoration: BoxDecoration(
                             color: const Color(0xFF5A5A5A),
                             borderRadius: BorderRadius.circular(14.2),
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Text(
                               '취소',
                               style: TextStyle(
                                 fontFamily: 'Pretendard Variable',
                                 fontWeight: FontWeight.w500,
-                                fontSize: 17.8,
+                                fontSize: (17.8).sp,
                                 color: Color(0xFFCCCCCC),
                               ),
                             ),
@@ -173,7 +177,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 46), // 하단 여백
+                SizedBox(height: 46.h),
               ],
             ),
           ),
@@ -190,19 +194,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (mounted) {
         // 로그아웃 성공 시 로그인 화면으로 이동
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/login', // 로그인 화면 라우트
-          (route) => false,
-        );
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/start', (route) => false);
       }
     } catch (e) {
       if (mounted) {
-        debugPrint('로그아웃 실패: $e');
-        // 에러 메시지 표시 (옵션)
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('로그아웃 중 오류가 발생했습니다.'),
-            backgroundColor: Colors.red,
+            backgroundColor: Color(0xFF5A5A5A),
           ),
         );
       }
@@ -218,8 +219,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
-            width: 314,
-            height: 286,
+            width: 314.w,
+            height: 286.h,
             decoration: BoxDecoration(
               color: const Color(0xFF323232),
               borderRadius: BorderRadius.circular(14.2),
@@ -227,14 +228,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: Column(
               children: [
                 // 제목
-                const Padding(
-                  padding: EdgeInsets.only(top: 37.0),
+                Padding(
+                  padding: EdgeInsets.only(top: 37.h),
                   child: Text(
                     '탈퇴하기',
                     style: TextStyle(
                       fontFamily: 'Pretendard Variable',
                       fontWeight: FontWeight.w700,
-                      fontSize: 19.8,
+                      fontSize: (19.8).sp,
                       color: Color(0xFFF9F9F9),
                     ),
                     textAlign: TextAlign.center,
@@ -242,14 +243,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
 
                 // 설명 텍스트
-                const Padding(
-                  padding: EdgeInsets.only(top: 12.0, left: 39.0, right: 39.0),
+                Padding(
+                  padding: EdgeInsets.only(top: 12.h, left: 39.w, right: 39.w),
                   child: Text(
                     '탈퇴 버튼 선택시, 계정은\n삭제되며 복구가 불가능합니다.',
                     style: TextStyle(
                       fontFamily: 'Pretendard Variable',
                       fontWeight: FontWeight.w500,
-                      fontSize: 15.8,
+                      fontSize: (15.8).sp,
                       height: 1.66,
                       color: Color(0xFFF9F9F9),
                     ),
@@ -261,7 +262,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
                 // 버튼들
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 64.0),
+                  padding: EdgeInsets.symmetric(horizontal: 64.w),
                   child: Column(
                     children: [
                       // 탈퇴 버튼
@@ -271,19 +272,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           await _performDeleteAccount();
                         },
                         child: Container(
-                          width: 185.55,
-                          height: 38,
+                          width: 185.55.w,
+                          height: 38.h,
                           decoration: BoxDecoration(
                             color: const Color(0xFFF9F9F9),
                             borderRadius: BorderRadius.circular(14.2),
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Text(
                               '탈퇴',
                               style: TextStyle(
                                 fontFamily: 'Pretendard Variable',
                                 fontWeight: FontWeight.w600,
-                                fontSize: 17.8,
+                                fontSize: (17.8).sp,
                                 color: Color(0xFF000000),
                               ),
                             ),
@@ -291,7 +292,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ),
 
-                      const SizedBox(height: 13),
+                      SizedBox(height: 13.h),
 
                       // 취소 버튼
                       GestureDetector(
@@ -299,19 +300,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Navigator.of(context).pop(); // 다이얼로그 닫기
                         },
                         child: Container(
-                          width: 185.55,
-                          height: 38,
+                          width: (185.55).w,
+                          height: 38.h,
                           decoration: BoxDecoration(
                             color: const Color(0xFF5A5A5A),
                             borderRadius: BorderRadius.circular(14.2),
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Text(
                               '취소',
                               style: TextStyle(
                                 fontFamily: 'Pretendard Variable',
                                 fontWeight: FontWeight.w500,
-                                fontSize: 17.8,
+                                fontSize: (17.8).sp,
                                 color: Color(0xFFCCCCCC),
                               ),
                             ),
@@ -322,7 +323,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 35), // 하단 여백
+                SizedBox(height: 35.h),
               ],
             ),
           ),
@@ -356,22 +357,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Navigator.of(context).pop();
 
         // 계정 삭제 성공 시 로그인 화면으로 이동
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          '/login', // 로그인 화면 라우트
-          (route) => false,
-        );
+        Navigator.of(
+          context,
+        ).pushNamedAndRemoveUntil('/start', (route) => false);
       }
     } catch (e) {
       if (mounted) {
         // 로딩 다이얼로그 닫기
         Navigator.of(context).pop();
 
-        debugPrint('계정 삭제 실패: $e');
+        // debugPrint('계정 삭제 실패: $e');
         // 에러 메시지 표시
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('계정 삭제 중 오류가 발생했습니다: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: const Color(0xFF5A5A5A),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -381,33 +381,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 375;
-    final isLargeScreen = screenWidth > 414;
-
-    // 화면 크기에 따른 패딩 조정
-    final horizontalPadding =
-        isSmallScreen
-            ? screenWidth * 0.04
-            : isLargeScreen
-            ? screenWidth * 0.05
-            : 17.0;
-
-    // 화면 크기에 따른 간격 조정
-    final sectionSpacing = isSmallScreen ? 28.0 : 36.0;
-    final topSpacing = isSmallScreen ? 6.0 : 9.0;
-    final bottomSpacing = isSmallScreen ? 20.0 : 30.0;
-
-    final titleFontSize = isSmallScreen ? 18.0 : 20.0;
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
-        iconTheme: IconThemeData(
-          color: Colors.white,
-          size: isSmallScreen ? 20.0 : 24.0,
-        ),
+        iconTheme: IconThemeData(color: Color(0xffd9d9d9)),
         title: Row(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
@@ -416,7 +394,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: TextStyle(
                 fontFamily: 'Inter',
                 fontWeight: FontWeight.w700,
-                fontSize: titleFontSize,
+                fontSize: 20.sp,
                 color: const Color(0xFFD9D9D9),
               ),
             ),
@@ -431,22 +409,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 )
                 : SingleChildScrollView(
                   child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: 17.w),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SizedBox(height: topSpacing),
-                        _buildProfileHeader(screenWidth, isSmallScreen),
-                        _buildAccountSection(screenWidth, isSmallScreen),
-                        SizedBox(height: sectionSpacing),
-                        _buildAppSettingsSection(screenWidth, isSmallScreen),
-                        SizedBox(height: sectionSpacing),
-                        _buildUsageGuideSection(screenWidth, isSmallScreen),
-                        SizedBox(height: sectionSpacing),
-                        _buildOtherSection(screenWidth, isSmallScreen),
-                        SizedBox(height: bottomSpacing),
+                        _buildProfileHeader(),
+                        _buildAccountSection(),
+                        SizedBox(height: 36.h),
+                        _buildAppSettingsSection(),
+                        SizedBox(height: 36.h),
+                        _buildUsageGuideSection(),
+                        SizedBox(height: 36.h),
+                        _buildOtherSection(),
+                        SizedBox(height: 49.h),
                       ],
                     ),
                   ),
@@ -455,16 +430,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildProfileHeader(double screenWidth, bool isSmallScreen) {
-    // 화면 크기에 따른 프로필 이미지 크기 조정
-    final profileSize =
-        isSmallScreen
-            ? 80.0
-            : screenWidth > 414
-            ? 110.0
-            : 96.0;
-    final cameraButtonSize = isSmallScreen ? 20.0 : 25.41;
-
+  Widget _buildProfileHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
@@ -473,8 +439,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             GestureDetector(
               onTap: _updateProfileImage,
               child: Container(
-                width: profileSize,
-                height: profileSize,
+                width: 96,
+                height: 96,
                 decoration: const BoxDecoration(
                   shape: BoxShape.circle,
                   color: Color(0xFFD9D9D9),
@@ -487,12 +453,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: CachedNetworkImage(
                             imageUrl: _profileImageUrl!,
                             fit: BoxFit.cover,
-                            width: profileSize,
-                            height: profileSize,
+                            width: 96,
+                            height: 96,
                             errorWidget: (context, error, stackTrace) {
                               return Icon(
                                 Icons.person,
-                                size: profileSize * 0.56,
+                                size: 96.sp,
                                 color: Colors.white,
                               );
                             },
@@ -501,18 +467,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         : Center(
                           child: Icon(
                             Icons.person,
-                            size: profileSize * 0.56,
+                            size: 96.sp,
                             color: Colors.white,
                           ),
                         ),
                     // 업로딩 중일 때 로딩 표시
                     if (context.watch<AuthController>().isUploading)
                       Container(
-                        width: profileSize,
-                        height: profileSize,
+                        width: 96,
+                        height: 96,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                         ),
                         child: const Center(
                           child: CircularProgressIndicator(
@@ -526,22 +492,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             Positioned(
-              right: 0,
-              bottom: 4,
+              right: 0.w,
+              bottom: 4.h,
               child: GestureDetector(
                 onTap: _updateProfileImage,
-                child: Container(
-                  width: cameraButtonSize,
-                  height: cameraButtonSize,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: Color(0xFF323232),
-                  ),
-                  child: Icon(
-                    Icons.camera_alt,
-                    size: cameraButtonSize * 0.47,
-                    color: Colors.white,
-                  ),
+                child: Image.asset(
+                  'assets/pencil.png',
+                  width: (25.41).w,
+                  height: (25.41).h,
+                  fit: BoxFit.contain,
                 ),
               ),
             ),
@@ -551,83 +510,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAccountSection(double screenWidth, bool isSmallScreen) {
-    final sectionTitleSize = isSmallScreen ? 18.0 : 20.0;
-    final cardSpacing = isSmallScreen ? 8.0 : 10.0;
-
+  Widget _buildAccountSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            SizedBox(width: 26 / 393 * screenWidth),
+            SizedBox(width: 16.w),
             Text(
               '계정',
               style: TextStyle(
                 fontFamily: 'Pretendard Variable',
                 fontWeight: FontWeight.w700,
-                fontSize: sectionTitleSize,
+                fontSize: 20.sp,
                 color: Colors.white,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        _buildAccountCard(
-          '아이디',
-          _userInfo?.id ?? '',
-          screenWidth,
-          isSmallScreen,
-        ),
-        SizedBox(height: cardSpacing),
-        _buildAccountCard(
-          '이름',
-          _userInfo?.name ?? '',
-          screenWidth,
-          isSmallScreen,
-        ),
-        SizedBox(height: cardSpacing),
-        _buildAccountCard(
-          '생일',
-          _userInfo?.birthDate ?? '',
-          screenWidth,
-          isSmallScreen,
-        ),
-        SizedBox(height: cardSpacing),
-        _buildAccountCard(
-          '전화번호',
-          _userInfo?.phone ?? '',
-          screenWidth,
-          isSmallScreen,
-        ),
+        SizedBox(height: 12.h),
+        _buildAccountCard('아이디', _userInfo?.id ?? ''),
+        SizedBox(height: 7.h),
+        _buildAccountCard('이름', _userInfo?.name ?? ''),
+        SizedBox(height: 7.h),
+        _buildAccountCard('생일', _userInfo?.birthDate ?? ''),
+        SizedBox(height: 7.h),
+        _buildAccountCard('전화번호', _userInfo?.phone ?? ''),
       ],
     );
   }
 
-  Widget _buildAccountCard(
-    String label,
-    String value,
-    double screenWidth,
-    bool isSmallScreen,
-  ) {
-    final cardHeight = isSmallScreen ? 55.0 : 62.0;
-    final horizontalPadding = isSmallScreen ? 16.0 : 19.0;
-    final verticalPadding = isSmallScreen ? 6.0 : 8.0;
-    final labelFontSize = isSmallScreen ? 12.0 : 13.0;
-    final valueFontSize = isSmallScreen ? 14.0 : 16.0;
-    final spaceBetween = isSmallScreen ? 5.0 : 7.0;
-
+  Widget _buildAccountCard(String label, String value) {
     return Container(
       width: double.infinity,
-      height: cardHeight,
+      height: 62,
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C1C),
         borderRadius: BorderRadius.circular(12),
       ),
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: verticalPadding,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 19.w, vertical: 8.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -636,11 +557,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: TextStyle(
               fontFamily: 'Pretendard Variable',
               fontWeight: FontWeight.w400,
-              fontSize: labelFontSize,
+              fontSize: 13.sp,
               color: const Color(0xFFCCCCCC),
             ),
           ),
-          SizedBox(height: spaceBetween),
+          SizedBox(height: 7.h),
           Expanded(
             child: Align(
               alignment: Alignment.centerLeft,
@@ -649,7 +570,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: TextStyle(
                   fontFamily: 'Pretendard Variable',
                   fontWeight: FontWeight.w400,
-                  fontSize: valueFontSize,
+                  fontSize: 16.sp,
                   color: const Color(0xFFF9F9F9),
                 ),
                 maxLines: 1,
@@ -662,27 +583,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAppSettingsSection(double screenWidth, bool isSmallScreen) {
-    final sectionTitleSize = isSmallScreen ? 18.0 : 20.0;
-
+  Widget _buildAppSettingsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            SizedBox(width: 26 / 393 * screenWidth),
+            SizedBox(width: 16.w),
             Text(
               '앱 설정',
               style: TextStyle(
                 fontFamily: 'Pretendard Variable',
                 fontWeight: FontWeight.w700,
-                fontSize: sectionTitleSize,
+                fontSize: 20.sp,
                 color: Colors.white,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12.h),
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -691,19 +610,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           child: Column(
             children: [
-              _buildSettingsItem(
-                '알림 설정',
-                hasToggle: true,
-                screenWidth: screenWidth,
-                isSmallScreen: isSmallScreen,
-              ),
+              _buildSettingsItem('알림 설정', hasToggle: true),
               Divider(height: 1, color: const Color(0xFF323232)),
-              _buildSettingsItem(
-                '언어',
-                value: '한국어',
-                screenWidth: screenWidth,
-                isSmallScreen: isSmallScreen,
-              ),
+              _buildSettingsItem('언어', value: '한국어'),
             ],
           ),
         ),
@@ -711,27 +620,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildUsageGuideSection(double screenWidth, bool isSmallScreen) {
-    final sectionTitleSize = isSmallScreen ? 18.0 : 20.0;
-
+  Widget _buildUsageGuideSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            SizedBox(width: 26 / 393 * screenWidth),
+            SizedBox(width: 16.w),
             Text(
-              '이용 안내',
+              '앱 설정',
               style: TextStyle(
                 fontFamily: 'Pretendard Variable',
                 fontWeight: FontWeight.w700,
-                fontSize: sectionTitleSize,
+                fontSize: 20.sp,
                 color: Colors.white,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: 12.h),
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -740,30 +647,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           child: Column(
             children: [
-              _buildSettingsItem(
-                '개인정보 처리방침',
-                screenWidth: screenWidth,
-                isSmallScreen: isSmallScreen,
-              ),
+              _buildSettingsItem('개인정보 처리방침'),
               Divider(height: 1, color: const Color(0xFF323232)),
-              _buildSettingsItem(
-                '서비스 이용 약관',
-                screenWidth: screenWidth,
-                isSmallScreen: isSmallScreen,
-              ),
+              _buildSettingsItem('서비스 이용 약관'),
+
               Divider(height: 1, color: const Color(0xFF323232)),
-              _buildSettingsItem(
-                '오픈소스 라이선스',
-                screenWidth: screenWidth,
-                isSmallScreen: isSmallScreen,
-              ),
-              Divider(height: 1, color: const Color(0xFF323232)),
-              _buildSettingsItem(
-                '앱 버전',
-                value: '3.1',
-                screenWidth: screenWidth,
-                isSmallScreen: isSmallScreen,
-              ),
+              _buildSettingsItem('앱 버전', value: '1.0.0'),
             ],
           ),
         ),
@@ -771,27 +660,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildOtherSection(double screenWidth, bool isSmallScreen) {
-    final sectionTitleSize = isSmallScreen ? 18.0 : 20.0;
-
+  Widget _buildOtherSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            SizedBox(width: 26 / 393 * screenWidth),
+            SizedBox(width: 16.w),
             Text(
               '기타',
               style: TextStyle(
                 fontFamily: 'Pretendard Variable',
                 fontWeight: FontWeight.w700,
-                fontSize: sectionTitleSize,
+                fontSize: 20.sp,
                 color: Colors.white,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: 12.h),
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
@@ -800,40 +687,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           child: Column(
             children: [
-              _buildSettingsItem(
-                '앱 정보 동의 설정',
-                screenWidth: screenWidth,
-                isSmallScreen: isSmallScreen,
-              ),
+              _buildSettingsItem('앱 정보 동의 설정'),
               Divider(height: 1, color: const Color(0xFF323232)),
-              _buildSettingsItem(
-                '차단된 친구',
-                screenWidth: screenWidth,
-                isSmallScreen: isSmallScreen,
-              ),
+              _buildSettingsItem('차단된 친구'),
               Divider(height: 1, color: const Color(0xFF323232)),
               GestureDetector(
                 onTap: () {
                   _showLogoutDialog();
                 },
-                child: _buildSettingsItem(
-                  '로그아웃',
-                  isRed: true,
-                  screenWidth: screenWidth,
-                  isSmallScreen: isSmallScreen,
-                ),
+                child: _buildSettingsItem('로그아웃', isRed: true),
               ),
               Divider(height: 1, color: const Color(0xFF323232)),
               GestureDetector(
                 onTap: () {
                   _showDeleteAccountDialog();
                 },
-                child: _buildSettingsItem(
-                  '계정 삭제',
-                  isRed: true,
-                  screenWidth: screenWidth,
-                  isSmallScreen: isSmallScreen,
-                ),
+                child: _buildSettingsItem('계정 삭제', isRed: true),
               ),
             ],
           ),
@@ -847,18 +716,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String? value,
     bool hasToggle = false,
     bool isRed = false,
-    required double screenWidth,
-    required bool isSmallScreen,
   }) {
-    final horizontalPadding = isSmallScreen ? 14.0 : 16.0;
-    final verticalPadding = isSmallScreen ? 14.0 : 17.0;
-    final fontSize = isSmallScreen ? 14.0 : 16.0;
-
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: verticalPadding,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -868,8 +728,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               style: TextStyle(
                 fontFamily: 'Pretendard Variable',
                 fontWeight: FontWeight.w400,
-
-                fontSize: fontSize,
+                fontSize: 16.sp,
                 color:
                     isRed ? const Color(0xFFFF0000) : const Color(0xFFF9F9F9),
               ),
@@ -878,19 +737,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           if (hasToggle)
-            Switch(
-              value: _isNotificationEnabled,
-              onChanged: (value) {
+            GestureDetector(
+              onTap: () {
                 setState(() {
-                  _isNotificationEnabled = value;
+                  _isNotificationEnabled = !_isNotificationEnabled;
                 });
               },
-              activeColor: Colors.black, // 켜진 상태 스위치 색상
-              activeTrackColor: const Color(0xFFf9f9f9), // 켜진 상태 배경색 (iOS 파란색)
-              inactiveThumbColor: Colors.black, // 꺼진 상태 스위치 색상
-              inactiveTrackColor: const Color(0xFFf9f9f9), // 꺼진 상태 배경색
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              splashRadius: 0, // 터치 효과 제거
+              child: _profileSwitch(_isNotificationEnabled),
             )
           else if (value != null)
             Flexible(
@@ -899,7 +752,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: TextStyle(
                   fontFamily: 'Pretendard Variable',
                   fontWeight: FontWeight.w400,
-                  fontSize: fontSize,
+                  fontSize: 16.sp,
                   color: const Color(0xFFF9F9F9),
                 ),
                 maxLines: 1,
@@ -908,6 +761,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _profileSwitch(bool isNotificationEnabled) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      width: 50.w,
+      height: 26.h,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(13.r),
+        color:
+            isNotificationEnabled
+                ? const Color(0xffffffff)
+                : const Color(0xff5a5a5a),
+      ),
+      child: AnimatedAlign(
+        duration: const Duration(milliseconds: 200),
+        alignment:
+            isNotificationEnabled
+                ? Alignment.centerRight
+                : Alignment.centerLeft,
+        child: Container(
+          width: 22.w,
+          height: 22.h,
+          margin: EdgeInsets.symmetric(horizontal: 2.w),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xff000000),
+          ),
+        ),
       ),
     );
   }

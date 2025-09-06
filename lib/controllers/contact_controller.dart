@@ -10,11 +10,13 @@ class ContactController extends ChangeNotifier {
   bool _contactSyncEnabled = false;
   bool _isLoading = false;
   bool _isInitialized = false;
+  bool _isSyncPaused = false;
 
   // Getters
   bool get contactSyncEnabled => _contactSyncEnabled;
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
+  bool get isSyncPaused => _isSyncPaused;
 
   /// 초기화 (앱 시작 시 호출)
   Future<void> initialize() async {
@@ -26,7 +28,7 @@ class ContactController extends ChangeNotifier {
       _isInitialized = true;
       notifyListeners();
     } catch (e) {
-      debugPrint('ContactController 초기화 실패: $e');
+      // debugPrint('ContactController 초기화 실패: $e');
     }
   }
 
@@ -68,34 +70,6 @@ class ContactController extends ChangeNotifier {
     return result;
   }
 
-  /// 연락처 권한 요청
-  Future<ContactToggleResult> requestContactPermission() async {
-    _setLoading(true);
-    notifyListeners();
-
-    try {
-      final result = await _contactService.requestContactPermission();
-
-      // 성공한 경우에만 상태 업데이트
-      if (result.type == ContactToggleResultType.success) {
-        _contactSyncEnabled = result.isEnabled;
-      }
-
-      _setLoading(false);
-      notifyListeners();
-
-      return result;
-    } catch (e) {
-      _setLoading(false);
-      notifyListeners();
-
-      return ContactToggleResult.error(
-        message: '권한 요청 중 오류가 발생했습니다: $e',
-        isEnabled: false,
-      );
-    }
-  }
-
   /// 설정에서 돌아온 후 권한 상태 재확인
   Future<ContactToggleResult> checkPermissionAfterSettings() async {
     _setLoading(true);
@@ -128,14 +102,9 @@ class ContactController extends ChangeNotifier {
     }
   }
 
-  @override
-  void dispose() {
-    super.dispose();
-  }
-
   /// 연락처 목록 가져오기 (권한이 있을 때)
-  Future<List<Contact>> getContacts() async {
-    return await _contactService.getContacts();
+  Future<List<Contact>> getContacts({bool forceRefresh = false}) async {
+    return await _contactService.getContacts(forceRefresh: forceRefresh);
   }
 
   /// 특정 연락처 정보 가져오기
@@ -147,4 +116,23 @@ class ContactController extends ChangeNotifier {
   Future<List<Contact>> searchContacts(String query) async {
     return await _contactService.searchContacts(query);
   }
+
+  /// 동기화 일시 중지
+  void pauseSync() {
+    if (_contactSyncEnabled && !_isSyncPaused) {
+      _isSyncPaused = true;
+      notifyListeners();
+    }
+  }
+
+  /// 동기화 재개
+  void resumeSync() {
+    if (_contactSyncEnabled && _isSyncPaused) {
+      _isSyncPaused = false;
+      notifyListeners();
+    }
+  }
+
+  /// 동기화가 활성 상태인지 확인 (일시중지가 아닌 경우)
+  bool get isActivelySyncing => _contactSyncEnabled && !_isSyncPaused;
 }

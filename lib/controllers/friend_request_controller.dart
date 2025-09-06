@@ -9,7 +9,11 @@ class FriendRequestController extends ChangeNotifier {
 
   // 상태 변수들
   bool _isLoading = false;
+
+  // 초기화 완료 여부를 체크하기 위해 추가한 변수
   bool _isInitialized = false;
+
+  // 에러 메시지
   String? _error;
 
   // 친구 요청 목록
@@ -18,7 +22,7 @@ class FriendRequestController extends ChangeNotifier {
 
   // 요청 전송 상태
   bool _isSendingRequest = false;
-  Map<String, bool> _processingRequests = {}; // requestId -> isProcessing
+  final Map<String, bool> _processingRequests = {}; // requestId -> isProcessing
 
   // 통계 정보
   Map<String, int> _requestStats = {'received': 0, 'sent': 0};
@@ -30,7 +34,7 @@ class FriendRequestController extends ChangeNotifier {
   FriendRequestController({required FriendRequestService friendRequestService})
     : _friendRequestService = friendRequestService;
 
-  // Getters
+  // Getters 함수
   bool get isLoading => _isLoading;
   bool get isInitialized => _isInitialized;
   String? get error => _error;
@@ -46,11 +50,15 @@ class FriendRequestController extends ChangeNotifier {
 
   /// 초기화 (앱 시작 시 호출)
   Future<void> initialize() async {
-    if (_isInitialized) return;
-
+    if (_isInitialized) {
+      return; // 이미 초기화된 경우 넘어감
+    }
     try {
       _setLoading(true);
       _clearError();
+
+      // 이전 구독 해제 및 상태 초기화
+      await _reset();
 
       // 실시간 친구 요청 목록 구독
       await _subscribeToRequests();
@@ -59,13 +67,40 @@ class FriendRequestController extends ChangeNotifier {
       await _loadRequestStats();
 
       _isInitialized = true;
-      debugPrint('FriendRequestController 초기화 완료');
     } catch (e) {
       _setError('친구 요청 초기화 실패: $e');
-      debugPrint('FriendRequestController 초기화 실패: $e');
     } finally {
       _setLoading(false);
     }
+  }
+
+  /// 상태 초기화 (사용자 변경 시 호출)
+  Future<void> reset() async {
+    await _reset();
+    _isInitialized = false;
+  }
+
+  /// 내부 상태 초기화
+  Future<void> _reset() async {
+    // 기존 구독 해제
+    await _receivedRequestsSubscription?.cancel();
+    await _sentRequestsSubscription?.cancel();
+    _receivedRequestsSubscription = null;
+    _sentRequestsSubscription = null;
+
+    // 데이터 초기화
+    _receivedRequests.clear();
+    _sentRequests.clear();
+    _processingRequests.clear();
+    _requestStats = {'received': 0, 'sent': 0};
+
+    // 상태 초기화
+    _isLoading = false;
+    _isSendingRequest = false;
+    _error = null;
+
+    notifyListeners();
+    // // debugPrint('FriendRequestController 상태 초기화 완료');
   }
 
   /// 친구 요청 전송
@@ -81,12 +116,10 @@ class FriendRequestController extends ChangeNotifier {
       _clearError();
       notifyListeners();
 
-      final requestId = await _friendRequestService.sendFriendRequest(
+      await _friendRequestService.sendFriendRequest(
         receiverUid: receiverUid,
         message: message,
       );
-
-      debugPrint('친구 요청 전송 성공: $requestId');
 
       // 통계 업데이트
       await _loadRequestStats();
@@ -94,7 +127,7 @@ class FriendRequestController extends ChangeNotifier {
       return true;
     } catch (e) {
       _setError('친구 요청 전송 실패: $e');
-      debugPrint('친구 요청 전송 실패: $e');
+      // // debugPrint('친구 요청 전송 실패: $e');
       return false;
     } finally {
       _isSendingRequest = false;
@@ -113,15 +146,13 @@ class FriendRequestController extends ChangeNotifier {
 
       await _friendRequestService.acceptFriendRequest(requestId);
 
-      debugPrint('친구 요청 수락 성공: $requestId');
-
       // 통계 업데이트
       await _loadRequestStats();
 
       return true;
     } catch (e) {
       _setError('친구 요청 수락 실패: $e');
-      debugPrint('친구 요청 수락 실패: $e');
+
       return false;
     } finally {
       _processingRequests[requestId] = false;
@@ -140,15 +171,13 @@ class FriendRequestController extends ChangeNotifier {
 
       await _friendRequestService.rejectFriendRequest(requestId);
 
-      debugPrint('친구 요청 거절 성공: $requestId');
-
       // 통계 업데이트
       await _loadRequestStats();
 
       return true;
     } catch (e) {
       _setError('친구 요청 거절 실패: $e');
-      debugPrint('친구 요청 거절 실패: $e');
+
       return false;
     } finally {
       _processingRequests[requestId] = false;
@@ -167,15 +196,13 @@ class FriendRequestController extends ChangeNotifier {
 
       await _friendRequestService.cancelFriendRequest(requestId);
 
-      debugPrint('친구 요청 취소 성공: $requestId');
-
       // 통계 업데이트
       await _loadRequestStats();
 
       return true;
     } catch (e) {
       _setError('친구 요청 취소 실패: $e');
-      debugPrint('친구 요청 취소 실패: $e');
+
       return false;
     } finally {
       _processingRequests[requestId] = false;
@@ -190,7 +217,6 @@ class FriendRequestController extends ChangeNotifier {
     try {
       return await _friendRequestService.getFriendshipStatus(userId);
     } catch (e) {
-      debugPrint('친구 관계 상태 확인 실패: $e');
       return 'none';
     }
   }
@@ -204,7 +230,6 @@ class FriendRequestController extends ChangeNotifier {
     try {
       return await _friendRequestService.getBatchFriendshipStatus(userIds);
     } catch (e) {
-      debugPrint('배치 친구 관계 상태 확인 실패: $e');
       return {};
     }
   }
@@ -247,9 +272,7 @@ class FriendRequestController extends ChangeNotifier {
     try {
       _requestStats = await _friendRequestService.getFriendRequestStats();
       notifyListeners();
-    } catch (e) {
-      debugPrint('요청 통계 로드 실패: $e');
-    }
+    } catch (e) {}
   }
 
   /// 새로고침
@@ -259,8 +282,6 @@ class FriendRequestController extends ChangeNotifier {
       _clearError();
 
       await _loadRequestStats();
-
-      debugPrint('친구 요청 정보 새로고침 완료');
     } catch (e) {
       _setError('새로고침 실패: $e');
     } finally {

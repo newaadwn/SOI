@@ -23,7 +23,7 @@ class FriendController extends ChangeNotifier {
   bool _isSearching = false;
 
   // 작업 상태
-  Map<String, bool> _processingFriends = {}; // friendUid -> isProcessing
+  final Map<String, bool> _processingFriends = {}; // friendUid -> isProcessing
 
   // 통계 정보
   Map<String, dynamic> _friendStats = {};
@@ -54,11 +54,15 @@ class FriendController extends ChangeNotifier {
 
   /// 초기화 (앱 시작 시 호출)
   Future<void> initialize() async {
-    if (_isInitialized) return;
-
+    if (_isInitialized) {
+      return; // 이미 초기화된 경우 넘어감
+    }
     try {
       _setLoading(true);
       _clearError();
+
+      // 이전 구독 해제 및 상태 초기화
+      await _reset();
 
       // 실시간 친구 목록 구독
       await _subscribeToFriends();
@@ -69,14 +73,46 @@ class FriendController extends ChangeNotifier {
       // 카테고리별 친구 분류 로드
       await _loadCategorizedFriends();
 
+      // 이 변수를 true로 설정하여서 초기화가 완료되었음을 알림
       _isInitialized = true;
-      debugPrint('FriendController 초기화 완료');
     } catch (e) {
       _setError('친구 관리 초기화 실패: $e');
-      debugPrint('FriendController 초기화 실패: $e');
+      // // debugPrint('FriendController 초기화 실패: $e');
     } finally {
       _setLoading(false);
     }
+  }
+
+  /// 상태 초기화 (사용자 변경 시 호출)
+  Future<void> reset() async {
+    await _reset();
+    _isInitialized = false;
+  }
+
+  /// 내부 상태 초기화
+  Future<void> _reset() async {
+    // 기존 구독 해제
+    await _friendsSubscription?.cancel();
+    await _favoriteFriendsSubscription?.cancel();
+    _friendsSubscription = null;
+    _favoriteFriendsSubscription = null;
+
+    // 데이터 초기화
+    _friends.clear();
+    _favoriteFriends.clear();
+    _categorizedFriends.clear();
+    _searchResults.clear();
+    _processingFriends.clear();
+    _friendStats.clear();
+
+    // 상태 초기화
+    _isLoading = false;
+    _isSearching = false;
+    _currentSearchQuery = '';
+    _error = null;
+
+    notifyListeners();
+    // // debugPrint('FriendController 상태 초기화 완료');
   }
 
   /// 친구 삭제
@@ -90,7 +126,7 @@ class FriendController extends ChangeNotifier {
 
       await _friendService.removeFriend(friendUid);
 
-      debugPrint('친구 삭제 성공: $friendUid');
+      // // debugPrint('친구 삭제 성공: $friendUid');
 
       // 통계 및 분류 업데이트
       await _loadFriendStats();
@@ -99,7 +135,7 @@ class FriendController extends ChangeNotifier {
       return true;
     } catch (e) {
       _setError('친구 삭제 실패: $e');
-      debugPrint('친구 삭제 실패: $e');
+      // // debugPrint('친구 삭제 실패: $e');
       return false;
     } finally {
       _processingFriends[friendUid] = false;
@@ -118,7 +154,7 @@ class FriendController extends ChangeNotifier {
 
       await _friendService.blockFriend(friendUid);
 
-      debugPrint('친구 차단 성공: $friendUid');
+      // // debugPrint('친구 차단 성공: $friendUid');
 
       // 통계 업데이트
       await _loadFriendStats();
@@ -126,7 +162,7 @@ class FriendController extends ChangeNotifier {
       return true;
     } catch (e) {
       _setError('친구 차단 실패: $e');
-      debugPrint('친구 차단 실패: $e');
+      // // debugPrint('친구 차단 실패: $e');
       return false;
     } finally {
       _processingFriends[friendUid] = false;
@@ -145,7 +181,7 @@ class FriendController extends ChangeNotifier {
 
       await _friendService.unblockFriend(friendUid);
 
-      debugPrint('친구 차단 해제 성공: $friendUid');
+      // // debugPrint('친구 차단 해제 성공: $friendUid');
 
       // 통계 업데이트
       await _loadFriendStats();
@@ -153,7 +189,7 @@ class FriendController extends ChangeNotifier {
       return true;
     } catch (e) {
       _setError('친구 차단 해제 실패: $e');
-      debugPrint('친구 차단 해제 실패: $e');
+      // // debugPrint('친구 차단 해제 실패: $e');
       return false;
     } finally {
       _processingFriends[friendUid] = false;
@@ -172,7 +208,7 @@ class FriendController extends ChangeNotifier {
 
       await _friendService.toggleFriendFavorite(friendUid);
 
-      debugPrint('친구 즐겨찾기 토글 성공: $friendUid');
+      // // debugPrint('친구 즐겨찾기 토글 성공: $friendUid');
 
       // 통계 및 분류 업데이트
       await _loadFriendStats();
@@ -181,7 +217,7 @@ class FriendController extends ChangeNotifier {
       return true;
     } catch (e) {
       _setError('즐겨찾기 설정 실패: $e');
-      debugPrint('즐겨찾기 설정 실패: $e');
+      // // debugPrint('즐겨찾기 설정 실패: $e');
       return false;
     } finally {
       _processingFriends[friendUid] = false;
@@ -205,10 +241,10 @@ class FriendController extends ChangeNotifier {
         _searchResults = await _friendService.searchFriends(query);
       }
 
-      debugPrint('친구 검색 완료: ${_searchResults.length}명 발견');
+      // // debugPrint('친구 검색 완료: ${_searchResults.length}명 발견');
     } catch (e) {
       _setError('친구 검색 실패: $e');
-      debugPrint('친구 검색 실패: $e');
+      // // debugPrint('친구 검색 실패: $e');
       _searchResults = [];
     } finally {
       _isSearching = false;
@@ -234,17 +270,17 @@ class FriendController extends ChangeNotifier {
         notifyListeners();
 
         await _friendService.syncFriendInfo(friendUid);
-        debugPrint('친구 정보 동기화 성공: $friendUid');
+        // // debugPrint('친구 정보 동기화 성공: $friendUid');
       } else {
         _setLoading(true);
         await _friendService.syncAllFriendsInfo();
-        debugPrint('전체 친구 정보 동기화 성공');
+        // // debugPrint('전체 친구 정보 동기화 성공');
       }
 
       return true;
     } catch (e) {
       _setError('친구 정보 동기화 실패: $e');
-      debugPrint('친구 정보 동기화 실패: $e');
+      // // debugPrint('친구 정보 동기화 실패: $e');
       return false;
     } finally {
       if (friendUid != null) {
@@ -266,7 +302,7 @@ class FriendController extends ChangeNotifier {
       // 분류 업데이트 (상호작용 시간이 변경될 수 있음)
       await _loadCategorizedFriends();
     } catch (e) {
-      debugPrint('상호작용 기록 실패: $e');
+      // // debugPrint('상호작용 기록 실패: $e');
     }
   }
 
@@ -307,7 +343,7 @@ class FriendController extends ChangeNotifier {
       _friendStats = await _friendService.getFriendStats();
       notifyListeners();
     } catch (e) {
-      debugPrint('친구 통계 로드 실패: $e');
+      // // debugPrint('친구 통계 로드 실패: $e');
     }
   }
 
@@ -317,7 +353,7 @@ class FriendController extends ChangeNotifier {
       _categorizedFriends = await _friendService.getCategorizedFriends();
       notifyListeners();
     } catch (e) {
-      debugPrint('친구 분류 로드 실패: $e');
+      // // debugPrint('친구 분류 로드 실패: $e');
     }
   }
 
@@ -330,7 +366,7 @@ class FriendController extends ChangeNotifier {
       await _loadFriendStats();
       await _loadCategorizedFriends();
 
-      debugPrint('친구 정보 새로고침 완료');
+      // // debugPrint('친구 정보 새로고침 완료');
     } catch (e) {
       _setError('새로고침 실패: $e');
     } finally {

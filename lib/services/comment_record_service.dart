@@ -2,9 +2,23 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/comment_record_model.dart';
 import '../repositories/comment_record_repository.dart';
+import 'notification_service.dart';
 
 class CommentRecordService {
+  // Singleton pattern
+  static final CommentRecordService _instance =
+      CommentRecordService._internal();
+  factory CommentRecordService() => _instance;
+  CommentRecordService._internal();
+
   final CommentRecordRepository _repository = CommentRecordRepository();
+
+  // Lazy initialization으로 순환 의존성 방지
+  NotificationService? _notificationService;
+  NotificationService get notificationService {
+    _notificationService ??= NotificationService();
+    return _notificationService!;
+  }
 
   /// 음성 댓글 생성 (유효성 검사 포함)
   Future<CommentRecordModel> createCommentRecord({
@@ -14,7 +28,7 @@ class CommentRecordService {
     required List<double> waveformData,
     required int duration,
     required String profileImageUrl, // 프로필 이미지 URL 추가
-    Offset? profilePosition, // 프로필 이미지 위치 (선택적)
+    Offset? relativePosition, // 프로필 이미지 상대 위치 (새로운 방식)
   }) async {
     // 1. 입력값 유효성 검사
     _validateInputs(
@@ -30,15 +44,29 @@ class CommentRecordService {
 
     // 3. Repository를 통해 저장
     try {
-      return await _repository.createCommentRecord(
+      final result = await _repository.createCommentRecord(
         audioFilePath: audioFilePath,
         photoId: photoId,
         recorderUser: recorderUser,
         waveformData: waveformData,
         duration: duration,
         profileImageUrl: profileImageUrl, // 프로필 이미지 URL 전달
-        profilePosition: profilePosition, // 프로필 위치 전달
+        relativePosition: relativePosition, // 상대 위치 전달 (새로운 방식)
       );
+
+      // 4. 음성 댓글 알림 생성
+      try {
+        await notificationService.createVoiceCommentNotification(
+          photoId: photoId,
+          commentId: result.id,
+          actorUserId: recorderUser,
+        );
+      } catch (e) {
+        // 알림 생성 실패는 전체 댓글 생성을 실패시키지 않음
+        debugPrint('⚠️ 알림 생성 실패 (댓글 생성은 성공): $e');
+      }
+
+      return result;
     } catch (e) {
       throw ServiceException('음성 댓글 생성 실패', originalError: e);
     }
@@ -53,14 +81,10 @@ class CommentRecordService {
     }
 
     try {
-      debugPrint('🔍 Repository에서 음성 댓글 조회 시작 - photoId: $photoId');
       final result = await _repository.getCommentRecordsByPhotoId(photoId);
-      debugPrint('✅ Repository에서 댓글 조회 성공 - 댓글 수: ${result.length}');
+
       return result;
     } catch (e) {
-      debugPrint('❌ Repository에서 댓글 조회 실패 - photoId: $photoId, 오류: $e');
-      debugPrint('🔍 오류 타입: ${e.runtimeType}');
-      debugPrint('🔍 오류 세부사항: ${e.toString()}');
       throw ServiceException('음성 댓글 조회 실패', originalError: e);
     }
   }
@@ -75,6 +99,18 @@ class CommentRecordService {
       await _repository.deleteCommentRecord(commentId);
     } catch (e) {
       throw ServiceException('음성 댓글 삭제 실패', originalError: e);
+    }
+  }
+
+  /// 음성 댓글 하드 삭제 (문서 + 스토리지 파일)
+  Future<void> hardDeleteCommentRecord(String commentId) async {
+    if (commentId.isEmpty) {
+      throw ServiceException('유효하지 않은 댓글 ID입니다');
+    }
+    try {
+      await _repository.hardDeleteCommentRecord(commentId);
+    } catch (e) {
+      throw ServiceException('음성 댓글 하드 삭제 실패', originalError: e);
     }
   }
 
@@ -93,7 +129,34 @@ class CommentRecordService {
     }
   }
 
-  /// 프로필 이미지 위치 업데이트
+  /// 프로필 이미지 위치 업데이트 (상대 좌표)
+  Future<void> updateRelativeProfilePosition({
+    required String commentId,
+    required Offset relativePosition,
+  }) async {
+    if (commentId.isEmpty) {
+      throw ServiceException('유효하지 않은 댓글 ID입니다');
+    }
+
+    // 상대 좌표 유효성 검사 (0.0 ~ 1.0 범위)
+    if (relativePosition.dx < 0.0 ||
+        relativePosition.dx > 1.0 ||
+        relativePosition.dy < 0.0 ||
+        relativePosition.dy > 1.0) {
+      throw ServiceException('상대 좌표는 0.0 ~ 1.0 범위여야 합니다: $relativePosition');
+    }
+
+    try {
+      await _repository.updateRelativeProfilePosition(
+        commentId: commentId,
+        relativePosition: relativePosition,
+      );
+    } catch (e) {
+      throw ServiceException('상대 프로필 위치 업데이트 실패', originalError: e);
+    }
+  }
+
+  /// 프로필 이미지 위치 업데이트 (기존 절대 좌표 - 하위호환성)
   Future<void> updateProfilePosition({
     required String commentId,
     required Offset profilePosition,

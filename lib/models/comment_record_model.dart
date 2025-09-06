@@ -10,7 +10,7 @@ class CommentRecordModel {
   final List<double> waveformData;
   final int duration; // milliseconds
   final String profileImageUrl; // 프로필 이미지 URL
-  final Offset? profilePosition; // 프로필 이미지 위치 (상대 좌표)
+  final Offset? relativePosition; // 프로필 이미지 위치 (상대 좌표 0.0~1.0)
   final bool isDeleted;
 
   CommentRecordModel({
@@ -22,7 +22,7 @@ class CommentRecordModel {
     required this.waveformData,
     required this.duration,
     required this.profileImageUrl,
-    this.profilePosition, // 선택적 필드
+    this.relativePosition, // 선택적 필드 (새로운 상대 좌표)
     this.isDeleted = false,
   });
 
@@ -30,13 +30,13 @@ class CommentRecordModel {
   factory CommentRecordModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
 
-    // profilePosition 파싱
-    Offset? profilePosition;
-    if (data['profilePosition'] != null) {
-      final posData = data['profilePosition'] as Map<String, dynamic>;
-      profilePosition = Offset(
-        (posData['dx'] as num?)?.toDouble() ?? 0.0,
-        (posData['dy'] as num?)?.toDouble() ?? 0.0,
+    // relativePosition 파싱 (새로운 상대 좌표)
+    Offset? relativePosition;
+    if (data['relativePosition'] != null) {
+      final relData = data['relativePosition'] as Map<String, dynamic>;
+      relativePosition = Offset(
+        (relData['x'] as num?)?.toDouble() ?? 0.0,
+        (relData['y'] as num?)?.toDouble() ?? 0.0,
       );
     }
 
@@ -50,7 +50,7 @@ class CommentRecordModel {
       duration: data['duration'] ?? 0,
       isDeleted: data['isDeleted'] ?? false,
       profileImageUrl: data['profileImageUrl'] ?? '',
-      profilePosition: profilePosition,
+      relativePosition: relativePosition,
     );
   }
 
@@ -67,11 +67,11 @@ class CommentRecordModel {
       'profileImageUrl': profileImageUrl,
     };
 
-    // profilePosition이 있는 경우만 추가
-    if (profilePosition != null) {
-      result['profilePosition'] = {
-        'dx': profilePosition!.dx,
-        'dy': profilePosition!.dy,
+    // relativePosition이 있는 경우만 추가 (새로운 상대 좌표)
+    if (relativePosition != null) {
+      result['relativePosition'] = {
+        'x': relativePosition!.dx,
+        'y': relativePosition!.dy,
       };
     }
 
@@ -90,6 +90,7 @@ class CommentRecordModel {
     bool? isDeleted,
     String? profileImageUrl,
     Offset? profilePosition,
+    Offset? relativePosition,
   }) {
     return CommentRecordModel(
       id: id ?? this.id,
@@ -101,12 +102,8 @@ class CommentRecordModel {
       duration: duration ?? this.duration,
       isDeleted: isDeleted ?? this.isDeleted,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      profilePosition: profilePosition ?? this.profilePosition,
-    );
-  }
 
-  @override
-  String toString() {
-    return 'CommentRecordModel(id: $id, photoId: $photoId, recorderUser: $recorderUser, duration: ${duration}ms, profileImageUrl: $profileImageUrl)';
+      relativePosition: relativePosition ?? this.relativePosition,
+    );
   }
 }

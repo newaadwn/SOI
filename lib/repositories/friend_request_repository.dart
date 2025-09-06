@@ -25,6 +25,7 @@ class FriendRequestRepository {
     required String receiverUid,
     required String receiverId,
     required String senderid,
+    String? senderProfileImageUrl,
     String? message,
   }) async {
     final currentUid = _currentUserUid;
@@ -55,6 +56,7 @@ class FriendRequestRepository {
         senderUid: currentUid,
         receiverUid: receiverUid,
         senderid: senderid,
+        senderProfileImageUrl: senderProfileImageUrl,
         receiverid: receiverId,
         status: FriendRequestStatus.pending,
         message: message,

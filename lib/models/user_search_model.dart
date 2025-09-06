@@ -66,39 +66,6 @@ class UserSearchModel {
     );
   }
 
-  /// 모델을 JSON으로 변환
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'profileImageUrl': profileImageUrl,
-      'phone': phoneNumber, // 'phoneNumber' → 'phone'으로 변경
-      'allowPhoneSearch': allowPhoneSearch,
-      'createdAt': Timestamp.fromDate(createdAt),
-    };
-  }
-
-  /// 모델 복사 (일부 필드 변경)
-  UserSearchModel copyWith({
-    String? uid,
-    String? id,
-    String? name,
-    String? profileImageUrl,
-    String? phoneNumber,
-    bool? allowPhoneSearch,
-    DateTime? createdAt,
-  }) {
-    return UserSearchModel(
-      uid: uid ?? this.uid,
-      id: id ?? this.id,
-      name: name ?? this.name,
-      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      phoneNumber: phoneNumber ?? this.phoneNumber,
-      allowPhoneSearch: allowPhoneSearch ?? this.allowPhoneSearch,
-      createdAt: createdAt ?? this.createdAt,
-    );
-  }
-
   /// 동등성 비교
   @override
   bool operator ==(Object other) {
@@ -124,11 +91,5 @@ class UserSearchModel {
         phoneNumber.hashCode ^
         allowPhoneSearch.hashCode ^
         createdAt.hashCode;
-  }
-
-  /// 디버그용 문자열 표현
-  @override
-  String toString() {
-    return 'UserSearchModel(uid: $uid, id: $id, name: $name, profileImageUrl: $profileImageUrl, phoneNumber: $phoneNumber, allowPhoneSearch: $allowPhoneSearch, createdAt: $createdAt)';
   }
 }

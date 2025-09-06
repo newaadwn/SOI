@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_contacts/flutter_contacts.dart';
 import '../repositories/contact_repository.dart';
 
@@ -23,6 +22,10 @@ class ContactService {
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
+  // ContactService에 캐싱 추가
+  List<Contact>? _cachedContacts;
+  DateTime? _lastFetchTime;
+
   /// 초기화 (앱 시작 시 호출)
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -31,7 +34,7 @@ class ContactService {
       await _loadContactSyncSetting();
       _isInitialized = true;
     } catch (e) {
-      debugPrint('ContactService 초기화 실패: $e');
+      // // debugPrint('ContactService 초기화 실패: $e');
     }
   }
 
@@ -86,11 +89,6 @@ class ContactService {
       // 토글을 켜려고 하는 경우 - 권한 재요청
       return await _requestContactPermission();
     }
-  }
-
-  /// 연락처 권한 요청
-  Future<ContactToggleResult> requestContactPermission() async {
-    return await _requestContactPermission();
   }
 
   /// 설정에서 돌아온 후 권한 상태 재확인
@@ -159,13 +157,21 @@ class ContactService {
   }
 
   /// 연락처 목록 가져오기 (권한이 있을 때)
-  Future<List<Contact>> getContacts() async {
+  Future<List<Contact>> getContacts({bool forceRefresh = false}) async {
     if (!_contactSyncEnabled) {
       throw Exception('연락처 동기화가 비활성화되어 있습니다');
     }
 
+    // 가져온 데이터가 있으면 캐시 사용
+    if (!forceRefresh && _cachedContacts != null && _lastFetchTime != null) {
+      return _cachedContacts!;
+    }
+
     try {
-      return await _repository.getContacts();
+      // 새로 가져오기
+      _cachedContacts = await _repository.getContacts();
+      _lastFetchTime = DateTime.now();
+      return _cachedContacts!;
     } catch (e) {
       throw Exception('연락처 목록을 가져오는데 실패했습니다: $e');
     }

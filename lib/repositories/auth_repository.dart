@@ -2,8 +2,6 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/auth_model.dart';
 
@@ -35,36 +33,19 @@ class AuthRepository {
         forceRecaptchaFlow: false, // reCAPTCHA 강제 사용 안함
       );
 
-      // ⭐ 디버깅 정보 출력
-      debugPrint("🔐 전화번호 인증 시작: $phoneNumber");
-      debugPrint("📱 현재 플랫폼에서 APNs 토큰 사용 여부 확인 중...");
-
-      // ⭐ Firebase Auth 현재 설정 확인
-      final currentUser = _auth.currentUser;
-      debugPrint("👤 현재 사용자: ${currentUser?.uid ?? 'None'}");
-
-      // ⭐ Firebase App 정보 확인
-      try {
-        final app = Firebase.app();
-        debugPrint("🔥 Firebase 앱 이름: ${app.name}");
-        debugPrint("🔥 Firebase 프로젝트 ID: ${app.options.projectId}");
-      } catch (e) {
-        debugPrint("❌ Firebase 앱 정보 조회 실패: $e");
-      }
-
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
         verificationCompleted: (PhoneAuthCredential credential) async {
           // Android에서 SMS 자동 감지 시 자동 로그인
           try {
             await _auth.signInWithCredential(credential);
-            debugPrint("📱 SMS 자동 인증 완료");
+            // debugPrint("📱 SMS 자동 인증 완료");
           } catch (e) {
-            debugPrint("❌ 자동 인증 실패: $e");
+            // debugPrint("❌ 자동 인증 실패: $e");
           }
         },
         verificationFailed: (FirebaseAuthException exception) {
-          debugPrint('❌ 전화번호 인증 실패: ${exception.code} - ${exception.message}');
+          // debugPrint('❌ 전화번호 인증 실패: ${exception.code} - ${exception.message}');
 
           // 특정 에러 코드 처리
           if (exception.code == 'invalid-phone-number') {
@@ -75,33 +56,33 @@ class AuthRepository {
               exception.message?.contains('reCAPTCHA') == true ||
               exception.message?.contains('captcha') == true) {
             // ⭐ reCAPTCHA 관련 에러 상세 로깅
-            debugPrint("🔧 reCAPTCHA 관련 에러 감지:");
-            debugPrint("   - 에러 코드: ${exception.code}");
-            debugPrint("   - 에러 메시지: ${exception.message}");
-            debugPrint("   - APNs 토큰이 제대로 설정되지 않았을 가능성이 높습니다.");
-            debugPrint("   - 임시로 에러를 무시하고 계속 진행합니다.");
+            // debugPrint("🔧 reCAPTCHA 관련 에러 감지:");
+            // debugPrint("   - 에러 코드: ${exception.code}");
+            // debugPrint("   - 에러 메시지: ${exception.message}");
+            // debugPrint("   - APNs 토큰이 제대로 설정되지 않았을 가능성이 높습니다.");
+            // debugPrint("   - 임시로 에러를 무시하고 계속 진행합니다.");
             return;
           }
 
           throw exception;
         },
         codeSent: (String verificationId, int? resendToken) {
-          debugPrint("✅ SMS 코드 전송 완료 - verificationId: $verificationId");
+          // debugPrint("✅ SMS 코드 전송 완료 - verificationId: $verificationId");
           onCodeSent(verificationId, resendToken);
         },
         codeAutoRetrievalTimeout: (String verificationId) {
-          debugPrint("⏰ 코드 자동 검색 타임아웃 - verificationId: $verificationId");
+          // debugPrint("⏰ 코드 자동 검색 타임아웃 - verificationId: $verificationId");
           onTimeout(verificationId);
         },
         timeout: const Duration(seconds: 120),
       );
     } catch (e) {
-      debugPrint('전화번호 인증 중 오류: $e');
+      // debugPrint('전화번호 인증 중 오류: $e');
 
       // reCAPTCHA 관련 에러는 사용자에게 영향을 주지 않으므로 무시
       if (e.toString().contains('reCAPTCHA') ||
           e.toString().contains('web-internal-error')) {
-        debugPrint('reCAPTCHA 관련 에러이므로 무시');
+        // debugPrint('reCAPTCHA 관련 에러이므로 무시');
         return;
       }
 
@@ -142,7 +123,10 @@ class AuthRepository {
 
   // 사용자 정보 저장
   Future<void> saveUser(AuthModel user) async {
-    await _firestore.collection('users').doc(user.uid).set(user.toFirestoreWithServerTimestamp());
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .set(user.toFirestoreWithServerTimestamp());
   }
 
   // 사용자 정보 업데이트
@@ -168,11 +152,11 @@ class AuthRepository {
   // 사용자 프로필 이미지 URL 조회
   Future<String> getUserProfileImageUrlById(String userId) async {
     try {
-      debugPrint('👤 프로필 이미지 URL 조회 시작 - UserId: $userId');
+      // debugPrint('👤 프로필 이미지 URL 조회 시작 - UserId: $userId');
 
       final userDoc = await _firestore.collection('users').doc(userId).get();
 
-      debugPrint('📄 사용자 문서 존재: ${userDoc.exists}');
+      // debugPrint('📄 사용자 문서 존재: ${userDoc.exists}');
 
       if (userDoc.exists) {
         final data = userDoc.data() as Map<String, dynamic>;
@@ -181,22 +165,22 @@ class AuthRepository {
         final profileImageUrl = data['profileImageUrl'];
         final profileImage = data['profile_image'];
 
-        debugPrint('profileImageUrl 필드: $profileImageUrl');
-        debugPrint('profile_image 필드: $profileImage');
-        debugPrint('전체 사용자 데이터: $data');
+        // debugPrint('profileImageUrl 필드: $profileImageUrl');
+        // debugPrint('profile_image 필드: $profileImage');
+        // debugPrint('전체 사용자 데이터: $data');
 
         // 두 가지 필드명 모두 시도 (기존 호환성)
         final finalUrl = profileImageUrl ?? profileImage ?? '';
 
-        debugPrint('최종 ProfileImageUrl: "$finalUrl"');
+        // debugPrint('최종 ProfileImageUrl: "$finalUrl"');
 
         return finalUrl;
       }
 
-      debugPrint('사용자 문서가 존재하지 않음');
+      // debugPrint('사용자 문서가 존재하지 않음');
       return '';
     } catch (e) {
-      debugPrint('사용자 프로필 이미지 가져오기 실패: $e');
+      // debugPrint('사용자 프로필 이미지 가져오기 실패: $e');
       return '';
     }
   }

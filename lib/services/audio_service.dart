@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:flutter/material.dart';
 import '../repositories/audio_repository.dart';
 import '../models/audio_data_model.dart';
 import '../models/auth_result.dart';
@@ -74,7 +73,7 @@ class AudioService {
 
       return AuthResult.success();
     } catch (e) {
-      debugPrint('오디오 서비스 초기화 오류: $e');
+      // // debugPrint('오디오 서비스 초기화 오류: $e');
       return AuthResult.failure('오디오 서비스 초기화에 실패했습니다.');
     }
   }
@@ -85,7 +84,7 @@ class AudioService {
       await _repository.disposeRecorder();
       await _repository.disposePlayer();
     } catch (e) {
-      debugPrint('오디오 서비스 종료 오류: $e');
+      // // debugPrint('오디오 서비스 종료 오류: $e');
     }
   }
 
@@ -104,10 +103,10 @@ class AudioService {
         return AuthResult.failure('네이티브 녹음을 시작할 수 없습니다.');
       }
 
-      debugPrint('네이티브 녹음 시작됨: $recordingPath');
+      // // debugPrint('네이티브 녹음 시작됨: $recordingPath');
       return AuthResult.success(recordingPath);
     } catch (e) {
-      debugPrint('네이티브 녹음 시작 오류: $e');
+      // // debugPrint('네이티브 녹음 시작 오류: $e');
       return AuthResult.failure('네이티브 녹음을 시작할 수 없습니다.');
     }
   }
@@ -128,7 +127,7 @@ class AudioService {
         return AuthResult.failure('네이티브 녹음 파일을 저장할 수 없습니다.');
       }
 
-      debugPrint('네이티브 녹음 완료: $recordingPath');
+      // // debugPrint('네이티브 녹음 완료: $recordingPath');
 
       // 파일 존재 여부 확인
       final file = File(recordingPath);
@@ -140,7 +139,7 @@ class AudioService {
       final fileSize = await _repository.getFileSize(recordingPath);
       final duration = await _repository.getAudioDuration(recordingPath);
 
-      debugPrint('📊 녹음 파일 정보: ${fileSize.toStringAsFixed(2)}MB, ${duration}초');
+      // // debugPrint('📊 녹음 파일 정보: ${fileSize.toStringAsFixed(2)}MB, ${duration}초');
 
       // 비즈니스 규칙 검증
       if (!_isValidFileSize(fileSize)) {
@@ -174,10 +173,10 @@ class AudioService {
       final audioId = await _repository.saveAudioData(audioData);
       final savedAudio = audioData.copyWith(id: audioId);
 
-      debugPrint('네이티브 녹음 데이터 저장 완료: $audioId');
+      // // debugPrint('네이티브 녹음 데이터 저장 완료: $audioId');
       return AuthResult.success(savedAudio);
     } catch (e) {
-      debugPrint('네이티브 녹음 중지 오류: $e');
+      // // debugPrint('네이티브 녹음 중지 오류: $e');
       return AuthResult.failure('네이티브 녹음을 완료할 수 없습니다.');
     }
   }
@@ -188,13 +187,13 @@ class AudioService {
       final filePath = await AudioRepository.stopRecording();
 
       if (filePath != null && filePath.isNotEmpty) {
-        debugPrint('간단 녹음 중지: $filePath');
+        // // debugPrint('간단 녹음 중지: $filePath');
         return AuthResult.success(filePath);
       } else {
         return AuthResult.failure('네이티브 녹음 중지 실패');
       }
     } catch (e) {
-      debugPrint('간단 녹음 중지 오류: $e');
+      // // debugPrint('간단 녹음 중지 오류: $e');
       return AuthResult.failure('네이티브 녹음 중지 중 오류 발생: $e');
     }
   }
@@ -225,7 +224,7 @@ class AudioService {
 
       return AuthResult.success();
     } catch (e) {
-      debugPrint('오디오 재생 오류: $e');
+      // // debugPrint('오디오 재생 오류: $e');
       return AuthResult.failure('오디오를 재생할 수 없습니다.');
     }
   }
@@ -236,7 +235,7 @@ class AudioService {
       await _repository.stopPlaying();
       return AuthResult.success();
     } catch (e) {
-      debugPrint('재생 중지 오류: $e');
+      // // debugPrint('재생 중지 오류: $e');
       return AuthResult.failure('재생을 중지할 수 없습니다.');
     }
   }
@@ -247,7 +246,7 @@ class AudioService {
       await _repository.pausePlaying();
       return AuthResult.success();
     } catch (e) {
-      debugPrint('재생 일시정지 오류: $e');
+      // // debugPrint('재생 일시정지 오류: $e');
       return AuthResult.failure('재생을 일시정지할 수 없습니다.');
     }
   }
@@ -258,7 +257,7 @@ class AudioService {
       await _repository.resumePlaying();
       return AuthResult.success();
     } catch (e) {
-      debugPrint('재생 재개 오류: $e');
+      // // debugPrint('재생 재개 오류: $e');
       return AuthResult.failure('재생을 재개할 수 없습니다.');
     }
   }
@@ -312,7 +311,7 @@ class AudioService {
 
       return AuthResult.success(downloadUrl);
     } catch (e) {
-      debugPrint('업로드 오류: $e');
+      // // debugPrint('업로드 오류: $e');
       await _repository.updateAudioData(audioId, {
         'status': AudioStatus.failed.name,
       });
@@ -376,7 +375,7 @@ class AudioService {
 
       return AuthResult.success();
     } catch (e) {
-      debugPrint('오디오 삭제 오류: $e');
+      // // debugPrint('오디오 삭제 오류: $e');
       return AuthResult.failure('오디오 삭제 중 오류가 발생했습니다.');
     }
   }
@@ -409,7 +408,7 @@ class AudioService {
       await _repository.updateAudioData(audioId, updateData);
       return AuthResult.success();
     } catch (e) {
-      debugPrint('오디오 정보 업데이트 오류: $e');
+      // // debugPrint('오디오 정보 업데이트 오류: $e');
       return AuthResult.failure('오디오 정보 업데이트 중 오류가 발생했습니다.');
     }
   }

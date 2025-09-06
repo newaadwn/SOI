@@ -2,6 +2,11 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.newdawn.soiapp.refresh</string>
+		<string>com.newdawn.soiapp.processing</string>
+	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDevelopmentRegion</key>
@@ -48,6 +53,15 @@
 	</array>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>branch_key</key>
+	<dict>
+		<key>live</key>
+		<string>key_live_YOUR_LIVE_KEY_HERE</string>
+		<key>test</key>
+		<string>key_test_YOUR_TEST_KEY_HERE</string>
+	</dict>
+	<key>branch_use_test_instance</key>
+	<true/>
 	<key>FirebaseAppDelegateProxyEnabled</key>
 	<true/>
 	<key>FirebaseAuthCAPTCHAFallbackEnabled</key>
@@ -92,9 +106,11 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>이 앱은 동영상 촬영 시 음성 녹음을 위해 마이크 접근 권한이 필요합니다. 음성 녹음을 통해 더 생생하게 소통할 수 있습니다.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>이 앱은 촬영한 사진을 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다. 사진을 저장하여 나중에 쉽게 찾아볼 수 있습니다.</string>
+	<string>SOI에서 생성한 이미지를 갤러리에 저장하기 위해 사진 라이브러리 접근 권한이 필요합니다. 저장된 이미지를 통해 친구들과 쉽게 공유할 수 있습니다.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app needs access to photo library to show recent photos</string>
+	<string>SOI는 사진을 선택하고 공유 이미지를 생성하기 위해 사진 라이브러리 접근 권한이 필요합니다.</string>
+	<key>FlutterDeepLinkingEnabled</key>
+	<false/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UIBackgroundModes</key>

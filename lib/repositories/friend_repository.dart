@@ -379,7 +379,54 @@ class FriendRepository {
           .update({'lastInteraction': Timestamp.now()});
     } catch (e) {
       // 상호작용 시간 업데이트 실패는 중요하지 않으므로 로그만 출력
-      print('친구 상호작용 시간 업데이트 실패: $e');
+      // print('친구 상호작용 시간 업데이트 실패: $e');
+    }
+  }
+
+  /// 현재 사용자의 새 프로필 이미지 URL을 모든 친구들의 friends 서브컬렉션 문서에 반영
+  ///
+  /// Firestore batch(최대 500)에 맞추어 청크로 나누어 업데이트
+  Future<void> propagateCurrentUserProfileImage(
+    String newProfileImageUrl,
+  ) async {
+    final currentUid = _currentUserUid;
+    if (currentUid == null) return;
+
+    try {
+      // 내 친구 목록(= 내가 가진 friends 서브컬렉션)에서 친구 UID 들 수집
+      final myFriendsSnapshot =
+          await _usersCollection.doc(currentUid).collection('friends').get();
+
+      if (myFriendsSnapshot.docs.isEmpty) return;
+
+      final friendUids = myFriendsSnapshot.docs.map((d) => d.id).toList();
+
+      const int batchLimit = 400; // 안전 마진 (500 제한 대비)
+      for (var i = 0; i < friendUids.length; i += batchLimit) {
+        final slice = friendUids.sublist(
+          i,
+          i + batchLimit > friendUids.length
+              ? friendUids.length
+              : i + batchLimit,
+        );
+
+        final batch = _firestore.batch();
+        for (final friendUid in slice) {
+          final friendDocRef = _usersCollection
+              .doc(friendUid)
+              .collection('friends')
+              .doc(currentUid);
+          // 존재하지 않을 수도 있으므로 set(merge) 사용
+          batch.set(friendDocRef, {
+            'profileImageUrl': newProfileImageUrl,
+            'lastInteraction': Timestamp.now(), // 변동 트리거 용도
+          }, SetOptions(merge: true));
+        }
+        await batch.commit();
+      }
+    } catch (e) {
+      // 실패는 치명적이지 않으므로 throw 대신 무시 / 필요하면 로그 처리
+      // print('프로필 이미지 전파 실패: $e');
     }
   }
 }

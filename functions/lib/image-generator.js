@@ -41,7 +41,7 @@ async function generateInviteImage(userInfo, customMessage = null) {
       try {
         profileImage = await loadImage(userInfo.photoURL);
       } catch (error) {
-        console.log("Failed to load profile image, using default");
+        // console.log("Failed to load profile image, using default");
       }
     }
 
@@ -142,7 +142,7 @@ async function generateInviteImage(userInfo, customMessage = null) {
     // Return public URL
     return `https://storage.googleapis.com/${bucket.name}/${fileName}`;
   } catch (error) {
-    console.error("Error generating invite image:", error);
+    // console.error("Error generating invite image:", error);
     throw new Error(`Failed to generate invite image: ${error.message}`);
   }
 }
