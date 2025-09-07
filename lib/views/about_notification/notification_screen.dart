@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_swift_camera/controllers/photo_controller.dart';
-import 'package:flutter_swift_camera/views/about_archiving/screens/archive_detail/category_photos_screen.dart';
+import 'package:soi/controllers/photo_controller.dart';
+import 'package:soi/views/about_archiving/screens/archive_detail/category_photos_screen.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/notification_controller.dart';
@@ -190,27 +190,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
       debugPrint('🔍 2단계: 스트림으로 재시도');
       // 최대 5번 재시도하며 사진을 찾습니다
       while (retryCount < maxRetries && initialIndex == -1) {
-        debugPrint(
-          '재시도 ${retryCount + 1}/$maxRetries 시작 - categoryId: $categoryId, photoId: $photoId',
-        );
-
         // Stream에서 최신 사진 목록 가져오기
         final photosStream = _photoController.getPhotosByCategoryStream(
           categoryId,
         );
         photos = await photosStream.first;
 
-        debugPrint('Stream에서 가져온 사진 수: ${photos.length}');
-
         if (photos.isNotEmpty) {
-          // 모든 사진 ID 로그 출력
-          final photoIds = photos.map((photo) => photo.id).toList();
-          debugPrint('Stream 사진 ID 목록: $photoIds');
-
           // 특정 photoId에 해당하는 인덱스 찾기
           initialIndex = photos.indexWhere((photo) => photo.id == photoId);
-
-          debugPrint('찾고 있는 photoId: $photoId, Stream에서 찾은 인덱스: $initialIndex');
 
           if (initialIndex != -1) {
             debugPrint('✅ Stream에서 사진을 찾았습니다: $photoId (인덱스: $initialIndex)');
@@ -306,7 +294,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       backgroundColor: Colors.black,
       elevation: 0,
       centerTitle: false,
-
+      iconTheme: const IconThemeData(color: Color(0xffd9d9d9)),
       title: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_swift_camera/controllers/auth_controller.dart';
+import 'package:soi/controllers/auth_controller.dart';
 import '../../../../models/category_data_model.dart';
 import '../../components/archive_category_actions.dart';
 import '../../components/archive_category_dialogs.dart';
 
-/// 🎯 아카이브 팝업 메뉴 위젯
+/// 아카이브 팝업 메뉴 위젯
 /// 카테고리 카드의 더보기 메뉴를 담당합니다.
 class ArchivePopupMenuWidget extends StatefulWidget {
   final CategoryDataModel category;

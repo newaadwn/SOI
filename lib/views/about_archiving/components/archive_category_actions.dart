@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_swift_camera/controllers/auth_controller.dart';
+import 'package:soi/controllers/auth_controller.dart';
 import 'package:provider/provider.dart';
 import '../../../../controllers/category_controller.dart';
 import '../../../../models/category_data_model.dart';

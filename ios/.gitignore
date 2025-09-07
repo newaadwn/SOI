@@ -34,3 +34,5 @@ Runner/GeneratedPluginRegistrant.*
 !default.perspectivev3
 
 GoogleService-Info.plist
+
+.env

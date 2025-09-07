@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_swift_camera/controllers/category_controller.dart';
+import 'package:soi/controllers/category_controller.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../controllers/auth_controller.dart';
