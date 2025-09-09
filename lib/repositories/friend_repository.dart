@@ -132,7 +132,6 @@ class FriendRepository {
   }
 
   /// 친구 삭제
-  ///
   /// [friendUid] 삭제할 친구의 UID
   Future<void> removeFriend(String friendUid) async {
     final currentUid = _currentUserUid;
@@ -140,7 +139,8 @@ class FriendRepository {
       throw Exception('사용자가 로그인되어 있지 않습니다');
     }
 
-    try {
+    // 내 친구 목록에서 삭제를 수행하고 상대방의 친구 목록에서 나를 삭제
+    /*try {
       await _firestore.runTransaction((transaction) async {
         // 1. 현재 사용자의 친구 목록에서 삭제
         final currentUserFriendDoc = _usersCollection
@@ -156,8 +156,19 @@ class FriendRepository {
             .collection('friends')
             .doc(currentUid);
 
-        transaction.delete(friendUserFriendDoc);
+        // transaction.delete(friendUserFriendDoc);
       });
+    } catch (e) {
+      throw Exception('친구 삭제 실패: $e');
+    }*/
+
+    // 양방향 삭제는 하지 않고, 내 목록에서만 삭제
+    try {
+      await _usersCollection
+          .doc(currentUid)
+          .collection('friends')
+          .doc(friendUid)
+          .delete();
     } catch (e) {
       throw Exception('친구 삭제 실패: $e');
     }

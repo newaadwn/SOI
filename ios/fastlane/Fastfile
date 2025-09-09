@@ -1,18 +1,18 @@
 # ./ios/fastlane/Fastfile
 require 'dotenv/load'
 
-# .env 파일 로드 (프로젝트 루트에서)
-Dotenv.load('../.env')
+# .env 파일 로드 (iOS 폴더에서)
+Dotenv.load(File.expand_path('../.env', __dir__))
 
 default_platform(:ios)
 
 platform :ios do
-  # 배포 전 모든 작업이 이뤄지는 곳
+    # 배포 전 모든 작업이 이뤄지는 곳
   before_all do
     # App Store Connect API Key로 인증 (가장 안전한 방법)
     app_store_connect_api_key(
       key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
-      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
       key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"], # key 파일 내용을 직접 넣거나 key_filepath 사용
       is_key_content_base64: true
     )
@@ -21,14 +21,32 @@ platform :ios do
   desc "Flutter 앱을 빌드하고 TestFlight에 배포합니다."
   lane :deploy_to_testflight do
     # 1. Flutter 빌드 (절대 경로 사용)
-    sh "cd .. && flutter build ipa --release --export-options-plist=#{File.expand_path('../ExportOptions.plist', Dir.pwd)}"
+    sh "cd .. && flutter build ipa --release"
+
+    # 2. IPA 파일 경로 확인 및 설정
+    # 빌드된 ipa 디렉토리에서 모든 .ipa 파일 찾기 (절대 경로 사용)
+    # fastlane은 ios 폴더에서 실행되므로, 프로젝트 루트는 한 단계 위로 올라가야 함
+    project_root = File.expand_path("../..", Dir.pwd)
+    ipa_files = Dir.glob("#{project_root}/build/ios/ipa/*.ipa")
+    
+    UI.message("현재 디렉토리: #{Dir.pwd}")
+    UI.message("프로젝트 루트: #{project_root}")
+    UI.message("검색 경로: #{project_root}/build/ios/ipa/*.ipa")
+    UI.message("찾은 IPA 파일들: #{ipa_files}")
+    
+    if ipa_files.empty?
+      UI.user_error!("IPA 파일을 찾을 수 없습니다. 빌드가 성공했는지 확인해주세요.")
+    end
+    
+    ipa_path = ipa_files.first
+    UI.message("IPA 파일을 찾았습니다: #{ipa_path}")
 
     # 2. TestFlight 업로드
     pilot(
-      ipa: "../build/ios/ipa/soi.ipa", # 생성된 ipa 파일 경로 (프로젝트에 맞게 수정)
+      ipa: ipa_path,
       app_identifier: "com.newdawn.soi-project", # 앱 번들 ID
       skip_waiting_for_build_processing: true, # 빌드 처리 대기 없이 바로 다음 단계로 진행
-      changelog: "이번 버전의 테스트 변경 사항입니다. (예: 버그 수정 및 성능 개선)", # What to Test 내용
+      changelog: "이번 버전의 테스트 변경 사항입니다.", # What to Test 내용
       groups: ["Internal Testers"] # 빌드를 추가할 테스트 그룹 (선택 사항)
     )
   end
