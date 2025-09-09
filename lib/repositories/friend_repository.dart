@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import '../models/friend_model.dart';
 
 /// 친구 목록 Repository 클래스
@@ -169,6 +170,7 @@ class FriendRepository {
           .collection('friends')
           .doc(friendUid)
           .delete();
+      debugPrint("일방향 친구 삭제 완료: $friendUid");
     } catch (e) {
       throw Exception('친구 삭제 실패: $e');
     }
@@ -438,6 +440,158 @@ class FriendRepository {
     } catch (e) {
       // 실패는 치명적이지 않으므로 throw 대신 무시 / 필요하면 로그 처리
       // print('프로필 이미지 전파 실패: $e');
+    }
+  }
+
+  /// 카테고리 추가 가능 여부 확인
+  Future<bool> canAddToCategory(String requesterId, String targetId) async {
+    try {
+      // 1. requester가 target을 삭제했는지 확인
+      final requesterFriend = await getFriend(targetId);
+      if (requesterFriend == null) {
+        debugPrint('❌ requester가 target을 삭제함: $requesterId -> $targetId');
+        return false; // 삭제했거나 원래 친구 아님
+      }
+
+      // 2. requester가 target을 차단했는지 확인
+      if (requesterFriend.status == FriendStatus.blocked) {
+        debugPrint('❌ requester가 target을 차단함: $requesterId -> $targetId');
+        return false;
+      }
+
+      // 3. target이 requester를 차단했는지 확인 (양방향 차단)
+      final targetFriend = await getTargetUserFriend(requesterId, targetId);
+      if (targetFriend?.status == FriendStatus.blocked) {
+        debugPrint('❌ target이 requester를 차단함: $targetId -> $requesterId');
+        return false;
+      }
+
+      debugPrint('✅ 카테고리 추가 가능: $requesterId -> $targetId');
+      return true;
+    } catch (e) {
+      debugPrint('⚠️ canAddToCategory 에러: $e');
+      return false; // 안전하게 false 반환
+    }
+  }
+
+  /// 카테고리 추가 불가 이유 반환
+  Future<String?> getCannotAddReason(
+    String requesterId,
+    String targetId,
+  ) async {
+    try {
+      final requesterFriend = await getFriend(targetId);
+
+      if (requesterFriend == null) {
+        return '삭제된 친구는 카테고리에 추가할 수 없습니다.';
+      }
+
+      if (requesterFriend.status == FriendStatus.blocked) {
+        return '차단된 친구는 카테고리에 추가할 수 없습니다.';
+      }
+
+      // target이 requester를 차단했는지 확인
+      final targetFriend = await getTargetUserFriend(requesterId, targetId);
+      if (targetFriend?.status == FriendStatus.blocked) {
+        return '이 사용자가 회원님을 차단하여 카테고리에 추가할 수 없습니다.';
+      }
+
+      return null; // 추가 가능
+    } catch (e) {
+      return '확인 중 오류가 발생했습니다.';
+    }
+  }
+
+  /// 다른 사용자 관점에서 친구 정보 조회
+  Future<FriendModel?> getTargetUserFriend(
+    String requesterId,
+    String targetId,
+  ) async {
+    try {
+      final doc =
+          await _usersCollection
+              .doc(targetId) // target 사용자의
+              .collection('friends') // friends 컬렉션에서
+              .doc(requesterId) // requester에 대한 친구 정보 조회
+              .get();
+
+      return doc.exists ? FriendModel.fromFirestore(doc) : null;
+    } catch (e) {
+      debugPrint('_getTargetUserFriend 에러: $e');
+      return null;
+    }
+  }
+
+  /// 현재 사용자가 차단한 사용자 목록 조회
+  Future<List<String>> getBlockedUsers() async {
+    final currentUid = _currentUserUid;
+    if (currentUid == null) {
+      return [];
+    }
+
+    try {
+      final snapshot =
+          await _usersCollection
+              .doc(currentUid)
+              .collection('friends')
+              .where('status', isEqualTo: 'blocked')
+              .get();
+
+      return snapshot.docs.map((doc) => doc.id).toList();
+    } catch (e) {
+      debugPrint('차단한 사용자 목록 조회 실패: $e');
+      return [];
+    }
+  }
+
+  /// 특정 사용자가 나를 차단했는지 확인 (간접 추정)
+  Future<bool> amIBlockedBy(String targetUserId) async {
+    try {
+      final theirFriend = await getTargetUserFriend(
+        _currentUserUid!,
+        targetUserId,
+      );
+      return theirFriend?.status == FriendStatus.blocked;
+    } catch (e) {
+      debugPrint('차단 상태 확인 실패: $e');
+      return false;
+    }
+  }
+
+  /// 나를 차단한 사용자 목록 조회
+  Future<List<String>> getUsersWhoBlockedMe() async {
+    final currentUid = _currentUserUid;
+    if (currentUid == null) {
+      return [];
+    }
+
+    try {
+      // 현재 사용자의 친구 목록을 조회
+      final myFriends = await getFriendsList().first;
+      final usersWhoBlockedMe = <String>[];
+
+      // 각 친구에 대해 역방향 관계 확인
+      for (final friend in myFriends) {
+        try {
+          final theirFriendData = await getTargetUserFriend(
+            currentUid,
+            friend.userId,
+          );
+
+          // 상대방이 나를 차단한 상태인지 확인
+          if (theirFriendData?.status == FriendStatus.blocked) {
+            usersWhoBlockedMe.add(friend.userId);
+          }
+        } catch (e) {
+          // 개별 사용자 확인 실패는 무시하고 계속 진행
+          debugPrint('사용자 ${friend.userId} 차단 상태 확인 실패: $e');
+        }
+      }
+
+      return usersWhoBlockedMe;
+    } catch (e) {
+      debugPrint('나를 차단한 사용자 목록 조회 실패: $e');
+      return [];
     }
   }
 }

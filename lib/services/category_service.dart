@@ -1,11 +1,15 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:soi/services/auth_service.dart';
 import '../repositories/category_repository.dart';
+import '../repositories/friend_repository.dart';
+import '../repositories/user_search_repository.dart';
 import '../models/category_data_model.dart';
 import '../models/auth_result.dart';
 import 'notification_service.dart';
 import 'photo_service.dart';
+import 'friend_service.dart';
 
 /// 비즈니스 로직을 처리하는 Service
 /// Repository를 사용해서 실제 비즈니스 규칙을 적용
@@ -28,6 +32,22 @@ class CategoryService {
   PhotoService get photoService {
     _photoService ??= PhotoService();
     return _photoService!;
+  }
+
+  // FriendService 의존성 추가
+  FriendService? _friendService;
+  FriendService get friendService {
+    _friendService ??= FriendService(
+      friendRepository: FriendRepository(),
+      userSearchRepository: UserSearchRepository(),
+    );
+    return _friendService!;
+  }
+
+  AuthService? _authService;
+  AuthService get authService {
+    _authService ??= AuthService();
+    return _authService!;
   }
 
   // ==================== 비즈니스 로직 ====================
@@ -56,7 +76,13 @@ class CategoryService {
     if (userId.isEmpty) {
       return Stream.value([]);
     }
-    return _repository.getUserCategoriesStream(userId);
+
+    // 차단된 사용자가 있는 카테고리를 필터링한 스트림 반환
+    return _repository.getUserCategoriesStream(userId).asyncMap((
+      categories,
+    ) async {
+      return await _filterCategoriesWithBlockedUsers(categories);
+    });
   }
 
   /// 단일 카테고리 실시간 스트림
@@ -67,7 +93,7 @@ class CategoryService {
     return _repository.getCategoryStream(categoryId);
   }
 
-  /// 사용자의 카테고리 목록을 한 번만 가져오기
+  /// 사용자의 카테고리 목록을 한 번만 가져오기 (차단된 사용자 필터링 포함)
   Future<List<CategoryDataModel>> getUserCategories(String userId) async {
     if (userId.isEmpty) {
       // // debugPrint('CategoryService: userId가 비어있습니다.');
@@ -77,7 +103,8 @@ class CategoryService {
     try {
       final categories = await _repository.getUserCategories(userId);
 
-      return categories;
+      // 차단된 사용자가 있는 카테고리 필터링
+      return await _filterCategoriesWithBlockedUsers(categories);
     } catch (e) {
       // // debugPrint('카테고리 목록 조회 오류: $e');
       return [];
@@ -314,15 +341,29 @@ class CategoryService {
     }
   }
 
-  /// 카테고리의 사진들 가져오기
+  /// 카테고리의 사진들 가져오기 (차단된 사용자 필터링 포함)
   Future<List<Map<String, dynamic>>> getCategoryPhotos(
     String categoryId,
   ) async {
     try {
       if (categoryId.isEmpty) return [];
 
-      return await _repository.getCategoryPhotos(categoryId);
+      // 1. 모든 카테고리 사진 조회
+      final allPhotos = await _repository.getCategoryPhotos(categoryId);
+
+      // 2. 내가 차단한 사용자 목록만 조회 (단방향 필터링)
+      final blockedByMe = await friendService.getBlockedUsers();
+
+      // 3. 내가 차단한 사용자들의 사진만 필터링
+      final filteredPhotos =
+          allPhotos.where((photo) {
+            final photoUserId = photo['userId'] as String?;
+            return photoUserId == null || !blockedByMe.contains(photoUserId);
+          }).toList();
+
+      return filteredPhotos;
     } catch (e) {
+      debugPrint('getCategoryPhotos 에러: $e');
       return [];
     }
   }
@@ -428,11 +469,22 @@ class CategoryService {
     }
   }
 
-  /// 카테고리 사진 스트림 (Map 형태로 반환)
+  /// 카테고리 사진 스트림 (차단된 사용자 필터링 포함)
   Stream<List<Map<String, dynamic>>> getCategoryPhotosStream(
     String categoryId,
   ) {
-    return _repository.getCategoryPhotosStream(categoryId);
+    return _repository.getCategoryPhotosStream(categoryId).asyncMap((
+      photos,
+    ) async {
+      // 내가 차단한 사용자 목록만 조회 (단방향 필터링)
+      final blockedByMe = await friendService.getBlockedUsers();
+
+      // 내가 차단한 사용자들의 사진만 필터링
+      return photos.where((photo) {
+        final photoUserId = photo['userId'] as String?;
+        return photoUserId == null || !blockedByMe.contains(photoUserId);
+      }).toList();
+    });
   }
 
   // ==================== 유틸리티 ====================
@@ -442,12 +494,14 @@ class CategoryService {
     return category.mates.contains(userId);
   }
 
-  /// 카테고리에 사용자 추가 (닉네임으로)
+  /// 카테고리에 사용자 추가 (닉네임으로) - 기존 방식 유지하되 검증 추가
   Future<AuthResult> addUserToCategory({
     required String categoryId,
     required String nickName,
   }) async {
     try {
+      // TODO: 닉네임으로 UID를 찾아서 addUidToCategory 호출하도록 개선 필요
+      // 현재는 기존 방식 유지
       await _repository.addUserToCategory(
         categoryId: categoryId,
         nickName: nickName,
@@ -464,9 +518,41 @@ class CategoryService {
     required String uid,
   }) async {
     try {
+      debugPrint('🎯 카테고리 사용자 추가 시도: $categoryId <- $uid');
+
+      // 1. 현재 사용자 확인
+      final currentUserId = authService.currentUser?.uid;
+      if (currentUserId == null || currentUserId.isEmpty) {
+        return AuthResult.failure('로그인이 필요합니다.');
+      }
+
+      // 2. 자기 자신 추가 시도 확인
+      if (currentUserId == uid) {
+        return AuthResult.failure('자기 자신은 이미 카테고리 멤버입니다.');
+      }
+
+      // 3. 카테고리 존재 확인
+      final category = await _repository.getCategory(categoryId);
+      if (category == null) {
+        return AuthResult.failure('카테고리를 찾을 수 없습니다.');
+      }
+
+      // 4. 이미 멤버인지 확인
+      if (category.mates.contains(uid)) {
+        return AuthResult.failure('이미 카테고리 멤버입니다.');
+      }
+
+      // 5. 친구 관계 확인 제거 - 차단된 사용자도 카테고리 추가 허용
+      // 차단 효과는 사진 필터링으로만 구현
+      // (차단당한 사용자는 차단 사실을 모르므로 자유롭게 추가 가능해야 함)
+
+      // 6. 실제 추가 실행
       await _repository.addUidToCategory(categoryId: categoryId, uid: uid);
+      debugPrint('✅ 카테고리 사용자 추가 성공');
+
       return AuthResult.success(null);
     } catch (e) {
+      debugPrint('💥 addUidToCategory 에러: $e');
       return AuthResult.failure('카테고리에 사용자 추가 실패: $e');
     }
   }
@@ -580,6 +666,47 @@ class CategoryService {
       }
     } catch (e) {
       debugPrint('❌ 삭제 후 대표사진 자동 업데이트 실패: $e');
+    }
+  }
+
+  /// 차단된 사용자가 있는 카테고리를 필터링하는 메서드
+  Future<List<CategoryDataModel>> _filterCategoriesWithBlockedUsers(
+    List<CategoryDataModel> categories,
+  ) async {
+    try {
+      // 1. 내가 차단한 사용자만 조회 (차단당한 사용자는 차단 사실을 알면 안됨)
+      final blockedByMe = await friendService.getBlockedUsers(); // 내가 차단한 사용자
+
+      if (blockedByMe.isEmpty) {
+        return categories; // 내가 차단한 사용자가 없으면 필터링 불필요
+      }
+
+      // 2. 각 카테고리를 검사하여 필터링
+      final filteredCategories = <CategoryDataModel>[];
+      final currentUserId = authService.currentUser?.uid;
+
+      for (final category in categories) {
+        // 카테고리가 나와 내가 차단한 사용자 두 명만 있는지 확인
+        if (category.mates.length == 2) {
+          final otherUser = category.mates.firstWhere(
+            (uid) => uid != currentUserId,
+            orElse: () => '',
+          );
+
+          // 나와 내가 차단한 사용자 두 명만 있는 카테고리는 완전히 숨김
+          if (otherUser.isNotEmpty && blockedByMe.contains(otherUser)) {
+            continue; // 이 카테고리는 건너뛰기 (숨김)
+          }
+        }
+
+        // 그 외 모든 카테고리는 포함 (사진 필터링은 getCategoryPhotos에서 처리)
+        filteredCategories.add(category);
+      }
+
+      return filteredCategories;
+    } catch (e) {
+      debugPrint('카테고리 필터링 중 오류 발생: $e');
+      return categories; // 오류 발생 시 원본 반환
     }
   }
 }
