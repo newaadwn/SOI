@@ -651,8 +651,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                           _selectedFriends
                                               .map((friend) => friend.uid)
                                               .toList(),
-                                      allowDeselection:
-                                          true, // 새 카테고리 만들기이므로 해제 허용
+                                      allowDeselection: true,
                                     ),
                               ),
                             );
@@ -736,7 +735,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                 }
                               }
                             },
-                            showAddButton: true, // + 버튼 표시
+                            showAddButton: true,
                           ),
                         ),
 

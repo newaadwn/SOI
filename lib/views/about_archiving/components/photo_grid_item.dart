@@ -3,8 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-
 import '../../../controllers/auth_controller.dart';
+import '../../../controllers/audio_controller.dart';
 import '../../../models/photo_data_model.dart';
 import '../screens/archive_detail/photo_detail_screen.dart';
 import '../widgets/wave_form_widget/custom_waveform_widget.dart';
@@ -291,14 +291,19 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                                 _waveformData == null ||
                                 _waveformData!.isEmpty)
                             ? Container()
-                            : Container(
-                              width: 140.w,
-                              height: 21.h,
-                              decoration: BoxDecoration(
-                                color: Color(0xff171717).withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(15),
+                            : GestureDetector(
+                              onTap: () => _toggleAudioPlayback(),
+                              child: Container(
+                                width: 140.w,
+                                height: 21.h,
+                                decoration: BoxDecoration(
+                                  color: Color(
+                                    0xff171717,
+                                  ).withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: _buildWaveformWidget(),
                               ),
-                              child: _buildWaveformWidget(),
                             ),
                   ),
                   SizedBox(width: 5.w),
@@ -312,17 +317,45 @@ class _PhotoGridItemState extends State<PhotoGridItem>
     );
   }
 
+  /// 오디오 재생/일시정지 토글 메서드
+  void _toggleAudioPlayback() async {
+    if (!_hasAudio || widget.photo.audioUrl.isEmpty) return;
+
+    final audioController = Provider.of<AudioController>(
+      context,
+      listen: false,
+    );
+
+    audioController.toggleAudio(widget.photo.audioUrl);
+  }
+
   /// 커스텀 파형 위젯을 빌드하는 메서드
   Widget _buildWaveformWidget() {
-    // 커스텀 파형 표시
-    return Container(
-      height: 21,
-      padding: EdgeInsets.symmetric(horizontal: 10.w),
-      child: CustomWaveformWidget(
-        waveformData: _waveformData!,
-        color: Colors.white,
-        activeColor: Colors.blueAccent,
-      ),
+    return Consumer<AudioController>(
+      builder: (context, audioController, child) {
+        final isCurrentAudio =
+            audioController.isPlaying &&
+            audioController.currentPlayingAudioUrl == widget.photo.audioUrl;
+
+        double progress = 0.0;
+        if (isCurrentAudio &&
+            audioController.currentDuration.inMilliseconds > 0) {
+          progress = (audioController.currentPosition.inMilliseconds /
+                  audioController.currentDuration.inMilliseconds)
+              .clamp(0.0, 1.0);
+        }
+
+        return Container(
+          height: 21,
+          padding: EdgeInsets.symmetric(horizontal: 10.w),
+          child: CustomWaveformWidget(
+            waveformData: _waveformData!,
+            color: (isCurrentAudio) ? Color(0xff5a5a5a) : Color(0xffffffff),
+            activeColor: Colors.white,
+            progress: progress,
+          ),
+        );
+      },
     );
   }
 }

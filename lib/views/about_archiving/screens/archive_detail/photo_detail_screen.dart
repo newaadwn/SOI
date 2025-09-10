@@ -421,11 +421,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     try {
       final userId = _authController?.currentUser?.uid;
       if (userId == null) return;
-      // 임시 상태 저장 (사용자가 저장하기 전까지 active 상태 유지)
-      // relativePosition은 저장 시점에 초기(center)로 부여.
+
       _pendingVoiceComments[photoId] = CommentRecordModel(
         id: 'pending',
-        audioUrl: audioPath, // 로컬 경로 (저장 시 업로드 처리될 것으로 가정)
+        audioUrl: audioPath,
         recorderUser: userId,
         photoId: photoId,
         waveformData: waveformData,
