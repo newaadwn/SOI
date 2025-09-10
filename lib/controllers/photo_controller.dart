@@ -22,7 +22,7 @@ class PhotoController extends ChangeNotifier {
   bool _hasMore = true;
   bool _isLoadingMore = false;
   String? _lastPhotoId;
-  static const int _initialLoadSize = 5;
+  static const int _initialLoadSize = 10; // 사용자 경험 개선을 위해 10개로 증가
   static const int _pageSize = 10;
 
   StreamSubscription<List<PhotoDataModel>>? _photosSubscription;

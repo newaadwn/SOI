@@ -123,15 +123,45 @@ class AudioController extends ChangeNotifier {
   /// Controller 종료
   @override
   void dispose() {
+    debugPrint('🔊 AudioController dispose 시작');
+
+    // 1. 타이머 및 스트림 정리
     _recordingTimer?.cancel();
     _uploadSubscription?.cancel();
-    _playerController?.dispose();
 
-    // 실시간 오디오 관련 정리
+    // 2. 모든 재생 중지 (동기적으로 처리)
+    try {
+      if (_realtimeAudioPlayer != null) {
+        _realtimeAudioPlayer!.stop();
+      }
+    } catch (e) {
+      debugPrint('❌ AudioController dispose: 실시간 플레이어 정지 오류: $e');
+    }
+
+    // 3. 리스너 정리
     _disposeRealtimeListeners();
-    _realtimeAudioPlayer?.dispose();
 
-    _audioService.dispose();
+    // 4. 플레이어 정리 (순차적으로)
+    try {
+      _playerController?.dispose();
+    } catch (e) {
+      debugPrint('❌ AudioController dispose: 파형 플레이어 정리 오류: $e');
+    }
+
+    try {
+      _realtimeAudioPlayer?.dispose();
+    } catch (e) {
+      debugPrint('❌ AudioController dispose: 실시간 플레이어 정리 오류: $e');
+    }
+
+    // 5. 서비스 정리
+    try {
+      _audioService.dispose();
+    } catch (e) {
+      debugPrint('❌ AudioController dispose: 서비스 정리 오류: $e');
+    }
+
+    debugPrint('🔊 AudioController dispose 완료');
     super.dispose();
   }
 
