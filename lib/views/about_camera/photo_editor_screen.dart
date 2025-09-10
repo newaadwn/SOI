@@ -8,6 +8,7 @@ import '../../controllers/auth_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/photo_controller.dart';
 import '../../models/selected_friend_model.dart';
+import '../../utils/memory_monitor.dart';
 import '../home_navigator_screen.dart';
 import 'widgets/photo_display_widget.dart';
 import 'widgets/audio_recorder_widget.dart';
@@ -38,7 +39,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
   // 추출된 파형 데이터 저장
   List<double>? _recordedWaveformData;
-  String? _recordedAudioPath; // 녹음된 오디오 파일 경로 백업 ⭐ 추가
+  String? _recordedAudioPath; // 녹음된 오디오 파일 경로 백업 추가
 
   // 프로필 이미지 위치 관리 (피드와 동일한 방식)
   Offset? _profileImagePosition;
@@ -58,6 +59,11 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // 메모리 모니터링 시작
+    MemoryMonitor.startMonitoring();
+    MemoryMonitor.logCurrentMemoryUsage('PhotoEditor 시작');
+
     _loadImage();
   }
 
@@ -158,6 +164,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   Future<void> _loadUserCategories({bool forceReload = false}) async {
     if (!forceReload && _categoriesLoaded) return; // 이미 로드된 경우 스킵
 
+    // 메모리 사용량 체크
+    MemoryMonitor.logCurrentMemoryUsage('카테고리 로드 시작');
+
     // UI 로딩 상태를 별도로 관리하여 화면 전환 속도 향상
     if (!forceReload) {
       // 첫 로드시에는 로딩 UI를 최소화
@@ -181,6 +190,10 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
             );
             _categoriesLoaded = true;
             // 로드된 카테고리 목록 준비 완료
+
+            // 메모리 사용량 체크
+            MemoryMonitor.logCurrentMemoryUsage('카테고리 로드 완료');
+            MemoryMonitor.checkMemoryWarning('카테고리 로드 완료');
 
             // 카테고리 로딩 완료 후 UI 업데이트 (필요한 경우에만)
             if (mounted) {
@@ -225,7 +238,15 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     LoadingPopupWidget.show(context, message: '사진을 업로드하고 있습니다.\n잠시만 기다려주세요');
 
     try {
-      // 1. 모든 오디오 세션 완전 정리 (iOS 충돌 방지)
+      // 1. 메모리 정리 - 업로드 전 불필요한 이미지 캐시 제거
+      try {
+        PaintingBinding.instance.imageCache.clear();
+        debugPrint('🧹 업로드 전 이미지 캐시 정리 완료');
+      } catch (e) {
+        debugPrint('❌ 업로드 전 캐시 정리 오류: $e');
+      }
+
+      // 2. 모든 오디오 세션 완전 정리 (iOS 충돌 방지)
       try {
         await _audioController.stopAudio();
         await _audioController.stopRealtimeAudio();
@@ -237,7 +258,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         debugPrint('❌ 오디오 세션 정리 오류: $e');
       }
 
-      // 2. 데이터 추출 (동기적)
+      // 3. 데이터 추출 (동기적)
       final uploadData = _extractUploadData(categoryId);
       if (uploadData == null) {
         // 로딩 팝업 닫기
@@ -246,13 +267,21 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         return;
       }
 
-      // 3. 업로드 실행 (완료될 때까지 대기)
+      // 4. 업로드 실행 (완료될 때까지 대기)
       await _executeUploadWithExtractedData(uploadData);
+
+      // 5. 업로드 완료 후 추가 메모리 정리
+      try {
+        PaintingBinding.instance.imageCache.clear();
+        debugPrint('🧹 업로드 후 이미지 캐시 정리 완료');
+      } catch (e) {
+        debugPrint('❌ 업로드 후 캐시 정리 오류: $e');
+      }
 
       // 로딩 팝업 닫기
       LoadingPopupWidget.hide(context);
 
-      // 4. 업로드 완료 후 화면 전환
+      // 6. 업로드 완료 후 화면 전환
       if (mounted) {
         _navigateToHome();
       }
@@ -682,7 +711,33 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   void dispose() {
     _isDisposing = true;
 
-    // 1. 다른 리소스들 먼저 정리
+    // 🔍 메모리 모니터링 및 정리
+    MemoryMonitor.logCurrentMemoryUsage('PhotoEditor 종료 시작');
+
+    // 1. 이미지 캐시 강제 정리 (메모리 누수 방지)
+    try {
+      // 현재 이미지의 캐시 제거
+      if (widget.imagePath != null) {
+        final imageFile = File(widget.imagePath!);
+        PaintingBinding.instance.imageCache.evict(FileImage(imageFile));
+      }
+      if (widget.downloadUrl != null) {
+        PaintingBinding.instance.imageCache.evict(
+          NetworkImage(widget.downloadUrl!),
+        );
+      }
+
+      // 전체 이미지 캐시 정리
+      PaintingBinding.instance.imageCache.clear();
+      // 메모리 정리 강제 실행
+      PaintingBinding.instance.imageCache.clearLiveImages();
+
+      MemoryMonitor.logCurrentMemoryUsage('이미지 캐시 정리 후');
+    } catch (e) {
+      debugPrint('❌ 이미지 캐시 정리 오류: $e');
+    }
+
+    // 2. 다른 리소스들 먼저 정리
     try {
       _categoryNameController.dispose();
     } catch (e) {
@@ -727,6 +782,10 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     }
 
     PaintingBinding.instance.imageCache.clear();
+
+    // 🔍 메모리 모니터링 종료
+    MemoryMonitor.logCurrentMemoryUsage('PhotoEditor 종료 완료');
+    MemoryMonitor.stopMonitoring();
 
     super.dispose();
   }
