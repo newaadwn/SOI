@@ -134,6 +134,8 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     _profileCacheManager?.dispose();
     _feedAudioManager?.dispose();
 
+    PaintingBinding.instance.imageCache.clear();
+
     super.dispose();
   }
 

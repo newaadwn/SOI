@@ -695,6 +695,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       });
     }
 
+    PaintingBinding.instance.imageCache.clear();
+
     super.dispose();
   }
 }

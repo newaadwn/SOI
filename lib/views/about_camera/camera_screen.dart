@@ -201,17 +201,12 @@ class _CameraScreenState extends State<CameraScreen>
 
   @override
   void dispose() {
-    // Starting CameraScreen disposal process
-
     // 앱 라이프사이클 옵저버 해제
     WidgetsBinding.instance.removeObserver(this);
 
-    // IndexedStack 사용 시 카메라 세션 유지
-    // dispose는 호출되지만 세션은 유지
-    // IndexedStack environment - maintaining camera session
+    PaintingBinding.instance.imageCache.clear();
 
     super.dispose();
-    // CameraScreen disposal completed
   }
 
   // 앱 라이프사이클 상태 변화 감지

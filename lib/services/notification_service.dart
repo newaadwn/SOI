@@ -1,9 +1,12 @@
 import 'package:flutter/foundation.dart';
 import '../models/notification_model.dart';
 import '../repositories/notification_repository.dart';
+import '../repositories/friend_repository.dart';
+import '../repositories/user_search_repository.dart';
 import '../services/category_service.dart';
 import '../services/photo_service.dart';
 import '../services/auth_service.dart';
+import '../services/friend_service.dart';
 
 /// 알림 비즈니스 로직을 처리하는 Service
 /// Repository를 사용해서 실제 비즈니스 규칙을 적용
@@ -13,7 +16,8 @@ class NotificationService {
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final NotificationRepository _repository = NotificationRepository();
+  final NotificationRepository _notificationRepository =
+      NotificationRepository();
   final AuthService _authService = AuthService();
 
   // Lazy initialization으로 순환 의존성 방지
@@ -27,6 +31,15 @@ class NotificationService {
   PhotoService get photoService {
     _photoService ??= PhotoService();
     return _photoService!;
+  }
+
+  FriendService? _friendService;
+  FriendService get friendService {
+    _friendService ??= FriendService(
+      friendRepository: FriendRepository(),
+      userSearchRepository: UserSearchRepository(),
+    );
+    return _friendService!;
   }
 
   // ==================== 알림 생성 비즈니스 로직 ====================
@@ -215,28 +228,45 @@ class NotificationService {
   /// 사용자의 알림 목록을 실시간 스트림으로 가져오기
   Stream<List<NotificationModel>> getUserNotificationsStream(String userId) {
     if (userId.isEmpty) return Stream.value([]);
-    return _repository.getUserNotificationsStream(userId);
+
+    // 차단된 사용자가 있는 알림을 필터링한 스트림 반환
+    return _notificationRepository.getUserNotificationsStream(userId).asyncMap((
+      notifications,
+    ) async {
+      return await _filterNotificationsWithBlockedUsers(notifications);
+    });
   }
 
   /// 사용자의 알림 목록을 한 번만 가져오기 (페이징 지원)
   Future<List<NotificationModel>> getUserNotifications(
     String userId, {
-    int limit = 50,
+    int limit = 10,
   }) async {
     if (userId.isEmpty) return [];
-    return await _repository.getUserNotifications(userId, limit: limit);
+
+    final notifications = await _notificationRepository.getUserNotifications(
+      userId,
+      limit: limit,
+    );
+    return await _filterNotificationsWithBlockedUsers(notifications);
   }
 
   /// 읽지 않은 알림 개수 실시간 스트림
   Stream<int> getUnreadCountStream(String userId) {
     if (userId.isEmpty) return Stream.value(0);
-    return _repository.getUnreadCountStream(userId);
+
+    // 전체 알림 스트림에서 읽지 않은 것만 카운트 (차단 필터링 포함)
+    return getUserNotificationsStream(userId).map((notifications) {
+      return notifications.where((notification) => !notification.isRead).length;
+    });
   }
 
   /// 읽지 않은 알림 개수 조회
   Future<int> getUnreadCount(String userId) async {
     if (userId.isEmpty) return 0;
-    return await _repository.getUnreadCount(userId);
+
+    final notifications = await getUserNotifications(userId);
+    return notifications.where((notification) => !notification.isRead).length;
   }
 
   /// 특정 알림을 읽음으로 표시
@@ -244,7 +274,7 @@ class NotificationService {
     if (notificationId.isEmpty) {
       throw ArgumentError('알림 ID가 비어있습니다.');
     }
-    await _repository.markAsRead(notificationId);
+    await _notificationRepository.markAsRead(notificationId);
   }
 
   /// 사용자의 모든 알림을 읽음으로 표시
@@ -252,7 +282,7 @@ class NotificationService {
     if (userId.isEmpty) {
       throw ArgumentError('사용자 ID가 비어있습니다.');
     }
-    await _repository.markAllAsRead(userId);
+    await _notificationRepository.markAllAsRead(userId);
   }
 
   /// 특정 알림 삭제
@@ -260,7 +290,7 @@ class NotificationService {
     if (notificationId.isEmpty) {
       throw ArgumentError('알림 ID가 비어있습니다.');
     }
-    await _repository.deleteNotification(notificationId);
+    await _notificationRepository.deleteNotification(notificationId);
   }
 
   /// 오래된 알림 정리 (7일 이전 알림 삭제)
@@ -270,7 +300,10 @@ class NotificationService {
     }
 
     try {
-      await _repository.deleteOldNotifications(userId, daysToKeep: 7);
+      await _notificationRepository.deleteOldNotifications(
+        userId,
+        daysToKeep: 7,
+      );
     } catch (e) {
       debugPrint('❌ 오래된 알림 정리 실패 - 사용자: $userId, 오류: $e');
     }
@@ -279,7 +312,7 @@ class NotificationService {
   /// 전체 알림 시스템의 자동 정리 (모든 사용자 대상)
   Future<void> performSystemCleanup() async {
     try {
-      await _repository.cleanupAllOldNotifications(daysToKeep: 7);
+      await _notificationRepository.cleanupAllOldNotifications(daysToKeep: 7);
     } catch (e) {
       debugPrint('❌ 시스템 전체 알림 정리 실패: $e');
     }
@@ -303,13 +336,13 @@ class NotificationService {
     if (userId.isEmpty) {
       throw ArgumentError('사용자 ID가 비어있습니다.');
     }
-    await _repository.deleteAllUserNotifications(userId);
+    await _notificationRepository.deleteAllUserNotifications(userId);
   }
 
   /// 개발용: 알림 통계 정보
   Future<Map<String, int>> getNotificationStats(String userId) async {
     if (userId.isEmpty) return {};
-    return await _repository.getNotificationStats(userId);
+    return await _notificationRepository.getNotificationStats(userId);
   }
 
   // ==================== 카테고리 업데이트 관련 ====================
@@ -320,7 +353,7 @@ class NotificationService {
     required String newThumbnailUrl,
   }) async {
     try {
-      await _repository.updateCategoryThumbnailInNotifications(
+      await _notificationRepository.updateCategoryThumbnailInNotifications(
         categoryId: categoryId,
         newThumbnailUrl: newThumbnailUrl,
       );
@@ -331,6 +364,29 @@ class NotificationService {
   }
 
   // ==================== 내부 헬퍼 메서드들 ====================
+
+  /// 차단된 사용자의 알림을 필터링하는 메서드
+  Future<List<NotificationModel>> _filterNotificationsWithBlockedUsers(
+    List<NotificationModel> notifications,
+  ) async {
+    try {
+      // 내가 차단한 사용자 목록만 조회 (단방향 필터링)
+      final blockedByMe = await friendService.getBlockedUsers();
+
+      // 차단한 사용자가 없으면 필터링 불필요
+      if (blockedByMe.isEmpty) {
+        return notifications;
+      }
+
+      // 내가 차단한 사용자의 알림만 필터링 (actorUserId 기준)
+      return notifications.where((notification) {
+        return !blockedByMe.contains(notification.actorUserId);
+      }).toList();
+    } catch (e) {
+      debugPrint('알림 차단 필터링 중 오류 발생: $e');
+      return notifications; // 오류 발생 시 원본 반환
+    }
+  }
 
   /// 공통 알림 생성 헬퍼 메서드
   Future<void> _createNotification({
@@ -366,7 +422,7 @@ class NotificationService {
         actorProfileImage: actorProfileImage,
       );
 
-      await _repository.createNotification(notification);
+      await _notificationRepository.createNotification(notification);
     } catch (e) {
       debugPrint('❌ 알림 생성 실패: $recipientUserId -> $e');
       rethrow;

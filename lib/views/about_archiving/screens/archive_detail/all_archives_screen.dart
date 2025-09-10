@@ -75,6 +75,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
   void dispose() {
     // 저장된 참조를 사용하여 리스너 제거
     _authController?.removeListener(_onAuthControllerChanged);
+    PaintingBinding.instance.imageCache.clear();
     super.dispose();
   }
 

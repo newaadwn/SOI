@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
-
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/category_controller.dart';
 import '../../../../models/auth_model.dart';
@@ -45,6 +44,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    PaintingBinding.instance.imageCache.clear();
     super.dispose();
   }
 

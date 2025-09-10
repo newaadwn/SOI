@@ -44,6 +44,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    PaintingBinding.instance.imageCache.clear();
     super.dispose();
   }
 
@@ -288,8 +289,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
 
   /// AppBar 구성
   PreferredSizeWidget _buildAppBar() {
-    final unreadCount = _notificationController.unreadCount;
-
     return AppBar(
       backgroundColor: Colors.black,
       elevation: 0,
@@ -307,32 +306,6 @@ class _NotificationScreenState extends State<NotificationScreen> {
               fontWeight: FontWeight.w700,
             ),
           ),
-          if (unreadCount > 0) ...[
-            SizedBox(width: 8.w),
-            Column(
-              children: [
-                Container(
-                  width: 30.w,
-                  height: 30.h,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: const Color(0xff1c1c1c),
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                  child: Text(
-                    unreadCount > 99 ? '99+' : '$unreadCount',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: const Color(0xFFF8F8F8),
-                      fontSize: 17.sp,
-                      fontFamily: 'Pretendard Variable',
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ),
-                SizedBox(height: 4.h),
-              ],
-            ),
-          ],
         ],
       ),
     );
