@@ -154,15 +154,12 @@ class FriendController extends ChangeNotifier {
 
       await _friendService.blockFriend(friendUid);
 
-      // // debugPrint('친구 차단 성공: $friendUid');
-
       // 통계 업데이트
       await _loadFriendStats();
 
       return true;
     } catch (e) {
       _setError('친구 차단 실패: $e');
-      // // debugPrint('친구 차단 실패: $e');
       return false;
     } finally {
       _processingFriends[friendUid] = false;

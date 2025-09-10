@@ -79,6 +79,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     _commentStreams.clear();
     _authController?.removeListener(_onAuthControllerChanged);
     _pageController.dispose();
+
+    PaintingBinding.instance.imageCache.clear();
     super.dispose();
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_swift_camera/controllers/category_controller.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:soi/controllers/category_controller.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../controllers/auth_controller.dart';
@@ -78,9 +79,10 @@ class _CategoryPhotosScreenState extends State<CategoryPhotosScreen> {
                   // 사용자별 커스텀 이름 우선 적용
                   currentCategory.getDisplayName(userId),
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFFD9D9D9),
+                    fontSize: 20,
+                    fontFamily: GoogleFonts.inter().fontFamily,
+                    fontWeight: FontWeight.w700,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -101,7 +103,6 @@ class _CategoryPhotosScreenState extends State<CategoryPhotosScreen> {
                   borderRadius: BorderRadius.circular(100),
 
                   child: SizedBox(
-                    width: 50.w,
                     height: 50.h,
                     child: Center(
                       child: Row(

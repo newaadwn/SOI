@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
@@ -67,7 +68,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
         backgroundColor: Colors.black,
         iconTheme: const IconThemeData(color: Color(0xffd9d9d9)),
         title: Text(
-          widget.categoryId != null ? '카테고리에 친구 추가' : '친구 목록',
+          '친구 목록',
           style: TextStyle(
             color: const Color(0xfff9f9f9),
             fontSize: 20.sp,
@@ -248,7 +249,9 @@ class _FriendListScreenState extends State<FriendListScreen> {
                     backgroundColor: const Color(0xff323232),
                     backgroundImage:
                         friend.profileImageUrl != null
-                            ? NetworkImage(friend.profileImageUrl!)
+                            ? CachedNetworkImageProvider(
+                              friend.profileImageUrl!,
+                            )
                             : null,
                     child:
                         friend.profileImageUrl == null
@@ -335,7 +338,13 @@ class _FriendListScreenState extends State<FriendListScreen> {
                       ),
                     );
                   },
-                  menuChildren: [_menuItem(friend.userId)],
+                  menuChildren: [
+                    _menuItem(
+                      friend.userId,
+                      friend.profileImageUrl,
+                      friend.name,
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -345,7 +354,11 @@ class _FriendListScreenState extends State<FriendListScreen> {
     );
   }
 
-  Widget _menuItem(String friendUserId) {
+  Widget _menuItem(
+    String friendUserId,
+    String? profileImageUrl,
+    String friendName,
+  ) {
     return MenuItemButton(
       style: ButtonStyle(
         shape: WidgetStatePropertyAll(
@@ -369,7 +382,11 @@ class _FriendListScreenState extends State<FriendListScreen> {
             InkWell(
               onTap: () {
                 debugPrint("친구 삭제");
-
+                _showDeleteFriendModal(
+                  profileImageUrl,
+                  friendName,
+                  friendUserId,
+                );
                 final controller = _menuControllers[friendUserId];
                 if (controller != null && controller.isOpen) {
                   controller.close();
@@ -403,6 +420,12 @@ class _FriendListScreenState extends State<FriendListScreen> {
             Divider(color: Color(0xff5a5a5a), thickness: 1.sp),
             InkWell(
               onTap: () {
+                _showBlockFriendModal(
+                  profileImageUrl,
+                  friendName,
+                  friendUserId,
+                );
+
                 debugPrint("차단");
                 final controller = _menuControllers[friendUserId];
                 if (controller != null && controller.isOpen) {
@@ -434,5 +457,285 @@ class _FriendListScreenState extends State<FriendListScreen> {
         ),
       ),
     );
+  }
+
+  /// 재사용 가능한 친구 액션 모달
+  void _showFriendActionModal({
+    required String? profileImageUrl,
+    required String friendName,
+    required String title,
+    required String description,
+    required String actionButtonText,
+    required VoidCallback onActionPressed,
+    required Color actionButtonTextColor,
+  }) {
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (BuildContext context) {
+        return Container(
+          height: 358.h,
+          decoration: BoxDecoration(
+            color: const Color(0xff323232),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24.8),
+              topRight: Radius.circular(24.8),
+            ),
+          ),
+          child: Center(
+            child: Column(
+              children: [
+                SizedBox(height: 10.h),
+                Container(
+                  width: 56.w,
+                  height: 3.h,
+                  decoration: ShapeDecoration(
+                    color: const Color(0xFFCBCBCB),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24.80),
+                    ),
+                  ),
+                ),
+                Spacer(),
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    // 프로필 이미지
+                    ClipOval(
+                      child:
+                          profileImageUrl != null && profileImageUrl.isNotEmpty
+                              ? Image(
+                                image: NetworkImage(profileImageUrl),
+                                width: 70,
+                                height: 70,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return _buildDefaultAvatar(friendName);
+                                },
+                              )
+                              : _buildDefaultAvatar(friendName),
+                    ),
+                    SizedBox(height: 20.h),
+
+                    // 제목
+                    Text(
+                      title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: const Color(0xFFF8F8F8),
+                        fontSize: 19.78,
+                        fontFamily: 'Pretendard Variable',
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+
+                    // 설명
+                    Text(
+                      description,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: const Color(0xFFF8F8F8),
+                        fontSize: 16,
+                        fontFamily: 'Pretendard Variable',
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    SizedBox(height: 16.h),
+
+                    // 액션 버튼
+                    ElevatedButton(
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.all(
+                          const Color(0xFFf8f8f8),
+                        ),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(19),
+                          ),
+                        ),
+                      ),
+                      child: Container(
+                        width: 294.w,
+                        height: 38.h,
+                        alignment: Alignment.center,
+                        child: Text(
+                          actionButtonText,
+                          style: TextStyle(
+                            color: actionButtonTextColor,
+                            fontSize: 17.78,
+                            fontFamily: 'Pretendard Variable',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        onActionPressed();
+                      },
+                    ),
+                    SizedBox(height: 10.h),
+
+                    // 취소 버튼
+                    ElevatedButton(
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.all(
+                          const Color(0xFF323232),
+                        ),
+                        shape: WidgetStateProperty.all(
+                          RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(19),
+                          ),
+                        ),
+                        elevation: WidgetStateProperty.all(0),
+                      ),
+                      child: Container(
+                        width: 294.w,
+                        height: 38.h,
+                        alignment: Alignment.center,
+                        child: const Text(
+                          '취소',
+                          style: TextStyle(
+                            color: Color(0xFFcbcbcb),
+                            fontSize: 17.78,
+                            fontFamily: 'Pretendard Variable',
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                Spacer(),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  /// 기본 아바타 위젯
+  Widget _buildDefaultAvatar(String friendName) {
+    return Container(
+      width: 70,
+      height: 70,
+      decoration: BoxDecoration(
+        color: const Color(0xff666666),
+        shape: BoxShape.circle,
+      ),
+      child: Center(
+        child: Text(
+          friendName.isNotEmpty ? friendName[0].toUpperCase() : '?',
+          style: TextStyle(
+            color: const Color(0xfff9f9f9),
+            fontSize: 28.sp,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 친구 삭제 모달 호출
+  void _showDeleteFriendModal(
+    String? profileImageUrl,
+    String friendName,
+    String friendUid,
+  ) {
+    _showFriendActionModal(
+      profileImageUrl: profileImageUrl,
+      friendName: friendName,
+      title: "$friendName님을 삭제하시겠습니까?",
+      description: "삭제시, 추가된 카테고리에서 삭제될 수 있습니다.",
+      actionButtonText: "삭제",
+      onActionPressed: () => _handleDeleteFriend(friendUid),
+      actionButtonTextColor: Colors.black,
+    );
+  }
+
+  /// 친구 차단 모달 호출
+  void _showBlockFriendModal(
+    String? profileImageUrl,
+    String friendName,
+    String friendUid,
+  ) {
+    _showFriendActionModal(
+      profileImageUrl: profileImageUrl,
+      friendName: friendName,
+      title: "$friendName님을 차단하시겠습니까?",
+      description: "차단시, 이 친구는 더 이상 나를 카테고리에\n초대하거나 친구 요청을 할 수 없습니다.",
+      actionButtonText: "차단",
+      onActionPressed: () => _handleBlockFriend(friendUid),
+      actionButtonTextColor: Color(0xffff0000),
+    );
+  }
+
+  /// 친구 삭제 처리
+  void _handleDeleteFriend(String friendUid) async {
+    final friendController = context.read<FriendController>();
+
+    try {
+      final success = await friendController.removeFriend(friendUid);
+
+      if (success) {
+        // 성공 메시지 표시 (선택사항)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('친구가 삭제되었습니다.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // 실패 메시지 표시
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(friendController.error ?? '친구 삭제에 실패했습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('친구 삭제 중 오류가 발생했습니다.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  /// 친구 차단 처리
+  void _handleBlockFriend(String friendUid) async {
+    final friendController = context.read<FriendController>();
+
+    try {
+      final success = await friendController.blockFriend(friendUid);
+
+      if (success) {
+        // 성공 메시지 표시 (선택사항)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('친구가 차단되었습니다.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      } else {
+        // 실패 메시지 표시
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(friendController.error ?? '친구 차단에 실패했습니다.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('친구 차단 중 오류가 발생했습니다.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

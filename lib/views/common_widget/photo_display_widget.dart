@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_swift_camera/controllers/comment_record_controller.dart';
+import 'package:soi/controllers/comment_record_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/audio_controller.dart';
 import '../../controllers/comment_audio_controller.dart';
+import '../../controllers/category_controller.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/comment_record_model.dart';
 import '../../utils/format_utils.dart';
 import '../../utils/position_converter.dart';
 import '../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
+import '../about_archiving/screens/archive_detail/category_photos_screen.dart';
 
 /// 사진 표시 위젯
 ///
@@ -58,6 +60,38 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
 
   final CommentRecordController _commentRecordController =
       CommentRecordController();
+
+  /// 카테고리 화면으로 이동
+  void _navigateToCategory() async {
+    final categoryId = widget.photo.categoryId;
+    if (categoryId.isEmpty) {
+      debugPrint('카테고리 ID가 없습니다');
+      return;
+    }
+
+    try {
+      final categoryController = context.read<CategoryController>();
+      final category = await categoryController.getCategory(categoryId);
+      if (category == null) {
+        debugPrint('카테고리를 찾을 수 없습니다: $categoryId');
+        return;
+      }
+
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) {
+              return CategoryPhotosScreen(category: category);
+            },
+          ),
+        );
+        debugPrint('카테고리로 이동: $categoryId');
+      }
+    } catch (e) {
+      debugPrint('카테고리 로드 실패: $e');
+    }
+  }
 
   /// 커스텀 파형 위젯을 빌드하는 메서드 (실시간 progress 포함)
   Widget _buildWaveformWidgetWithProgress() {
@@ -265,34 +299,37 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
 
                       // 카테고리 정보
                       if (!widget.isArchive)
-                        Padding(
-                          padding: EdgeInsets.only(top: 16.h),
-                          child: IntrinsicWidth(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                              alignment: Alignment.center,
-                              child: Center(
-                                child: Padding(
-                                  padding: EdgeInsets.only(
-                                    left: 15.w,
-                                    right: 15.w,
-                                    top: 1.h,
-                                  ),
-                                  child: Text(
-                                    widget.categoryName,
-                                    style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.9,
-                                      ),
-                                      fontSize: 16.sp,
-                                      fontWeight: FontWeight.w600,
-                                      fontFamily: "Pretendard",
+                        GestureDetector(
+                          onTap: () => _navigateToCategory(),
+                          child: Padding(
+                            padding: EdgeInsets.only(top: 16.h),
+                            child: IntrinsicWidth(
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                alignment: Alignment.center,
+                                child: Center(
+                                  child: Padding(
+                                    padding: EdgeInsets.only(
+                                      left: 15.w,
+                                      right: 15.w,
+                                      top: 1.h,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
-                                    maxLines: 1, // 한 줄로 제한
+                                    child: Text(
+                                      widget.categoryName,
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.9,
+                                        ),
+                                        fontSize: 16.sp,
+                                        fontWeight: FontWeight.w600,
+                                        fontFamily: "Pretendard",
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1, // 한 줄로 제한
+                                    ),
                                   ),
                                 ),
                               ),
@@ -302,7 +339,8 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
 
                       // 오디오 컨트롤 오버레이 (photo_detail처럼)
                       Positioned(
-                        bottom: 16.h,
+                        left: 20.w,
+                        bottom: 5.h,
                         child: SizedBox(
                           height: 50.h,
                           child: Row(
@@ -414,7 +452,6 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                         : Container(), // 오디오가 없으면 빈 컨테이너
                               ),
 
-                              //SizedBox(width: 16.w), // 오디오와 댓글 아이콘 사이 간격
                               // 댓글 아이콘 영역 (고정 width)
                               SizedBox(
                                 width: 60.w,
@@ -429,9 +466,6 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                                 _isShowingComments =
                                                     !_isShowingComments;
                                               });
-                                              debugPrint(
-                                                '댓글 아이콘 클릭됨: $_isShowingComments (photo: \'${widget.photo.id}\')',
-                                              );
                                             },
                                             icon: Image.asset(
                                               "assets/comment_profile_icon.png",

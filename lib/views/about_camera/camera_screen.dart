@@ -119,6 +119,7 @@ class _CameraScreenState extends State<CameraScreen>
   Future<void> _loadAvailableZoomLevels() async {
     try {
       final availableLevels = await _cameraService.getAvailableZoomLevels();
+      debugPrint('📱 Flutter에서 받은 줌 레벨: $availableLevels');
 
       if (mounted) {
         setState(() {
@@ -140,10 +141,11 @@ class _CameraScreenState extends State<CameraScreen>
                 }
               }).toList();
         });
+        debugPrint('📱 UI에 표시될 줌 레벨: $zoomLevels');
       }
     } catch (e) {
       // 줌 레벨 로드 실패 시 기본값 유지
-      print('줌 레벨 로드 실패: $e');
+      debugPrint('❌ 줌 레벨 로드 실패: $e');
     }
   }
 
@@ -201,17 +203,12 @@ class _CameraScreenState extends State<CameraScreen>
 
   @override
   void dispose() {
-    // Starting CameraScreen disposal process
-
     // 앱 라이프사이클 옵저버 해제
     WidgetsBinding.instance.removeObserver(this);
 
-    // IndexedStack 사용 시 카메라 세션 유지
-    // dispose는 호출되지만 세션은 유지
-    // IndexedStack environment - maintaining camera session
+    PaintingBinding.instance.imageCache.clear();
 
     super.dispose();
-    // CameraScreen disposal completed
   }
 
   // 앱 라이프사이클 상태 변화 감지
@@ -563,29 +560,10 @@ class _CameraScreenState extends State<CameraScreen>
                       ),
                       child: Padding(
                         padding: EdgeInsets.only(top: 2.h),
-                        child: Stack(
-                          clipBehavior: Clip.none,
-                          alignment: Alignment.center,
-                          children: [
-                            Image.asset(
-                              "assets/notification.png",
-                              width: 25.sp,
-                              height: 25.sp,
-                            ),
-                            if (notificationController.unreadCount > 0)
-                              Positioned(
-                                left: 12.w,
-                                bottom: 17.h,
-                                child: Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFF0000),
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ),
-                          ],
+                        child: Image.asset(
+                          "assets/notification.png",
+                          width: 25.sp,
+                          height: 25.sp,
                         ),
                       ),
                     ),

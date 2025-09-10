@@ -368,6 +368,9 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
         
         currentZoomLevel = zoomValue
         
+        // 물리적 망원 카메라 존재 여부 확인
+        let hasTelephoto = AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: .back) != nil
+        
         // 줌 레벨에 따른 카메라 선택
         let targetCameraType: AVCaptureDevice.DeviceType
         let digitalZoomFactor: CGFloat
@@ -376,20 +379,27 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
             // 0.5x - 초광각 카메라
             targetCameraType = .builtInUltraWideCamera
             digitalZoomFactor = CGFloat(zoomValue * 2.0)  // 0.5x = 1.0 factor on ultra wide
+            print("📱 줌 설정: 0.5x 초광각 카메라 사용")
         } else if zoomValue < 1.5 {
             // 1.0x - 일반 광각 카메라
             targetCameraType = .builtInWideAngleCamera
             digitalZoomFactor = CGFloat(zoomValue)
+            print("📱 줌 설정: 1.0x 광각 카메라 사용")
+        } else if zoomValue < 2.5 && hasTelephoto {
+            // 2.0x - 물리적 망원 카메라가 있으면 사용
+            targetCameraType = .builtInTelephotoCamera
+            digitalZoomFactor = 1.0  // 망원 카메라의 기본 배율
+            print("📱 줌 설정: 2.0x 물리적 망원 카메라 사용")
+        } else if zoomValue >= 3.0 && hasTelephoto {
+            // 3.0x - 물리적 망원 카메라가 있으면 망원 카메라에서 디지털 줌
+            targetCameraType = .builtInTelephotoCamera
+            digitalZoomFactor = CGFloat(zoomValue / 2.0)  // 망원 카메라 기준으로 디지털 줌
+            print("📱 줌 설정: 3.0x 물리적 망원 카메라 + 디지털 줌 사용")
         } else {
-            // 2.0x 이상 - 망원 카메라 (있으면) 또는 광각에서 디지털 줌
-            if let _ = AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: .back) {
-                targetCameraType = .builtInTelephotoCamera
-                digitalZoomFactor = CGFloat(zoomValue / 2.0)  // 2.0x = 1.0 factor on telephoto
-            } else {
-                // 망원 없으면 광각에서 디지털 줌
-                targetCameraType = .builtInWideAngleCamera
-                digitalZoomFactor = CGFloat(zoomValue)
-            }
+            // 망원 카메라가 없거나 다른 경우 - 광각에서 디지털 줌
+            targetCameraType = .builtInWideAngleCamera
+            digitalZoomFactor = CGFloat(zoomValue)
+            print("📱 줌 설정: \(zoomValue)x 광각 카메라 디지털 줌 사용 (망원 카메라 없음)")
         }
         
         // 목표 카메라 가져오기
@@ -539,34 +549,76 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
     
     // MARK: - 이미지 처리 헬퍼 메서드
     
-    // 사용 가능한 줌 레벨 확인
+    // 사용 가능한 줌 레벨 확인 - 물리적 카메라 구성에 따른 정확한 레벨 반환
     func getAvailableZoomLevels(result: @escaping FlutterResult) {
         var levels: [Double] = []
+        var hasUltraWide = false
+        var hasTelephoto = false
         
         // 후면 카메라만 줌 지원
         if !isUsingFrontCamera {
             // 초광각 카메라 체크 (0.5x)
             if AVCaptureDevice.default(.builtInUltraWideCamera, for: .video, position: .back) != nil {
+                hasUltraWide = true
                 levels.append(0.5)
             }
             
             // 광각 카메라는 항상 있음 (1.0x)
             levels.append(1.0)
             
-            // 망원 카메라 체크 (2.0x)
-            if AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: .back) != nil {
-                levels.append(2.0)
+            // 망원 카메라 체크
+            let telephotoDevice = AVCaptureDevice.default(.builtInTelephotoCamera, for: .video, position: .back)
+            if let telephoto = telephotoDevice {
+                hasTelephoto = true
+                
+                // 망원 카메라의 실제 줌 범위 확인
+                let minZoom = Double(telephoto.minAvailableVideoZoomFactor)
+                let maxZoom = Double(telephoto.maxAvailableVideoZoomFactor)
+                
+                print("📱 망원 카메라 줌 범위: \(minZoom)x - \(maxZoom)x")
+                
+                // 망원 카메라가 2x를 지원하면 추가
+                if minZoom <= 2.0 && maxZoom >= 2.0 {
+                    levels.append(2.0)
+                }
+                
+                // 망원 카메라가 3x를 지원하면 추가 (물리적 망원으로)
+                if minZoom <= 3.0 && maxZoom >= 3.0 {
+                    levels.append(3.0)
+                }
             } else {
-                // 망원이 없으면 디지털 줌으로 2.0x, 3.0x 제공
-                levels.append(2.0)
-                levels.append(3.0)
+                // 망원 카메라가 없는 경우
+                print("📱 물리적 망원 카메라 없음")
+                
+                // 현재 광각 카메라의 디지털 줌 범위 확인
+                if let wideDevice = currentDevice {
+                    let maxDigitalZoom = Double(wideDevice.maxAvailableVideoZoomFactor)
+                    print("📱 광각 카메라 최대 디지털 줌: \(maxDigitalZoom)x")
+                    
+                    // 디지털 줌으로 2x 제공
+                    if maxDigitalZoom >= 2.0 {
+                        levels.append(2.0)
+                    }
+                    
+                    // 디지털 줌으로 3x 제공 (망원 카메라가 없을 때만)
+                    if maxDigitalZoom >= 3.0 {
+                        levels.append(3.0)
+                    }
+                }
             }
         } else {
             // 전면 카메라는 줌 미지원
             levels.append(1.0)
         }
         
-        print("📱 사용 가능한 줌 레벨: \(levels)")
+        // 정렬
+        levels.sort()
+        
+        print("📱 디바이스 카메라 구성:")
+        print("   - 초광각: \(hasUltraWide ? "있음" : "없음")")
+        print("   - 망원: \(hasTelephoto ? "있음" : "없음")")
+        print("📱 최종 사용 가능한 줌 레벨: \(levels)")
+        
         result(levels)
     }
 }

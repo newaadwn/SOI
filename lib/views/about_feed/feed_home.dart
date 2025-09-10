@@ -134,6 +134,8 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     _profileCacheManager?.dispose();
     _feedAudioManager?.dispose();
 
+    PaintingBinding.instance.imageCache.clear();
+
     super.dispose();
   }
 
@@ -307,21 +309,29 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
         children: [
           PageView.builder(
             scrollDirection: Axis.vertical,
-            itemCount:
-                _feedDataManager!.allPhotos.length +
-                (_feedDataManager!.hasMoreData ? 1 : 0),
+            itemCount: _feedDataManager!.allPhotos.length, // 로딩 인디케이터 공간 제거
             onPageChanged: (index) {
-              // 마지막에서 2번째 페이지에 도달하면 추가 로드
-              if (index >= _feedDataManager!.allPhotos.length - 2 &&
+              // 스마트 미리 로딩: 5개 남았을 때 백그라운드에서 다음 10개 로드
+              final totalPhotos = _feedDataManager!.allPhotos.length;
+
+              // 조건: 5개 이하 남았고, 더 로드할 데이터가 있고, 현재 로딩 중이 아닐 때
+              if (index >= totalPhotos - 5 &&
                   _feedDataManager!.hasMoreData &&
                   !_feedDataManager!.isLoadingMore) {
+                // 백그라운드에서 조용히 로드 (사용자가 눈치채지 못하게)
                 _loadMorePhotos();
+                debugPrint('🔄 백그라운드 미리 로딩 시작 - 인덱스: $index, 전체: $totalPhotos');
               }
 
               // 페이지 변경 시 모든 오디오 중지
               _stopAllAudio();
             },
             itemBuilder: (context, index) {
+              // 안전한 범위 검사 (이제 로딩 인디케이터 없음)
+              if (index >= _feedDataManager!.allPhotos.length) {
+                return const SizedBox.shrink(); // 빈 위젯 반환
+              }
+
               final photoData = _feedDataManager!.allPhotos[index];
               final PhotoDataModel photo = photoData['photo'] as PhotoDataModel;
               final String categoryName = photoData['categoryName'] as String;

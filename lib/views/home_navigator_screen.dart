@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:flutter_swift_camera/views/about_feed/feed_home.dart';
+import 'package:soi/views/about_feed/feed_home.dart';
 import '../theme/theme.dart';
 import 'about_archiving/screens/archive_main_screen.dart';
 import 'about_camera/camera_screen.dart';

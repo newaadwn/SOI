@@ -927,6 +927,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _pageController.dispose(); // PageController 정리
+
+    PaintingBinding.instance.imageCache.clear();
     super.dispose();
   }
 }

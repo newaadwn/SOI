@@ -224,7 +224,19 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     LoadingPopupWidget.show(context, message: '사진을 업로드하고 있습니다.\n잠시만 기다려주세요');
 
     try {
-      // 1. 데이터 추출 (동기적)
+      // 1. 모든 오디오 세션 완전 정리 (iOS 충돌 방지)
+      try {
+        await _audioController.stopAudio();
+        await _audioController.stopRealtimeAudio();
+        _audioController.clearCurrentRecording();
+        // iOS 오디오 세션 정리를 위한 짧은 대기
+        await Future.delayed(Duration(milliseconds: 300));
+        debugPrint('🔊 오디오 세션 정리 완료');
+      } catch (e) {
+        debugPrint('❌ 오디오 세션 정리 오류: $e');
+      }
+
+      // 2. 데이터 추출 (동기적)
       final uploadData = _extractUploadData(categoryId);
       if (uploadData == null) {
         // 로딩 팝업 닫기
@@ -233,17 +245,18 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         return;
       }
 
-      // 2. 업로드 실행 (완료될 때까지 대기)
+      // 3. 업로드 실행 (완료될 때까지 대기)
       await _executeUploadWithExtractedData(uploadData);
 
       // 로딩 팝업 닫기
       LoadingPopupWidget.hide(context);
 
-      // 3. 업로드 완료 후 화면 전환
+      // 4. 업로드 완료 후 화면 전환
       if (mounted) {
         _navigateToHome();
       }
     } catch (e) {
+      debugPrint('❌ 업로드 오류: $e');
       // 로딩 팝업 닫기
       LoadingPopupWidget.hide(context);
 
@@ -334,6 +347,15 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   // 화면 전환 메서드 (분리)
   void _navigateToHome() {
     if (!mounted || _isDisposing) return;
+
+    // 화면 전환 전 최종 오디오 리소스 정리
+    try {
+      _audioController.stopAudio();
+      _audioController.clearCurrentRecording();
+      debugPrint('🏠 화면 전환 전 오디오 정리 완료');
+    } catch (e) {
+      debugPrint('❌ 화면 전환 전 오디오 정리 오류: $e');
+    }
 
     // 즉시 화면 전환 (딜레이 없음)
     Navigator.of(context).pushAndRemoveUntil(
@@ -694,6 +716,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         }
       });
     }
+
+    PaintingBinding.instance.imageCache.clear();
 
     super.dispose();
   }

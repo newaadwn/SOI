@@ -1,6 +1,9 @@
+import 'package:flutter/material.dart';
+
 import '../repositories/friend_repository.dart';
 import '../repositories/user_search_repository.dart';
 import '../models/friend_model.dart';
+import '../models/friendship_relation.dart';
 
 /// 친구 관리 Service 클래스
 /// Repository들을 조합하여 친구 관련 고급 기능 제공
@@ -13,6 +16,75 @@ class FriendService {
     required UserSearchRepository userSearchRepository,
   }) : _friendRepository = friendRepository,
        _userSearchRepository = userSearchRepository;
+
+  /// 카테고리 추가 가능 여부 확인 (비즈니스 로직 래퍼)
+  Future<bool> canAddToCategory(String requesterId, String targetId) async {
+    try {
+      if (requesterId.isEmpty || targetId.isEmpty) {
+        return false;
+      }
+
+      if (requesterId == targetId) {
+        return false; // 자기 자신 추가 불가
+      }
+
+      return await _friendRepository.canAddToCategory(requesterId, targetId);
+    } catch (e) {
+      debugPrint('FriendService.canAddToCategory 에러: $e');
+      return false;
+    }
+  }
+
+  /// 카테고리 추가 불가 이유 반환
+  Future<String?> getCannotAddReason(
+    String requesterId,
+    String targetId,
+  ) async {
+    try {
+      if (requesterId == targetId) {
+        return '자기 자신은 이미 카테고리 멤버입니다.';
+      }
+
+      return await _friendRepository.getCannotAddReason(requesterId, targetId);
+    } catch (e) {
+      return '확인 중 오류가 발생했습니다.';
+    }
+  }
+
+  /// 친구 관계 상태 확인
+  Future<FriendshipRelation> getFriendshipRelation(
+    String currentUserId,
+    String targetUserId,
+  ) async {
+    try {
+      final myFriend = await _friendRepository.getFriend(targetUserId);
+      final theirFriend = await _friendRepository.getTargetUserFriend(
+        currentUserId,
+        targetUserId,
+      );
+
+      // 내가 상대를 어떻게 보는지
+      if (myFriend == null) {
+        // 상대가 나를 어떻게 보는지
+        if (theirFriend?.status == FriendStatus.blocked) {
+          return FriendshipRelation.blockedByOther;
+        }
+        return FriendshipRelation.notFriends;
+      }
+
+      if (myFriend.status == FriendStatus.blocked) {
+        return FriendshipRelation.blockedByMe;
+      }
+
+      if (theirFriend?.status == FriendStatus.blocked) {
+        return FriendshipRelation.blockedByOther;
+      }
+
+      return FriendshipRelation.friends;
+    } catch (e) {
+      return FriendshipRelation.unknown;
+    }
+  }
 
   /// 친구 목록 조회 (실시간)
   Stream<List<FriendModel>> getFriendsList() {
@@ -289,16 +361,30 @@ class FriendService {
     }
   }
 
-  /// 현재 사용자 프로필 이미지 변경 시 모든 친구 문서에 반영
-  Future<void> propagateCurrentUserProfileImage(
-    String newProfileImageUrl,
-  ) async {
+  /// 차단한 사용자 목록 조회
+  Future<List<String>> getBlockedUsers() async {
     try {
-      await _friendRepository.propagateCurrentUserProfileImage(
-        newProfileImageUrl,
-      );
+      return await _friendRepository.getBlockedUsers();
     } catch (e) {
-      // print('프로필 이미지 전파 실패: $e');
+      throw Exception('차단 목록 조회 실패: $e');
+    }
+  }
+
+  /// 특정 사용자가 나를 차단했는지 확인
+  Future<bool> amIBlockedBy(String userId) async {
+    try {
+      return await _friendRepository.amIBlockedBy(userId);
+    } catch (e) {
+      throw Exception('차단 상태 확인 실패: $e');
+    }
+  }
+
+  /// 나를 차단한 사용자 목록 조회
+  Future<List<String>> getUsersWhoBlockedMe() async {
+    try {
+      return await _friendRepository.getUsersWhoBlockedMe();
+    } catch (e) {
+      throw Exception('차단한 사용자 목록 조회 실패: $e');
     }
   }
 }

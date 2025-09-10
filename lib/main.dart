@@ -56,6 +56,30 @@ void main() async {
   // 날짜 포맷팅 초기화 (한국어 로케일)
   await initializeDateFormatting('ko_KR', null);
 
+  // CachedNetworkImage 메모리 설정 (메모리 누수 방지)
+  PaintingBinding.instance.imageCache.maximumSize = 100; // 최대 100개 이미지 캐시
+  PaintingBinding.instance.imageCache.maximumSizeBytes =
+      50 * 1024 * 1024; // 50MB 제한
+
+  // 추가 메모리 최적화 설정
+  if (!kDebugMode) {
+    // Release 모드에서만 더 엄격한 설정 적용
+    PaintingBinding.instance.imageCache.maximumSize = 50; // 더 적은 이미지 캐시
+    PaintingBinding.instance.imageCache.maximumSizeBytes =
+        30 * 1024 * 1024; // 30MB 제한
+  }
+
+  if (kDebugMode) {
+    // 메모리 사용량 주기적 출력 (개발 중에만)
+    Timer.periodic(Duration(seconds: 30), (timer) {
+      final cache = PaintingBinding.instance.imageCache;
+      debugPrint(
+        '🖼️ Image Cache: ${cache.currentSize}/${cache.maximumSize} '
+        'images, ${(cache.currentSizeBytes / 1024 / 1024).toStringAsFixed(1)}MB',
+      );
+    });
+  }
+
   // Firebase 초기화 (더 안전한 방법)
   bool firebaseInitialized = false;
   try {

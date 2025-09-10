@@ -2,9 +2,12 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/photo_data_model.dart';
 import '../repositories/photo_repository.dart';
+import '../repositories/friend_repository.dart';
+import '../repositories/user_search_repository.dart';
 import 'audio_service.dart';
 import 'category_service.dart';
 import 'notification_service.dart';
+import 'friend_service.dart';
 
 /// Photo Service - 사진 관련 비즈니스 로직을 처리
 /// Repository를 사용해서 실제 비즈니스 규칙을 적용
@@ -28,6 +31,15 @@ class PhotoService {
   NotificationService get notificationService {
     _notificationService ??= NotificationService();
     return _notificationService!;
+  }
+
+  FriendService? _friendService;
+  FriendService get friendService {
+    _friendService ??= FriendService(
+      friendRepository: FriendRepository(),
+      userSearchRepository: UserSearchRepository(),
+    );
+    return _friendService!;
   }
 
   // ==================== 사진 업로드 비즈니스 로직 ====================
@@ -322,8 +334,13 @@ class PhotoService {
         startAfterPhotoId: startAfterPhotoId,
       );
 
+      // 차단된 사용자 필터링
+      final blockedFilteredPhotos = await _filterPhotosWithBlockedUsers(
+        result.photos,
+      );
+
       // 비즈니스 로직: 사진 필터링 및 검증
-      final filteredPhotos = _applyPhotoBusinessRules(result.photos);
+      final filteredPhotos = _applyPhotoBusinessRules(blockedFilteredPhotos);
 
       return (
         photos: filteredPhotos,
@@ -335,7 +352,7 @@ class PhotoService {
     }
   }
 
-  /// 카테고리별 사진 목록 조회
+  /// 카테고리별 사진 목록 조회 (차단된 사용자 필터링 포함)
   Future<List<PhotoDataModel>> getPhotosByCategory(String categoryId) async {
     try {
       if (categoryId.isEmpty) {
@@ -344,22 +361,29 @@ class PhotoService {
 
       final photos = await _photoRepository.getPhotosByCategory(categoryId);
 
+      // 차단된 사용자 필터링
+      final filteredPhotos = await _filterPhotosWithBlockedUsers(photos);
+
       // 비즈니스 로직: 최신순 정렬 및 필터링
-      return _applyPhotoBusinessRules(photos);
+      return _applyPhotoBusinessRules(filteredPhotos);
     } catch (e) {
       return [];
     }
   }
 
-  /// 카테고리별 사진 스트림 (실시간)
+  /// 카테고리별 사진 스트림 (차단된 사용자 필터링 포함)
   Stream<List<PhotoDataModel>> getPhotosByCategoryStream(String categoryId) {
     if (categoryId.isEmpty) {
       return Stream.value([]);
     }
 
-    return _photoRepository
-        .getPhotosByCategoryStream(categoryId)
-        .map((photos) => _applyPhotoBusinessRules(photos));
+    return _photoRepository.getPhotosByCategoryStream(categoryId).asyncMap((
+      photos,
+    ) async {
+      // 차단된 사용자 필터링
+      final filteredPhotos = await _filterPhotosWithBlockedUsers(photos);
+      return _applyPhotoBusinessRules(filteredPhotos);
+    });
   }
 
   /// 특정 사진을 ID로 조회
@@ -382,7 +406,7 @@ class PhotoService {
     }
   }
 
-  /// 사용자별 사진 목록 조회
+  /// 사용자별 사진 목록 조회 (차단된 사용자 필터링 포함)
   Future<List<PhotoDataModel>> getPhotosByUser(String userId) async {
     try {
       if (userId.isEmpty) {
@@ -390,7 +414,11 @@ class PhotoService {
       }
 
       final photos = await _photoRepository.getPhotosByUser(userId);
-      return _applyPhotoBusinessRules(photos);
+
+      // 차단된 사용자 필터링
+      final filteredPhotos = await _filterPhotosWithBlockedUsers(photos);
+
+      return _applyPhotoBusinessRules(filteredPhotos);
     } catch (e) {
       return [];
     }
@@ -616,6 +644,28 @@ class PhotoService {
       debugPrint('❌ 대표사진 자동 설정 여부 확인 실패: $e');
       // 오류 발생 시 안전하게 false 반환 (업데이트하지 않음)
       return false;
+    }
+  }
+
+  /// 차단된 사용자의 사진을 필터링하는 메서드
+  Future<List<PhotoDataModel>> _filterPhotosWithBlockedUsers(
+    List<PhotoDataModel> photos,
+  ) async {
+    try {
+      // 내가 차단한 사용자 목록만 조회 (단방향 필터링)
+      final blockedByMe = await friendService.getBlockedUsers();
+
+      if (blockedByMe.isEmpty) {
+        return photos; // 차단한 사용자가 없으면 필터링 불필요
+      }
+
+      // 내가 차단한 사용자들의 사진만 필터링
+      return photos.where((photo) {
+        return !blockedByMe.contains(photo.userID);
+      }).toList();
+    } catch (e) {
+      debugPrint('사진 차단 필터링 중 오류 발생: $e');
+      return photos; // 오류 발생 시 원본 반환
     }
   }
 }

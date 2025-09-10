@@ -3,7 +3,7 @@
 ## 📱 프로젝트 개요
 **SOI (Social Imaging)** - 친구들과 함께 사진과 음성을 공유하는 소셜 이미징 플랫폼
 
-- **프로젝트명**: flutter_swift_camera
+- **프로젝트명**: SOI
 - **플랫폼**: Android, iOS, Web, macOS, Linux, Windows (Flutter 멀티플랫폼)
 - **언어**: Dart (Flutter), Swift (iOS 네이티브), Kotlin (Android 네이티브)
 - **백엔드**: Firebase (Auth, Firestore, Storage)

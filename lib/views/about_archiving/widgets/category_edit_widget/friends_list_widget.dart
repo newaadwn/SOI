@@ -27,7 +27,7 @@ class FriendsListWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 최대 2개까지만 표시 (나머지는 "+더보기"로 표시)
+    // 최대 5개까지만 표시 (나머지는 "+더보기"로 표시)
     const int maxDisplayCount = 5;
     final totalMates = category.mates.length;
     final displayMates =
@@ -116,8 +116,7 @@ class FriendsListWidget extends StatelessWidget {
               itemCount:
                   (displayMates.length * 2) + // 친구들과 그 사이 간격들
                   (hasMore ? 2 : 0) + // 더보기 버튼과 그 앞 간격
-                  (isExpanded && totalMates > maxDisplayCount ? 2 : 0) -
-                  1, // 접기 버튼과 그 앞 간격, 마지막 간격 제거
+                  (isExpanded && totalMates > maxDisplayCount ? 2 : 0),
               itemBuilder: (context, index) {
                 // 홀수 인덱스는 간격
                 if (index.isOdd) {
@@ -300,6 +299,8 @@ class _FriendListItem extends StatelessWidget {
                       width: 40.w,
                       height: 40.w,
                       fit: BoxFit.cover,
+                      memCacheWidth: 80, // 메모리 절약을 위한 이미지 크기 제한
+                      memCacheHeight: 80,
                       placeholder:
                           (context, url) => Container(
                             width: 40.w,

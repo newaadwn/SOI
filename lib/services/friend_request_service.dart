@@ -1,4 +1,4 @@
-import 'package:flutter_swift_camera/controllers/auth_controller.dart';
+import 'package:soi/controllers/auth_controller.dart';
 import '../repositories/friend_request_repository.dart';
 import '../repositories/friend_repository.dart';
 import '../repositories/user_search_repository.dart';
