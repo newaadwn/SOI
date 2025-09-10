@@ -15,7 +15,7 @@ class PhotoRepository {
 
   // ==================== 사진 업로드 ====================
 
-  /// 이미지 파일을 Firebase Storage에 업로드
+  // 이미지 파일을 supabase Storage에 업로드
   Future<String?> uploadImageToStorage({
     required File imageFile,
     required String categoryId,
@@ -42,7 +42,7 @@ class PhotoRepository {
     }
   }
 
-  /// 오디오 파일을 Firebase Storage에 업로드
+  /// 오디오 파일을 supabase Storage에 업로드
   Future<String?> uploadAudioToStorage({
     required File audioFile,
     required String categoryId,
@@ -68,11 +68,11 @@ class PhotoRepository {
           customFileName ??
           '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
-      // supabase storage에 사진 업로드
-      supabase.storage.from('photos').upload(fileName, audioFile);
+      // supabase storage에 오디오 업로드
+      await supabase.storage.from('audio').upload(fileName, audioFile);
 
       // 즉시 공개 URL 생성 (다운로드 API 호출 없음)
-      final publicUrl = supabase.storage.from('photos').getPublicUrl(fileName);
+      final publicUrl = supabase.storage.from('audio').getPublicUrl(fileName);
 
       return publicUrl;
     } catch (e) {

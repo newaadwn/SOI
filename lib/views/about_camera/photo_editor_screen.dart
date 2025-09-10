@@ -38,6 +38,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
   // 추출된 파형 데이터 저장
   List<double>? _recordedWaveformData;
+  String? _recordedAudioPath; // 녹음된 오디오 파일 경로 백업 ⭐ 추가
 
   // 프로필 이미지 위치 관리 (피드와 동일한 방식)
   Offset? _profileImagePosition;
@@ -272,7 +273,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     // 현재 상태에서 모든 필요한 데이터를 즉시 추출
     final imagePath = widget.imagePath;
     final userId = _authController.getUserId;
-    final audioPath = _audioController.currentRecordingPath;
+
+    final audioPath =
+        _recordedAudioPath ?? _audioController.currentRecordingPath;
     final waveformData = _recordedWaveformData;
 
     // 필수 데이터 검증
@@ -311,9 +314,11 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     if (audioPath != null && audioPath.isNotEmpty) {
       audioFile = File(audioPath);
       if (!await audioFile.exists()) {
-        debugPrint('오디오 파일 없음, 이미지만 업로드: $audioPath');
+        debugPrint('❌ 오디오 파일 없음, 이미지만 업로드: $audioPath');
         audioFile = null;
       }
+    } else {
+      debugPrint('⚠️ 오디오 경로가 null이거나 비어있음: $audioPath');
     }
 
     // 업로드 실행
@@ -542,10 +547,14 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                   String? audioPath,
                                   List<double>? waveformData,
                                 ) {
-                                  // 파형 데이터를 상태 변수에 저장
+                                  // 파형 데이터와 오디오 경로를 상태 변수에 저장
                                   setState(() {
                                     _recordedWaveformData = waveformData;
+                                    _recordedAudioPath = audioPath; // ⭐ 경로 백업
                                   });
+                                  debugPrint(
+                                    '🎵 녹음 완료 - audioPath: $audioPath, waveformData: ${waveformData?.length}',
+                                  );
                                 },
                               ),
                             ],
