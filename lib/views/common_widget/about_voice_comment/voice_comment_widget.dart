@@ -145,8 +145,11 @@ class _WaveformPlaybackBar extends StatelessWidget {
               alignment: Alignment.centerLeft,
               children: [
                 // 회색 배경 파형 (기본 흰색이지만 재생 시 회색으로)
-                _buildWaveformBase(
-                  color: isPlaying ? const Color(0xFF4A4A4A) : Colors.white,
+                GestureDetector(
+                  onTap: onPlayPause,
+                  child: _buildWaveformBase(
+                    color: isPlaying ? const Color(0xFF4A4A4A) : Colors.white,
+                  ),
                 ),
                 // 흰색 진행 파형 (재생 중에만 표시)
                 if (isPlaying)
