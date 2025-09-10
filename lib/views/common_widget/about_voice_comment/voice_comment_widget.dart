@@ -128,25 +128,28 @@ class _WaveformPlaybackBar extends StatelessWidget {
         color: const Color(0xFF151515),
         borderRadius: BorderRadius.circular(16.r),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 10.h),
+      padding: EdgeInsets.symmetric(horizontal: 14.w),
       child: Row(
         children: [
-          GestureDetector(
-            onTap: onPlayPause,
-            child: Icon(
+          IconButton(
+            onPressed: onPlayPause,
+            icon: Icon(
               isPlaying ? Icons.pause : Icons.play_arrow,
               color: Colors.white,
               size: 25.sp,
             ),
           ),
-          SizedBox(width: 16.w),
+          //  SizedBox(width: 16.w),
           Expanded(
             child: Stack(
               alignment: Alignment.centerLeft,
               children: [
                 // 회색 배경 파형 (기본 흰색이지만 재생 시 회색으로)
-                _buildWaveformBase(
-                  color: isPlaying ? const Color(0xFF4A4A4A) : Colors.white,
+                GestureDetector(
+                  onTap: onPlayPause,
+                  child: _buildWaveformBase(
+                    color: isPlaying ? const Color(0xFF4A4A4A) : Colors.white,
+                  ),
                 ),
                 // 흰색 진행 파형 (재생 중에만 표시)
                 if (isPlaying)

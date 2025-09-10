@@ -339,7 +339,8 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
 
                       // 오디오 컨트롤 오버레이 (photo_detail처럼)
                       Positioned(
-                        bottom: 16.h,
+                        left: 20.w,
+                        bottom: 5.h,
                         child: SizedBox(
                           height: 50.h,
                           child: Row(
@@ -465,9 +466,6 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                                 _isShowingComments =
                                                     !_isShowingComments;
                                               });
-                                              debugPrint(
-                                                '댓글 아이콘 클릭됨: $_isShowingComments (photo: \'${widget.photo.id}\')',
-                                              );
                                             },
                                             icon: Image.asset(
                                               "assets/comment_profile_icon.png",

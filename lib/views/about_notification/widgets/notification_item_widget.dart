@@ -175,15 +175,10 @@ class NotificationItemWidget extends StatelessWidget {
 
   /// 음성 댓글 썸네일
   Widget _buildVoiceCommentThumbnail() {
-    return Container(
+    return SizedBox(
       width: 44.w,
       height: 44.h,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8.r),
-        color: Colors.grey[700],
-      ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(8.r),
         child: Image.asset(
           "assets/record_notification_icon.png",
           width: 44.w,
