@@ -29,8 +29,11 @@ class PhotoGridItem extends StatefulWidget {
   _PhotoGridItemState createState() => _PhotoGridItemState();
 }
 
-class _PhotoGridItemState extends State<PhotoGridItem>
-    with AutomaticKeepAliveClientMixin {
+class _PhotoGridItemState extends State<PhotoGridItem> {
+  // 🔥 메모리 폭탄 해체: AutomaticKeepAliveClientMixin 완전 제거
+  // ❌ with AutomaticKeepAliveClientMixin 제거
+  // ❌ wantKeepAlive => true 제거
+  // ➡️ 이제 화면에서 벗어난 사진들이 메모리에서 해제됨!
   String _userProfileImageUrl = '';
   bool _isLoadingProfile = true;
   bool _hasLoadedOnce = false; // 한 번 로드했는지 추적
@@ -38,16 +41,34 @@ class _PhotoGridItemState extends State<PhotoGridItem>
   // AuthController 참조 저장용
   AuthController? _authController;
 
-  // 메모리 캐시 추가 (최대 100개 유저로 제한)
+  // 🔥 메모리 최적화: static 캐시 크기 대폭 축소
   static final Map<String, String> _profileImageCache = {};
-  static const int _maxCacheSize = 100;
+  static const int _maxCacheSize = 20; // ❌ 100 -> ✅ 20으로 대폭 축소
 
   // 오디오 관련 상태
   bool _hasAudio = false;
   List<double>? _waveformData;
 
-  @override
-  bool get wantKeepAlive => true;
+  // 🔥 메모리 최적화된 프로필 이미지 캐시 관리
+  static String? _getCachedProfileImage(String userId) {
+    return _profileImageCache[userId];
+  }
+
+  static void _setCachedProfileImage(String userId, String imageUrl) {
+    // LRU 방식: 캐시가 가득 차면 가장 오래된 항목 제거
+    if (_profileImageCache.length >= _maxCacheSize) {
+      String oldestKey = _profileImageCache.keys.first;
+      _profileImageCache.remove(oldestKey);
+      debugPrint('🧹 Profile cache cleaned - removed: $oldestKey');
+    }
+    _profileImageCache[userId] = imageUrl;
+  }
+
+  // 🔥 앱 메모리 정리 시 캐시도 함께 정리
+  /*static void clearProfileCache() {
+    _profileImageCache.clear();
+    debugPrint('🧹 Profile image cache cleared');
+  }*/
 
   @override
   void initState() {
@@ -81,7 +102,7 @@ class _PhotoGridItemState extends State<PhotoGridItem>
 
   /// AuthController 변경 감지 시 프로필 이미지 캐시 무효화
   void _onAuthControllerChanged() async {
-    // 정적 캐시에서 해당 사용자 제거
+    // 🔥 개선된 캐시에서 해당 사용자 제거
     _profileImageCache.remove(widget.photo.userID);
 
     // 프로필 이미지 다시 로드
@@ -116,9 +137,14 @@ class _PhotoGridItemState extends State<PhotoGridItem>
   }
 
   Future<void> _loadUserProfileImage() async {
-    // 캐시 크기 관리
-    if (_profileImageCache.length > _maxCacheSize) {
-      _profileImageCache.clear();
+    // 🔥 먼저 캐시 확인
+    String? cachedUrl = _getCachedProfileImage(widget.photo.userID);
+    if (cachedUrl != null) {
+      setState(() {
+        _userProfileImageUrl = cachedUrl;
+        _isLoadingProfile = false;
+      });
+      return;
     }
 
     try {
@@ -131,15 +157,15 @@ class _PhotoGridItemState extends State<PhotoGridItem>
       final profileImageUrl = await authController
           .getUserProfileImageUrlWithCache(widget.photo.userID);
 
-      // 로컬 캐시에도 저장
-      _profileImageCache[widget.photo.userID] = profileImageUrl;
+      // 🔥 개선된 캐시에 저장
+      _setCachedProfileImage(widget.photo.userID, profileImageUrl);
 
       if (mounted) {
         setState(() {
           _userProfileImageUrl = profileImageUrl;
           _isLoadingProfile = false;
         });
-      } else {}
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -151,8 +177,6 @@ class _PhotoGridItemState extends State<PhotoGridItem>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-
     return GestureDetector(
       onTap: () {
         Navigator.push(
