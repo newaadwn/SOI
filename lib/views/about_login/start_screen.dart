@@ -106,6 +106,9 @@ class _StartScreenState extends State<StartScreen> {
                 'assets/SOI.png',
                 width: (349 / 393) * screenWidth,
                 height: (128 / 852) * screenHeight,
+                // 메모리 최적화: 로고 이미지 캐시 크기 제한
+                cacheHeight: ((128 / 852) * screenHeight * 2).toInt(),
+                cacheWidth: ((349 / 393) * screenWidth * 2).toInt(),
               ),
               SizedBox(height: 40),
               CircularProgressIndicator(color: Colors.white),
@@ -130,6 +133,9 @@ class _StartScreenState extends State<StartScreen> {
               'assets/SOI.png',
               width: (349 / 393) * screenWidth,
               height: (128 / 852) * screenHeight,
+              // 메모리 최적화: 로고 이미지 캐시 크기 제한
+              cacheHeight: ((128 / 852) * screenHeight * 2).toInt(),
+              cacheWidth: ((349 / 393) * screenWidth * 2).toInt(),
             ),
             SizedBox(height: (201 / 852) * screenHeight),
             ElevatedButton(

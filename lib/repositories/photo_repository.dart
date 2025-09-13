@@ -29,7 +29,7 @@ class PhotoRepository {
           '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.png';
 
       // supabase storage에 사진 업로드
-      supabase.storage.from('photos').upload(fileName, imageFile);
+      await supabase.storage.from('photos').upload(fileName, imageFile);
 
       // 즉시 공개 URL 생성 (다운로드 API 호출 없음)
       final publicUrl = supabase.storage.from('photos').getPublicUrl(fileName);
@@ -38,44 +38,6 @@ class PhotoRepository {
       return publicUrl;
     } catch (e) {
       debugPrint('이미지 업로드 오류: $e');
-      return null;
-    }
-  }
-
-  /// 오디오 파일을 supabase Storage에 업로드
-  Future<String?> uploadAudioToStorage({
-    required File audioFile,
-    required String categoryId,
-    required String userId,
-    String? customFileName,
-  }) async {
-    final supabase = Supabase.instance.client;
-    try {
-      // 파일 존재 확인
-      if (!await audioFile.exists()) {
-        return null;
-      }
-
-      // 파일 크기 확인
-      final fileSize = await audioFile.length();
-
-      if (fileSize == 0) {
-        return null;
-      }
-
-      // 파일명 생성
-      final fileName =
-          customFileName ??
-          '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.m4a';
-
-      // supabase storage에 오디오 업로드
-      await supabase.storage.from('audio').upload(fileName, audioFile);
-
-      // 즉시 공개 URL 생성 (다운로드 API 호출 없음)
-      final publicUrl = supabase.storage.from('audio').getPublicUrl(fileName);
-
-      return publicUrl;
-    } catch (e) {
       return null;
     }
   }

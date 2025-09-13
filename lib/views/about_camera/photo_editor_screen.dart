@@ -1,9 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
-import 'dart:typed_data'; // 🔥 메모리 최적화: 이미지 처리용 추가
+// 🔥 메모리 최적화: 이미지 처리용 추가
 import 'dart:ui' as ui; // 🔥 메모리 최적화: 이미지 압축용 추가
 import 'package:flutter/services.dart'; // 🔥 메모리 최적화: 이미지 압축용 추가
 import 'package:provider/provider.dart';
@@ -199,6 +201,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
             MemoryMonitor.logCurrentMemoryUsage('카테고리 로드 완료');
             MemoryMonitor.checkMemoryWarning('카테고리 로드 완료');
 
+            // 카테고리 로드 완료 후 이미지 미리 로드 시작
+            _preloadCategoryImages();
+
             // 카테고리 로딩 완료 후 UI 업데이트 (필요한 경우에만)
             if (mounted) {
               setState(() {});
@@ -217,6 +222,53 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
           _isLoading = false;
         });
       }
+    }
+  }
+
+  // 카테고리 이미지 미리 로드 메서드
+  Future<void> _preloadCategoryImages() async {
+    try {
+      final categories = _categoryController.userCategoryList;
+
+      // 메모리 사용량 체크
+      MemoryMonitor.logCurrentMemoryUsage('카테고리 이미지 preload 시작');
+
+      // 우선순위 기반 선택 (처음 8개 정도)
+      final priorityCategories =
+          categories
+              .where((c) => c.categoryPhotoUrl?.isNotEmpty == true)
+              .take(8)
+              .toList();
+
+      debugPrint('카테고리 이미지 preload 시작: ${priorityCategories.length}개');
+
+      // 순차적으로 미리 로드
+      for (final category in priorityCategories) {
+        try {
+          // Flutter 기본 이미지 캐시에 미리 로드
+          final imageProvider = NetworkImage(category.categoryPhotoUrl!);
+          unawaited(precacheImage(imageProvider, context));
+
+          debugPrint('카테고리 이미지 preload: ${category.name}');
+
+          // 메모리 압박 시 중단
+          if (MemoryMonitor.isMemoryUsageHigh()) {
+            debugPrint('메모리 압박으로 preload 중단');
+            break;
+          }
+
+          // 네트워크 부하 방지를 위한 약간의 지연
+          await Future.delayed(Duration(milliseconds: 100));
+        } catch (e) {
+          debugPrint('카테고리 이미지 preload 실패: ${category.name} - $e');
+          // 에러 무시하고 계속
+        }
+      }
+
+      MemoryMonitor.logCurrentMemoryUsage('카테고리 이미지 preload 완료');
+      debugPrint('카테고리 이미지 preload 완료');
+    } catch (e) {
+      debugPrint('카테고리 이미지 preload 전체 실패: $e');
     }
   }
 
@@ -278,14 +330,23 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       // 4. 업로드 실행 (최적화된 방식)
       await _executeUploadWithExtractedData(uploadData);
 
-      // 5. 업로드 완료 후 추가 메모리 정리
+      // 5. 업로드 완료 후 강화된 메모리 정리 (메모리 사용량 최대 감소)
       try {
+        // 단계적 메모리 정리로 확실한 해제
         PaintingBinding.instance.imageCache.clear();
         PaintingBinding.instance.imageCache.clearLiveImages();
-        MemoryMonitor.forceGarbageCollection('업로드 완료 후 정리');
-        debugPrint('업로드 후 이미지 캐시 정리 완료');
+
+        // 1차 가비지 컬렉션
+        MemoryMonitor.forceGarbageCollection('업로드 완료 후 정리 - 1차');
+
+        // 약간의 지연 후 2차 정리 (Flutter의 지연 해제 패턴 대응)
+        await Future.delayed(Duration(milliseconds: 200));
+        PaintingBinding.instance.imageCache.clear();
+        MemoryMonitor.forceGarbageCollection('업로드 완료 후 정리 - 2차');
+
+        debugPrint('업로드 후 강화된 메모리 정리 완료');
       } catch (e) {
-        debugPrint('ß업로드 후 캐시 정리 오류: $e');
+        debugPrint('업로드 후 캐시 정리 오류: $e');
       }
 
       // 로딩 팝업 닫기
@@ -300,12 +361,14 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       // 로딩 팝업 닫기
       LoadingPopupWidget.hide(context);
 
-      // 오류 발생 시에도 메모리 정리
+      // 🔥 오류 발생 시에도 강화된 메모리 정리
       try {
         PaintingBinding.instance.imageCache.clear();
+        PaintingBinding.instance.imageCache.clearLiveImages();
         MemoryMonitor.forceGarbageCollection('업로드 오류 후 정리');
+        debugPrint('🧹 오류 후 메모리 정리 완료');
       } catch (cleanupError) {
-        debugPrint('오류 후 정리 실패: $cleanupError');
+        debugPrint('❌ 오류 후 정리 실패: $cleanupError');
       }
 
       // 오류가 발생해도 화면 전환은 실행
@@ -360,9 +423,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     File? optimizedImageFile;
     try {
       optimizedImageFile = await _optimizeImageFile(imageFile);
-      debugPrint('📸 이미지 최적화 완료: ${optimizedImageFile.path}');
     } catch (e) {
-      debugPrint('❌ 이미지 최적화 실패, 원본 사용: $e');
+      debugPrint('이미지 최적화 실패, 원본 사용: $e');
       optimizedImageFile = imageFile;
     }
 
@@ -371,19 +433,18 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     if (audioPath != null && audioPath.isNotEmpty) {
       audioFile = File(audioPath);
       if (!await audioFile.exists()) {
-        debugPrint('❌ 오디오 파일 없음, 이미지만 업로드: $audioPath');
         audioFile = null;
       }
     } else {
-      debugPrint('⚠️ 오디오 경로가 null이거나 비어있음: $audioPath');
+      debugPrint('오디오 경로가 null이거나 비어있음: $audioPath');
     }
 
-    // 📊 3. 파형 데이터 최적화 (샘플링 수 제한)
+    // 3. 파형 데이터 최적화 (샘플링 수 제한)
     List<double>? optimizedWaveform;
     if (waveformData != null && waveformData.isNotEmpty) {
       optimizedWaveform = _optimizeWaveformData(waveformData);
       debugPrint(
-        '📊 파형 데이터 최적화: ${waveformData.length} -> ${optimizedWaveform.length}',
+        '파형 데이터 최적화: ${waveformData.length} -> ${optimizedWaveform.length}',
       );
     }
 
@@ -402,7 +463,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
           waveformData: optimizedWaveform,
           duration: Duration(seconds: _audioController.recordingDuration),
         );
-        debugPrint('🎵 오디오와 함께 업로드 완료 (최적화)');
+        debugPrint('오디오와 함께 업로드 완료 (최적화)');
       } else {
         // 이미지만 업로드 (스트림 방식)
         await _photoController.uploadPhoto(
@@ -412,16 +473,16 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
           userIds: [userId],
           audioFile: null,
         );
-        debugPrint('📸 이미지만 업로드 완료 (최적화)');
+        debugPrint('이미지만 업로드 완료 (최적화)');
       }
     } finally {
       // 🧹 5. 업로드 완료 후 임시 파일 즉시 정리
       if (optimizedImageFile.path != imagePath) {
         try {
           await optimizedImageFile.delete();
-          debugPrint('🗑️ 최적화된 임시 이미지 파일 삭제 완료');
+          debugPrint('최적화된 임시 이미지 파일 삭제 완료');
         } catch (e) {
-          debugPrint('❌ 임시 파일 삭제 실패: $e');
+          debugPrint('임시 파일 삭제 실패: $e');
         }
       }
 
@@ -439,30 +500,24 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     try {
       _audioController.stopAudio();
       _audioController.clearCurrentRecording();
-      debugPrint('🏠 화면 전환 전 오디오 정리 완료');
+      debugPrint('화면 전환 전 오디오 정리 완료');
     } catch (e) {
-      debugPrint('❌ 화면 전환 전 오디오 정리 오류: $e');
+      debugPrint('화면 전환 전 오디오 정리 오류: $e');
     }
 
     // 즉시 화면 전환 (딜레이 없음)
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder:
-            (context) =>
-                HomePageNavigationBar(currentPageIndex: 2), // 아카이브 탭 (인덱스 2)
+        builder: (context) => HomePageNavigationBar(currentPageIndex: 2),
         settings: RouteSettings(name: '/home_navigation_screen'),
       ),
-      (route) => false, // 모든 기존 화면 제거
+      (route) => false,
     );
 
     // 백그라운드에서 바텀시트 정리 (화면 전환 후)
     Future.microtask(() {
-      try {
-        if (_draggableScrollController.isAttached) {
-          _draggableScrollController.jumpTo(0.19);
-        }
-      } catch (e) {
-        // 에러 무시 (이미 다른 화면이므로 문제없음)
+      if (_draggableScrollController.isAttached) {
+        _draggableScrollController.jumpTo(0.19);
       }
     });
   }
@@ -562,7 +617,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     }
   }
 
-  // 🔥 메모리 최적화: 이미지 파일 압축 및 리사이징
+  // 메모리 최적화: 이미지 파일 압축 및 리사이징
   Future<File> _optimizeImageFile(File originalFile) async {
     try {
       // 원본 이미지 데이터 읽기
@@ -571,7 +626,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       // 이미지 디코딩
       final ui.Codec codec = await ui.instantiateImageCodec(
         originalBytes,
-        targetWidth: 720, // 최대 1080p로 제한 (메모리 사용량 대폭 감소)
+        targetWidth: 1080, // 최대 1080p로 제한
       );
 
       final ui.FrameInfo frameInfo = await codec.getNextFrame();
@@ -894,10 +949,29 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       });
     }
 
-    // 5. 최종 메모리 정리 및 가비지 컬렉션 촉진
+    // 5. 메모리 최적화 강화: CachedNetworkImage 캐시도 정리
     try {
+      // 모든 네트워크 이미지 캐시 정리
       PaintingBinding.instance.imageCache.clear();
-      MemoryMonitor.forceGarbageCollection('PhotoEditor dispose');
+      PaintingBinding.instance.imageCache.clearLiveImages();
+
+      // 추가: CachedNetworkImage의 메모리 캐시도 정리
+      try {
+        // CachedNetworkImage 관련 캐시도 함께 정리
+        MemoryMonitor.forceGarbageCollection('PhotoEditor dispose - 1차');
+
+        // 약간의 지연 후 한 번 더 정리 (완전한 해제를 위해)
+        Future.delayed(Duration(milliseconds: 100), () {
+          try {
+            PaintingBinding.instance.imageCache.clear();
+            MemoryMonitor.forceGarbageCollection('PhotoEditor dispose - 2차');
+          } catch (e) {
+            debugPrint('2차 메모리 정리 오류: $e');
+          }
+        });
+      } catch (e) {
+        debugPrint('CachedNetworkImage 캐시 정리 오류: $e');
+      }
     } catch (e) {
       debugPrint('최종 메모리 정리 오류: $e');
     }

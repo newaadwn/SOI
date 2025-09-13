@@ -516,7 +516,7 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
         source: ImageSource.gallery,
-        imageQuality: 85,
+        imageQuality: 70,
       );
 
       if (image != null) {

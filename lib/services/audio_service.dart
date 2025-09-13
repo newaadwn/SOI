@@ -59,13 +59,8 @@ class AudioService {
         return AuthResult.failure('마이크 권한이 필요합니다.');
       }
 
-      final storagePermission = await _repository.requestStoragePermission();
-      if (!storagePermission) {
-        return AuthResult.failure('저장소 권한이 필요합니다.');
-      }
-
       // 2. 레코더 및 플레이어 초기화
-      await _repository.initializeRecorder();
+
       await _repository.initializePlayer();
 
       // 3. 임시 파일 정리
@@ -81,7 +76,6 @@ class AudioService {
   /// 서비스 종료
   Future<void> dispose() async {
     try {
-      await _repository.disposeRecorder();
       await _repository.disposePlayer();
     } catch (e) {
       // // debugPrint('오디오 서비스 종료 오류: $e');

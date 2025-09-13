@@ -7,8 +7,8 @@ import '../../controllers/friend_request_controller.dart';
 import '../../controllers/contact_controller.dart';
 import '../../controllers/auth_controller.dart';
 import '../../controllers/user_matching_controller.dart';
-import '../../services/supabase_deeplink_service.dart';
 import '../../services/user_matching_service.dart';
+import '../../services/firebase_deeplink_service.dart';
 import 'widgets/friend_request_card.dart';
 import 'widgets/friend_suggest_card.dart';
 
@@ -319,31 +319,16 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> {
         return;
       }
 
-      // Supabase로 친구 초대 링크 생성
-      final inviteLink = await SupabaseDeeplinkService.createFriendInviteLink(
+      // Firebase로 친구 초대 링크 생성
+      final inviteLink = FirebaseDeeplinkService.createFriendInviteLink(
         inviterName: currentUserName,
         inviterId: currentUserId,
         inviteeName: contact.displayName,
         inviterProfileImage: authController.currentUser?.photoURL,
       );
 
-      if (inviteLink == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '딥링크 서비스가 현재 사용할 수 없습니다. Supabase Edge Function이 배포되지 않았거나 네트워크 오류가 발생했습니다.',
-              ),
-              backgroundColor: const Color(0xFF5A5A5A),
-              duration: Duration(seconds: 4),
-            ),
-          );
-        }
-        return;
-      }
-
       final message =
-          '안녕하세요! $currentUserName님이 SOI 앱에서 친구가 되고 싶어해요! 아래 링크로 SOI를 시작해보세요: $inviteLink';
+          '안녕하세요! $currentUserName님이 SOI 앱에서 친구가 되고 싶어해요! 아래 링크로 SOI를 시작해보세요\n$inviteLink';
 
       final uri = Uri(
         scheme: 'sms',

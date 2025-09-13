@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../models/photo_data_model.dart';
 import '../repositories/photo_repository.dart';
+import '../repositories/audio_repository.dart';
 import '../repositories/friend_repository.dart';
 import '../repositories/user_search_repository.dart';
 import 'audio_service.dart';
@@ -18,6 +19,7 @@ class PhotoService {
   PhotoService._internal();
 
   final PhotoRepository _photoRepository = PhotoRepository();
+  final AudioRepository _audioRepository = AudioRepository();
   final AudioService _audioService = AudioService();
 
   // Lazy initialization으로 순환 의존성 방지
@@ -79,7 +81,7 @@ class PhotoService {
       // 2. 오디오 파일 업로드 (있는 경우)
       String? audioUrl;
       if (audioFile != null) {
-        audioUrl = await _photoRepository.uploadAudioToStorage(
+        audioUrl = await _audioRepository.uploadAudioToSupabaseStorage(
           audioFile: audioFile,
           categoryId: categoryId,
           userId: userId,
@@ -210,7 +212,7 @@ class PhotoService {
       // 2. 오디오 업로드
 
       final audioFile = File(audioFilePath);
-      final audioUrl = await _photoRepository.uploadAudioToStorage(
+      final audioUrl = await _audioRepository.uploadAudioToSupabaseStorage(
         audioFile: audioFile,
         categoryId: categoryId,
         userId: userID,

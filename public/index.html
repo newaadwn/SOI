@@ -36,23 +36,74 @@
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
         
+        // 🔥 앱 설치 감지 강화 함수
+        function tryOpenApp(deepLinkUrl, storeUrl) {
+            let appOpened = false;
+            const startTime = Date.now();
+            
+            // Page visibility 변화 감지
+            const handleVisibilityChange = () => {
+                if (document.hidden) {
+                    appOpened = true;
+                    console.log('✅ 앱이 열렸습니다');
+                }
+            };
+            
+            // Page focus 변화 감지 (추가 확인)
+            const handleFocusChange = () => {
+                if (!document.hasFocus()) {
+                    appOpened = true;
+                    console.log('✅ 앱으로 전환되었습니다');
+                }
+            };
+            
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+            window.addEventListener('blur', handleFocusChange);
+            
+            // 딥링크 시도
+            console.log(`🔗 딥링크 시도: ${deepLinkUrl}`);
+            window.location.href = deepLinkUrl;
+            
+            // 2초 후 앱이 열리지 않았으면 스토어로 이동
+            setTimeout(() => {
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+                window.removeEventListener('blur', handleFocusChange);
+                
+                if (!appOpened) {
+                    console.log('❌ 앱이 설치되지 않음 - 스토어로 이동');
+                    window.location.href = storeUrl;
+                }
+            }, 2000);
+        }
+        
         document.getElementById('downloadBtn').onclick = function() {
             const deepLinkData = `?inviter=${inviterName}&inviterId=${inviterId}&invitee=${inviteeName}`;
             
             if (isAndroid) {
-                // Android: 앱이 있으면 딥링크, 없으면 플레이스토어
-                window.location.href = `intent://invite${deepLinkData}#Intent;scheme=soi;package=com.soi.app;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.soi.app;end`;
+                // Android: Intent URL로 앱 호출 시도
+                const intentUrl = `intent://invite${deepLinkData}#Intent;scheme=soi;package=com.soi.app;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.soi.app;end`;
+                const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.soi.app';
+                
+                tryOpenApp(intentUrl, playStoreUrl);
             } else if (isIOS) {
-                // iOS: Universal Link 시도 후 앱스토어
-                window.location.href = `soi://invite${deepLinkData}`;
-                setTimeout(() => {
-                    window.location.href = 'https://apps.apple.com/app/soi/id여기에앱ID';
-                }, 1000);
+                // iOS: Custom URL Scheme 시도
+                const deepLinkUrl = `soi://invite${deepLinkData}`;
+                const appStoreUrl = 'https://apps.apple.com/app/soi/id여기에앱ID';
+                
+                tryOpenApp(deepLinkUrl, appStoreUrl);
             } else {
                 // 웹: 플레이스토어로
                 window.location.href = 'https://play.google.com/store/apps/details?id=com.soi.app';
             }
         };
+        
+        // 🚀 페이지 로드 시 자동으로 앱 열기 시도 (선택사항)
+        window.addEventListener('load', () => {
+            // 3초 후 자동으로 앱 열기 시도
+            setTimeout(() => {
+                document.getElementById('downloadBtn').click();
+            }, 1000);
+        });
     </script>
 </body>
 </html>

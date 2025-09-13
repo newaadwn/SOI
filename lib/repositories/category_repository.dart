@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/category_data_model.dart';
 
 /// Firebase에서 category 관련 데이터를 가져오고, 저장하고, 업데이트하고 삭제하는 등의 로직들
@@ -359,19 +360,16 @@ class CategoryRepository {
 
   /// 표지사진용 이미지 업로드
   Future<String> uploadCoverImage(String categoryId, File imageFile) async {
+    final supabase = Supabase.instance.client;
     final fileName =
         'cover_${categoryId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final ref = _storage
-        .ref()
-        .child('categories')
-        .child(categoryId)
-        .child('covers')
-        .child(fileName);
+    // supabase storage에 커버 이미지 업로드
+    await supabase.storage.from('covers').upload(fileName, imageFile);
 
-    final uploadTask = ref.putFile(imageFile);
-    final snapshot = await uploadTask.whenComplete(() => null);
+    // 즉시 공개 URL 생성 (다운로드 API 호출 없음)
+    final publicUrl = supabase.storage.from('covers').getPublicUrl(fileName);
 
-    return await snapshot.ref.getDownloadURL();
+    return publicUrl;
   }
 
   /// 카테고리 사진 스트림 (Map 형태로 반환)

@@ -1,4 +1,4 @@
-import 'dart:developer' as developer;
+//import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
@@ -13,7 +13,7 @@ class MemoryMonitor {
     if (_isMonitoring || !kDebugMode) return;
 
     _isMonitoring = true;
-    developer.log('메모리 모니터링 시작');
+    debugPrint('메모리 모니터링 시작');
 
     // 5초마다 메모리 사용량 체크
     _monitorMemoryUsage();
@@ -22,7 +22,7 @@ class MemoryMonitor {
   /// 메모리 모니터링 중지
   static void stopMonitoring() {
     _isMonitoring = false;
-    developer.log('메모리 모니터링 중지');
+    debugPrint('메모리 모니터링 중지');
   }
 
   /// 현재 메모리 사용량 출력
@@ -43,16 +43,16 @@ class MemoryMonitor {
         deltaStr = ' (${deltaMB}MB)';
       }
 
-      developer.log('[$context] 메모리: ${usageMB}MB$deltaStr');
+      debugPrint('[$context] 메모리: ${usageMB}MB$deltaStr');
 
       // 메모리 사용량이 1GB를 넘으면 경고
       if (usage > 1024 * 1024 * 1024) {
-        developer.log('메모리 사용량 경고: ${usageMB}MB', name: 'MemoryWarning');
+        debugPrint('메모리 사용량 경고: ${usageMB}MB');
       }
 
       _lastMemoryUsage = usage;
     } catch (e) {
-      developer.log('메모리 사용량 측정 오류: $e');
+      debugPrint('메모리 사용량 측정 오류: $e');
     }
   }
 
@@ -61,14 +61,14 @@ class MemoryMonitor {
     if (!kDebugMode) return;
 
     try {
-      developer.log('[$context] 메모리 정리 시작');
+      debugPrint('[$context] 메모리 정리 시작');
 
       // 이미지 캐시 정리
       try {
         PaintingBinding.instance.imageCache.clear();
         PaintingBinding.instance.imageCache.clearLiveImages();
       } catch (e) {
-        developer.log('이미지 캐시 정리 오류: $e');
+        debugPrint('이미지 캐시 정리 오류: $e');
       }
 
       // GC 트리거 (개발 모드에서만)
@@ -76,14 +76,14 @@ class MemoryMonitor {
         // native GC 호출 (가능한 경우)
       }
 
-      developer.log('[$context] 메모리 정리 완료');
+      debugPrint('[$context] 메모리 정리 완료');
 
       // 정리 후 메모리 사용량 체크
       Future.delayed(Duration(milliseconds: 500), () {
         logCurrentMemoryUsage('$context - 정리 후');
       });
     } catch (e) {
-      developer.log('메모리 정리 오류: $e');
+      debugPrint('메모리 정리 오류: $e');
     }
   }
 
@@ -129,7 +129,7 @@ class MemoryMonitor {
   /// 메모리 사용량 경고 알림
   static void checkMemoryWarning(String context) {
     if (isMemoryUsageHigh()) {
-      developer.log('[$context] 높은 메모리 사용량 감지 - 정리 필요', name: 'MemoryWarning');
+      debugPrint('[$context] 높은 메모리 사용량 감지 - 정리 필요');
       forceGarbageCollection(context);
     }
   }

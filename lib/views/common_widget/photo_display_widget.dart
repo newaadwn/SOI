@@ -172,6 +172,13 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                               width: profileSize - 4,
                               height: profileSize - 4,
                               fit: BoxFit.cover,
+                              // 🔥 메모리 최적화: 프로필 이미지 크기 제한
+                              memCacheHeight:
+                                  (profileSize * 2)
+                                      .toInt(), // 작은 프로필 이미지는 2배 정도로 제한
+                              memCacheWidth: (profileSize * 2).toInt(),
+                              maxHeightDiskCache: 200, // 프로필 이미지는 200px 이하로 충분
+                              maxWidthDiskCache: 200,
                               placeholder:
                                   (context, url) =>
                                       _buildPlaceholder(profileSize),
@@ -256,12 +263,19 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                   return Stack(
                     alignment: Alignment.topCenter,
                     children: [
-                      // 배경 이미지
+                      // 🔥 메모리 최적화: 배경 이미지 크기 제한
                       CachedNetworkImage(
                         imageUrl: widget.photo.imageUrl,
                         fit: BoxFit.cover,
                         width: 354.w, // 실제 이미지 너비
                         height: 500.h, // 실제 이미지 높이
+                        // 🔥 메모리 최적화: 디코딩 크기 제한으로 메모리 사용량 대폭 감소
+                        memCacheHeight:
+                            (500 * 1.2).toInt(), // 화면 크기보다 약간 큰 정도로 제한
+                        memCacheWidth:
+                            (354 * 1.2).toInt(), // 화면 크기보다 약간 큰 정도로 제한
+                        maxHeightDiskCache: 1000, // 디스크 캐시도 제한
+                        maxWidthDiskCache: 700, // 디스크 캐시도 제한
                         placeholder: (context, url) {
                           return Container(
                             width: 354.w,

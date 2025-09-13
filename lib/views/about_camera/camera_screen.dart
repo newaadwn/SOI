@@ -119,7 +119,6 @@ class _CameraScreenState extends State<CameraScreen>
   Future<void> _loadAvailableZoomLevels() async {
     try {
       final availableLevels = await _cameraService.getAvailableZoomLevels();
-      debugPrint('📱 Flutter에서 받은 줌 레벨: $availableLevels');
 
       if (mounted) {
         setState(() {
@@ -141,7 +140,6 @@ class _CameraScreenState extends State<CameraScreen>
                 }
               }).toList();
         });
-        debugPrint('📱 UI에 표시될 줌 레벨: $zoomLevels');
       }
     } catch (e) {
       // 줌 레벨 로드 실패 시 기본값 유지
@@ -164,7 +162,6 @@ class _CameraScreenState extends State<CameraScreen>
       final userId = authController.getUserId;
       if (userId != null && userId.isNotEmpty) {
         await notificationController.startListening(userId);
-        debugPrint('📱 CameraScreen: 알림 초기화 완료 - 사용자: $userId');
       }
     } catch (e) {
       debugPrint('❌ CameraScreen: 알림 초기화 실패 - $e');
