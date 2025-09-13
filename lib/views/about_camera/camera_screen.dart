@@ -571,169 +571,174 @@ class _CameraScreenState extends State<CameraScreen>
           ),
         ],
       ),
-      body: Column(
-        children: [
-          Center(
-            child: FutureBuilder<void>(
-              future: _cameraInitialization,
-              builder: (context, snapshot) {
-                if (_isLoading) {
-                  return Shimmer.fromColors(
-                    baseColor: Colors.grey.shade800,
-                    highlightColor: Colors.grey.shade700,
-                    period: const Duration(milliseconds: 1500),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                        width: 354.w,
-                        height: 500.h,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade800,
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            Center(
+              child: FutureBuilder<void>(
+                future: _cameraInitialization,
+                builder: (context, snapshot) {
+                  if (_isLoading) {
+                    return Shimmer.fromColors(
+                      baseColor: Colors.grey.shade800,
+                      highlightColor: Colors.grey.shade700,
+                      period: const Duration(milliseconds: 1500),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          width: 354.w,
+                          height: 500.h,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade800,
 
-                          borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                       ),
-                    ),
-                  );
-                }
+                    );
+                  }
 
-                // 초기화 실패 시 오류 메시지 표시
-                if (snapshot.hasError) {
-                  return Container(
-                    constraints: BoxConstraints(maxHeight: double.infinity),
-                    decoration: BoxDecoration(
-                      color: Colors.black,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Center(
-                      child: Text(
-                        '카메라를 시작할 수 없습니다.\n앱을 다시 시작해 주세요.',
-                        style: TextStyle(color: Colors.white, fontSize: 18.sp),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  );
-                }
-
-                // 카메라 초기화 완료되면 카메라 뷰 표시
-                return Stack(
-                  alignment: Alignment.topCenter,
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: SizedBox(
-                        width: 354.w,
-                        height: 500.h,
-
-                        child: Stack(
-                          alignment: Alignment.bottomCenter,
-                          children: [
-                            // 카메라 뷰
-                            _cameraService.getCameraView(),
-
-                            // 줌 컨트롤 (상단 중앙)
-                            Padding(
-                              padding: EdgeInsets.only(bottom: 26.h),
-                              child: _buildZoomControls(),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // 플래시 버튼
-                    IconButton(
-                      onPressed: _toggleFlash,
-                      icon: Icon(
-                        isFlashOn ? EvaIcons.flash : EvaIcons.flashOff,
-                        color: Colors.white,
-                        size: 28.sp,
-                      ),
-                      padding: EdgeInsets.zero,
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-          SizedBox(height: 20.h),
-          // 수정: 하단 버튼 레이아웃 변경 - 반응형
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // 갤러리 미리보기 버튼 (Service 상태 사용) - 반응형
-              Expanded(
-                child: Align(
-                  alignment: Alignment.center,
-                  child: InkWell(
-                    onTap: () async {
-                      try {
-                        // Service를 통해 갤러리에서 이미지 선택 (에러 핸들링 개선)
-                        final result =
-                            await _cameraService.pickImageFromGallery();
-                        if (result != null && result.isNotEmpty && mounted) {
-                          // 선택한 이미지 경로를 편집 화면으로 전달
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) =>
-                                      PhotoEditorScreen(imagePath: result),
-                            ),
-                          );
-                        } else {
-                          // No image was selected from gallery
-                        }
-                      } catch (e) {
-                        // Error occurred while selecting image from gallery: $e
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('갤러리에서 이미지를 선택할 수 없습니다'),
-                              backgroundColor: const Color(0xFF5A5A5A),
-                            ),
-                          );
-                        }
-                      }
-                    },
-                    child: Container(
-                      width: 46,
-                      height: 46,
+                  // 초기화 실패 시 오류 메시지 표시
+                  if (snapshot.hasError) {
+                    return Container(
+                      constraints: BoxConstraints(maxHeight: double.infinity),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8.76),
+                        color: Colors.black,
+                        borderRadius: BorderRadius.circular(20),
                       ),
-                      child: _buildGalleryContent(46, 8.76),
+                      child: Center(
+                        child: Text(
+                          '카메라를 시작할 수 없습니다.\n앱을 다시 시작해 주세요.',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18.sp,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  }
+
+                  // 카메라 초기화 완료되면 카메라 뷰 표시
+                  return Stack(
+                    alignment: Alignment.topCenter,
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: SizedBox(
+                          width: 354.w,
+                          height: 500.h,
+
+                          child: Stack(
+                            alignment: Alignment.bottomCenter,
+                            children: [
+                              // 카메라 뷰
+                              _cameraService.getCameraView(),
+
+                              // 줌 컨트롤 (상단 중앙)
+                              Padding(
+                                padding: EdgeInsets.only(bottom: 26.h),
+                                child: _buildZoomControls(),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // 플래시 버튼
+                      IconButton(
+                        onPressed: _toggleFlash,
+                        icon: Icon(
+                          isFlashOn ? EvaIcons.flash : EvaIcons.flashOff,
+                          color: Colors.white,
+                          size: 28.sp,
+                        ),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            SizedBox(height: 20.h),
+            // 수정: 하단 버튼 레이아웃 변경 - 반응형
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // 갤러리 미리보기 버튼 (Service 상태 사용) - 반응형
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.center,
+                    child: InkWell(
+                      onTap: () async {
+                        try {
+                          // Service를 통해 갤러리에서 이미지 선택 (에러 핸들링 개선)
+                          final result =
+                              await _cameraService.pickImageFromGallery();
+                          if (result != null && result.isNotEmpty && mounted) {
+                            // 선택한 이미지 경로를 편집 화면으로 전달
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder:
+                                    (context) =>
+                                        PhotoEditorScreen(imagePath: result),
+                              ),
+                            );
+                          } else {
+                            // No image was selected from gallery
+                          }
+                        } catch (e) {
+                          // Error occurred while selecting image from gallery: $e
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('갤러리에서 이미지를 선택할 수 없습니다'),
+                                backgroundColor: const Color(0xFF5A5A5A),
+                              ),
+                            );
+                          }
+                        }
+                      },
+                      child: Container(
+                        width: 46,
+                        height: 46,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(8.76),
+                        ),
+                        child: _buildGalleryContent(46, 8.76),
+                      ),
                     ),
                   ),
                 ),
-              ),
 
-              // 촬영 버튼 - 개선된 반응형
-              IconButton(
-                onPressed: _takePicture,
-                icon: Image.asset(
-                  "assets/take_picture.png",
-                  width: 65,
-                  height: 65,
-                ),
-              ),
-
-              // 카메라 전환 버튼 - 개선된 반응형
-              Expanded(
-                child: IconButton(
-                  onPressed: _switchCamera,
-                  color: Color(0xffd9d9d9),
+                // 촬영 버튼 - 개선된 반응형
+                IconButton(
+                  onPressed: _takePicture,
                   icon: Image.asset(
-                    "assets/switch.png",
-                    width: 67.w,
-                    height: 56.h,
+                    "assets/take_picture.png",
+                    width: 65,
+                    height: 65,
                   ),
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 30.h),
-        ],
+
+                // 카메라 전환 버튼 - 개선된 반응형
+                Expanded(
+                  child: IconButton(
+                    onPressed: _switchCamera,
+                    color: Color(0xffd9d9d9),
+                    icon: Image.asset(
+                      "assets/switch.png",
+                      width: 67.w,
+                      height: 56.h,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: 30.h),
+          ],
+        ),
       ),
     );
   }

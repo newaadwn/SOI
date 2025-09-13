@@ -323,7 +323,6 @@ class _FriendRequestScreenState extends State<FriendRequestScreen> {
       final inviteLink = FirebaseDeeplinkService.createFriendInviteLink(
         inviterName: currentUserName,
         inviterId: currentUserId,
-        inviteeName: contact.displayName,
         inviterProfileImage: authController.currentUser?.photoURL,
       );
 

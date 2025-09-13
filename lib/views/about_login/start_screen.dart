@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/auth_controller.dart';
 import '../../theme/theme.dart';
@@ -10,20 +11,104 @@ class StartScreen extends StatefulWidget {
   State<StartScreen> createState() => _StartScreenState();
 }
 
-class _StartScreenState extends State<StartScreen> {
+class _StartScreenState extends State<StartScreen>
+    with TickerProviderStateMixin {
   bool _isCheckingAutoLogin = true;
+
+  // 애니메이션 컨트롤러들
+  late AnimationController _logoController;
+  late AnimationController _textController;
+  late AnimationController _buttonController;
+
+  // 애니메이션들
+  late Animation<double> _logoOpacity;
+  late Animation<Offset> _logoSlide;
+  late Animation<double> _textOpacity;
+  late Animation<Offset> _textSlide;
+  late Animation<double> _buttonOpacity;
+  late Animation<Offset> _buttonSlide;
 
   @override
   void initState() {
     super.initState();
+    _initializeAnimations();
     _checkAutoLogin();
+  }
+
+  /// 애니메이션 초기화
+  void _initializeAnimations() {
+    // 애니메이션 컨트롤러 생성
+    _logoController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+    _textController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    _buttonController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+
+    // 애니메이션 정의
+    _logoOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _logoController, curve: Curves.easeInOut),
+    );
+    _logoSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _logoController, curve: Curves.easeOutCubic),
+    );
+
+    _textOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _textController, curve: Curves.easeInOut),
+    );
+    _textSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _textController, curve: Curves.easeOutCubic),
+    );
+
+    _buttonOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _buttonController, curve: Curves.easeInOut),
+    );
+    _buttonSlide = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(parent: _buttonController, curve: Curves.easeOutCubic),
+    );
+  }
+
+  /// 순차적 애니메이션 시작
+  void _startAnimations() async {
+    // 500ms 대기 후 로고 애니메이션
+    await Future.delayed(const Duration(milliseconds: 500));
+    if (mounted) _logoController.forward();
+
+    // 로고 애니메이션 완료 후 텍스트 애니메이션
+    await Future.delayed(const Duration(milliseconds: 1000));
+    if (mounted) _textController.forward();
+
+    // 텍스트 애니메이션 완료 후 버튼 애니메이션
+    await Future.delayed(const Duration(milliseconds: 1000));
+    if (mounted) _buttonController.forward();
+  }
+
+  @override
+  void dispose() {
+    _logoController.dispose();
+    _textController.dispose();
+    _buttonController.dispose();
+    super.dispose();
   }
 
   /// ✅ 자동 로그인 체크
   Future<void> _checkAutoLogin() async {
     try {
-      // debugPrint('🔄 앱 시작 - 자동 로그인 체크 중...');
-
       final authController = Provider.of<AuthController>(
         context,
         listen: false,
@@ -32,21 +117,22 @@ class _StartScreenState extends State<StartScreen> {
 
       if (mounted) {
         if (canAutoLogin) {
-          // debugPrint('✅ 자동 로그인 성공 - 홈 화면으로 이동');
           Navigator.pushReplacementNamed(context, '/home_navigation_screen');
         } else {
-          // debugPrint('❌ 자동 로그인 실패 - 시작 화면 표시');
           setState(() {
             _isCheckingAutoLogin = false;
           });
+          // 애니메이션 시작
+          _startAnimations();
         }
       }
     } catch (e) {
-      // debugPrint('❌ 자동 로그인 체크 오류: $e');
       if (mounted) {
         setState(() {
           _isCheckingAutoLogin = false;
         });
+        // 애니메이션 시작
+        _startAnimations();
       }
     }
   }
@@ -54,8 +140,6 @@ class _StartScreenState extends State<StartScreen> {
   /// ✅ 로그인 버튼 클릭 처리
   Future<void> _handleLoginButtonPress() async {
     try {
-      // debugPrint('🔄 로그인 버튼 클릭 - 로그인 기록 체크 중...');
-
       final authController = Provider.of<AuthController>(
         context,
         listen: false,
@@ -65,35 +149,29 @@ class _StartScreenState extends State<StartScreen> {
       final isLoggedIn = await authController.isLoggedIn();
 
       if (isLoggedIn) {
-        // debugPrint('✅ 로그인 기록 발견 - 바로 홈 화면으로 이동');
-
         // 자동 로그인 시도
         final canAutoLogin = await authController.tryAutoLogin();
 
-        if (canAutoLogin) {
+        if (canAutoLogin && mounted) {
           // ✅ 로그인 기록이 있으면 바로 홈 화면으로 이동
           Navigator.pushReplacementNamed(context, '/home_navigation_screen');
-        } else {
+        } else if (mounted) {
           // 자동 로그인 실패 시 로그인 화면으로
-          // debugPrint('❌ 자동 로그인 실패 - 로그인 화면으로 이동');
           Navigator.pushNamed(context, '/login');
         }
-      } else {
-        // debugPrint('❌ 로그인 기록 없음 - 로그인 화면으로 이동');
+      } else if (mounted) {
         Navigator.pushNamed(context, '/login');
       }
     } catch (e) {
-      // debugPrint('❌ 로그인 버튼 처리 오류: $e');
       // 오류 발생 시 기본 로그인 화면으로
-      Navigator.pushNamed(context, '/login');
+      if (mounted) {
+        Navigator.pushNamed(context, '/login');
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
-
     // ✅ 자동 로그인 체크 중일 때 로딩 화면 표시
     if (_isCheckingAutoLogin) {
       return Scaffold(
@@ -102,14 +180,7 @@ class _StartScreenState extends State<StartScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(
-                'assets/SOI.png',
-                width: (349 / 393) * screenWidth,
-                height: (128 / 852) * screenHeight,
-                // 메모리 최적화: 로고 이미지 캐시 크기 제한
-                cacheHeight: ((128 / 852) * screenHeight * 2).toInt(),
-                cacheWidth: ((349 / 393) * screenWidth * 2).toInt(),
-              ),
+              Image.asset('assets/SOI_logo.png', width: 126.w, height: 88.h),
               SizedBox(height: 40),
               CircularProgressIndicator(color: Colors.white),
               SizedBox(height: 20),
@@ -126,73 +197,134 @@ class _StartScreenState extends State<StartScreen> {
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Image.asset(
-              'assets/SOI.png',
-              width: (349 / 393) * screenWidth,
-              height: (128 / 852) * screenHeight,
-              // 메모리 최적화: 로고 이미지 캐시 크기 제한
-              cacheHeight: ((128 / 852) * screenHeight * 2).toInt(),
-              cacheWidth: ((349 / 393) * screenWidth * 2).toInt(),
-            ),
-            SizedBox(height: (201 / 852) * screenHeight),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/auth');
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xff323232),
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: <Widget>[
+              SizedBox(height: 170.h),
+              // 로고 애니메이션
+              AnimatedBuilder(
+                animation: _logoController,
+                builder: (context, child) {
+                  return SlideTransition(
+                    position: _logoSlide,
+                    child: FadeTransition(
+                      opacity: _logoOpacity,
+                      child: Image.asset(
+                        'assets/SOI_logo.png',
+                        width: 126.w,
+                        height: 88.h,
+                      ),
+                    ),
+                  );
+                },
               ),
-              child: Container(
-                width: (239 / 393) * screenWidth,
-                height: (59 / 852) * screenHeight,
-                alignment: Alignment.center,
-                child: Text(
-                  '시작하기',
-                  style: TextStyle(
-                    color: AppTheme.lightTheme.colorScheme.onPrimary,
-                    fontSize: (24 / 852) * screenHeight,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+              SizedBox(height: 38.h),
+              // 텍스트 애니메이션
+              AnimatedBuilder(
+                animation: _textController,
+                builder: (context, child) {
+                  return SlideTransition(
+                    position: _textSlide,
+                    child: FadeTransition(
+                      opacity: _textOpacity,
+                      child: _buildSubText(),
+                    ),
+                  );
+                },
               ),
-            ),
-            SizedBox(height: (19 / 852) * screenHeight),
-            ElevatedButton(
-              onPressed: () async {
-                // ✅ 로그인 기록 체크 후 분기 처리
-                await _handleLoginButtonPress();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xff323232),
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+              SizedBox(height: 257.h),
+              // 버튼 애니메이션
+              AnimatedBuilder(
+                animation: _buttonController,
+                builder: (context, child) {
+                  return SlideTransition(
+                    position: _buttonSlide,
+                    child: FadeTransition(
+                      opacity: _buttonOpacity,
+                      child: _buildButtons(),
+                    ),
+                  );
+                },
               ),
-              child: Container(
-                width: (239 / 393) * screenWidth,
-                height: (59 / 852) * screenHeight,
-                alignment: Alignment.center,
-                child: Text(
-                  '로그인',
-                  style: TextStyle(
-                    color: AppTheme.lightTheme.colorScheme.onPrimary,
-                    fontSize: (24 / 852) * screenHeight,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSubText() {
+    return Text(
+      'SOI에 오신걸 환영합니다!',
+      textAlign: TextAlign.center,
+      style: TextStyle(
+        color: const Color(0xFFF8F8F8),
+        fontSize: 20,
+        fontFamily: 'Pretendard Variable',
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+
+  Widget _buildButtons() {
+    return Column(
+      children: [
+        ElevatedButton(
+          onPressed: () {
+            Navigator.pushNamed(context, '/auth');
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xffffffff),
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(17.8),
+            ),
+          ),
+          child: Container(
+            width: 239.w,
+            height: 59.h,
+            alignment: Alignment.center,
+            child: Text(
+              '회원가입',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 22.sp,
+                fontFamily: 'Pretendard Variable',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: 19.w),
+        ElevatedButton(
+          onPressed: () async {
+            // 로그인 기록 체크 후 분기 처리
+            await _handleLoginButtonPress();
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Color(0xff171717),
+            padding: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(17.8),
+            ),
+          ),
+          child: Container(
+            width: 239.w,
+            height: 59.h,
+            alignment: Alignment.center,
+            child: Text(
+              '로그인',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22.sp,
+                fontFamily: 'Pretendard Variable',
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

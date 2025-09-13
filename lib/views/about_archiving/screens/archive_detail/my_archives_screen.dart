@@ -157,6 +157,9 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GridView.builder(
+                    key: ValueKey(
+                      'my_grid_${userCategories.length}_${categoryController.searchQuery}',
+                    ),
                     physics: const NeverScrollableScrollPhysics(),
                     shrinkWrap: true,
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -171,6 +174,7 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
                       final categoryId = category.id;
 
                       return ArchiveCardWidget(
+                        key: ValueKey('my_archive_card_$categoryId'),
                         categoryId: categoryId,
                         isEditMode: widget.isEditMode,
                         isEditing:

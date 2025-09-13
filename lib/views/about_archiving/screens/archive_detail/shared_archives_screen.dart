@@ -3,7 +3,6 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/category_controller.dart';
-import '../../../../models/category_data_model.dart';
 import '../../../../theme/theme.dart';
 import '../../widgets/archive_card_widget/archive_card_widget.dart';
 
@@ -29,15 +28,13 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
   String? nickName;
   // 카테고리별 프로필 이미지 캐시
   final Map<String, List<String>> _categoryProfileImages = {};
-  Stream<List<CategoryDataModel>>? _categoriesStream;
-  CategoryController? _categoryController;
 
   @override
   void initState() {
     super.initState();
     // 이메일이나 닉네임을 미리 가져와요.
     final authController = Provider.of<AuthController>(context, listen: false);
-    _categoryController = Provider.of<CategoryController>(
+    final categoryController = Provider.of<CategoryController>(
       context,
       listen: false,
     );
@@ -46,9 +43,9 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
       if (mounted) {
         setState(() {
           nickName = value;
-          // 닉네임을 얻었을 때 stream 생성
-          _categoriesStream = _categoryController!.streamUserCategories(value);
         });
+        // 닉네임을 얻었을 때 카테고리 로드
+        categoryController.loadUserCategories(value);
       }
     });
   }
@@ -88,7 +85,7 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
   @override
   Widget build(BuildContext context) {
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
-    if (nickName == null || _categoriesStream == null) {
+    if (nickName == null) {
       return Scaffold(
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
         body: const Center(
@@ -99,19 +96,31 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      body: StreamBuilder<List<CategoryDataModel>>(
-        stream: _categoriesStream!,
-        initialData: _categoryController?.userCategories ?? [],
-        builder: (context, snapshot) {
-          // 에러가 생겼을 때만 에러 표시
-          if (snapshot.hasError) {
+      body: Consumer<CategoryController>(
+        builder: (context, categoryController, child) {
+          // 카테고리 목록 가져오기 (검색 결과 포함)
+          final allCategories = categoryController.userCategories;
+
+          // 로딩 중일 때
+          if (categoryController.isLoading && allCategories.isEmpty) {
             return const Center(
               child: CircularProgressIndicator(color: Colors.white),
             );
           }
 
-          // 필터링된 카테고리 가져오기 (initialData가 있으면 바로 사용)
-          final allCategories = snapshot.data ?? [];
+          // 에러가 있을 때
+          if (categoryController.error != null) {
+            return Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 40.h),
+                child: Text(
+                  categoryController.error!,
+                  style: TextStyle(color: Colors.white, fontSize: 16.sp),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
 
           // 공유 카테고리만 필터링합니다.
           final sharedCategories =
@@ -124,11 +133,18 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
                   .toList();
 
           // 데이터 없으면
-          if (allCategories.isEmpty) {
-            // 여전히 로딩 중이라면 로딩 표시
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: Colors.white),
+          if (sharedCategories.isEmpty) {
+            // 검색 중인데 결과가 없는 경우
+            if (categoryController.searchQuery.isNotEmpty) {
+              return Center(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 40.h),
+                  child: Text(
+                    '검색 결과가 없습니다.',
+                    style: TextStyle(color: Colors.white, fontSize: 16.sp),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               );
             }
 
@@ -136,7 +152,7 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 40.h),
                 child: Text(
-                  '등록된 카테고리가 없습니다.',
+                  '공유된 카테고리가 없습니다.',
                   style: TextStyle(color: Colors.white, fontSize: 16.sp),
                   textAlign: TextAlign.center,
                 ),
@@ -160,8 +176,11 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   GridView.builder(
+                    key: ValueKey(
+                      'shared_grid_${sharedCategories.length}_${categoryController.searchQuery}',
+                    ),
                     shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(), // 이것은 유지
+                    physics: const NeverScrollableScrollPhysics(),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       childAspectRatio: (168.w / 229.h),
@@ -174,6 +193,7 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
                       final categoryId = category.id;
 
                       return ArchiveCardWidget(
+                        key: ValueKey('shared_archive_card_$categoryId'),
                         categoryId: categoryId,
                         isEditMode: widget.isEditMode,
                         isEditing:

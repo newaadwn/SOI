@@ -96,21 +96,27 @@
     </div>
     
     <script>
-        // URL 파라미터에서 정보 추출
+        // URL 파라미터에서 정보 추출 및 디코딩
         const urlParams = new URLSearchParams(window.location.search);
-        const inviterName = urlParams.get('inviter') || '친구';
-        const inviterId = urlParams.get('inviterId') || '';
-        const inviteeName = urlParams.get('invitee') || '당신';
+        
+        // URL 디코딩을 명시적으로 처리
+        const inviterName = urlParams.get('inviter') ? decodeURIComponent(urlParams.get('inviter')) : '친구';
+        const inviterId = urlParams.get('inviterId') ? decodeURIComponent(urlParams.get('inviterId')) : '';
+        // inviteeName 변수 제거 - 더 이상 사용하지 않음
+        
+        console.log('디코딩된 초대자 이름:', inviterName);
+        console.log('초대자 ID:', inviterId);
+        
+        // 초대자 정보는 표시하지 않음 (빈 문자열로 설정)
+        document.getElementById('inviterInfo').textContent = '';
         
         // 페이지 메타데이터 업데이트
         document.title = `${inviterName}님의 SOI 친구 초대`;
         document.querySelector('meta[property="og:title"]').content = `${inviterName}님의 SOI 친구 초대`;
-        document.querySelector('meta[property="og:description"]').content = `${inviterName}님이 SOI에서 ${inviteeName}님과 친구가 되고 싶어해요!`;
         
-        // 메시지 개인화
-        document.getElementById('inviterInfo').textContent = `${inviterName}님으로부터`;
+        // 메시지를 하나의 완전한 문장으로 개인화
         document.getElementById('inviteMessage').textContent = 
-            `SOI에서 ${inviteeName}님과 친구가 되고 싶어해요!`;
+            `SOI에서 ${inviterName}님이 친구가 되고 싶어해요!`;
         
         // 플랫폼별 다운로드 URL
         const isAndroid = /Android/i.test(navigator.userAgent);
@@ -147,7 +153,7 @@
             window.addEventListener('blur', handleFocusChange);
             
             // 딥링크 시도
-            console.log(`🔗 딥링크 시도: ${deepLinkUrl}`);
+            console.log(`딥링크 시도: ${deepLinkUrl}`);
             window.location.href = deepLinkUrl;
             
             // 3초 후 앱이 열리지 않았으면 스토어로 이동
@@ -156,7 +162,7 @@
                 window.removeEventListener('blur', handleFocusChange);
                 
                 if (!appOpened) {
-                    console.log('❌ 앱이 설치되지 않음 - 스토어로 이동');
+                    console.log('앱이 설치되지 않음 - 스토어로 이동');
                     btn.textContent = '앱 다운로드하러 가기';
                     window.location.href = storeUrl;
                 } else {
@@ -167,8 +173,10 @@
         }
         
         document.getElementById('downloadBtn').onclick = function() {
-            const deepLinkData = `?inviter=${encodeURIComponent(inviterName)}&inviterId=${encodeURIComponent(inviterId)}&invitee=${encodeURIComponent(inviteeName)}`;
+            // inviteeName 제거 - 더 이상 사용하지 않음
+            const deepLinkData = `?inviter=${encodeURIComponent(inviterName)}&inviterId=${encodeURIComponent(inviterId)}`;
             
+            console.log('딥링크 데이터:', deepLinkData);
             if (isAndroid) {
                 // Android: Intent URL
                 const intentUrl = `intent://invite${deepLinkData}#Intent;scheme=soi;package=com.soi.app;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.soi.app;end`;

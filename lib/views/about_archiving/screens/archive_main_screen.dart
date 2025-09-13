@@ -299,13 +299,12 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                             width: 34.w,
                                             height: 34.h,
                                             child: CircleAvatar(
-                                              // 🔥 메모리 최적화: 프로필 이미지 캐시 크기 제한
+                                              // 메모리 최적화: 프로필 이미지 캐시 크기 제한
                                               backgroundImage:
                                                   CachedNetworkImageProvider(
                                                     profileImageUrl,
-                                                    maxHeight:
-                                                        100, // 작은 프로필 이미지 크기 제한
-                                                    maxWidth: 100,
+                                                    maxHeight: 70,
+                                                    maxWidth: 70,
                                                   ),
                                               onBackgroundImageError: (
                                                 exception,
@@ -335,8 +334,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                             );
                                           },
                                           child: SizedBox(
-                                            width: 34.w,
-                                            height: 34.h,
+                                            width: 34,
+                                            height: 34,
                                             child: CircleAvatar(
                                               backgroundColor: Colors.grey,
                                               child: Icon(

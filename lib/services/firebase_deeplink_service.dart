@@ -9,13 +9,12 @@ class FirebaseDeeplinkService {
   static String createFriendInviteLink({
     required String inviterName,
     required String inviterId,
-    required String inviteeName,
+
     String? inviterProfileImage,
   }) {
     try {
-      debugPrint('🔗 Creating friend invite link with Firebase Hosting...');
+      debugPrint('Creating friend invite link with Firebase Hosting...');
       debugPrint('- Inviter: $inviterName ($inviterId)');
-      debugPrint('- Invitee: $inviteeName');
 
       // Firebase Hosting을 사용한 간단한 URL 생성
       final params =
@@ -23,17 +22,16 @@ class FirebaseDeeplinkService {
             queryParameters: {
               'inviter': inviterName,
               'inviterId': inviterId,
-              'invitee': inviteeName,
               'auto': '1', // 자동으로 앱 열기 시도
             },
           ).query;
 
       final shareUrl = '$_baseUrl/invite.html?$params';
 
-      debugPrint('✅ Friend invite link created: $shareUrl');
+      debugPrint('Friend invite link created: $shareUrl');
       return shareUrl;
     } catch (e) {
-      debugPrint('❌ Friend invite link error: $e');
+      debugPrint('Friend invite link error: $e');
       rethrow;
     }
   }

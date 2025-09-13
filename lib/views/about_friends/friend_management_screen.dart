@@ -11,8 +11,8 @@ import '../../controllers/friend_controller.dart';
 import '../../controllers/user_matching_controller.dart';
 import '../../controllers/friend_request_controller.dart';
 import '../../services/contact_service.dart';
+import '../../services/firebase_deeplink_service.dart';
 import '../../services/user_matching_service.dart';
-import '../../services/supabase_deeplink_service.dart';
 import 'widgets/friend_add_options_card.dart';
 import 'widgets/invite_link_card.dart';
 import 'widgets/friend_request_card.dart';
@@ -37,6 +37,7 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
 
   // ContactController 참조 저장
   ContactController? _contactController;
+  AuthController? _authController;
 
   @override
   bool get wantKeepAlive => true;
@@ -60,12 +61,15 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
       context,
       listen: false,
     );
+    _authController = Provider.of<AuthController>(context, listen: false);
   }
 
   @override
   void dispose() {
     // 페이지를 벗어날 때 동기화 일시 중지 (비동기로 처리)
     _pauseSyncIfNeededAsync();
+    _authController?.dispose();
+    _contactController?.dispose();
     super.dispose();
   }
 
@@ -592,10 +596,6 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
       final phone = contact.phones.first;
       final phoneNumber = phone.number;
 
-      AuthController authController = AuthController();
-
-      // debugPrint('전화번호: $phoneNumber');
-
       if (phoneNumber.isEmpty) {
         // debugPrint('빈 전화번호: ${contact.displayName}');
         if (mounted) {
@@ -609,8 +609,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
         return;
       }
 
-      final currentUserName = authController.currentUser?.displayName ?? '사용자';
-      final currentUserId = authController.currentUser?.uid;
+      final currentUserName = await _authController?.getUserName();
+      final currentUserId = _authController?.currentUser?.uid;
 
       if (currentUserId == null) {
         if (mounted) {
@@ -625,36 +625,21 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
       }
 
       // Supabase로 친구 초대 링크 생성
-      final inviteLink = await SupabaseDeeplinkService.createFriendInviteLink(
-        inviterName: currentUserName,
+      final inviteLink = FirebaseDeeplinkService.createFriendInviteLink(
+        inviterName: currentUserName ?? 'Unknown User',
         inviterId: currentUserId,
-        inviteeName: contact.displayName,
-        inviterProfileImage: authController.currentUser?.photoURL,
+
+        inviterProfileImage: _authController?.currentUser?.photoURL,
       );
 
-      if (inviteLink == null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                '딥링크 서비스가 현재 사용할 수 없습니다. Supabase Edge Function이 배포되지 않았거나 네트워크 오류가 발생했습니다.',
-              ),
-              backgroundColor: const Color(0xFF5A5A5A),
-              duration: Duration(seconds: 4),
-            ),
-          );
-        }
-        return;
-      }
+      debugPrint("Inviter Name: $currentUserName");
 
       final message =
-          '안녕하세요! $currentUserName님이 SOI 앱에서 친구가 되고 싶어해요! 아래 링크로 SOI를 시작해보세요: $inviteLink';
+          '안녕하세요! $currentUserName님이 SOI 앱에서 친구가 되고 싶어해요! 아래 링크로 SOI를 시작해보세요\n\n$inviteLink';
 
-      final uri = Uri(
-        scheme: 'sms',
-        path: phoneNumber,
-        queryParameters: {'body': message},
-      );
+      // URL 인코딩 문제를 방지하기 위해 직접 URI 구성
+      final encodedMessage = Uri.encodeComponent(message);
+      final uri = Uri.parse('sms:$phoneNumber?body=$encodedMessage');
 
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri);

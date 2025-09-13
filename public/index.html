@@ -1,43 +1,135 @@
-<!-- public/invite.html -->
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>SOI 초대</title>
+    <title>SOI 친구 초대</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Open Graph 메타데이터 -->
+    <meta property="og:title" content="SOI 친구 초대" />
+    <meta property="og:description" content="SOI에서 친구가 되고 싶어해요!" />
+   <!-- <meta property="og:image" content="https://soi-sns.web.app/assets/SOI_logo.png" />-->
+    <meta property="og:url" content="" />
+    <meta property="og:type" content="website" />
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="SOI 친구 초대" />
+    <meta name="twitter:description" content="SOI에서 친구가 되고 싶어해요!" />
+   <!-- <meta name="twitter:image" content="https://soi-sns.web.app/assets/SOI_logo.png" />-->
+    
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; }
-        .soi-logo { width: 120px; margin-bottom: 30px; }
-        .invite-message { font-size: 18px; margin-bottom: 30px; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
+            text-align: center; 
+            padding: 50px 20px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            color: #333;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 100%;
+        }
+        .soi-logo { 
+            width: 120px; 
+            margin-bottom: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        .invite-message { 
+            font-size: 18px; 
+            margin-bottom: 30px; 
+            line-height: 1.5;
+            color: #333;
+        }
+        .inviter-info {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 20px;
+        }
         .download-btn { 
-            background: #1976d2; color: white; padding: 15px 30px; 
-            border: none; border-radius: 8px; font-size: 16px; cursor: pointer;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white; 
+            padding: 15px 30px; 
+            border: none; 
+            border-radius: 50px; 
+            font-size: 16px; 
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+            width: 100%;
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+        }
+        .loading {
+            margin-top: 20px;
+            color: #666;
+            font-size: 14px;
         }
     </style>
 </head>
 <body>
-    <img src="/assets/SOI_logo.png" alt="SOI" class="soi-logo">
-    <div id="inviteMessage" class="invite-message">
-        SOI 앱에서 친구 요청이 왔어요!
+    <div class="container">
+        <img src="/assets/SOI_logo.png" alt="SOI" class="soi-logo">
+        <div id="inviterInfo" class="inviter-info"></div>
+        <div id="inviteMessage" class="invite-message">
+            SOI 앱에서 친구 요청이 왔어요!
+        </div>
+        <button id="downloadBtn" class="download-btn">SOI 앱 열기</button>
+        <div id="loading" class="loading" style="display: none;">
+            앱을 확인하는 중...
+        </div>
     </div>
-    <button id="downloadBtn" class="download-btn">앱 다운로드</button>
     
     <script>
+        // URL 파라미터에서 정보 추출 및 디코딩
         const urlParams = new URLSearchParams(window.location.search);
-        const inviterName = urlParams.get('inviter') || '친구';
-        const inviterId = urlParams.get('inviterId');
-        const inviteeName = urlParams.get('invitee');
         
-        // 메시지 개인화
+        // URL 디코딩을 명시적으로 처리
+        const inviterName = urlParams.get('inviter') ? decodeURIComponent(urlParams.get('inviter')) : '친구';
+        const inviterId = urlParams.get('inviterId') ? decodeURIComponent(urlParams.get('inviterId')) : '';
+        // inviteeName 변수 제거 - 더 이상 사용하지 않음
+        
+        console.log('디코딩된 초대자 이름:', inviterName);
+        console.log('초대자 ID:', inviterId);
+        
+        // 초대자 정보는 표시하지 않음 (빈 문자열로 설정)
+        document.getElementById('inviterInfo').textContent = '';
+        
+        // 페이지 메타데이터 업데이트
+        document.title = `${inviterName}님의 SOI 친구 초대`;
+        document.querySelector('meta[property="og:title"]').content = `${inviterName}님의 SOI 친구 초대`;
+        
+        // 메시지를 하나의 완전한 문장으로 개인화
         document.getElementById('inviteMessage').textContent = 
-            `${inviterName}님이 SOI에서 친구 요청을 보냈어요!`;
+            `SOI에서 ${inviterName}님이 친구가 되고 싶어해요!`;
         
-        // 플랫폼별 다운로드
+        // 플랫폼별 다운로드 URL
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
         
-        // 🔥 앱 설치 감지 강화 함수
+        // 앱 설치 감지 및 딥링크 함수
         function tryOpenApp(deepLinkUrl, storeUrl) {
+            const loading = document.getElementById('loading');
+            const btn = document.getElementById('downloadBtn');
+            
+            loading.style.display = 'block';
+            btn.textContent = '앱 확인 중...';
+            
             let appOpened = false;
             const startTime = Date.now();
             
@@ -49,7 +141,7 @@
                 }
             };
             
-            // Page focus 변화 감지 (추가 확인)
+            // Page focus 변화 감지
             const handleFocusChange = () => {
                 if (!document.hasFocus()) {
                     appOpened = true;
@@ -61,32 +153,38 @@
             window.addEventListener('blur', handleFocusChange);
             
             // 딥링크 시도
-            console.log(`🔗 딥링크 시도: ${deepLinkUrl}`);
+            console.log(`딥링크 시도: ${deepLinkUrl}`);
             window.location.href = deepLinkUrl;
             
-            // 2초 후 앱이 열리지 않았으면 스토어로 이동
+            // 3초 후 앱이 열리지 않았으면 스토어로 이동
             setTimeout(() => {
                 document.removeEventListener('visibilitychange', handleVisibilityChange);
                 window.removeEventListener('blur', handleFocusChange);
                 
                 if (!appOpened) {
-                    console.log('❌ 앱이 설치되지 않음 - 스토어로 이동');
+                    console.log('앱이 설치되지 않음 - 스토어로 이동');
+                    btn.textContent = '앱 다운로드하러 가기';
                     window.location.href = storeUrl;
+                } else {
+                    loading.style.display = 'none';
+                    btn.textContent = '앱이 열렸습니다!';
                 }
-            }, 2000);
+            }, 3000);
         }
         
         document.getElementById('downloadBtn').onclick = function() {
-            const deepLinkData = `?inviter=${inviterName}&inviterId=${inviterId}&invitee=${inviteeName}`;
+            // inviteeName 제거 - 더 이상 사용하지 않음
+            const deepLinkData = `?inviter=${encodeURIComponent(inviterName)}&inviterId=${encodeURIComponent(inviterId)}`;
             
+            console.log('딥링크 데이터:', deepLinkData);
             if (isAndroid) {
-                // Android: Intent URL로 앱 호출 시도
+                // Android: Intent URL
                 const intentUrl = `intent://invite${deepLinkData}#Intent;scheme=soi;package=com.soi.app;S.browser_fallback_url=https://play.google.com/store/apps/details?id=com.soi.app;end`;
                 const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.soi.app';
                 
                 tryOpenApp(intentUrl, playStoreUrl);
             } else if (isIOS) {
-                // iOS: Custom URL Scheme 시도
+                // iOS: Custom URL Scheme
                 const deepLinkUrl = `soi://invite${deepLinkData}`;
                 const appStoreUrl = 'https://apps.apple.com/app/soi/id여기에앱ID';
                 
@@ -97,11 +195,13 @@
             }
         };
         
-        // 🚀 페이지 로드 시 자동으로 앱 열기 시도 (선택사항)
+        // 페이지 로드 시 잠시 후 자동으로 앱 열기 시도
         window.addEventListener('load', () => {
-            // 3초 후 자동으로 앱 열기 시도
             setTimeout(() => {
-                document.getElementById('downloadBtn').click();
+                // URL에 auto=1 파라미터가 있으면 자동 실행
+                if (urlParams.get('auto') === '1') {
+                    document.getElementById('downloadBtn').click();
+                }
             }, 1000);
         });
     </script>
