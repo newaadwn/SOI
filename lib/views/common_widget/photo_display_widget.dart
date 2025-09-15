@@ -146,60 +146,38 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
         final isLoading = widget.profileLoadingStates[userId] ?? false;
         final profileImageUrl = widget.userProfileImages[userId] ?? '';
 
-        return Container(
-          width: profileSize,
-          height: profileSize,
-          decoration: BoxDecoration(shape: BoxShape.circle),
-          child:
-              isLoading
-                  ? CircleAvatar(
-                    radius: profileSize / 2 - 2,
-                    backgroundColor: Colors.grey[700],
-                    child: SizedBox(
-                      width: profileSize * 0.4,
-                      height: profileSize * 0.4,
-                      child: const CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ),
-                  )
-                  : ClipOval(
-                    child:
-                        profileImageUrl.isNotEmpty
-                            ? CachedNetworkImage(
-                              imageUrl: profileImageUrl,
-                              width: profileSize - 4,
-                              height: profileSize - 4,
-                              fit: BoxFit.cover,
-                              // 🔥 메모리 최적화: 프로필 이미지 크기 제한
-                              memCacheHeight:
-                                  (profileSize * 2)
-                                      .toInt(), // 작은 프로필 이미지는 2배 정도로 제한
-                              memCacheWidth: (profileSize * 2).toInt(),
-                              maxHeightDiskCache: 200, // 프로필 이미지는 200px 이하로 충분
-                              maxWidthDiskCache: 200,
-                              placeholder:
-                                  (context, url) =>
-                                      _buildPlaceholder(profileSize),
-                              errorWidget:
-                                  (context, url, error) =>
-                                      _buildPlaceholder(profileSize),
-                            )
-                            : _buildPlaceholder(profileSize),
-                  ),
-        );
+        return isLoading
+            ? CircleAvatar(
+              radius: 100,
+              backgroundColor: Colors.grey[700],
+              child: SizedBox(
+                child: const CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            )
+            : ClipOval(
+              child:
+                  profileImageUrl.isNotEmpty
+                      ? CachedNetworkImage(
+                        imageUrl: profileImageUrl,
+                        fit: BoxFit.cover,
+                        // 메모리 최적화: 프로필 이미지 크기 제한
+                        memCacheHeight: (profileSize * 2.5).toInt(),
+                        memCacheWidth: (profileSize * 2.5).toInt(),
+                        maxHeightDiskCache: 150,
+                        maxWidthDiskCache: 150,
+                        placeholder:
+                            (context, url) =>
+                                Container(color: Colors.grey[700]),
+                        errorWidget:
+                            (context, url, error) =>
+                                Container(color: Colors.grey[700]),
+                      )
+                      : Container(color: Colors.grey[700]),
+            );
       },
-    );
-  }
-
-  /// 플레이스홀더 아바타 빌드
-  Widget _buildPlaceholder(double profileSize) {
-    return Container(
-      width: profileSize - 4,
-      height: profileSize - 4,
-      color: Colors.grey[700],
-      child: Icon(Icons.person, color: Colors.white, size: profileSize * 0.4),
     );
   }
 
@@ -354,7 +332,7 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                       // 오디오 컨트롤 오버레이 (photo_detail처럼)
                       Positioned(
                         left: 20.w,
-                        bottom: 5.h,
+                        bottom: 7.h,
                         child: SizedBox(
                           height: 50.h,
                           child: Row(
@@ -371,13 +349,13 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                               ),
                                           child: Container(
                                             width: 278.w,
-                                            height: 40.h,
+                                            height: 40,
                                             decoration: BoxDecoration(
                                               color: Color(
                                                 0xff000000,
                                               ).withValues(alpha: 0.4),
                                               borderRadius:
-                                                  BorderRadius.circular(25),
+                                                  BorderRadius.circular(15),
                                             ),
                                             child: Row(
                                               crossAxisAlignment:
@@ -387,8 +365,8 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                               children: [
                                                 // 왼쪽 프로필 이미지 (작은 버전)
                                                 Container(
-                                                  width: 27.w,
-                                                  height: 27.w,
+                                                  width: 27,
+                                                  height: 27,
                                                   decoration: BoxDecoration(
                                                     shape: BoxShape.circle,
                                                   ),
@@ -635,6 +613,12 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                                       width: 27,
                                                       height: 27,
                                                       fit: BoxFit.cover,
+                                                      memCacheHeight:
+                                                          (27 * 3).toInt(),
+                                                      memCacheWidth:
+                                                          (27 * 3).toInt(),
+                                                      maxHeightDiskCache: 100,
+                                                      maxWidthDiskCache: 100,
                                                       placeholder:
                                                           (
                                                             context,

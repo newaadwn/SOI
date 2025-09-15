@@ -123,8 +123,11 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                                 '${category.id}_${category.categoryPhotoUrl}',
                             width: (146.7).w,
                             height: (146.8).h,
+                            memCacheHeight: ((146.8).h * 3).toInt(),
+                            memCacheWidth: ((146.7).w * 3).toInt(),
+                            maxHeightDiskCache: 600,
+                            maxWidthDiskCache: 600,
                             fit: BoxFit.cover,
-
                             placeholder:
                                 (context, url) => Shimmer.fromColors(
                                   baseColor: Colors.grey.shade800,

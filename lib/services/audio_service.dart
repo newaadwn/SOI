@@ -59,10 +59,6 @@ class AudioService {
         return AuthResult.failure('마이크 권한이 필요합니다.');
       }
 
-      // 2. 레코더 및 플레이어 초기화
-
-      await _repository.initializePlayer();
-
       // 3. 임시 파일 정리
       await _repository.cleanupTempFiles();
 
@@ -70,15 +66,6 @@ class AudioService {
     } catch (e) {
       // // debugPrint('오디오 서비스 초기화 오류: $e');
       return AuthResult.failure('오디오 서비스 초기화에 실패했습니다.');
-    }
-  }
-
-  /// 서비스 종료
-  Future<void> dispose() async {
-    try {
-      await _repository.disposePlayer();
-    } catch (e) {
-      // // debugPrint('오디오 서비스 종료 오류: $e');
     }
   }
 
@@ -198,63 +185,6 @@ class AudioService {
   // 네이티브 녹음에서는 녹음 진행률 스트림이 제한됨
 
   // ==================== 재생 관리 ====================
-
-  /// 오디오 재생
-  Future<AuthResult> playAudio(AudioDataModel audio) async {
-    try {
-      if (_repository.isPlaying) {
-        await _repository.stopPlaying();
-      }
-
-      // 로컬 파일이 있으면 로컬에서 재생, 없으면 URL에서 재생
-      if (audio.originalPath.isNotEmpty &&
-          File(audio.originalPath).existsSync()) {
-        await _repository.playFromFile(audio.originalPath);
-      } else if (audio.firebaseUrl != null) {
-        await _repository.playFromUrl(audio.firebaseUrl!);
-      } else {
-        return AuthResult.failure('재생할 수 있는 오디오 파일이 없습니다.');
-      }
-
-      return AuthResult.success();
-    } catch (e) {
-      // // debugPrint('오디오 재생 오류: $e');
-      return AuthResult.failure('오디오를 재생할 수 없습니다.');
-    }
-  }
-
-  /// 재생 중지
-  Future<AuthResult> stopPlaying() async {
-    try {
-      await _repository.stopPlaying();
-      return AuthResult.success();
-    } catch (e) {
-      // // debugPrint('재생 중지 오류: $e');
-      return AuthResult.failure('재생을 중지할 수 없습니다.');
-    }
-  }
-
-  /// 재생 일시정지
-  Future<AuthResult> pausePlaying() async {
-    try {
-      await _repository.pausePlaying();
-      return AuthResult.success();
-    } catch (e) {
-      // // debugPrint('재생 일시정지 오류: $e');
-      return AuthResult.failure('재생을 일시정지할 수 없습니다.');
-    }
-  }
-
-  /// 재생 재개
-  Future<AuthResult> resumePlaying() async {
-    try {
-      await _repository.resumePlaying();
-      return AuthResult.success();
-    } catch (e) {
-      // // debugPrint('재생 재개 오류: $e');
-      return AuthResult.failure('재생을 재개할 수 없습니다.');
-    }
-  }
 
   /// 재생 상태 확인
   bool get isPlaying => _repository.isPlaying;

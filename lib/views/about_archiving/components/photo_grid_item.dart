@@ -30,10 +30,6 @@ class PhotoGridItem extends StatefulWidget {
 }
 
 class _PhotoGridItemState extends State<PhotoGridItem> {
-  // 🔥 메모리 폭탄 해체: AutomaticKeepAliveClientMixin 완전 제거
-  // ❌ with AutomaticKeepAliveClientMixin 제거
-  // ❌ wantKeepAlive => true 제거
-  // ➡️ 이제 화면에서 벗어난 사진들이 메모리에서 해제됨!
   String _userProfileImageUrl = '';
   bool _isLoadingProfile = true;
   bool _hasLoadedOnce = false; // 한 번 로드했는지 추적
@@ -41,7 +37,7 @@ class _PhotoGridItemState extends State<PhotoGridItem> {
   // AuthController 참조 저장용
   AuthController? _authController;
 
-  // 🔥 메모리 최적화: static 캐시 크기 대폭 축소
+  // 메모리 최적화: static 캐시 크기 대폭 축소
   static final Map<String, String> _profileImageCache = {};
   static const int _maxCacheSize = 20; // ❌ 100 -> ✅ 20으로 대폭 축소
 
@@ -49,7 +45,7 @@ class _PhotoGridItemState extends State<PhotoGridItem> {
   bool _hasAudio = false;
   List<double>? _waveformData;
 
-  // 🔥 메모리 최적화된 프로필 이미지 캐시 관리
+  // 메모리 최적화된 프로필 이미지 캐시 관리
   static String? _getCachedProfileImage(String userId) {
     return _profileImageCache[userId];
   }
@@ -59,16 +55,10 @@ class _PhotoGridItemState extends State<PhotoGridItem> {
     if (_profileImageCache.length >= _maxCacheSize) {
       String oldestKey = _profileImageCache.keys.first;
       _profileImageCache.remove(oldestKey);
-      debugPrint('🧹 Profile cache cleaned - removed: $oldestKey');
+      debugPrint('Profile cache cleaned - removed: $oldestKey');
     }
     _profileImageCache[userId] = imageUrl;
   }
-
-  // 🔥 앱 메모리 정리 시 캐시도 함께 정리
-  /*static void clearProfileCache() {
-    _profileImageCache.clear();
-    debugPrint('🧹 Profile image cache cleared');
-  }*/
 
   @override
   void initState() {
@@ -102,7 +92,7 @@ class _PhotoGridItemState extends State<PhotoGridItem> {
 
   /// AuthController 변경 감지 시 프로필 이미지 캐시 무효화
   void _onAuthControllerChanged() async {
-    // 🔥 개선된 캐시에서 해당 사용자 제거
+    // 개선된 캐시에서 해당 사용자 제거
     _profileImageCache.remove(widget.photo.userID);
 
     // 프로필 이미지 다시 로드
@@ -137,7 +127,7 @@ class _PhotoGridItemState extends State<PhotoGridItem> {
   }
 
   Future<void> _loadUserProfileImage() async {
-    // 🔥 먼저 캐시 확인
+    // 먼저 캐시 확인
     String? cachedUrl = _getCachedProfileImage(widget.photo.userID);
     if (cachedUrl != null) {
       setState(() {
@@ -157,7 +147,7 @@ class _PhotoGridItemState extends State<PhotoGridItem> {
       final profileImageUrl = await authController
           .getUserProfileImageUrlWithCache(widget.photo.userID);
 
-      // 🔥 개선된 캐시에 저장
+      // 개선된 캐시에 저장
       _setCachedProfileImage(widget.photo.userID, profileImageUrl);
 
       if (mounted) {
@@ -196,12 +186,16 @@ class _PhotoGridItemState extends State<PhotoGridItem> {
         alignment: Alignment.bottomCenter,
         children: [
           SizedBox(
-            width: 175, // 반응형 너비
-            height: 232, // 반응형 높이
+            width: 175,
+            height: 232,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: CachedNetworkImage(
                 imageUrl: widget.photo.imageUrl,
+                memCacheHeight: (232.h * 2).toInt(),
+                memCacheWidth: (175.w * 2).toInt(),
+                maxHeightDiskCache: 600,
+                maxWidthDiskCache: 450,
                 fit: BoxFit.cover,
                 placeholder:
                     (context, url) => Shimmer.fromColors(
@@ -230,7 +224,7 @@ class _PhotoGridItemState extends State<PhotoGridItem> {
             children: [
               Row(
                 children: [
-                  SizedBox(width: 8.w), // 반응형 간격
+                  SizedBox(width: 8.w),
                   Container(
                     width: 28.w,
                     height: 28.h,
@@ -268,6 +262,8 @@ class _PhotoGridItemState extends State<PhotoGridItem> {
                                     'profile_${widget.photo.userID}_${_userProfileImageUrl.hashCode}',
                                   ),
                                   imageUrl: _userProfileImageUrl,
+                                  memCacheHeight: ((28.w) * 1).toInt(),
+                                  memCacheWidth: ((28.h) * 1).toInt(),
                                   imageBuilder:
                                       (context, imageProvider) => CircleAvatar(
                                         radius: 16,

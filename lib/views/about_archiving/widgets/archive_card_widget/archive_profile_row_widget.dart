@@ -67,6 +67,10 @@ class ArchiveProfileRowWidget extends StatelessWidget {
                                       child: CachedNetworkImage(
                                         imageUrl: imageUrl,
                                         fit: BoxFit.cover,
+                                        memCacheHeight: (19 * 4).toInt(),
+                                        memCacheWidth: (19 * 4).toInt(),
+                                        maxHeightDiskCache: 150,
+                                        maxWidthDiskCache: 150,
                                         placeholder:
                                             (context, url) =>
                                                 Shimmer.fromColors(

@@ -39,7 +39,7 @@ class AudioController extends ChangeNotifier {
   // ==================== 파형 관련 (audio_waveforms) ====================
 
   PlayerController? _playerController;
-  bool _isPlayerInitialized = false;
+  final bool _isPlayerInitialized = false;
 
   /// PlayerController getter
   PlayerController? get playerController => _playerController;
@@ -154,72 +154,11 @@ class AudioController extends ChangeNotifier {
       debugPrint('❌ AudioController dispose: 실시간 플레이어 정리 오류: $e');
     }
 
-    // 5. 서비스 정리
-    try {
-      _audioService.dispose();
-    } catch (e) {
-      debugPrint('❌ AudioController dispose: 서비스 정리 오류: $e');
-    }
-
     debugPrint('🔊 AudioController dispose 완료');
     super.dispose();
   }
 
   // ==================== 파형 플레이어 관리 ====================  /// 파형 표시용 플레이어 초기화
-  Future<void> initializePlayerForWaveform(String audioUrl) async {
-    try {
-      // debugPrint('파형 플레이어 초기화 시작: $audioUrl');
-
-      // 기존 플레이어가 있다면 해제
-      if (_playerController != null) {
-        _playerController!.dispose();
-        _playerController = null;
-      }
-
-      _playerController = PlayerController();
-
-      // iOS 호환성을 위한 설정
-      await _playerController!.preparePlayer(
-        path: audioUrl,
-        shouldExtractWaveform: true,
-        noOfSamples: 200, // 샘플 수 제한으로 성능 향상
-      );
-
-      _isPlayerInitialized = true;
-      notifyListeners();
-
-      // debugPrint('파형 플레이어 초기화 완료');
-    } catch (e) {
-      // debugPrint('파형 플레이어 초기화 오류: $e');
-
-      // 파형 추출 없이 기본 플레이어로 재시도
-      try {
-        // debugPrint('기본 플레이어로 재시도...');
-        _playerController = PlayerController();
-        await _playerController!.preparePlayer(
-          path: audioUrl,
-          shouldExtractWaveform: false, // 파형 추출 비활성화
-        );
-
-        _isPlayerInitialized = true;
-        notifyListeners();
-        // debugPrint('기본 플레이어로 초기화 완료');
-      } catch (fallbackError) {
-        // debugPrint('기본 플레이어 초기화도 실패: $fallbackError');
-        _error = '이 음성 파일은 재생할 수 없습니다.';
-        _isPlayerInitialized = false;
-        notifyListeners();
-
-        // 최후의 수단으로 audioplayers 사용
-        try {
-          // debugPrint('audioplayers로 재시도...');
-          await playAudioFromUrl(audioUrl);
-        } catch (audioplayersError) {
-          // debugPrint('audioplayers도 실패: $audioplayersError');
-        }
-      }
-    }
-  }
 
   /// 파형 플레이어로 재생 시작
   Future<void> startPlayerWaveform() async {
@@ -474,9 +413,6 @@ class AudioController extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      // 기존 재생 중지
-      await stopPlaying();
-
       // 새로운 오디오 재생 (간단한 AudioPlayer 사용)
       final player = ap.AudioPlayer();
       await player.play(ap.UrlSource(audioUrl));
@@ -489,79 +425,6 @@ class AudioController extends ChangeNotifier {
       _isLoading = false;
       _error = 'URL 오디오 재생 중 오류가 발생했습니다.';
       notifyListeners();
-    }
-  }
-
-  /// 간단한 오디오 재생 (UI용)
-  Future<void> play(String audioUrl) async {
-    try {
-      _currentPlayingAudioUrl = audioUrl;
-      await playAudioFromUrl(audioUrl);
-    } catch (e) {
-      // debugPrint('재생 오류: $e');
-    }
-  }
-
-  /// 재생 중지
-  Future<void> stopPlaying() async {
-    try {
-      final result = await _audioService.stopPlaying();
-
-      _isPlaying = false;
-      _currentPlayingAudioId = null;
-      _playbackPosition = 0.0;
-      _playbackDuration = 0.0;
-      notifyListeners();
-
-      if (!result.isSuccess) {
-        // debugPrint(result.error ?? '재생 중지에 실패했습니다.');
-      }
-    } catch (e) {
-      // debugPrint('재생 중지 오류: $e');
-      _isPlaying = false;
-      notifyListeners();
-    }
-  }
-
-  /// 재생 일시정지
-  Future<void> pausePlaying() async {
-    try {
-      final result = await _audioService.pausePlaying();
-
-      if (result.isSuccess) {
-        _isPlaying = false;
-        notifyListeners();
-      } else {
-        // debugPrint(result.error ?? '일시정지에 실패했습니다.');
-      }
-    } catch (e) {
-      // debugPrint('재생 일시정지 오류: $e');
-    }
-  }
-
-  /// 간단한 오디오 정지 (UI용)
-  Future<void> pause() async {
-    try {
-      await stopPlaying();
-      _currentPlayingAudioUrl = null;
-    } catch (e) {
-      // debugPrint('정지 오류: $e');
-    }
-  }
-
-  /// 재생 재개
-  Future<void> resumePlaying() async {
-    try {
-      final result = await _audioService.resumePlaying();
-
-      if (result.isSuccess) {
-        _isPlaying = true;
-        notifyListeners();
-      } else {
-        // debugPrint(result.error ?? '재생 재개에 실패했습니다.');
-      }
-    } catch (e) {
-      // debugPrint('재생 재개 오류: $e');
     }
   }
 

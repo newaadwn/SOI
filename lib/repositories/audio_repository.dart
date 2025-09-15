@@ -96,49 +96,6 @@ class AudioRepository {
     }
   }
 
-  // 네이티브 녹음에서는 레벨 스트림 제공하지 않음
-
-  // ==================== 재생 관리 (네이티브) ====================
-
-  /// 플레이어 초기화 (audioplayers 패키지 사용)
-  Future<void> initializePlayer() async {
-    // debugPrint('네이티브 플레이어 초기화 완료');
-  }
-
-  /// 플레이어 종료
-  Future<void> disposePlayer() async {
-    // debugPrint('네이티브 플레이어 종료 완료');
-  }
-
-  /// 오디오 재생 (URL) - audioplayers 사용
-  Future<void> playFromUrl(String url) async {
-    // audioplayers 패키지를 사용하여 재생
-    // 실제 구현은 AudioController에서 처리
-    // debugPrint('URL 재생: $url');
-  }
-
-  /// 오디오 재생 (로컬 파일) - audioplayers 사용
-  Future<void> playFromFile(String filePath) async {
-    // audioplayers 패키지를 사용하여 로컬 파일 재생
-    // 실제 구현은 AudioController에서 처리
-    // debugPrint('로컬 파일 재생: $filePath');
-  }
-
-  /// 재생 중지
-  Future<void> stopPlaying() async {
-    // debugPrint('재생 중지');
-  }
-
-  /// 재생 일시정지
-  Future<void> pausePlaying() async {
-    // debugPrint('재생 일시정지');
-  }
-
-  /// 재생 재개
-  Future<void> resumePlaying() async {
-    // debugPrint('재생 재개');
-  }
-
   /// 재생 상태 확인 (기본값 false)
   bool get isPlaying => false;
 
