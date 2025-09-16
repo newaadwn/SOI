@@ -341,11 +341,16 @@ class AuthService {
         // ignore: unawaited_futures
         Future(() async {
           try {
-            await callable.call().timeout(const Duration(seconds: 5));
+            debugPrint('🔄 Cloud Function deleteUserData 호출 시작...');
+            await callable.call().timeout(const Duration(seconds: 30));
+            debugPrint('✅ Cloud Function deleteUserData 호출 완료');
           } catch (e) {
+            debugPrint('❌ Cloud Function deleteUserData 호출 실패: $e');
             // CF 호출 실패 시, 클라이언트 폴백 삭제 (백그라운드)
             try {
+              debugPrint('🔄 클라이언트 폴백 삭제 시작...');
               await _repository.deleteUser(userId);
+              debugPrint('✅ 클라이언트 폴백 삭제 완료');
             } catch (fallbackError) {
               debugPrint('❌ 사용자 데이터 폴백 삭제 실패: $fallbackError');
             }

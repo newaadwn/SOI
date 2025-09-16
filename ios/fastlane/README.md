@@ -19,6 +19,7 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 ```sh
 [bundle exec] fastlane ios deploy_to_testflight
+bundle exec fastlane ios deploy_to_testflight
 ```
 
 Flutter 앱을 빌드하고 TestFlight에 배포합니다.

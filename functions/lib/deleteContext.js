@@ -5,7 +5,7 @@
  * @param {import('firebase-admin/storage').Storage} params.storage - Storage
  * @param {any} params.supabase - Supabase client (optional)
  * @param {import('firebase-functions/logger')} params.logger - Logger
- * @param {import('firebase-admin/auth').Auth} [params.auth] - Admin Auth
+ * @param {import('firebase-admin/auth').Auth} params.auth - Admin Auth
  * @param {string} params.uid - Target user id
  */
 module.exports.deleteUserData = async function({
@@ -23,10 +23,11 @@ module.exports.deleteUserData = async function({
   /**
    * Delete a batch of documents from a query.
    * @param {import('firebase-admin/firestore').Query} query - query
-   * @param {number} [limit=450] - batch size
+   * @param {number} limit - batch size
    * @return {Promise<number>} deleted count
    */
-  async function deleteQueryBatch(query, limit = 450) {
+  async function deleteQueryBatch(query, limit) {
+    limit = limit || 450;
     const snap = await query.limit(limit).get();
     if (snap.empty) return 0;
     const batch = db.batch();
@@ -38,9 +39,10 @@ module.exports.deleteUserData = async function({
   /**
    * Run batched deletes until empty.
    * @param {function(): import('firebase-admin/firestore').Query} builder - fn
-   * @param {number} [maxLoops=50] - max loops
+   * @param {number} maxLoops - max loops
    */
-  async function deleteByBatches(builder, maxLoops = 50) {
+  async function deleteByBatches(builder, maxLoops) {
+    maxLoops = maxLoops || 50;
     for (let i = 0; i < maxLoops; i++) {
       const count = await deleteQueryBatch(builder());
       if (count === 0) break;
@@ -63,7 +65,7 @@ module.exports.deleteUserData = async function({
       await storage
           .bucket()
           .file(objectPath)
-          .delete({ ignoreNotFound: true });
+          .delete({ignoreNotFound: true});
       return true;
     } catch (_) {
       return false;
@@ -87,7 +89,7 @@ module.exports.deleteUserData = async function({
       if (firstSlash === -1) return false;
       const bucket = rest.substring(0, firstSlash);
       const objectPath = rest.substring(firstSlash + 1);
-      const { error } = await supabase
+      const {error} = await supabase
           .storage
           .from(bucket)
           .remove([objectPath]);
@@ -111,7 +113,7 @@ module.exports.deleteUserData = async function({
   // 1) Reactions
   try {
     await deleteByBatches(
-      () => db.collectionGroup("reactions").where("uid", "==", uid),
+        () => db.collectionGroup("reactions").where("uid", "==", uid),
     );
   } catch (e) {
     logger.warn(`Failed deleting reactions for ${uid}: ${e}`);
@@ -177,10 +179,11 @@ module.exports.deleteUserData = async function({
   // 5) Notifications
   try {
     await deleteByBatches(
-      () => db.collection("notifications").where("recipientUserId", "==", uid),
+        () => db.collection("notifications")
+            .where("recipientUserId", "==", uid),
     );
     await deleteByBatches(
-      () => db.collection("notifications").where("actorUserId", "==", uid),
+        () => db.collection("notifications").where("actorUserId", "==", uid),
     );
   } catch (e) {
     logger.warn(`Failed deleting notifications for ${uid}: ${e}`);
@@ -210,9 +213,9 @@ module.exports.deleteUserData = async function({
         .get();
     for (const c of categories.docs) {
       const data = c.data();
-      const mates = Array.isArray(data.mates)
-        ? data.mates.filter((m) => m !== uid)
-        : [];
+      const mates = Array.isArray(data.mates) ?
+        data.mates.filter((m) => m !== uid) :
+        [];
       if (mates.length === 0) {
         await c.ref.delete();
       } else {
@@ -228,11 +231,15 @@ module.exports.deleteUserData = async function({
   // Delete auth user via Admin SDK
   try {
     if (auth) {
+      logger.info(`Attempting to delete Firebase Auth user: ${uid}`);
       await auth.deleteUser(uid);
-      logger.info(`Firebase Auth user deleted: ${uid}`);
+      logger.info(`✅ Firebase Auth user successfully deleted: ${uid}`);
+    } else {
+      logger.warn(`❌ Admin Auth instance is null - cannot delete user: ${uid}`);
     }
   } catch (e) {
-    logger.warn(`Failed to delete Firebase Auth user ${uid}: ${e}`);
+    logger.error(`❌ Failed to delete Firebase Auth user ${uid}: ${e}`);
+    logger.error(`Error details: ${JSON.stringify(e)}`);
   }
 
   logger.info(`Completed server-side deletion for user ${uid}`);

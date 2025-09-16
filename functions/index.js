@@ -158,23 +158,23 @@ exports.generateInviteImage = onCall(async (request) => {
 
 // Override with modular delete function (fire-and-forget from client)
 exports.deleteUserData = onCall(
-  { timeoutSeconds: 540, memory: "1GiB" },
-  async (request) => {
-    const auth = request.auth;
-    if (!auth || !auth.uid) {
-      throw new Error("Unauthenticated request");
-    }
-    const uid = auth.uid;
-    await runDeleteUserData({
-      db,
-      storage,
-      supabase,
-      logger,
-      auth: adminAuth,
-      uid,
-    });
-    return { success: true };
-  },
+    {timeoutSeconds: 540, memory: "1GiB"},
+    async (request) => {
+      const auth = request.auth;
+      if (!auth || !auth.uid) {
+        throw new Error("Unauthenticated request");
+      }
+      const uid = auth.uid;
+      await runDeleteUserData({
+        db,
+        storage,
+        supabase,
+        logger,
+        auth: adminAuth,
+        uid,
+      });
+      return {success: true};
+    },
 );
 
 // Main redirect handler for all incoming requests
