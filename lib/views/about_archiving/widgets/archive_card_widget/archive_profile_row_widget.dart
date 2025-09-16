@@ -72,50 +72,48 @@ class ArchiveProfileRowWidget extends StatelessWidget {
                                         maxHeightDiskCache: 150,
                                         maxWidthDiskCache: 150,
                                         placeholder:
-                                            (context, url) =>
-                                                Shimmer.fromColors(
-                                                  baseColor: Colors.grey[400]!,
-                                                  highlightColor: Colors.white,
-                                                  child: Container(
-                                                    width: 19,
-                                                    height: 19,
-                                                    decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      color: Colors.grey[400],
-                                                    ),
-                                                  ),
-                                                ),
+                                            (context, url) => Container(
+                                              width: 19,
+                                              height: 19,
+
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: Colors.grey[400],
+                                              ),
+                                              child: Icon(
+                                                Icons.person,
+                                                color: Colors.white,
+                                                size: 15,
+                                              ),
+                                            ),
                                         errorWidget:
-                                            (context, url, error) =>
-                                                Shimmer.fromColors(
-                                                  baseColor: Colors.grey[400]!,
-                                                  highlightColor: Colors.white,
-                                                  child: Container(
-                                                    width: 19,
-                                                    height: 19,
-                                                    decoration: BoxDecoration(
-                                                      shape: BoxShape.circle,
-                                                      color: Colors.grey[400],
-                                                    ),
-                                                  ),
-                                                ),
+                                            (context, url, error) => Container(
+                                              width: 19,
+                                              height: 19,
+
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                                color: Colors.grey[400],
+                                              ),
+                                              child: Icon(
+                                                Icons.person,
+                                                color: Colors.white,
+                                                size: 15,
+                                              ),
+                                            ),
                                       ),
                                     )
-                                    : Shimmer.fromColors(
-                                      baseColor: Colors.grey[400]!,
-                                      highlightColor: Colors.white,
-                                      child: Container(
-                                        width: 19,
-                                        height: 19,
-                                        decoration: BoxDecoration(
-                                          shape: BoxShape.circle,
-                                          color: Colors.grey[400],
-                                        ),
-                                        child: Icon(
-                                          Icons.person,
-                                          color: Colors.white,
-                                          size: 19,
-                                        ),
+                                    : Container(
+                                      width: 19,
+                                      height: 19,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: Colors.grey[400],
+                                      ),
+                                      child: Icon(
+                                        Icons.person,
+                                        color: Colors.white,
+                                        size: 15,
                                       ),
                                     ),
                           );

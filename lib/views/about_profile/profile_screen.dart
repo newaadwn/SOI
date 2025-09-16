@@ -349,18 +349,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
 
-      // 계정 삭제 실행
-      await authController.deleteUser();
+      // 계정 삭제 실행 (비동기 시작)
+      final deletion = authController.deleteUser();
+
+      // 로컬 로그인 상태는 즉시 정리하여 자동로그인 방지
+      try { await authController.clearLoginState(); } catch (_) {}
 
       if (mounted) {
-        // 로딩 다이얼로그 닫기
+        // 로딩 다이얼로그 닫기 후 즉시 시작 화면으로 이동
         Navigator.of(context).pop();
-
-        // 계정 삭제 성공 시 로그인 화면으로 이동
-        Navigator.of(
-          context,
-        ).pushNamedAndRemoveUntil('/start', (route) => false);
+        Navigator.of(context).pushNamedAndRemoveUntil('/start', (route) => false);
       }
+
+      // 백그라운드에서 삭제 진행 에러는 로깅만
+      // ignore: unawaited_futures
+      deletion.catchError((e) {
+        debugPrint('계정 삭제 백그라운드 오류: $e');
+      });
     } catch (e) {
       if (mounted) {
         // 로딩 다이얼로그 닫기

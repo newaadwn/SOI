@@ -44,15 +44,55 @@ class _AuthScreenState extends State<AuthScreen> {
   String? selectedMonth;
   String? selectedDay;
 
+  // 페이지별 입력 완료 여부
+  late List<ValueNotifier<bool>> pageReady;
+  // 공통 컨트롤러
+  late TextEditingController nameController;
+  late TextEditingController monthController;
+  late TextEditingController dayController;
+  late TextEditingController yearController;
+  late TextEditingController phoneController;
+  late TextEditingController smsController;
+  late TextEditingController idController;
+
+  // Note: Continue button visibility is controlled by currentPage (hide on SMS page)
+
   @override
   void initState() {
     super.initState();
+    // 컨트롤러 및 상태 초기화
+    nameController = TextEditingController();
+    monthController = TextEditingController();
+    dayController = TextEditingController();
+    yearController = TextEditingController();
+    phoneController = TextEditingController();
+    smsController = TextEditingController();
+    idController = TextEditingController();
+    pageReady = List.generate(5, (_) => ValueNotifier<bool>(false));
+
     // Provider에서 AuthViewModel을 가져오거나 widget에서 전달된 것을 사용
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
         _authController = Provider.of<AuthController>(context, listen: false);
       });
     });
+  }
+
+  @override
+  void dispose() {
+    // Dispose controllers and notifiers
+    nameController.dispose();
+    monthController.dispose();
+    dayController.dispose();
+    yearController.dispose();
+    phoneController.dispose();
+    smsController.dispose();
+    idController.dispose();
+    for (var notifier in pageReady) {
+      notifier.dispose();
+    }
+    _autoVerifyTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -64,25 +104,131 @@ class _AuthScreenState extends State<AuthScreen> {
       backgroundColor: Colors.black,
       resizeToAvoidBottomInset: false,
 
-      body: PageView(
-        controller: _pageController,
-        physics: NeverScrollableScrollPhysics(),
-        onPageChanged: (index) {
-          setState(() {
-            currentPage = index;
-          });
-        },
+      body: Stack(
         children: [
-          // 1. 이름 입력 페이지
-          _buildNamePage(screenHeight),
-          // 2. 생년월일 입력 페이지
-          _buildBirthDatePage(screenHeight),
-          // 3. 전화번호 입력 페이지
-          _buildPhoneNumberPage(),
-          //. 인증번호 입력 페이지
-          _buildSmsCodePage(),
-          // 4. 닉네임 입력 페이지
-          _buildIdPage(screenHeight),
+          PageView(
+            controller: _pageController,
+            physics: NeverScrollableScrollPhysics(),
+            onPageChanged: (index) {
+              setState(() {
+                currentPage = index;
+              });
+            },
+            children: [
+              // 1. 이름 입력 페이지
+              _buildNamePage(screenHeight),
+              // 2. 생년월일 입력 페이지
+              _buildBirthDatePage(screenHeight),
+              // 3. 전화번호 입력 페이지
+              _buildPhoneNumberPage(),
+              // 인증번호 입력 페이지
+              _buildSmsCodePage(),
+              // 4. 닉네임 입력 페이지
+              _buildIdPage(screenHeight),
+            ],
+          ),
+
+          // 공통 Continue 버튼
+          // Hide the common Continue button only when we're on the SMS code page
+          (currentPage == 3)
+              ? SizedBox()
+              : Positioned(
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom > 0
+                        ? MediaQuery.of(context).viewInsets.bottom + 20.h
+                        : 50.h,
+                left: 0,
+                right: 0,
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: pageReady[currentPage],
+                  builder: (context, ready, child) {
+                    return Center(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(26.9),
+                          ),
+                        ),
+                        onPressed:
+                            ready
+                                ? () {
+                                  FocusScope.of(context).unfocus();
+                                  switch (currentPage) {
+                                    case 0: // 이름
+                                      name = nameController.text;
+                                      _pageController.nextPage(
+                                        duration: Duration(milliseconds: 300),
+                                        curve: Curves.easeInOut,
+                                      );
+                                      break;
+                                    case 1: // 생년월일
+                                      _pageController.nextPage(
+                                        duration: Duration(milliseconds: 300),
+                                        curve: Curves.easeInOut,
+                                      );
+                                      break;
+                                    case 2: // 전화번호
+                                      phoneNumber = phoneController.text;
+                                      _authController.verifyPhoneNumber(
+                                        phoneNumber,
+                                        (verificationId, token) {
+                                          // Navigate to SMS page when code sent
+                                          _pageController.nextPage(
+                                            duration: Duration(
+                                              milliseconds: 300,
+                                            ),
+                                            curve: Curves.easeInOut,
+                                          );
+                                        },
+                                        (verificationId) {},
+                                      );
+                                      break;
+                                    case 3: // 인증코드
+                                      smsCode = smsController.text;
+                                      _performAutoVerification(smsCode);
+                                      break;
+                                    case 4: // 아이디
+                                      id = idController.text;
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder:
+                                              (_) => AuthFinalScreen(
+                                                id: id,
+                                                name: name,
+                                                phone: phoneNumber,
+                                                birthDate: birthDate,
+                                              ),
+                                        ),
+                                      );
+                                      break;
+                                  }
+                                }
+                                : null,
+                        child: Container(
+                          width: 349.w,
+                          height: 59.h,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: ready ? Colors.white : Color(0xff323232),
+                            borderRadius: BorderRadius.circular(26.9),
+                          ),
+                          child: Text(
+                            '계속하기',
+                            style: TextStyle(
+                              color: ready ? Colors.black : Colors.grey,
+                              fontSize: 20.sp,
+                              fontFamily: 'Pretendard',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
         ],
       ),
     );
@@ -92,13 +238,6 @@ class _AuthScreenState extends State<AuthScreen> {
   // 1. 전화번호 입력 페이지
   // -------------------------
   Widget _buildPhoneNumberPage() {
-    final controller = TextEditingController();
-    // 전화번호 입력 여부를 확인하는 상태 변수
-    final ValueNotifier<bool> hasPhone = ValueNotifier<bool>(false);
-
-    // 키보드 높이는 버튼 위치에만 사용
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-
     return Stack(
       children: [
         // 입력 필드들을 화면 중앙에 고정
@@ -140,7 +279,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     SizedBox(width: 10.w),
                     Expanded(
                       child: TextField(
-                        controller: controller,
+                        controller: phoneController,
                         keyboardType: TextInputType.phone,
                         textAlign: TextAlign.start,
                         cursorHeight: 16.h,
@@ -167,8 +306,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                         ),
                         onChanged: (value) {
-                          // 전화번호 입력 여부에 따라 버튼 표시 상태 변경
-                          hasPhone.value = value.isNotEmpty;
+                          pageReady[2].value = value.isNotEmpty;
                         },
                       ),
                     ),
@@ -176,61 +314,6 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
               ),
             ],
-          ),
-        ),
-
-        // 버튼을 하단에 위치 (키보드 높이에 따라 조정)
-        Positioned(
-          bottom: keyboardHeight > 0 ? keyboardHeight + 20.h : 50.h,
-          left: 0,
-          right: 0,
-          child: ValueListenableBuilder<bool>(
-            valueListenable: hasPhone,
-            builder: (context, hasPhoneValue, child) {
-              return Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xffffffff),
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(26.9),
-                    ),
-                  ),
-                  onPressed: () {
-                    // 전화번호 저장
-                    phoneNumber = controller.text;
-                    // 인증번호 받기 로직 실행
-                    _authController.verifyPhoneNumber(
-                      phoneNumber,
-                      (verificationId, resendToken) {
-                        // 성공적으로 인증번호 전송되면 다음 페이지로
-                        _pageController.nextPage(
-                          duration: Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      },
-                      (verificationId) {
-                        // 타임아웃 등 처리
-                      },
-                    );
-                  },
-                  child: Container(
-                    width: 349.w,
-                    height: 59.h,
-                    alignment: Alignment.center,
-                    child: Text(
-                      '계속하기',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 20.sp,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
           ),
         ),
       ],
@@ -241,122 +324,58 @@ class _AuthScreenState extends State<AuthScreen> {
   // 3. 이름 입력 페이지
   // -------------------------
   Widget _buildNamePage(double screenHeight) {
-    final TextEditingController nameController = TextEditingController();
-    final ValueNotifier<bool> hasName = ValueNotifier<bool>(false);
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-
-    return Stack(
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Positioned(
-          top: 0.35.sh,
-          left: 0,
-          right: 0,
-          child: Column(
-            children: [
-              Text(
-                '당신의 이름을 알려주세요.',
-                style: TextStyle(
-                  color: const Color(0xFFF8F8F8),
-                  fontSize: 18,
-                  fontFamily: GoogleFonts.inter().fontFamily,
-                  fontWeight: FontWeight.w600,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              SizedBox(height: 24.h),
-              Container(
-                width: 239.w,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Color(0xff323232),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                alignment: Alignment.center,
-                child: TextField(
-                  controller: nameController,
-                  keyboardType: TextInputType.text,
-                  textAlign: TextAlign.center,
-                  cursorHeight: 16.h,
-                  cursorColor: const Color(0xFFF8F8F8),
-                  style: TextStyle(
-                    color: const Color(0xFFF8F8F8),
-                    fontSize: 16,
-                    fontFamily: 'Pretendard',
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -0.08,
-                  ),
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    hintText: '이름',
-                    hintStyle: TextStyle(
-                      color: const Color(0xFFC0C0C0),
-                      fontSize: 16.sp,
-                      fontFamily: 'Pretendard',
-                      fontWeight: FontWeight.w400,
-                    ),
-                    contentPadding: EdgeInsets.only(bottom: 5.h),
-                  ),
-                  onChanged: (value) {
-                    // 이름 입력 여부에 따라 버튼 표시 상태 변경
-                    hasName.value = value.isNotEmpty;
-                  },
-                ),
-              ),
-            ],
+        Text(
+          '당신의 이름을 알려주세요.',
+          style: TextStyle(
+            color: const Color(0xFFF8F8F8),
+            fontSize: 18,
+            fontFamily: GoogleFonts.inter().fontFamily,
+            fontWeight: FontWeight.w600,
           ),
+          textAlign: TextAlign.center,
         ),
-
-        // 버튼을 하단에 위치 (키보드 높이에 따라 조정)
-        Positioned(
-          bottom: keyboardHeight > 0 ? keyboardHeight + 20.h : 50.h,
-          left: 0,
-          right: 0,
-          child: ValueListenableBuilder<bool>(
-            valueListenable: hasName,
-            builder: (context, hasNameValue, child) {
-              return Center(
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(26.9),
-                    ),
-                  ),
-                  onPressed:
-                      hasNameValue
-                          ? () {
-                            // 이름 저장
-                            name = nameController.text;
-                            // 다음 페이지로 이동
-                            _pageController.nextPage(
-                              duration: Duration(milliseconds: 300),
-                              curve: Curves.easeInOut,
-                            );
-                          }
-                          : null,
-                  child: Container(
-                    width: 349.w,
-                    height: 59,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: hasNameValue ? Colors.white : Color(0xff323232),
-                      borderRadius: BorderRadius.circular(26.9),
-                    ),
-                    child: Text(
-                      '계속하기',
-                      style: TextStyle(
-                        color: hasNameValue ? Colors.black : Colors.grey,
-                        fontSize: 20.sp,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              );
+        SizedBox(height: 24.h),
+        Container(
+          width: 239.w,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Color(0xff323232),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          alignment: Alignment.center,
+          child: TextField(
+            controller: nameController,
+            keyboardType: TextInputType.text,
+            textAlign: TextAlign.center,
+            cursorHeight: 16.h,
+            cursorColor: const Color(0xFFF8F8F8),
+            style: TextStyle(
+              color: const Color(0xFFF8F8F8),
+              fontSize: 16,
+              fontFamily: 'Pretendard',
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.08,
+            ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              hintText: '이름',
+              hintStyle: TextStyle(
+                color: const Color(0xFFC0C0C0),
+                fontSize: 16.sp,
+                fontFamily: 'Pretendard',
+                fontWeight: FontWeight.w400,
+              ),
+              contentPadding: EdgeInsets.only(bottom: 5.h),
+            ),
+            onChanged: (value) {
+              pageReady[0].value = value.isNotEmpty;
             },
           ),
         ),
+        SizedBox(height: 100.h),
       ],
     );
   }
@@ -365,10 +384,6 @@ class _AuthScreenState extends State<AuthScreen> {
   // 4. 생년월일 입력 페이지 (직접 타이핑)
   // -------------------------
   Widget _buildBirthDatePage(double screenHeight) {
-    final monthController = TextEditingController(text: selectedMonth ?? '');
-    final dayController = TextEditingController(text: selectedDay ?? '');
-    final yearController = TextEditingController(text: selectedYear ?? '');
-
     // 입력값 상태 동기화
     void updateBirthDate() {
       setState(() {
@@ -377,6 +392,13 @@ class _AuthScreenState extends State<AuthScreen> {
         selectedYear = yearController.text;
         birthDate =
             "${selectedYear ?? ''}년 ${selectedMonth ?? ''}월 ${selectedDay ?? ''}일";
+
+        // 모든 필드가 채워졌는지 확인
+        bool isComplete =
+            monthController.text.isNotEmpty &&
+            dayController.text.isNotEmpty &&
+            yearController.text.isNotEmpty;
+        pageReady[1].value = isComplete;
       });
     }
 
@@ -393,7 +415,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           textAlign: TextAlign.center,
         ),
-        SizedBox(height: 24),
+        SizedBox(height: 24.h),
         Container(
           width: 320.w,
           height: 51,
@@ -431,10 +453,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   onChanged: (v) {
                     if (v.length <= 2) updateBirthDate();
                   },
-                  inputFormatters: [
-                    // 숫자만 입력
-                    FilteringTextInputFormatter.digitsOnly,
-                  ],
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                 ),
               ),
               Text(
@@ -508,7 +527,7 @@ class _AuthScreenState extends State<AuthScreen> {
             ],
           ),
         ),
-        SizedBox(height: 24),
+        SizedBox(height: 24.h),
       ],
     );
   }
@@ -517,7 +536,6 @@ class _AuthScreenState extends State<AuthScreen> {
   // 5. 닉네임 입력 페이지
   // -------------------------
   Widget _buildIdPage(double screenHeight) {
-    final TextEditingController idController = TextEditingController();
     return SingleChildScrollView(
       child: Container(
         constraints: BoxConstraints(minHeight: screenHeight),
@@ -542,42 +560,41 @@ class _AuthScreenState extends State<AuthScreen> {
                 color: Color(0xFF323232),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Row(
-                children: [
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: idController,
-                      keyboardType: TextInputType.text,
-                      textAlign: TextAlign.center,
-                      decoration: InputDecoration(
-                        border: InputBorder.none,
-                        hintText: '',
-                        hintStyle: TextStyle(
-                          fontSize: 16,
-                          color: Color(0xffC0C0C0),
-                        ),
-                      ),
-                      onSubmitted: (value) {
-                        if (value.isNotEmpty) {
-                          id = value;
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => AuthFinalScreen(
-                                    id: id,
-                                    name: name,
-                                    phone: phoneNumber,
-                                    birthDate: birthDate,
-                                  ),
-                            ),
-                          );
-                        }
-                      },
-                    ),
+              child: TextField(
+                controller: idController,
+                keyboardType: TextInputType.text,
+                textAlign: TextAlign.center,
+                decoration: InputDecoration(
+                  border: InputBorder.none,
+                  hintText: '아이디 입력',
+                  hintStyle: TextStyle(
+                    color: const Color(0xFFCBCBCB),
+                    fontSize: 16,
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: FontWeight.w400,
                   ),
-                ],
+                  contentPadding: EdgeInsets.only(bottom: 5.h),
+                ),
+                onChanged: (value) {
+                  pageReady[4].value = value.isNotEmpty;
+                },
+                onSubmitted: (value) {
+                  if (value.isNotEmpty) {
+                    id = value;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => AuthFinalScreen(
+                              id: id,
+                              name: name,
+                              phone: phoneNumber,
+                              birthDate: birthDate,
+                            ),
+                      ),
+                    );
+                  }
+                },
               ),
             ),
           ],
@@ -593,9 +610,6 @@ class _AuthScreenState extends State<AuthScreen> {
   // -------------------------
 
   Widget _buildSmsCodePage() {
-    final ValueNotifier<bool> hasCode = ValueNotifier<bool>(false);
-    final controller = TextEditingController();
-
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -620,7 +634,7 @@ class _AuthScreenState extends State<AuthScreen> {
           ),
           padding: EdgeInsets.only(bottom: 7.h),
           child: TextField(
-            controller: controller,
+            controller: smsController,
             keyboardType: TextInputType.number,
             textAlign: TextAlign.center,
             textAlignVertical: TextAlignVertical.center,
@@ -644,7 +658,7 @@ class _AuthScreenState extends State<AuthScreen> {
             ),
             onChanged: (value) {
               // 인증번호 입력 여부에 따라 상태 변경
-              hasCode.value = value.isNotEmpty;
+              pageReady[3].value = value.isNotEmpty;
 
               // 인증 완료 후, 사용자가 인증번호를 변경하면 상태 초기화
               if (isVerified) {
@@ -665,8 +679,6 @@ class _AuthScreenState extends State<AuthScreen> {
             },
           ),
         ),
-
-        // Updated the TextButton to use a custom underline implementation
         TextButton(
           onPressed: () {
             // 인증번호 재전송 로직
@@ -710,26 +722,17 @@ class _AuthScreenState extends State<AuthScreen> {
 
     // SMS 코드로 인증 및 상태 저장
     _authController.signInWithSmsCodeAndSave(smsCode, phoneNumber, () async {
-      // 인증 성공 후, 사용자가 이미 존재하는지 확인
-      final userId = _authController.getUserId;
-      final userExists = userId != null;
-
       setState(() {
         isCheckingUser = false;
         isVerified = true;
-        this.userExists = userExists;
       });
 
-      if (userExists) {
-        // 사용자가 존재하면 홈 화면으로 이동
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/home_navigation_screen',
-          (route) => false,
-        );
-      } else {
-        setState(() {});
-      }
+      // 기존 사용자 상관없이 다음 페이지로 넘어가기
+      FocusScope.of(context).unfocus();
+      _pageController.nextPage(
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
     });
   }
 }

@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../repositories/auth_repository.dart';
 import '../models/auth_model.dart';
 import '../models/auth_result.dart';
@@ -18,20 +21,18 @@ class AuthService {
 
   Future<String> getUserProfileImageUrlById(String userId) async {
     try {
-      // debugPrint('👤 프로필 이미지 URL 조회 시작 - UserId: $userId');
       return await _repository.getUserProfileImageUrlById(userId);
     } catch (e) {
-      // debugPrint('사용자 프로필 이미지 가져오기 실패: $e');
+      debugPrint('사용자 프로필 이미지 가져오기 실패: $e');
       return '';
     }
   }
 
   Future<AuthModel?> getUserInfo(String userId) async {
     try {
-      // debugPrint('👤 사용자 정보 조회 시작 - UserId: $userId');
       return await _repository.getUserInfo(userId);
     } catch (e) {
-      // debugPrint('사용자 정보 가져오기 실패: $e');
+      debugPrint('사용자 정보 가져오기 실패: $e');
       return null;
     }
   }
@@ -67,7 +68,6 @@ class AuthService {
       // reCAPTCHA 관련 에러는 사용자에게 친숙한 메시지로 변경
       if (e.toString().contains('web-internal-error') ||
           e.toString().contains('reCAPTCHA')) {
-        // debugPrint('reCAPTCHA 관련 에러 발생, 사용자에게는 일반적인 메시지 표시');
         return AuthResult.success(); // 실제로는 성공으로 처리 (백그라운드 에러이므로)
       }
 
@@ -107,7 +107,6 @@ class AuthService {
         return AuthResult.failure('로그인에 실패했습니다.');
       }
     } catch (e) {
-      // debugPrint('SMS 로그인 오류: $e');
       return AuthResult.failure('인증 코드 확인 중 오류가 발생했습니다: $e');
     }
   }
@@ -164,7 +163,6 @@ class AuthService {
 
       return AuthResult.success(user);
     } catch (e) {
-      // debugPrint('사용자 생성 오류: $e');
       return AuthResult.failure('사용자 정보 저장 중 오류가 발생했습니다: $e');
     }
   }
@@ -175,7 +173,6 @@ class AuthService {
       await _repository.signOut();
       return AuthResult.success();
     } catch (e) {
-      // debugPrint('로그아웃 오류: $e');
       return AuthResult.failure('로그아웃 중 오류가 발생했습니다.');
     }
   }
@@ -279,7 +276,7 @@ class AuthService {
     }
   }
 
-  // 회원 탈퇴
+  // 회원 탈퇴 (빠른 화면 전환을 위해 비동기 처리)
   Future<AuthResult> deleteAccount() async {
     try {
       final currentUser = _repository.currentUser;
@@ -287,21 +284,63 @@ class AuthService {
         return AuthResult.failure('로그인이 필요합니다.');
       }
 
-      // Firestore에서 사용자 데이터 삭제
-      await _repository.deleteUser(currentUser.uid);
+      final userId = currentUser.uid;
 
-      // Firebase Auth에서 계정 삭제
-      await currentUser.delete();
+      // 1) Cloud Function 트리거 (백엔드에서 전체 삭제 + Auth 삭제). 결과는 기다리지 않음
+      try {
+        final callable = FirebaseFunctions.instance.httpsCallable('deleteUserData');
+        // ignore: unawaited_futures
+        callable
+            .call()
+            .timeout(const Duration(seconds: 5))
+            .catchError((_) async {
+          // CF 호출 실패 시, 클라이언트 폴백 삭제 (백그라운드)
+          try {
+            await _repository.deleteUser(userId);
+          } catch (_) {}
+        });
+      } catch (_) {
+        // 무시하고 폴백은 위에서 처리
+      }
+
+      // 2) 로컬 캐시 및 저장된 인증 정보 즉시 정리 (바로 화면 전환 가능)
+      await _clearAllLocalData();
+
+      // 3) Firebase Auth 계정 삭제는 서버(Admin SDK)에서 처리되므로 클라이언트에서는 대기하지 않음
 
       return AuthResult.success();
     } catch (e) {
-      // debugPrint('계정 삭제 오류: $e');
-      return AuthResult.failure('계정 삭제 중 오류가 발생했습니다.');
+      debugPrint('❌ 계정 삭제 오류: $e');
+      return AuthResult.failure('계정 삭제 중 오류가 발생했습니다: $e');
+    }
+  }
+
+  /// 모든 로컬 데이터 정리
+  Future<void> _clearAllLocalData() async {
+    try {
+      // SharedPreferences 정리
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      // Firebase Auth 로컬 캐시 정리
+      await FirebaseAuth.instance.signOut();
+    } catch (e) {
+      debugPrint('⚠️ 로컬 데이터 정리 중 오류: $e');
     }
   }
 
   // 사용자 검색
   Future<List<String>> searchUsersByNickname(String nickname) async {
     return await _repository.searchUsersByNickname(nickname);
+  }
+
+  // ID 중복 확인
+  Future<bool> isIdDuplicate(String id) async {
+    try {
+      return await _repository.isIdDuplicate(id);
+    } catch (e) {
+      debugPrint('Error checking ID duplicate in AuthService: $e');
+      return false;
+    }
   }
 }

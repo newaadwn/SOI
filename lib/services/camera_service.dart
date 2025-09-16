@@ -201,7 +201,8 @@ class CameraService {
         },
         creationParams: <String, dynamic>{
           'useSRGBColorSpace': true,
-          'useHighQuality': true,
+          // 첫 프레임은 경량으로 시작하고 최적화 단계에서 품질 향상
+          'useHighQuality': false,
           'resumeExistingSession': true,
         },
         creationParamsCodec: const StandardMessageCodec(),
@@ -214,7 +215,8 @@ class CameraService {
         },
         creationParams: <String, dynamic>{
           'useSRGBColorSpace': true,
-          'useHighQuality': true,
+          // 첫 프레임은 경량으로 시작하고 최적화 단계에서 품질 향상
+          'useHighQuality': false,
           'resumeExistingSession': true,
         },
         creationParamsCodec: const StandardMessageCodec(),

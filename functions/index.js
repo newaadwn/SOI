@@ -7,12 +7,29 @@ const {setGlobalOptions} = require("firebase-functions");
 const {onRequest, onCall} = require("firebase-functions/v2/https");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore} = require("firebase-admin/firestore");
+const {getStorage} = require("firebase-admin/storage");
+const {getAuth} = require("firebase-admin/auth");
 const logger = require("firebase-functions/logger");
 const {generateInviteImage} = require("./lib/image-generator");
+const {deleteUserData: runDeleteUserData} = require("./lib/deleteContext");
 
 // Initialize Firebase Admin
 initializeApp();
 const db = getFirestore();
+const storage = getStorage();
+const adminAuth = getAuth();
+let supabase = null;
+try {
+  const {createClient} = require("@supabase/supabase-js");
+  const SUPABASE_URL = process.env.SUPABASE_URL || process.env.supa_url || null;
+  const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY ||
+    process.env.supa_service_key || null;
+  if (SUPABASE_URL && SUPABASE_SERVICE_KEY) {
+    supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
+  }
+} catch (e) {
+  // Supabase client not available; proceed without it
+}
 
 setGlobalOptions({maxInstances: 10});
 
@@ -136,6 +153,29 @@ exports.generateInviteImage = onCall(async (request) => {
     throw new Error(`Failed to generate invite image: ${error.message}`);
   }
 });
+
+// (Removed inline deleteUserData implementation in favor of modular version)
+
+// Override with modular delete function (fire-and-forget from client)
+exports.deleteUserData = onCall(
+  { timeoutSeconds: 540, memory: "1GiB" },
+  async (request) => {
+    const auth = request.auth;
+    if (!auth || !auth.uid) {
+      throw new Error("Unauthenticated request");
+    }
+    const uid = auth.uid;
+    await runDeleteUserData({
+      db,
+      storage,
+      supabase,
+      logger,
+      auth: adminAuth,
+      uid,
+    });
+    return { success: true };
+  },
+);
 
 // Main redirect handler for all incoming requests
 exports.app = onRequest(async (req, res) => {
@@ -338,4 +378,3 @@ exports.app = onRequest(async (req, res) => {
     return res.status(500).send("Internal server error");
   }
 });
-

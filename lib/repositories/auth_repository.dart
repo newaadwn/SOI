@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../models/auth_model.dart';
 
@@ -39,14 +41,11 @@ class AuthRepository {
           // Android에서 SMS 자동 감지 시 자동 로그인
           try {
             await _auth.signInWithCredential(credential);
-            // debugPrint("📱 SMS 자동 인증 완료");
           } catch (e) {
-            // debugPrint("❌ 자동 인증 실패: $e");
+            debugPrint("❌ 자동 인증 실패: $e");
           }
         },
         verificationFailed: (FirebaseAuthException exception) {
-          // debugPrint('❌ 전화번호 인증 실패: ${exception.code} - ${exception.message}');
-
           // 특정 에러 코드 처리
           if (exception.code == 'invalid-phone-number') {
             throw Exception('유효하지 않은 전화번호입니다.');
@@ -55,23 +54,15 @@ class AuthRepository {
           } else if (exception.code == 'web-internal-error' ||
               exception.message?.contains('reCAPTCHA') == true ||
               exception.message?.contains('captcha') == true) {
-            // ⭐ reCAPTCHA 관련 에러 상세 로깅
-            // debugPrint("🔧 reCAPTCHA 관련 에러 감지:");
-            // debugPrint("   - 에러 코드: ${exception.code}");
-            // debugPrint("   - 에러 메시지: ${exception.message}");
-            // debugPrint("   - APNs 토큰이 제대로 설정되지 않았을 가능성이 높습니다.");
-            // debugPrint("   - 임시로 에러를 무시하고 계속 진행합니다.");
             return;
           }
 
           throw exception;
         },
         codeSent: (String verificationId, int? resendToken) {
-          // debugPrint("✅ SMS 코드 전송 완료 - verificationId: $verificationId");
           onCodeSent(verificationId, resendToken);
         },
         codeAutoRetrievalTimeout: (String verificationId) {
-          // debugPrint("⏰ 코드 자동 검색 타임아웃 - verificationId: $verificationId");
           onTimeout(verificationId);
         },
         timeout: const Duration(seconds: 120),
@@ -214,7 +205,238 @@ class AuthRepository {
 
   // 사용자 삭제
   Future<void> deleteUser(String uid) async {
-    await _firestore.collection('users').doc(uid).delete();
+    try {
+      // 0. 사용자가 생성한 모든 컨텐츠 삭제 (사진/오디오/댓글/리액션/알림 등)
+      await _deleteAllUserContent(uid);
+
+      // 1. 사용자의 모든 친구 관계 삭제
+      final friendsCollection = _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('friends');
+      final friendsSnapshot = await friendsCollection.get();
+
+      // 배치 삭제로 성능 최적화
+      WriteBatch batch = _firestore.batch();
+
+      for (var friendDoc in friendsSnapshot.docs) {
+        batch.delete(friendDoc.reference);
+      }
+
+      // 2. 다른 사용자들의 friends 컬렉션에서 이 사용자 제거
+      final allUsersSnapshot = await _firestore.collection('users').get();
+      for (var userDoc in allUsersSnapshot.docs) {
+        if (userDoc.id != uid) {
+          final otherUserFriendDoc = userDoc.reference
+              .collection('friends')
+              .doc(uid);
+          batch.delete(otherUserFriendDoc);
+        }
+      }
+
+      // 3. 사용자가 멤버인 모든 카테고리에서 제거
+      final categoriesSnapshot =
+          await _firestore
+              .collection('categories')
+              .where('mates', arrayContains: uid)
+              .get();
+
+      for (var categoryDoc in categoriesSnapshot.docs) {
+        final categoryData = categoryDoc.data();
+        final mates = List<String>.from(categoryData['mates'] ?? []);
+        mates.remove(uid);
+
+        if (mates.isEmpty) {
+          // 멤버가 없으면 카테고리 삭제
+          batch.delete(categoryDoc.reference);
+        } else {
+          // 멤버 목록에서만 제거
+          batch.update(categoryDoc.reference, {'mates': mates});
+        }
+      }
+
+      // 4. 사용자 문서 삭제
+      batch.delete(_firestore.collection('users').doc(uid));
+
+      // 모든 변경사항 커밋
+      await batch.commit();
+
+      // debugPrint('✅ 사용자 데이터 완전 삭제 완료: $uid');
+    } catch (e) {
+      // debugPrint('❌ 사용자 삭제 실패: $e');
+      throw Exception('사용자 데이터 삭제 중 오류가 발생했습니다: $e');
+    }
+  }
+
+  // ==================== 유저 컨텐츠 전체 삭제 ====================
+
+  Future<void> _deleteAllUserContent(String uid) async {
+    // 사진, 오디오, 댓글, 리액션, 알림 순으로 정리
+    await _deleteUserReactions(uid);
+    await _deleteUserCommentRecords(uid);
+    await _deleteUserAudios(uid);
+    await _deleteUserPhotos(uid);
+    await _deleteUserNotifications(uid);
+  }
+
+  Future<void> _deleteUserReactions(String uid) async {
+    try {
+      final snap =
+          await _firestore
+              .collectionGroup('reactions')
+              .where('uid', isEqualTo: uid)
+              .get();
+      if (snap.docs.isEmpty) return;
+
+      // 배치 삭제 (최대 500개씩)
+      int index = 0;
+      while (index < snap.docs.length) {
+        final batch = _firestore.batch();
+        final end = (index + 450).clamp(0, snap.docs.length);
+        for (int i = index; i < end; i++) {
+          batch.delete(snap.docs[i].reference);
+        }
+        await batch.commit();
+        index = end;
+      }
+    } catch (_) {
+      // 무시 (계속 진행)
+    }
+  }
+
+  Future<void> _deleteUserCommentRecords(String uid) async {
+    try {
+      final snap =
+          await _firestore
+              .collection('comment_records')
+              .where('recorderUser', isEqualTo: uid)
+              .get();
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final audioUrl = data['audioUrl'] as String?;
+        if (audioUrl != null && audioUrl.isNotEmpty) {
+          await _tryDeleteAnyStorageFile(audioUrl);
+        }
+        await doc.reference.delete();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _deleteUserAudios(String uid) async {
+    try {
+      final snap =
+          await _firestore
+              .collection('audios')
+              .where('userId', isEqualTo: uid)
+              .get();
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final url = data['firebaseUrl'] as String?; // supabase URL일 수도 있음
+        if (url != null && url.isNotEmpty) {
+          await _tryDeleteAnyStorageFile(url);
+        }
+        await doc.reference.delete();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _deleteUserPhotos(String uid) async {
+    try {
+      final snap =
+          await _firestore
+              .collectionGroup('photos')
+              .where('userID', isEqualTo: uid)
+              .get();
+
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final imageUrl = data['imageUrl'] as String?;
+        final audioUrl = data['audioUrl'] as String?;
+
+        // 이 사진에 달린 음성댓글들도 함께 삭제
+        try {
+          final photoId = doc.id;
+          final commentsSnap =
+              await _firestore
+                  .collection('comment_records')
+                  .where('photoId', isEqualTo: photoId)
+                  .get();
+          for (final c in commentsSnap.docs) {
+            final cAudio = (c.data()['audioUrl'] as String?);
+            if (cAudio != null && cAudio.isNotEmpty) {
+              await _tryDeleteAnyStorageFile(cAudio);
+            }
+            await c.reference.delete();
+          }
+        } catch (_) {}
+
+        // 파일 삭제 시도
+        if (imageUrl != null && imageUrl.isNotEmpty) {
+          await _tryDeleteAnyStorageFile(imageUrl);
+        }
+        if (audioUrl != null && audioUrl.isNotEmpty) {
+          await _tryDeleteAnyStorageFile(audioUrl);
+        }
+
+        // 사진 문서 삭제
+        await doc.reference.delete();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _deleteUserNotifications(String uid) async {
+    try {
+      // 수신자 기준 알림 삭제
+      final recv =
+          await _firestore
+              .collection('notifications')
+              .where('recipientUserId', isEqualTo: uid)
+              .get();
+      for (final d in recv.docs) {
+        await d.reference.delete();
+      }
+
+      // 발신자 기준 알림 삭제
+      final sent =
+          await _firestore
+              .collection('notifications')
+              .where('actorUserId', isEqualTo: uid)
+              .get();
+      for (final d in sent.docs) {
+        await d.reference.delete();
+      }
+    } catch (_) {}
+  }
+
+  // ==================== Storage 유틸리티 ====================
+  Future<void> _tryDeleteAnyStorageFile(String url) async {
+    // 1) Firebase Storage 시도
+    try {
+      final ref = _storage.refFromURL(url);
+      await ref.delete();
+      return;
+    } catch (_) {
+      // 계속 진행 (Supabase일 수 있음)
+    }
+
+    // 2) Supabase Storage 시도
+    try {
+      final uri = Uri.parse(url);
+      // 형식 예: https://xxxx.supabase.co/storage/v1/object/public/<bucket>/<path>
+      if (!uri.path.contains('/storage/v1/object/public/')) return;
+      final parts = uri.path.split('/');
+      final idx = parts.indexOf('public');
+      if (idx < 0 || idx + 2 >= parts.length) return;
+
+      final bucket = parts[idx + 1];
+      final pathSegments = parts.sublist(idx + 2);
+      final objectPath = pathSegments.join('/');
+
+      final supabase = Supabase.instance.client;
+      await supabase.storage.from(bucket).remove([objectPath]);
+    } catch (_) {
+      // 무시
+    }
   }
 
   // ==================== Storage 관련 ====================
@@ -239,5 +461,20 @@ class AuthRepository {
     final snapshot = await uploadTask.whenComplete(() => null);
 
     return await snapshot.ref.getDownloadURL();
+  }
+
+  // ID 중복 확인
+  Future<bool> isIdDuplicate(String id) async {
+    try {
+      final querySnapshot =
+          await FirebaseFirestore.instance
+              .collection('users')
+              .where('id', isEqualTo: id)
+              .get();
+      return querySnapshot.docs.isNotEmpty;
+    } catch (e) {
+      debugPrint('Error checking ID duplicate in Firestore: $e');
+      return false;
+    }
   }
 }

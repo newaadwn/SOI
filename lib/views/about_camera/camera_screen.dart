@@ -66,19 +66,10 @@ class _CameraScreenState extends State<CameraScreen>
 
     // 카메라 초기화를 지연시킴 (첫 빌드에서 UI 블로킹 방지)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeCameraAsync();
-      _initializeNotifications(); // 알림 초기화 추가
-    });
-  }
-
-  // 화면이 다시 표시될 때 호출되는 메서드 추가
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    // 화면 재진입 시 강제 전체 재초기화
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _forceReinitializeCamera(); // 새 메서드
+      // FutureBuilder 연동을 위해 Future 보관
+      _cameraInitialization = _initializeCameraAsync();
+      // 알림 초기화는 전환에 영향 없도록 지연 실행
+      Future.microtask(_initializeNotifications);
     });
   }
 
@@ -86,24 +77,19 @@ class _CameraScreenState extends State<CameraScreen>
   Future<void> _initializeCameraAsync() async {
     if (!_isInitialized && mounted) {
       try {
-        // Starting camera initialization process
-
-        // 병렬 처리로 성능 향상
-        await Future.wait([
-          _cameraService.activateSession(),
-          _loadFirstGalleryImage(), // 개선된 갤러리 미리보기 로드
-        ]);
-
-        // 디바이스별 사용 가능한 줌 레벨 가져오기
-        await _loadAvailableZoomLevels();
+        // 세션만 우선 활성화하여 화면을 즉시 표시
+        await _cameraService.activateSession();
 
         if (mounted) {
           setState(() {
             _isLoading = false;
             _isInitialized = true;
           });
-          // Camera and gallery initialization completed successfully
         }
+
+        // 부가 작업은 화면 노출 후 지연 실행 (체감 속도 개선)
+        Future.microtask(() => _loadFirstGalleryImage());
+        Future.microtask(() => _loadAvailableZoomLevels());
       } catch (e) {
         // Camera initialization failed with error: $e
         if (mounted) {
@@ -331,6 +317,7 @@ class _CameraScreenState extends State<CameraScreen>
                 snapshot.data!,
                 width: 46.w,
                 height: 46.h,
+
                 fit: BoxFit.cover,
                 errorBuilder: (context, error, stackTrace) {
                   // Gallery thumbnail memory load error: $error
@@ -373,11 +360,24 @@ class _CameraScreenState extends State<CameraScreen>
 
   /// 갤러리 플레이스홀더 위젯 - 반응형
   Widget _buildPlaceholderGallery(double gallerySize) {
-    return Center(
-      child: Icon(
-        Icons.photo_library,
-        color: Colors.white.withValues(alpha: 0.7),
-        size: 46.sp,
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade800,
+      highlightColor: Colors.grey.shade700,
+      period: const Duration(milliseconds: 1500),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8.0),
+        child: Container(
+          width: gallerySize,
+          height: gallerySize,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade800,
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.12),
+              width: 1.0,
+            ),
+            borderRadius: BorderRadius.circular(8.0),
+          ),
+        ),
       ),
     );
   }
@@ -494,14 +494,13 @@ class _CameraScreenState extends State<CameraScreen>
 
   @override
   Widget build(BuildContext context) {
-    // AutomaticKeepAliveClientMixin 필수 호출
     super.build(context);
 
     return Scaffold(
-      backgroundColor: Color(0xff000000), // 배경을 검정색으로 설정
+      backgroundColor: Color(0xff000000),
 
       appBar: AppBar(
-        leadingWidth: 90.w, // leading 영역 크기 확장
+        leadingWidth: 90.w,
         title: Column(
           children: [
             Text(
@@ -741,14 +740,5 @@ class _CameraScreenState extends State<CameraScreen>
         ),
       ),
     );
-  }
-
-  Future<void> _forceReinitializeCamera() async {
-    setState(() {
-      _isInitialized = false;
-      _isLoading = true;
-    });
-
-    await _initializeCameraAsync();
   }
 }

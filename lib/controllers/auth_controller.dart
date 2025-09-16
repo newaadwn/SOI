@@ -266,9 +266,19 @@ class AuthController extends ChangeNotifier {
     final result = await _authService.deleteAccount();
 
     if (result.isSuccess) {
+      // 상태 초기화
+      _verificationId = '';
+      smsCode = '';
+      codeSent = false;
+      _isUploading = false;
+      _searchResults.clear();
+      _profileImageCache.clear();
+      notifyListeners();
+
       // debugPrint("계정이 삭제되었습니다.");
     } else {
       // debugPrint(result.error ?? "계정 삭제 중 오류가 발생했습니다.");
+      throw Exception(result.error ?? "계정 삭제 중 오류가 발생했습니다.");
     }
   }
 
@@ -415,6 +425,16 @@ class AuthController extends ChangeNotifier {
       }
     } else {
       // debugPrint(result.error ?? "로그인에 실패했습니다.");
+    }
+  }
+
+  // ID 중복 확인
+  Future<bool> checkIdDuplicate(String id) async {
+    try {
+      return await _authService.isIdDuplicate(id);
+    } catch (e) {
+      debugPrint('Error checking ID duplicate in AuthController: $e');
+      return false;
     }
   }
 }
