@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:solar_icons/solar_icons.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../theme/theme.dart';
@@ -16,7 +19,15 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   final PageController _pageController = PageController();
-  late AuthController _authViewModel;
+  late AuthController _authController;
+
+  // 자동 인증을 위한 Timer
+  Timer? _autoVerifyTimer;
+
+  // 사용자가 존재하는지 여부 및 상태 관리
+  bool userExists = false;
+  bool isVerified = false;
+  bool isCheckingUser = false;
 
   // 입력 데이터
   String phoneNumber = '';
@@ -39,11 +50,9 @@ class _AuthScreenState extends State<AuthScreen> {
     // Provider에서 AuthViewModel을 가져오거나 widget에서 전달된 것을 사용
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
-        _authViewModel = Provider.of<AuthController>(context, listen: false);
+        _authController = Provider.of<AuthController>(context, listen: false);
       });
     });
-
-    // debugPrint('AuthViewModel 초기화 완료');
   }
 
   @override
@@ -51,75 +60,13 @@ class _AuthScreenState extends State<AuthScreen> {
     // 화면 크기 정보
     final double screenHeight = MediaQuery.of(context).size.height;
 
-    // Provider에서 AuthViewModel을 가져옴
-    if (!mounted) return Container(); // 안전 검사
-
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        automaticallyImplyLeading: false,
-        iconTheme: IconThemeData(color: Colors.white),
-        elevation: 0,
-        leading:
-            currentPage > 0
-                ? IconButton(
-                  icon: Icon(Icons.arrow_back_ios),
-                  onPressed: _goToPreviousPage,
-                )
-                : null,
-        actions: [
-          // 다음 버튼을 상단 우측에 배치
-          if (currentPage < 4 && currentPage != 2) // 마지막 페이지가 아닐 때만 다음 버튼 표시
-            Padding(
-              padding: EdgeInsets.only(right: 16.w),
-              child: TextButton(
-                onPressed: () {
-                  _handleNextButtonPressed();
-                },
-                child: Row(
-                  children: [
-                    Text(
-                      "다음",
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Icon(Icons.arrow_forward_ios, color: Colors.white),
-                  ],
-                ),
-              ),
-            ),
-        ],
-        // 상단 중앙에 단계 표시 점들 배치
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(5, (index) {
-            return Container(
-              width: 8.w,
-              height: 8.h,
-              margin: EdgeInsets.symmetric(horizontal: 3.w),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color:
-                    index == currentPage
-                        ? Color(0xff323232)
-                        : Color(0xffd9d9d9),
-              ),
-            );
-          }),
-        ),
-        centerTitle: true,
-      ),
+      backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: false,
+
       body: PageView(
         controller: _pageController,
-        physics:
-            (currentPage != 2)
-                ? ScrollPhysics()
-                : NeverScrollableScrollPhysics(),
+        physics: NeverScrollableScrollPhysics(),
         onPageChanged: (index) {
           setState(() {
             currentPage = index;
@@ -131,9 +78,9 @@ class _AuthScreenState extends State<AuthScreen> {
           // 2. 생년월일 입력 페이지
           _buildBirthDatePage(screenHeight),
           // 3. 전화번호 입력 페이지
-          _buildPhoneNumberPage(screenHeight),
-          //     인증번호 입력 페이지
-          _buildSmsCodePage(screenHeight),
+          _buildPhoneNumberPage(),
+          //. 인증번호 입력 페이지
+          _buildSmsCodePage(),
           // 4. 닉네임 입력 페이지
           _buildIdPage(screenHeight),
         ],
@@ -144,202 +91,149 @@ class _AuthScreenState extends State<AuthScreen> {
   // -------------------------
   // 1. 전화번호 입력 페이지
   // -------------------------
-  Widget _buildPhoneNumberPage(double screenHeight) {
+  Widget _buildPhoneNumberPage() {
     final controller = TextEditingController();
     // 전화번호 입력 여부를 확인하는 상태 변수
     final ValueNotifier<bool> hasPhone = ValueNotifier<bool>(false);
 
-    return _buildScrollContainer(
-      screenHeight,
-      Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'SOI 접속을 위해 전화번호를 입력해주세요.',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.lightTheme.colorScheme.onSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 24.h),
-          Container(
-            width: 239.w,
-            height: 44.h,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                SizedBox(width: 17.w),
-                Icon(
-                  SolarIconsOutline.phone,
-                  color: Color(0xffC0C0C0),
-                  size: 24.sp,
+    // 키보드 높이는 버튼 위치에만 사용
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+
+    return Stack(
+      children: [
+        // 입력 필드들을 화면 중앙에 고정
+        Positioned(
+          top: 0.35.sh,
+          left: 0,
+          right: 0,
+          child: Column(
+            children: [
+              Text(
+                'SOI 접속을 위해 전화번호를 입력해주세요.',
+                style: TextStyle(
+                  color: const Color(0xFFF8F8F8),
+                  fontSize: 18,
+                  fontFamily: GoogleFonts.inter().fontFamily,
+                  fontWeight: FontWeight.w600,
                 ),
-                SizedBox(width: 10.w),
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    keyboardType: TextInputType.phone,
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      hintText: '전화번호',
-                      hintStyle: TextStyle(
-                        fontSize: 16.sp,
-                        color: Color(0xffC0C0C0),
-                      ),
-                      contentPadding: EdgeInsets.only(bottom: 6),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 24.h),
+              Container(
+                width: 239.w,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Color(0xff323232),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    SizedBox(width: 17.w),
+                    Icon(
+                      SolarIconsOutline.phone,
+                      color: const Color(0xffC0C0C0),
+                      size: 24.sp,
                     ),
-                    onChanged: (value) {
-                      // 전화번호 입력 여부에 따라 버튼 표시 상태 변경
-                      hasPhone.value = value.isNotEmpty;
-                    },
-                  ),
+                    SizedBox(width: 10.w),
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        keyboardType: TextInputType.phone,
+                        textAlign: TextAlign.start,
+                        cursorHeight: 16.h,
+                        cursorColor: const Color(0xFFF8F8F8),
+                        style: TextStyle(
+                          color: const Color(0xFFF8F8F8),
+                          fontSize: 16,
+                          fontFamily: 'Pretendard',
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.08,
+                        ),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          hintText: '전화번호',
+                          hintStyle: TextStyle(
+                            color: const Color(0xFFC0C0C0),
+                            fontSize: 16.sp,
+                            fontFamily: 'Pretendard',
+                            fontWeight: FontWeight.w400,
+                          ),
+                          contentPadding: EdgeInsets.only(
+                            left: 15.w,
+                            bottom: 5.h,
+                          ),
+                        ),
+                        onChanged: (value) {
+                          // 전화번호 입력 여부에 따라 버튼 표시 상태 변경
+                          hasPhone.value = value.isNotEmpty;
+                        },
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-          SizedBox(height: 24),
-          // 전화번호가 입력되면 버튼 표시
-          ValueListenableBuilder<bool>(
+        ),
+
+        // 버튼을 하단에 위치 (키보드 높이에 따라 조정)
+        Positioned(
+          bottom: keyboardHeight > 0 ? keyboardHeight + 20.h : 50.h,
+          left: 0,
+          right: 0,
+          child: ValueListenableBuilder<bool>(
             valueListenable: hasPhone,
             builder: (context, hasPhoneValue, child) {
-              return hasPhoneValue
-                  ? ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xff323232),
-                      minimumSize: Size(239, 44),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+              return Center(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xffffffff),
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(26.9),
                     ),
-                    onPressed: () {
-                      // 전화번호 저장
-                      phoneNumber = controller.text;
-                      // 인증번호 받기 로직 실행
-                      _authViewModel.verifyPhoneNumber(
-                        phoneNumber,
-                        (verificationId, resendToken) {
-                          // 성공적으로 인증번호 전송되면 다음 페이지로
-                          _goToNextPage();
-                        },
-                        (verificationId) {
-                          // 타임아웃 등 처리
-                        },
-                      );
-                    },
+                  ),
+                  onPressed: () {
+                    // 전화번호 저장
+                    phoneNumber = controller.text;
+                    // 인증번호 받기 로직 실행
+                    _authController.verifyPhoneNumber(
+                      phoneNumber,
+                      (verificationId, resendToken) {
+                        // 성공적으로 인증번호 전송되면 다음 페이지로
+                        _pageController.nextPage(
+                          duration: Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        );
+                      },
+                      (verificationId) {
+                        // 타임아웃 등 처리
+                      },
+                    );
+                  },
+                  child: Container(
+                    width: 349.w,
+                    height: 59.h,
+                    alignment: Alignment.center,
                     child: Text(
-                      '인증번호 받기',
+                      '계속하기',
                       style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
+                        color: Colors.black,
+                        fontSize: 20.sp,
+                        fontFamily: 'Pretendard',
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                  )
-                  : SizedBox.shrink();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // -------------------------
-  // 2. 인증번호 입력 페이지
-  // -------------------------
-  Widget _buildSmsCodePage(double screenHeight) {
-    final ValueNotifier<bool> hasCode = ValueNotifier<bool>(false);
-    final controller = TextEditingController();
-    return _buildScrollContainer(
-      screenHeight,
-      Column(
-        children: [
-          Text(
-            '인증번호를 입력해주세요.',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.lightTheme.colorScheme.onSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 24),
-          Container(
-            width: 239,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                SizedBox(width: 17),
-                Icon(SolarIconsOutline.key, color: Color(0xffC0C0C0), size: 24),
-                SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      hintText: '인증번호',
-                      hintStyle: TextStyle(
-                        fontSize: 16,
-                        color: Color(0xffC0C0C0),
-                      ),
-                      contentPadding: EdgeInsets.only(bottom: 6),
-                    ),
-                    onChanged: (value) {
-                      // 인증번호 입력 여부에 따라 버튼 표시 상태 변경
-                      hasCode.value = value.isNotEmpty;
-                    },
                   ),
                 ),
-              ],
-            ),
-          ),
-          SizedBox(height: 24),
-          ValueListenableBuilder<bool>(
-            valueListenable: hasCode,
-            builder: (context, hasCodeValue, child) {
-              return hasCodeValue
-                  ? ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xff323232),
-                      minimumSize: Size(239, 44),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () {
-                      // ✅ 회원가입 시에도 로그인 상태 저장
-                      _authViewModel.signInWithSmsCodeAndSave(
-                        controller.text,
-                        phoneNumber, // 전화번호도 함께 전달
-                        () {
-                          // 인증 완료 후 다음 페이지로
-                          _goToNextPage();
-                        },
-                      );
-                    },
-                    child: Text(
-                      '인증하기',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  )
-                  : SizedBox.shrink();
+              );
             },
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -347,101 +241,272 @@ class _AuthScreenState extends State<AuthScreen> {
   // 3. 이름 입력 페이지
   // -------------------------
   Widget _buildNamePage(double screenHeight) {
-    return _buildScrollContainer(
-      screenHeight,
-      _buildInputPage(
-        title: '당신의 이름을 알려주세요.',
-        hintText: '입력',
-        keyboardType: TextInputType.text,
-        buttonText: '다음',
-        onNext: (value) {
-          name = value;
-          _goToNextPage();
-        },
-      ),
+    final TextEditingController nameController = TextEditingController();
+    final ValueNotifier<bool> hasName = ValueNotifier<bool>(false);
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+
+    return Stack(
+      children: [
+        Positioned(
+          top: 0.35.sh,
+          left: 0,
+          right: 0,
+          child: Column(
+            children: [
+              Text(
+                '당신의 이름을 알려주세요.',
+                style: TextStyle(
+                  color: const Color(0xFFF8F8F8),
+                  fontSize: 18,
+                  fontFamily: GoogleFonts.inter().fontFamily,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 24.h),
+              Container(
+                width: 239.w,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Color(0xff323232),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                alignment: Alignment.center,
+                child: TextField(
+                  controller: nameController,
+                  keyboardType: TextInputType.text,
+                  textAlign: TextAlign.center,
+                  cursorHeight: 16.h,
+                  cursorColor: const Color(0xFFF8F8F8),
+                  style: TextStyle(
+                    color: const Color(0xFFF8F8F8),
+                    fontSize: 16,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.08,
+                  ),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintText: '이름',
+                    hintStyle: TextStyle(
+                      color: const Color(0xFFC0C0C0),
+                      fontSize: 16.sp,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w400,
+                    ),
+                    contentPadding: EdgeInsets.only(bottom: 5.h),
+                  ),
+                  onChanged: (value) {
+                    // 이름 입력 여부에 따라 버튼 표시 상태 변경
+                    hasName.value = value.isNotEmpty;
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // 버튼을 하단에 위치 (키보드 높이에 따라 조정)
+        Positioned(
+          bottom: keyboardHeight > 0 ? keyboardHeight + 20.h : 50.h,
+          left: 0,
+          right: 0,
+          child: ValueListenableBuilder<bool>(
+            valueListenable: hasName,
+            builder: (context, hasNameValue, child) {
+              return Center(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(26.9),
+                    ),
+                  ),
+                  onPressed:
+                      hasNameValue
+                          ? () {
+                            // 이름 저장
+                            name = nameController.text;
+                            // 다음 페이지로 이동
+                            _pageController.nextPage(
+                              duration: Duration(milliseconds: 300),
+                              curve: Curves.easeInOut,
+                            );
+                          }
+                          : null,
+                  child: Container(
+                    width: 349.w,
+                    height: 59,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: hasNameValue ? Colors.white : Color(0xff323232),
+                      borderRadius: BorderRadius.circular(26.9),
+                    ),
+                    child: Text(
+                      '계속하기',
+                      style: TextStyle(
+                        color: hasNameValue ? Colors.black : Colors.grey,
+                        fontSize: 20.sp,
+                        fontFamily: 'Pretendard',
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
   // -------------------------
-  // 4. 생년월일 입력 페이지
+  // 4. 생년월일 입력 페이지 (직접 타이핑)
   // -------------------------
   Widget _buildBirthDatePage(double screenHeight) {
-    birthDate = "$selectedYear년 $selectedMonth월 $selectedDay일";
-    return _buildScrollContainer(screenHeight, _buildBirthDateContent());
-  }
+    final monthController = TextEditingController(text: selectedMonth ?? '');
+    final dayController = TextEditingController(text: selectedDay ?? '');
+    final yearController = TextEditingController(text: selectedYear ?? '');
 
-  Widget _buildBirthDateContent() {
+    // 입력값 상태 동기화
+    void updateBirthDate() {
+      setState(() {
+        selectedMonth = monthController.text;
+        selectedDay = dayController.text;
+        selectedYear = yearController.text;
+        birthDate =
+            "${selectedYear ?? ''}년 ${selectedMonth ?? ''}월 ${selectedDay ?? ''}일";
+      });
+    }
+
     return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Text(
           '생년월일을 입력해주세요.',
           style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+            color: const Color(0xFFF8F8F8),
+            fontSize: 18.sp,
             fontFamily: GoogleFonts.inter().fontFamily,
-            color: AppTheme.lightTheme.colorScheme.onSecondary,
+            fontWeight: FontWeight.w600,
           ),
           textAlign: TextAlign.center,
         ),
         SizedBox(height: 24),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // 월 선택 Dropdown
-            _buildDropdownContainer(
-              width: 91,
-              selectedValue: selectedMonth,
-              hintText: 'MM',
-              items: List.generate(12, (index) {
-                final month = index + 1;
-                return DropdownMenuItem(
-                  value: '$month',
-                  child: Text('$month월'),
-                );
-              }),
-              onChanged: (value) {
-                setState(() {
-                  selectedMonth = value;
-                });
-              },
-              iconLeftPadding: 20,
-            ),
-            SizedBox(width: 22),
-            // 일 선택 Dropdown
-            _buildDropdownContainer(
-              width: 91,
-              selectedValue: selectedDay,
-              hintText: 'DD',
-              items: List.generate(31, (index) {
-                final day = index + 1;
-                return DropdownMenuItem(value: '$day', child: Text('$day일'));
-              }),
-              onChanged: (value) {
-                setState(() {
-                  selectedDay = value;
-                });
-              },
-              iconLeftPadding: 18,
-            ),
-            SizedBox(width: 22),
-            // 년도 선택 Dropdown
-            _buildDropdownContainer(
-              width: 100,
-              selectedValue: selectedYear,
-              hintText: 'YYYY',
-              items: List.generate(100, (index) {
-                final year = DateTime.now().year - index;
-                return DropdownMenuItem(value: '$year', child: Text('$year년'));
-              }),
-              onChanged: (value) {
-                setState(() {
-                  selectedYear = value;
-                });
-              },
-              iconLeftPadding: 5,
-            ),
-          ],
+        Container(
+          width: 320.w,
+          height: 51,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            color: Color(0xff323232),
+          ),
+          alignment: Alignment.center,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: monthController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  maxLength: 2,
+                  cursorColor: Color(0xFFF8F8F8),
+                  style: TextStyle(
+                    color: Color(0xFFF8F8F8),
+                    fontSize: 16.sp,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    counterText: '',
+                    hintText: 'MM',
+                    hintStyle: TextStyle(
+                      color: const Color(0xFFCBCBCB),
+                      fontSize: 16,
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  onChanged: (v) {
+                    if (v.length <= 2) updateBirthDate();
+                  },
+                  inputFormatters: [
+                    // 숫자만 입력
+                    FilteringTextInputFormatter.digitsOnly,
+                  ],
+                ),
+              ),
+              Text(
+                '/',
+                style: TextStyle(color: Color(0xFFC0C0C0), fontSize: 18),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: dayController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  maxLength: 2,
+                  cursorColor: Color(0xFFF8F8F8),
+                  style: TextStyle(
+                    color: Color(0xFFF8F8F8),
+                    fontSize: 16.sp,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    counterText: '',
+                    hintText: 'DD',
+                    hintStyle: TextStyle(
+                      color: const Color(0xFFCBCBCB),
+                      fontSize: 16,
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  onChanged: (v) {
+                    if (v.length <= 2) updateBirthDate();
+                  },
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+              ),
+              Text(
+                '/',
+                style: TextStyle(color: Color(0xFFC0C0C0), fontSize: 18),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: yearController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  maxLength: 4,
+                  cursorColor: Color(0xFFF8F8F8),
+                  style: TextStyle(
+                    color: Color(0xFFF8F8F8),
+                    fontSize: 16.sp,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w600,
+                  ),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    counterText: '',
+                    hintText: 'YYYY',
+                    hintStyle: TextStyle(
+                      color: const Color(0xFFCBCBCB),
+                      fontSize: 16,
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  onChanged: (v) {
+                    if (v.length <= 4) updateBirthDate();
+                  },
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                ),
+              ),
+            ],
+          ),
         ),
         SizedBox(height: 24),
       ],
@@ -452,205 +517,219 @@ class _AuthScreenState extends State<AuthScreen> {
   // 5. 닉네임 입력 페이지
   // -------------------------
   Widget _buildIdPage(double screenHeight) {
-    return _buildScrollContainer(
-      screenHeight,
-      _buildInputPage(
-        title: '사용하실 아이디를 입력해주세요.',
-        hintText: '',
-        keyboardType: TextInputType.text,
-        buttonText: '다음',
-        onNext: (value) {
-          id = value;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) => AuthFinalScreen(
-                    id: id,
-                    name: name,
-                    phone: phoneNumber,
-                    birthDate: birthDate,
-                  ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // -------------------------
-  // 공통으로 사용하는 입력 페이지 위젯
-  // -------------------------
-  Widget _buildInputPage({
-    required String title,
-    required String hintText,
-    required TextInputType keyboardType,
-    required String buttonText,
-    required Function(String) onNext,
-    Icon? icon,
-  }) {
-    final controller = TextEditingController();
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.lightTheme.colorScheme.onSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        SizedBox(height: 24),
-        Container(
-          width: 239,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              if (icon != null) ...[
-                SizedBox(width: 17),
-                icon,
-                SizedBox(width: 10),
-              ],
-              SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  keyboardType: keyboardType,
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    hintText: hintText,
-                    hintStyle: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xffC0C0C0),
-                    ),
-                    contentPadding: EdgeInsets.only(bottom: 6),
-                  ),
-                  onSubmitted: (value) {
-                    // 텍스트 입력 완료 시 onNext 콜백 호출
-                    if (value.isNotEmpty) {
-                      onNext(value);
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-        // 하단 다음 버튼 제거 - 상단 우측의 다음 버튼으로 대체됨
-      ],
-    );
-  }
-
-  // -------------------------
-  // 공통으로 사용하는 Scroll + Container 위젯
-  // -------------------------
-  Widget _buildScrollContainer(double screenHeight, Widget child) {
+    final TextEditingController idController = TextEditingController();
     return SingleChildScrollView(
       child: Container(
         constraints: BoxConstraints(minHeight: screenHeight),
         alignment: Alignment.center,
-        child: child,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '사용하실 아이디를 입력해주세요.',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.lightTheme.colorScheme.onSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: 24),
+            Container(
+              width: 239.w,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Color(0xFF323232),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: idController,
+                      keyboardType: TextInputType.text,
+                      textAlign: TextAlign.center,
+                      decoration: InputDecoration(
+                        border: InputBorder.none,
+                        hintText: '',
+                        hintStyle: TextStyle(
+                          fontSize: 16,
+                          color: Color(0xffC0C0C0),
+                        ),
+                      ),
+                      onSubmitted: (value) {
+                        if (value.isNotEmpty) {
+                          id = value;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => AuthFinalScreen(
+                                    id: id,
+                                    name: name,
+                                    phone: phoneNumber,
+                                    birthDate: birthDate,
+                                  ),
+                            ),
+                          );
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
+
+  // 공통 입력 위젯 삭제됨 (요청에 따라 인라인 처리)
 
   // -------------------------
   // 공통으로 사용하는 Dropdown Container 위젯
   // -------------------------
-  Widget _buildDropdownContainer({
-    required double width,
-    required String? selectedValue,
-    required String hintText,
-    required List<DropdownMenuItem<String>> items,
-    required ValueChanged<String?> onChanged,
-    double iconLeftPadding = 20,
-  }) {
-    return Container(
-      width: width,
-      height: 51,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        color: Color(0xffFBFBFB),
-      ),
-      alignment: Alignment.centerRight,
-      child: DropdownButton<String>(
-        value: selectedValue,
-        underline: Container(),
-        hint: Text(
-          selectedValue ?? hintText,
+
+  Widget _buildSmsCodePage() {
+    final ValueNotifier<bool> hasCode = ValueNotifier<bool>(false);
+    final controller = TextEditingController();
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          '인증번호를 입력해주세요.',
           style: TextStyle(
-            fontFamily: GoogleFonts.montserrat().fontFamily,
-            color: Color(0xffC0C0C0),
-            fontWeight: FontWeight.w500,
+            color: const Color(0xFFF8F8F8),
+            fontSize: 18,
+            fontFamily: GoogleFonts.inter().fontFamily,
+            fontWeight: FontWeight.w600,
+          ),
+          textAlign: TextAlign.center,
+        ),
+        SizedBox(height: 24.h),
+        Container(
+          width: 239.w,
+          height: 44,
+          decoration: BoxDecoration(
+            color: Color(0xff323232),
+            borderRadius: BorderRadius.circular(16.5),
+          ),
+          padding: EdgeInsets.only(bottom: 7.h),
+          child: TextField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            textAlignVertical: TextAlignVertical.center,
+            cursorColor: const Color(0xFFF8F8F8),
+            style: TextStyle(
+              color: const Color(0xFFF8F8F8),
+              fontSize: 16,
+              fontFamily: 'Pretendard',
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.08,
+            ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              hintText: '인증번호',
+              hintStyle: TextStyle(
+                color: const Color(0xFFCBCBCB),
+                fontSize: 16,
+                fontFamily: 'Pretendard',
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            onChanged: (value) {
+              // 인증번호 입력 여부에 따라 상태 변경
+              hasCode.value = value.isNotEmpty;
+
+              // 인증 완료 후, 사용자가 인증번호를 변경하면 상태 초기화
+              if (isVerified) {
+                setState(() {
+                  isVerified = false;
+                });
+              }
+
+              // 기존 타이머 취소
+              _autoVerifyTimer?.cancel();
+
+              // 인증번호가 입력되면 2초 후 자동 인증 시작
+              if (value.isNotEmpty && value.length >= 6) {
+                _autoVerifyTimer = Timer(Duration(seconds: 2), () {
+                  _performAutoVerification(value);
+                });
+              }
+            },
           ),
         ),
-        dropdownColor: Colors.white,
-        style: TextStyle(
-          fontFamily: GoogleFonts.montserrat().fontFamily,
-          color: Colors.black,
-          fontWeight: FontWeight.w500,
-        ),
-        icon: Padding(
-          padding: EdgeInsets.only(left: iconLeftPadding),
-          child: Icon(
-            Icons.keyboard_arrow_down_outlined,
-            size: 30,
-            color: Color(0xffC0C0C0),
+
+        // Updated the TextButton to use a custom underline implementation
+        TextButton(
+          onPressed: () {
+            // 인증번호 재전송 로직
+            _authController.verifyPhoneNumber(phoneNumber, (
+              verificationId,
+              resendToken,
+            ) {
+              // 재전송 성공 시 처리
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('인증번호가 재전송되었습니다.')));
+            }, (verificationId) {});
+          },
+          child: RichText(
+            text: TextSpan(
+              text: '인증번호 다시 받기',
+              style: TextStyle(
+                color: const Color(0xFFF8F8F8),
+                fontSize: 12,
+                fontFamily: 'Pretendard Variable',
+                fontWeight: FontWeight.w500,
+                decoration: TextDecoration.underline,
+              ),
+            ),
           ),
         ),
-        items: items,
-        onChanged: onChanged,
-      ),
+      ],
     );
   }
 
-  // -------------------------
-  // 다음 페이지로 이동
-  // -------------------------
-  void _goToNextPage() {
-    _pageController.nextPage(
-      duration: Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
+  // 자동 인증 수행 함수
+  void _performAutoVerification(String code) async {
+    if (isCheckingUser) return;
 
-  // -------------------------
-  // 이전 페이지로 이동
-  // -------------------------
-  void _goToPreviousPage() {
-    _pageController.previousPage(
-      duration: Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
+    setState(() {
+      isCheckingUser = true;
+    });
 
-  // -------------------------
-  // 다음 버튼 클릭 시 처리
-  // -------------------------
-  void _handleNextButtonPressed() {
-    switch (currentPage) {
-      case 0:
-        _goToNextPage();
-        break;
-      case 1:
-        _goToNextPage();
-        break;
-      case 2:
-        _goToNextPage();
-        break;
-      case 3:
-        _goToNextPage();
-        break;
-      case 4:
-        // 마지막 페이지에서는 다음 버튼이 표시되지 않으므로 이 코드는 실행되지 않음
-        break;
-    }
+    // SMS 코드 저장
+    smsCode = code;
+
+    // SMS 코드로 인증 및 상태 저장
+    _authController.signInWithSmsCodeAndSave(smsCode, phoneNumber, () async {
+      // 인증 성공 후, 사용자가 이미 존재하는지 확인
+      final userId = _authController.getUserId;
+      final userExists = userId != null;
+
+      setState(() {
+        isCheckingUser = false;
+        isVerified = true;
+        this.userExists = userExists;
+      });
+
+      if (userExists) {
+        // 사용자가 존재하면 홈 화면으로 이동
+        Navigator.pushNamedAndRemoveUntil(
+          context,
+          '/home_navigation_screen',
+          (route) => false,
+        );
+      } else {
+        setState(() {});
+      }
+    });
   }
 }
