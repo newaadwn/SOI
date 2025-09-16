@@ -6,6 +6,7 @@ import 'package:cloud_functions/cloud_functions.dart';
 import '../repositories/auth_repository.dart';
 import '../models/auth_model.dart';
 import '../models/auth_result.dart';
+import 'firebase_deeplink_service.dart';
 
 // 비즈니스 로직을 처리하는 Service
 // Repository를 사용해서 실제 비즈니스 규칙을 적용
@@ -197,6 +198,23 @@ class AuthService {
     return user?.name ?? '';
   }
 
+  Future<String> createFriendInviteLink({
+    required String inviterName,
+    required String inviterId,
+    String? inviterProfileImage,
+  }) async {
+    try {
+      return FirebaseDeeplinkService.createFriendInviteLink(
+        inviterName: inviterName,
+        inviterId: inviterId,
+        inviterProfileImage: inviterProfileImage,
+      );
+    } catch (e) {
+      debugPrint('친구 초대 링크 생성 실패: $e');
+      rethrow;
+    }
+  }
+
   // 사용자 전화번호 조회
   Future<String> getUserPhoneNumber() async {
     final user = await getCurrentUser();
@@ -276,6 +294,35 @@ class AuthService {
     }
   }
 
+  // 파일 경로에서 프로필 이미지 업데이트
+  Future<AuthResult> updateProfileImageFromPath(String imagePath) async {
+    try {
+      final currentUser = _repository.currentUser;
+      if (currentUser == null) {
+        return AuthResult.failure('로그인이 필요합니다.');
+      }
+
+      if (imagePath.isEmpty) {
+        return AuthResult.failure('유효하지 않은 이미지 경로입니다.');
+      }
+
+      final downloadUrl = await _repository.uploadProfileImageFromPath(
+        currentUser.uid,
+        imagePath,
+      );
+
+      await _repository.updateUser(currentUser.uid, {
+        'profile_image': downloadUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      return AuthResult.success(downloadUrl);
+    } catch (e) {
+      debugPrint('❌ 프로필 이미지 파일 업로드 오류: $e');
+      return AuthResult.failure('프로필 이미지 업데이트 중 오류가 발생했습니다.');
+    }
+  }
+
   // 회원 탈퇴 (빠른 화면 전환을 위해 비동기 처리)
   Future<AuthResult> deleteAccount() async {
     try {
@@ -288,16 +335,21 @@ class AuthService {
 
       // 1) Cloud Function 트리거 (백엔드에서 전체 삭제 + Auth 삭제). 결과는 기다리지 않음
       try {
-        final callable = FirebaseFunctions.instance.httpsCallable('deleteUserData');
+        final callable = FirebaseFunctions.instance.httpsCallable(
+          'deleteUserData',
+        );
         // ignore: unawaited_futures
-        callable
-            .call()
-            .timeout(const Duration(seconds: 5))
-            .catchError((_) async {
-          // CF 호출 실패 시, 클라이언트 폴백 삭제 (백그라운드)
+        Future(() async {
           try {
-            await _repository.deleteUser(userId);
-          } catch (_) {}
+            await callable.call().timeout(const Duration(seconds: 5));
+          } catch (e) {
+            // CF 호출 실패 시, 클라이언트 폴백 삭제 (백그라운드)
+            try {
+              await _repository.deleteUser(userId);
+            } catch (fallbackError) {
+              debugPrint('❌ 사용자 데이터 폴백 삭제 실패: $fallbackError');
+            }
+          }
         });
       } catch (_) {
         // 무시하고 폴백은 위에서 처리
@@ -323,7 +375,6 @@ class AuthService {
       await prefs.clear();
 
       // Firebase Auth 로컬 캐시 정리
-      await FirebaseAuth.instance.signOut();
     } catch (e) {
       debugPrint('⚠️ 로컬 데이터 정리 중 오류: $e');
     }

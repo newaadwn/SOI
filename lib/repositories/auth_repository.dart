@@ -463,6 +463,19 @@ class AuthRepository {
     return await snapshot.ref.getDownloadURL();
   }
 
+  // 파일 경로에서 프로필 이미지 업로드
+  Future<String> uploadProfileImageFromPath(
+    String uid,
+    String imagePath,
+  ) async {
+    final file = File(imagePath);
+    if (!file.existsSync()) {
+      throw Exception('이미지 파일을 찾을 수 없습니다.');
+    }
+
+    return await uploadProfileImage(uid, file);
+  }
+
   // ID 중복 확인
   Future<bool> isIdDuplicate(String id) async {
     try {

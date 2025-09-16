@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:soi/models/auth_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import '../services/share_service.dart';
 import '../repositories/friend_repository.dart';
 import '../controllers/comment_record_controller.dart';
 
@@ -15,12 +16,15 @@ class AuthController extends ChangeNotifier {
   bool _isUploading = false;
   List<String> _searchResults = [];
   final List<String> _searchProfileImage = [];
+  String? _pendingInviteLink;
+  bool _isInviteLinkLoading = false;
 
   // 네비게이션 키
   GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
   final AuthService _authService = AuthService();
+  final ShareService _shareService = ShareService();
   final FriendRepository _friendRepository = FriendRepository();
 
   // 프로필 이미지 캐싱을 위한 변수들 추가
@@ -33,6 +37,8 @@ class AuthController extends ChangeNotifier {
   List<String> get searchResults => _searchResults;
   List<String> get searchProfileImage => _searchProfileImage;
   bool get isUploading => _isUploading;
+  bool get isInviteLinkLoading => _isInviteLinkLoading;
+  String? get pendingInviteLink => _pendingInviteLink;
 
   // 현재 사용자 정보 관련 getters
   User? get currentUser => _authService.currentUser;
@@ -42,10 +48,17 @@ class AuthController extends ChangeNotifier {
   static const String _keyIsLoggedIn = 'is_logged_in';
   static const String _keyUserId = 'user_id';
   static const String _keyPhoneNumber = 'user_phone_number';
+  static const String _keyOnboardingCompleted = 'onboarding_completed';
+  static const String _keyRegistrationInProgress = 'registration_in_progress';
 
   // 검색 결과 초기화
   void clearSearchResults() {
     _searchResults.clear();
+    notifyListeners();
+  }
+
+  void clearPendingInviteLink() {
+    _pendingInviteLink = null;
     notifyListeners();
   }
 
@@ -169,6 +182,45 @@ class AuthController extends ChangeNotifier {
     return await _authService.getUserName();
   }
 
+  Future<void> prepareInviteLink({
+    required String inviterName,
+    required String inviterId,
+    String? inviterProfileImage,
+    bool forceRefresh = false,
+  }) async {
+    if (_isInviteLinkLoading) return;
+    if (!forceRefresh && _pendingInviteLink != null && _pendingInviteLink!.isNotEmpty) {
+      return;
+    }
+
+    _isInviteLinkLoading = true;
+    notifyListeners();
+
+    try {
+      final link = await _authService.createFriendInviteLink(
+        inviterName: inviterName,
+        inviterId: inviterId,
+        inviterProfileImage: inviterProfileImage,
+      );
+      _pendingInviteLink = link;
+    } catch (e) {
+      _pendingInviteLink = null;
+      debugPrint('친구 초대 링크 준비 실패: $e');
+    } finally {
+      _isInviteLinkLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> sharePreparedInviteLink({String? message}) async {
+    final link = _pendingInviteLink;
+    if (link == null || link.isEmpty) {
+      throw Exception('공유할 링크가 준비되지 않았습니다.');
+    }
+
+    await _shareService.shareLink(link, message: message);
+  }
+
   Future<String> getUserPhoneNumber() async {
     return await _authService.getUserPhoneNumber();
   }
@@ -210,11 +262,44 @@ class AuthController extends ChangeNotifier {
 
         return true;
       } else {
+        /* Lines 213-214 omitted */
         return false;
       }
     } catch (e) {
       _isUploading = false;
       notifyListeners();
+      return false;
+    }
+  }
+
+  // 파일 경로에서 프로필 이미지 업로드
+  Future<bool> uploadProfileImageFromPath(String imagePath) async {
+    try {
+      _isUploading = true;
+      notifyListeners();
+
+      final result = await _authService.updateProfileImageFromPath(imagePath);
+
+      _isUploading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        // 캐시 업데이트
+        final currentUserId = getUserId;
+        if (currentUserId != null) {
+          _profileImageCache[currentUserId] = result.data ?? '';
+        }
+
+        debugPrint('프로필 이미지 파일 업로드 성공');
+        return true;
+      } else {
+        debugPrint('프로필 이미지 파일 업로드 실패: ${result.error}');
+        return false;
+      }
+    } catch (e) {
+      _isUploading = false;
+      notifyListeners();
+      debugPrint('프로필 이미지 파일 업로드 오류: $e');
       return false;
     }
   }
@@ -299,6 +384,8 @@ class AuthController extends ChangeNotifier {
       await prefs.setBool(_keyIsLoggedIn, true);
       await prefs.setString(_keyUserId, userId);
       await prefs.setString(_keyPhoneNumber, phoneNumber);
+      await prefs.setBool(_keyOnboardingCompleted, true);
+      await prefs.remove(_keyRegistrationInProgress);
       // debugPrint('🔐 로그인 상태 저장 완료: $userId');
     } catch (e) {
       // debugPrint('❌ 로그인 상태 저장 실패: $e');
@@ -310,8 +397,10 @@ class AuthController extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool(_keyIsLoggedIn) ?? false;
-      // debugPrint('🔍 저장된 로그인 상태: $isLoggedIn');
-      return isLoggedIn;
+      final onboardingCompleted = prefs.getBool(_keyOnboardingCompleted) ?? false;
+      final result = isLoggedIn && onboardingCompleted;
+      // debugPrint('🔍 저장된 로그인 상태: $result (isLoggedIn=$isLoggedIn, onboarding=$onboardingCompleted)');
+      return result;
     } catch (e) {
       // debugPrint('❌ 로그인 상태 확인 실패: $e');
       return false;
@@ -398,9 +487,36 @@ class AuthController extends ChangeNotifier {
       await prefs.remove(_keyIsLoggedIn);
       await prefs.remove(_keyUserId);
       await prefs.remove(_keyPhoneNumber);
+      await prefs.remove(_keyOnboardingCompleted);
+      await prefs.remove(_keyRegistrationInProgress);
       // debugPrint('🗑️ 로그인 상태 삭제 완료');
     } catch (e) {
       // debugPrint('❌ 로그인 상태 삭제 실패: $e');
+    }
+  }
+
+  Future<void> _markRegistrationInProgress({
+    required String userId,
+    required String phoneNumber,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyUserId, userId);
+      await prefs.setString(_keyPhoneNumber, phoneNumber);
+      await prefs.setBool(_keyRegistrationInProgress, true);
+      await prefs.setBool(_keyOnboardingCompleted, false);
+      await prefs.remove(_keyIsLoggedIn);
+    } catch (e) {
+      // debugPrint('❌ 회원가입 진행 상태 저장 실패: $e');
+    }
+  }
+
+  Future<bool> isRegistrationInProgress() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_keyRegistrationInProgress) ?? false;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -419,8 +535,11 @@ class AuthController extends ChangeNotifier {
       // ✅ 로그인 성공 시 상태 저장
       final currentUser = _authService.currentUser;
       if (currentUser != null) {
-        await saveLoginState(userId: currentUser.uid, phoneNumber: phoneNumber);
-        // debugPrint("✅ 로그인 성공 및 상태 저장 완료!");
+        await _markRegistrationInProgress(
+          userId: currentUser.uid,
+          phoneNumber: phoneNumber,
+        );
+        // debugPrint("✅ SMS 인증 완료, 회원가입 진행 상태 저장");
         onSuccess();
       }
     } else {

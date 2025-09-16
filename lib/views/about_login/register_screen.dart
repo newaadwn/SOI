@@ -1,13 +1,16 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:soi/views/about_login/widgets/pages/agreement_page.dart';
 import '../../controllers/auth_controller.dart';
 import 'auth_final_screen.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'widgets/common/continue_button.dart';
+import 'widgets/pages/friend_add_and_share_page.dart';
 import 'widgets/pages/name_input_page.dart';
 import 'widgets/pages/birth_date_page.dart';
 import 'widgets/pages/phone_input_page.dart';
+import 'widgets/pages/select_profile_image_page.dart';
 import 'widgets/pages/sms_code_page.dart';
 import 'widgets/pages/id_input_page.dart';
 
@@ -36,6 +39,7 @@ class _AuthScreenState extends State<AuthScreen> {
   String name = '';
   String birthDate = '';
   String id = '';
+  String? profileImagePath; // 프로필 이미지 경로 추가
 
   // 현재 페이지 인덱스
   int currentPage = 0;
@@ -60,6 +64,12 @@ class _AuthScreenState extends State<AuthScreen> {
   String? idErrorMessage;
   Timer? debounceTimer;
 
+  // 약관 동의 상태 변수들
+  bool agreeAll = false;
+  bool agreeServiceTerms = false;
+  bool agreePrivacyTerms = false;
+  bool agreeMarketingInfo = false;
+
   // Note: Continue button visibility is controlled by currentPage (hide on SMS page)
 
   @override
@@ -73,7 +83,7 @@ class _AuthScreenState extends State<AuthScreen> {
     phoneController = TextEditingController();
     smsController = TextEditingController();
     idController = TextEditingController();
-    pageReady = List.generate(5, (_) => ValueNotifier<bool>(false));
+    pageReady = List.generate(8, (_) => ValueNotifier<bool>(false));
 
     // Provider에서 AuthViewModel을 가져오거나 widget에서 전달된 것을 사용
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -137,6 +147,9 @@ class _AuthScreenState extends State<AuthScreen> {
             onPageChanged: (index) {
               setState(() {
                 currentPage = index;
+                if (index == 7) {
+                  pageReady[7].value = true;
+                }
               });
             },
             children: [
@@ -239,6 +252,59 @@ class _AuthScreenState extends State<AuthScreen> {
                   }
                 },
               ),
+              // 5. 약관동의 페이지
+              AgreementPage(
+                name: name,
+                agreeAll: agreeAll,
+                agreeServiceTerms: agreeServiceTerms,
+                agreePrivacyTerms: agreePrivacyTerms,
+                agreeMarketingInfo: agreeMarketingInfo,
+                onToggleAll: (bool value) {
+                  setState(() {
+                    agreeAll = value;
+                    // 전체 동의 시 모든 개별 항목도 함께 변경
+                    agreeServiceTerms = value;
+                    agreePrivacyTerms = value;
+                    agreeMarketingInfo = value;
+                    // 약관 페이지 준비 상태 업데이트 (필수 약관이 모두 체크되었는지 확인)
+                    pageReady[5].value = agreeServiceTerms && agreePrivacyTerms;
+                  });
+                },
+                onToggleServiceTerms: (bool value) {
+                  setState(() {
+                    agreeServiceTerms = value;
+                    // 개별 항목 변경 시 전체 동의 상태 업데이트
+                    _updateAgreeAllStatus();
+                    pageReady[5].value = agreeServiceTerms && agreePrivacyTerms;
+                  });
+                },
+                onTogglePrivacyTerms: (bool value) {
+                  setState(() {
+                    agreePrivacyTerms = value;
+                    // 개별 항목 변경 시 전체 동의 상태 업데이트
+                    _updateAgreeAllStatus();
+                    pageReady[5].value = agreeServiceTerms && agreePrivacyTerms;
+                  });
+                },
+                onToggleMarketingInfo: (bool value) {
+                  setState(() {
+                    agreeMarketingInfo = value;
+                    // 개별 항목 변경 시 전체 동의 상태 업데이트
+                    _updateAgreeAllStatus();
+                  });
+                },
+              ),
+              // 6. 프로필 이미지 선택 페이지
+              SelectProfileImagePage(
+                onImageSelected: (String? imagePath) {
+                  setState(() {
+                    profileImagePath = imagePath;
+                    pageReady[6].value = true; // 이미지 선택은 선택사항이므로 항상 true
+                  });
+                },
+              ),
+              // 7. 친구 추가 및 공유 페이지
+              FriendAddAndSharePage(),
             ],
           ),
 
@@ -250,7 +316,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 bottom:
                     MediaQuery.of(context).viewInsets.bottom > 0
                         ? MediaQuery.of(context).viewInsets.bottom + 20.h
-                        : 50.h,
+                        : 30.h,
                 left: 0,
                 right: 0,
                 child: ValueListenableBuilder<bool>(
@@ -302,15 +368,41 @@ class _AuthScreenState extends State<AuthScreen> {
                                     break;
                                   case 4: // 아이디
                                     id = idController.text;
+                                    _authController.prepareInviteLink(
+                                      inviterName: name,
+                                      inviterId: id,
+                                      forceRefresh: true,
+                                    );
+                                    _pageController.nextPage(
+                                      duration: Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                    );
+                                    break;
+                                  case 5: // 약관동의
+                                    _pageController.nextPage(
+                                      duration: Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                    );
+                                    break;
+                                  // 여기서 프로필 설정 페이지로 넘어가야함
+                                  case 6:
+                                    _pageController.nextPage(
+                                      duration: Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                    );
+                                    break;
+                                  case 7:
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
                                         builder:
-                                            (_) => AuthFinalScreen(
+                                            (context) => AuthFinalScreen(
                                               id: id,
                                               name: name,
                                               phone: phoneNumber,
                                               birthDate: birthDate,
+                                              profileImagePath:
+                                                  profileImagePath,
                                             ),
                                       ),
                                     );
@@ -352,5 +444,10 @@ class _AuthScreenState extends State<AuthScreen> {
         curve: Curves.easeInOut,
       );
     });
+  }
+
+  // 전체 동의 상태 업데이트 함수
+  void _updateAgreeAllStatus() {
+    agreeAll = agreeServiceTerms && agreePrivacyTerms && agreeMarketingInfo;
   }
 }
