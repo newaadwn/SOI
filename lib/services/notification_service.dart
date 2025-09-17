@@ -63,11 +63,16 @@ class NotificationService {
         orElse: () => throw Exception('카테고리를 찾을 수 없습니다: $categoryId'),
       );
 
+      debugPrint(
+        '📁 카테고리 정보 - 이름: ${category.name}, 멤버 수: ${category.mates.length}, 멤버: ${category.mates}',
+      );
+
       final actor = await _authService.getCurrentUser();
       if (actor == null) {
         throw Exception('사용자 정보를 찾을 수 없습니다: $actorUserId');
       }
 
+      int notificationCount = 0;
       for (String recipientId in recipientUserIds) {
         if (recipientId != actorUserId) {
           await _createNotification(
@@ -82,8 +87,11 @@ class NotificationService {
             actorName: actor.name,
             actorProfileImage: actor.profileImage,
           );
+          notificationCount++;
         }
       }
+
+      debugPrint('✅ 카테고리 초대 알림 생성 완료 - 생성된 알림 수: $notificationCount');
     } catch (e) {
       debugPrint('❌ 카테고리 초대 알림 생성 실패: $e');
       rethrow;
@@ -106,6 +114,10 @@ class NotificationService {
       final category = categories.firstWhere(
         (cat) => cat.id == categoryId,
         orElse: () => throw Exception('카테고리를 찾을 수 없습니다: $categoryId'),
+      );
+
+      debugPrint(
+        '📁 사진 추가 - 카테고리: ${category.name}, 멤버 수: ${category.mates.length}, 멤버: ${category.mates}',
       );
 
       String imageUrl = photoUrl ?? '';
@@ -131,6 +143,7 @@ class NotificationService {
         throw Exception('사용자 정보를 찾을 수 없습니다: $actorUserId');
       }
 
+      int notificationCount = 0;
       for (String memberId in category.mates) {
         if (memberId != actorUserId) {
           await _createNotification(
@@ -147,8 +160,11 @@ class NotificationService {
             actorName: actor.name,
             actorProfileImage: actor.profileImage,
           );
+          notificationCount++;
         }
       }
+
+      debugPrint('✅ 사진 추가 알림 생성 완료 - 생성된 알림 수: $notificationCount');
     } catch (e) {
       debugPrint('❌ 사진 추가 알림 생성 실패: $e');
       rethrow;
@@ -166,19 +182,24 @@ class NotificationService {
         throw ArgumentError('필수 파라미터가 누락되었습니다.');
       }
 
-      final user = await _authService.getCurrentUser();
-      if (user == null) {
-        throw Exception('사용자 정보를 찾을 수 없습니다');
+      final actor = await _authService.getCurrentUser();
+      if (actor == null) {
+        throw Exception('사용자 정보를 찾을 수 없습니다: $actorUserId');
       }
 
-      final categories = await categoryService.getUserCategories(user.uid);
+      // 모든 카테고리에서 해당 사진이 있는 카테고리 찾기
+      final categories = await categoryService.getUserCategories(actorUserId);
       String? targetCategoryId;
+      String? targetCategoryName;
+      String? photoThumbnailUrl;
 
       for (final category in categories) {
         final photos = await photoService.getPhotosByCategory(category.id);
-        final photoExists = photos.any((p) => p.id == photoId);
-        if (photoExists) {
+        final photo = photos.where((p) => p.id == photoId).firstOrNull;
+        if (photo != null) {
           targetCategoryId = category.id;
+          targetCategoryName = category.name;
+          photoThumbnailUrl = photo.imageUrl;
           break;
         }
       }
@@ -187,31 +208,25 @@ class NotificationService {
         throw Exception('사진이 속한 카테고리를 찾을 수 없습니다: $photoId');
       }
 
-      final category = categories.firstWhere(
+      final targetCategory = categories.firstWhere(
         (cat) => cat.id == targetCategoryId,
       );
-      final photos = await photoService.getPhotosByCategory(targetCategoryId);
-      final photo = photos.firstWhere((p) => p.id == photoId);
 
-      final actor = await _authService.getCurrentUser();
-      if (actor == null) {
-        throw Exception('사용자 정보를 찾을 수 없습니다: $actorUserId');
-      }
-
-      for (String memberId in category.mates) {
+      // 카테고리의 다른 멤버들에게 알림 생성
+      for (String memberId in targetCategory.mates) {
         if (memberId != actorUserId) {
           await _createNotification(
             recipientUserId: memberId,
             actorUserId: actorUserId,
             type: NotificationType.voiceCommentAdded,
-            title: "${actor.name}님이 음성 댓글을 남겼습니다",
+            title: "${actor.name}님이 음성 댓글을 달았습니다",
             categoryId: targetCategoryId,
-            categoryName: category.name,
+            categoryName: targetCategoryName,
             photoId: photoId,
             commentId: commentId,
-            thumbnailUrl: photo.imageUrl,
-            categoryThumbnailUrl: category.categoryPhotoUrl,
-            photoThumbnailUrl: photo.imageUrl,
+            thumbnailUrl: photoThumbnailUrl,
+            categoryThumbnailUrl: targetCategory.categoryPhotoUrl,
+            photoThumbnailUrl: photoThumbnailUrl,
             actorName: actor.name,
             actorProfileImage: actor.profileImage,
           );
@@ -219,6 +234,42 @@ class NotificationService {
       }
     } catch (e) {
       debugPrint('❌ 음성 댓글 알림 생성 실패: $e');
+      rethrow;
+    }
+  }
+
+  /// 친구 요청 알림 생성
+  Future<void> createFriendRequestNotification({
+    required String actorUserId,
+    required String recipientUserId,
+  }) async {
+    try {
+      if (actorUserId.isEmpty || recipientUserId.isEmpty) {
+        throw ArgumentError('필수 파라미터가 누락되었습니다.');
+      }
+
+      if (actorUserId == recipientUserId) {
+        debugPrint('자신에게는 친구 요청 알림을 보낼 수 없습니다.');
+        return;
+      }
+
+      final actor = await _authService.getCurrentUser();
+      if (actor == null) {
+        throw Exception('사용자 정보를 찾을 수 없습니다: $actorUserId');
+      }
+
+      await _createNotification(
+        recipientUserId: recipientUserId,
+        actorUserId: actorUserId,
+        type: NotificationType.friendRequest,
+        title: '${actor.name}님이 친구 요청을 보냈습니다',
+        actorName: actor.name,
+        actorProfileImage: actor.profileImage,
+      );
+
+      debugPrint('✅ 친구 요청 알림 생성 완료: $actorUserId -> $recipientUserId');
+    } catch (e) {
+      debugPrint('❌ 친구 요청 알림 생성 실패: $e');
       rethrow;
     }
   }

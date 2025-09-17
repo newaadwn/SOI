@@ -181,9 +181,13 @@ class AuthService {
   // 현재 사용자 정보 조회
   Future<AuthModel?> getCurrentUser() async {
     final currentUser = _repository.currentUser;
-    if (currentUser == null) return null;
+    if (currentUser == null) {
+      return null;
+    }
 
-    return await _repository.getUser(currentUser.uid);
+    final authModel = await _repository.getUser(currentUser.uid);
+
+    return authModel;
   }
 
   // 사용자 ID 조회

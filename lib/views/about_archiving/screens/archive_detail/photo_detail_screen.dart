@@ -422,6 +422,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       final userId = _authController?.currentUser?.uid;
       if (userId == null) return;
 
+      // 현재 로그인한 사용자의 프로필 이미지 URL 가져오기
+      final currentUserProfileImageUrl = await _authController!
+          .getUserProfileImageUrlWithCache(userId);
+
       _pendingVoiceComments[photoId] = CommentRecordModel(
         id: 'pending',
         audioUrl: audioPath,
@@ -429,7 +433,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         photoId: photoId,
         waveformData: waveformData,
         duration: duration,
-        profileImageUrl: _userProfileImageUrl,
+        profileImageUrl: currentUserProfileImageUrl, // 현재 사용자 프로필 이미지 사용
         createdAt: DateTime.now(),
         relativePosition: const Offset(0.5, 0.5),
       );
@@ -451,6 +455,11 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     try {
       final userId = _authController?.currentUser?.uid;
       if (userId == null) return;
+
+      // 현재 로그인한 사용자의 프로필 이미지 URL 가져오기
+      final currentUserProfileImageUrl = await _authController!
+          .getUserProfileImageUrlWithCache(userId);
+
       final controller = CommentRecordController();
       final comment = await controller.createCommentRecord(
         audioFilePath: pending.audioUrl,
@@ -458,7 +467,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         recorderUser: userId,
         waveformData: pending.waveformData,
         duration: pending.duration,
-        profileImageUrl: pending.profileImageUrl,
+        profileImageUrl: currentUserProfileImageUrl, // 현재 사용자 프로필 이미지 사용
         relativePosition: pending.relativePosition,
       );
       if (comment != null && mounted) {

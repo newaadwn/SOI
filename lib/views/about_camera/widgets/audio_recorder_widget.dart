@@ -13,32 +13,33 @@ import '../../../utils/position_converter.dart';
 import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
 
 /// 오디오 녹음 위젯
-/// 
+///
 /// 음성 녹음과 재생 기능을 제공하는 위젯입니다.
 /// 댓글 모드와 편집 모드에서 서로 다른 동작을 합니다.
 
 enum RecordingState {
-  idle,      // 녹음 대기 상태
+  idle, // 녹음 대기 상태
   recording, // 녹음 중
-  recorded,  // 녹음 완료 상태
-  profile,   // 프로필 모드 (댓글용)
+  recorded, // 녹음 완료 상태
+  profile, // 프로필 모드 (댓글용)
 }
 
 class AudioRecorderWidget extends StatefulWidget {
   // 기본 콜백들
   final Function(String?, List<double>?)? onRecordingCompleted;
-  final Function(String audioFilePath, List<double> waveformData, int duration)? onRecordingFinished;
+  final Function(String audioFilePath, List<double> waveformData, int duration)?
+  onRecordingFinished;
   final Function(CommentRecordModel)? onCommentSaved;
-  
+
   // 동작 설정
   final bool autoStart;
   final bool isCommentMode;
   final bool isCurrentUserPhoto;
-  
+
   // 댓글 관련 설정
   final String? photoId;
   final CommentRecordModel? savedComment;
-  
+
   // 프로필 위치 관련
   final Function(Offset)? onProfileImageDragged;
   final Offset? profileImagePosition;
@@ -67,12 +68,11 @@ class AudioRecorderWidget extends StatefulWidget {
 
 class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
     with SingleTickerProviderStateMixin {
-  
   // ========== 컨트롤러들 ==========
   late AudioController _audioController;
   late RecorderController recorderController;
   PlayerController? playerController;
-  
+
   // 애니메이션 컨트롤러
   late AnimationController _pulseAnimationController;
   late Animation<double> _pulseAnimation;
@@ -80,15 +80,15 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
   // ========== 상태 관리 변수들 ==========
   RecordingState _currentState = RecordingState.idle;
   RecordingState? _lastState;
-  
+
   // 녹음 데이터
   String? _recordedFilePath;
   List<double>? _waveformData;
-  
+
   // 댓글 관련
   String? _lastSavedCommentId;
   String? _userProfileImageUrl;
-  
+
   // 오디오 상태 모니터링
   Timer? _audioControllerTimer;
   bool _wasRecording = true;
@@ -138,12 +138,13 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
   }
 
   void _initializeAudioControllers() {
-    recorderController = RecorderController()
-      ..androidEncoder = AndroidEncoder.aac
-      ..androidOutputFormat = AndroidOutputFormat.mpeg4
-      ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
-      ..sampleRate = 44100;
-    
+    recorderController =
+        RecorderController()
+          ..androidEncoder = AndroidEncoder.aac
+          ..androidOutputFormat = AndroidOutputFormat.mpeg4
+          ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
+          ..sampleRate = 44100;
+
     recorderController.checkPermission();
     playerController = PlayerController();
     _audioController = Provider.of<AudioController>(context, listen: false);
@@ -187,7 +188,9 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
     try {
       debugPrint('녹음 정지 및 재생 준비 시작...');
 
-      List<double> waveformData = List<double>.from(recorderController.waveData);
+      List<double> waveformData = List<double>.from(
+        recorderController.waveData,
+      );
 
       if (waveformData.isNotEmpty) {
         waveformData = waveformData.map((value) => value.abs()).toList();
@@ -205,10 +208,11 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
           );
 
           if (waveformData.isEmpty) {
-            final extractedWaveform = await playerController!.extractWaveformData(
-              path: _audioController.currentRecordingPath!,
-              noOfSamples: 100,
-            );
+            final extractedWaveform = await playerController!
+                .extractWaveformData(
+                  path: _audioController.currentRecordingPath!,
+                  noOfSamples: 100,
+                );
             if (extractedWaveform.isNotEmpty) {
               waveformData = extractedWaveform;
             }
@@ -343,11 +347,16 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
 
   Future<void> _loadUserProfileImage() async {
     try {
-      final authController = Provider.of<AuthController>(context, listen: false);
+      final authController = Provider.of<AuthController>(
+        context,
+        listen: false,
+      );
       final currentUserId = authController.getUserId;
 
       if (currentUserId != null) {
-        final profileImageUrl = await authController.getUserProfileImageUrlById(currentUserId);
+        final profileImageUrl = await authController.getUserProfileImageUrlById(
+          currentUserId,
+        );
 
         if (mounted) {
           setState(() {
@@ -366,16 +375,25 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
     required int duration,
   }) async {
     try {
-      final authController = Provider.of<AuthController>(context, listen: false);
+      final authController = Provider.of<AuthController>(
+        context,
+        listen: false,
+      );
       final currentUserId = authController.getUserId;
 
       if (currentUserId == null) {
+        debugPrint('❌ 현재 사용자 ID가 null입니다');
         return;
       }
 
-      final profileImageUrl = await authController.getUserProfileImageUrlWithCache(currentUserId);
+      debugPrint('🔍 음성 댓글 저장 - 현재 사용자 ID: $currentUserId');
+
+      final profileImageUrl = await authController
+          .getUserProfileImageUrlWithCache(currentUserId);
+      debugPrint('🔍 가져온 프로필 이미지 URL: $profileImageUrl');
       final commentRecordController = CommentRecordController();
-      final currentProfilePosition = widget.getProfileImagePosition?.call() ?? widget.profileImagePosition;
+      final currentProfilePosition =
+          widget.getProfileImagePosition?.call() ?? widget.profileImagePosition;
 
       Offset? relativePosition;
       if (currentProfilePosition != null) {
@@ -416,7 +434,9 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
 
   void _startAudioControllerListener() {
     _wasRecording = true;
-    _audioControllerTimer = Timer.periodic(Duration(milliseconds: 100), (timer) {
+    _audioControllerTimer = Timer.periodic(Duration(milliseconds: 100), (
+      timer,
+    ) {
       if (!mounted) {
         timer.cancel();
         _audioControllerTimer = null;
@@ -444,13 +464,15 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
         return;
       }
 
-      List<double> waveformData = List<double>.from(recorderController.waveData);
+      List<double> waveformData = List<double>.from(
+        recorderController.waveData,
+      );
       await recorderController.stop();
 
       if (waveformData.isNotEmpty) {
         waveformData = waveformData.map((value) => value.abs()).toList();
       }
-      
+
       _recordedFilePath = _audioController.currentRecordingPath;
 
       if (playerController != null && _recordedFilePath != null) {
@@ -537,8 +559,9 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
 
   @override
   Widget build(BuildContext context) {
-    bool shouldAnimate = !(_lastState == RecordingState.recording &&
-        _currentState == RecordingState.recorded);
+    bool shouldAnimate =
+        !(_lastState == RecordingState.recording &&
+            _currentState == RecordingState.recorded);
 
     if (!shouldAnimate) {
       return _buildCurrentStateWidget();
@@ -583,7 +606,8 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
       case RecordingState.recording:
         return Selector<AudioController, String>(
           key: ValueKey(widgetKey),
-          selector: (context, controller) => controller.formattedRecordingDuration,
+          selector:
+              (context, controller) => controller.formattedRecordingDuration,
           builder: (context, duration, child) {
             return SizedBox(
               height: 52,
@@ -671,42 +695,27 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
           SizedBox(width: 17.w),
           // 파형 표시 영역
           Expanded(
-            child: isRecording
-                ? AudioWaveforms(
-                  size: Size(1, 52.h),
-                  recorderController: recorderController,
-                  waveStyle: const WaveStyle(
-                    waveColor: Colors.white,
-                    extendWaveform: true,
-                    showMiddleLine: false,
-                  ),
-                )
-                : _buildWaveformDisplay(),
+            child:
+                isRecording
+                    ? AudioWaveforms(
+                      size: Size(1, 52.h),
+                      recorderController: recorderController,
+                      waveStyle: const WaveStyle(
+                        waveColor: Colors.white,
+                        extendWaveform: true,
+                        showMiddleLine: false,
+                      ),
+                    )
+                    : _buildWaveformDisplay(),
           ),
           SizedBox(width: 13.w),
           // 시간 표시
           SizedBox(
             width: 45.w,
-            child: isRecording
-                ? Text(
-                  duration ?? '00:00',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12.sp,
-                    fontFamily: 'Pretendard',
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: -0.40,
-                  ),
-                )
-                : StreamBuilder<int>(
-                  stream: playerController?.onCurrentDurationChanged ?? const Stream.empty(),
-                  builder: (context, snapshot) {
-                    final currentDurationMs = snapshot.data ?? 0;
-                    final currentDuration = Duration(milliseconds: currentDurationMs);
-                    final minutes = currentDuration.inMinutes;
-                    final seconds = currentDuration.inSeconds % 60;
-                    return Text(
-                      '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+            child:
+                isRecording
+                    ? Text(
+                      duration ?? '00:00',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 12.sp,
@@ -714,28 +723,53 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
                         fontWeight: FontWeight.w500,
                         letterSpacing: -0.40,
                       ),
-                    );
-                  },
-                ),
+                    )
+                    : StreamBuilder<int>(
+                      stream:
+                          playerController?.onCurrentDurationChanged ??
+                          const Stream.empty(),
+                      builder: (context, snapshot) {
+                        final currentDurationMs = snapshot.data ?? 0;
+                        final currentDuration = Duration(
+                          milliseconds: currentDurationMs,
+                        );
+                        final minutes = currentDuration.inMinutes;
+                        final seconds = currentDuration.inSeconds % 60;
+                        return Text(
+                          '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12.sp,
+                            fontFamily: 'Pretendard',
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: -0.40,
+                          ),
+                        );
+                      },
+                    ),
           ),
           // 재생/정지 버튼
           Padding(
             padding: EdgeInsets.only(right: 19.w),
             child: IconButton(
-              onPressed: isRecording ? _stopAndPreparePlayback : _togglePlayback,
-              icon: isRecording
-                  ? Icon(Icons.stop, color: Colors.white, size: 28.sp)
-                  : StreamBuilder<PlayerState>(
-                    stream: playerController?.onPlayerStateChanged ?? const Stream.empty(),
-                    builder: (context, snapshot) {
-                      final isPlaying = snapshot.data?.isPlaying ?? false;
-                      return Icon(
-                        isPlaying ? Icons.pause : Icons.play_arrow,
-                        color: Colors.white,
-                        size: 28.sp,
-                      );
-                    },
-                  ),
+              onPressed:
+                  isRecording ? _stopAndPreparePlayback : _togglePlayback,
+              icon:
+                  isRecording
+                      ? Icon(Icons.stop, color: Colors.white, size: 28.sp)
+                      : StreamBuilder<PlayerState>(
+                        stream:
+                            playerController?.onPlayerStateChanged ??
+                            const Stream.empty(),
+                        builder: (context, snapshot) {
+                          final isPlaying = snapshot.data?.isPlaying ?? false;
+                          return Icon(
+                            isPlaying ? Icons.pause : Icons.play_arrow,
+                            color: Colors.white,
+                            size: 28.sp,
+                          );
+                        },
+                      ),
             ),
           ),
         ],
@@ -748,13 +782,16 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
         ? GestureDetector(
           onTap: _onWaveformTapped,
           child: StreamBuilder<int>(
-            stream: playerController?.onCurrentDurationChanged ?? const Stream.empty(),
+            stream:
+                playerController?.onCurrentDurationChanged ??
+                const Stream.empty(),
             builder: (context, positionSnapshot) {
               final currentPosition = positionSnapshot.data ?? 0;
               final totalDuration = playerController?.maxDuration ?? 1;
-              final progress = totalDuration > 0
-                  ? (currentPosition / totalDuration).clamp(0.0, 1.0)
-                  : 0.0;
+              final progress =
+                  totalDuration > 0
+                      ? (currentPosition / totalDuration).clamp(0.0, 1.0)
+                      : 0.0;
 
               return CustomWaveformWidget(
                 waveformData: _waveformData!,
@@ -804,27 +841,29 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
         ],
       ),
       child: ClipOval(
-        child: _userProfileImageUrl != null && _userProfileImageUrl!.isNotEmpty
-            ? Image.network(
-              _userProfileImageUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                color: Colors.grey.shade600,
-                child: Icon(
-                  Icons.person,
-                  color: Colors.white,
-                  size: (screenWidth * 0.08).clamp(30.0, 40.0),
+        child:
+            _userProfileImageUrl != null && _userProfileImageUrl!.isNotEmpty
+                ? Image.network(
+                  _userProfileImageUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder:
+                      (context, error, stackTrace) => Container(
+                        color: Colors.grey.shade600,
+                        child: Icon(
+                          Icons.person,
+                          color: Colors.white,
+                          size: (screenWidth * 0.08).clamp(30.0, 40.0),
+                        ),
+                      ),
+                )
+                : Container(
+                  color: Colors.grey.shade600,
+                  child: Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: (screenWidth * 0.08).clamp(30.0, 40.0),
+                  ),
                 ),
-              ),
-            )
-            : Container(
-              color: Colors.grey.shade600,
-              child: Icon(
-                Icons.person,
-                color: Colors.white,
-                size: (screenWidth * 0.08).clamp(30.0, 40.0),
-              ),
-            ),
       ),
     );
 

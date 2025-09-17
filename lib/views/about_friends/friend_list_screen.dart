@@ -97,7 +97,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
                 padding: EdgeInsets.symmetric(horizontal: 20.w),
                 child: Container(
                   width: double.infinity,
-                  height: 47.h,
+                  height: 47,
                   decoration: BoxDecoration(
                     color: const Color(0xff292929),
                     borderRadius: BorderRadius.circular(8),
@@ -116,16 +116,13 @@ class _FriendListScreenState extends State<FriendListScreen> {
                         fontWeight: FontWeight.w500,
                         fontFamily: 'Pretendard',
                       ),
+
                       prefixIcon: Icon(
                         Icons.search,
                         color: const Color(0xffd9d9d9),
                         size: 24.w,
                       ),
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: 20.w,
-                        vertical: 12.h,
-                      ),
                     ),
                   ),
                 ),
@@ -473,7 +470,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
       context: context,
       builder: (BuildContext context) {
         return Container(
-          height: 358.h,
+          height: 358.sp,
           decoration: BoxDecoration(
             color: const Color(0xff323232),
             borderRadius: BorderRadius.only(
@@ -495,7 +492,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
                     ),
                   ),
                 ),
-                Spacer(),
+                SizedBox(height: 20.h),
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: <Widget>[
@@ -505,8 +502,8 @@ class _FriendListScreenState extends State<FriendListScreen> {
                           profileImageUrl != null && profileImageUrl.isNotEmpty
                               ? Image(
                                 image: NetworkImage(profileImageUrl),
-                                width: 70,
-                                height: 70,
+                                width: 70.sp,
+                                height: 70.sp,
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) {
                                   return _buildDefaultAvatar(friendName);
@@ -522,7 +519,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: const Color(0xFFF8F8F8),
-                        fontSize: 19.78,
+                        fontSize: 19.78.sp,
                         fontFamily: 'Pretendard Variable',
                         fontWeight: FontWeight.w700,
                       ),
@@ -535,7 +532,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: const Color(0xFFF8F8F8),
-                        fontSize: 16,
+                        fontSize: 16.sp,
                         fontFamily: 'Pretendard Variable',
                         fontWeight: FontWeight.w400,
                       ),
@@ -553,6 +550,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
                             borderRadius: BorderRadius.circular(19),
                           ),
                         ),
+                        padding: WidgetStateProperty.all(EdgeInsets.zero),
                       ),
                       child: Container(
                         width: 294.w,
@@ -562,7 +560,7 @@ class _FriendListScreenState extends State<FriendListScreen> {
                           actionButtonText,
                           style: TextStyle(
                             color: actionButtonTextColor,
-                            fontSize: 17.78,
+                            fontSize: 17.78.sp,
                             fontFamily: 'Pretendard Variable',
                             fontWeight: FontWeight.w600,
                           ),
@@ -606,7 +604,6 @@ class _FriendListScreenState extends State<FriendListScreen> {
                     ),
                   ],
                 ),
-                Spacer(),
               ],
             ),
           ),
@@ -618,8 +615,8 @@ class _FriendListScreenState extends State<FriendListScreen> {
   /// 기본 아바타 위젯
   Widget _buildDefaultAvatar(String friendName) {
     return Container(
-      width: 70,
-      height: 70,
+      width: 70.w,
+      height: 70.h,
       decoration: BoxDecoration(
         color: const Color(0xff666666),
         shape: BoxShape.circle,

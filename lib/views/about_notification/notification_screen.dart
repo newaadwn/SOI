@@ -110,6 +110,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
       case NotificationType.voiceCommentAdded:
         _navigateToPhoto(notification); // 사진으로 이동 (댓글 포함)
         break;
+      case NotificationType.friendRequest:
+        Navigator.of(context).pushNamed('/friend_requests');
+        break;
     }
   }
 

@@ -114,6 +114,8 @@ class NotificationItemWidget extends StatelessWidget {
         return _buildPhotoThumbnail();
       case NotificationType.voiceCommentAdded:
         return _buildVoiceCommentThumbnail();
+      case NotificationType.friendRequest:
+        return _buildFriendRequestThumbnail();
     }
   }
 
@@ -188,6 +190,19 @@ class NotificationItemWidget extends StatelessWidget {
     );
   }
 
+  /// 친구 요청 썸네일
+  Widget _buildFriendRequestThumbnail() {
+    return Container(
+      width: 44.sp,
+      height: 44.sp,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8.r),
+        color: const Color(0xFF323232),
+      ),
+      child: Icon(Icons.person_add_alt, size: 24.sp),
+    );
+  }
+
   /// 알림 타입별 텍스트 반환
   String _getNotificationText() {
     switch (notification.type) {
@@ -197,6 +212,8 @@ class NotificationItemWidget extends StatelessWidget {
         return '님이 "${notification.categoryName}" 카테고리에 사진을 추가하였습니다.';
       case NotificationType.voiceCommentAdded:
         return '님이 음성 댓글을 달았습니다.';
+      case NotificationType.friendRequest:
+        return '님이 친구 요청을 보냈습니다.';
     }
   }
 

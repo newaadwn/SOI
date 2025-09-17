@@ -5,6 +5,7 @@ enum NotificationType {
   categoryInvite, // 카테고리 초대
   photoAdded, // 사진 추가
   voiceCommentAdded, // 음성 댓글 추가
+  friendRequest, // 친구 요청
 }
 
 /// 알림 데이터 모델
@@ -162,6 +163,8 @@ class NotificationModel {
         return 'photo_camera';
       case NotificationType.voiceCommentAdded:
         return 'mic';
+      case NotificationType.friendRequest:
+        return 'person_add_alt';
     }
   }
 
@@ -174,6 +177,8 @@ class NotificationModel {
         return '#2196F3'; // Blue
       case NotificationType.voiceCommentAdded:
         return '#FF9800'; // Orange
+      case NotificationType.friendRequest:
+        return '#9C27B0'; // Purple
     }
   }
 
