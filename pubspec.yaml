@@ -81,7 +81,7 @@ dependencies:
   iconoir_flutter: ^7.11.0
   colorful_iconify_flutter: ^0.0.5
   antdesign_icons: ^0.0.3
-  flutter_svg: ^2.2.0
+  flutter_svg: ^2.2.1
   flutter_contacts: ^1.1.9+2
   image_gallery_saver: ^2.0.3
   supabase_flutter: ^2.10.0

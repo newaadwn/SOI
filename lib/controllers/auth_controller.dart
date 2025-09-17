@@ -156,10 +156,16 @@ class AuthController extends ChangeNotifier {
 
   // SMS 코드로 로그인
   Future<void> signInWithSmsCode(String smsCode, Function() onSuccess) async {
-    await _authService.signInWithSmsCode(
+    final result = await _authService.signInWithSmsCode(
       verificationId: _verificationId,
       smsCode: smsCode,
     );
+
+    if (result.isSuccess) {
+      onSuccess();
+    } else {
+      throw Exception(result.error ?? '인증 실패');
+    }
   }
 
   // 사용자 정보 저장
@@ -189,7 +195,9 @@ class AuthController extends ChangeNotifier {
     bool forceRefresh = false,
   }) async {
     if (_isInviteLinkLoading) return;
-    if (!forceRefresh && _pendingInviteLink != null && _pendingInviteLink!.isNotEmpty) {
+    if (!forceRefresh &&
+        _pendingInviteLink != null &&
+        _pendingInviteLink!.isNotEmpty) {
       return;
     }
 
@@ -397,7 +405,8 @@ class AuthController extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool(_keyIsLoggedIn) ?? false;
-      final onboardingCompleted = prefs.getBool(_keyOnboardingCompleted) ?? false;
+      final onboardingCompleted =
+          prefs.getBool(_keyOnboardingCompleted) ?? false;
       final result = isLoggedIn && onboardingCompleted;
       // debugPrint('🔍 저장된 로그인 상태: $result (isLoggedIn=$isLoggedIn, onboarding=$onboardingCompleted)');
       return result;

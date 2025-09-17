@@ -352,30 +352,52 @@ class _LoginScreenState extends State<LoginScreen> {
     // SMS 코드 저장
     smsCode = code;
 
-    // SMS 코드로 인증 및 상태 저장
-    _authController.signInWithSmsCodeAndSave(smsCode, phoneNumber, () async {
-      // 인증 성공 후, 사용자가 이미 존재하는지 확인
-      final userId = _authController.getUserId;
-      final userExists = userId != null;
+    try {
+      // SMS 코드로 로그인 시도
+      await _authController.signInWithSmsCode(smsCode, () async {
+        // 인증 성공 후, 사용자 정보 확인
+        final currentUser = _authController.currentUser;
 
+        if (currentUser != null) {
+          // 사용자 정보가 Firestore에 있는지 확인 (기존 사용자인지 확인)
+          final userInfo = await _authController.getUserInfo(currentUser.uid);
+          final userExists = userInfo != null;
+
+          setState(() {
+            isCheckingUser = false;
+            isVerified = true;
+            this.userExists = userExists;
+          });
+
+          if (userExists) {
+            // ✅ 기존 사용자: 완전한 로그인 상태 저장
+            await _authController.saveLoginState(
+              userId: currentUser.uid,
+              phoneNumber: phoneNumber,
+            );
+
+            // 홈 화면으로 이동
+            Navigator.pushNamedAndRemoveUntil(
+              context,
+              '/home_navigation_screen',
+              (route) => false,
+            );
+          } else {
+            // 새로운 사용자: 회원가입 진행 상태만 저장 (signInWithSmsCodeAndSave 사용)
+            _authController.signInWithSmsCodeAndSave(smsCode, phoneNumber, () {
+              // UI 업데이트를 위해 setState 호출
+              setState(() {});
+            });
+          }
+        }
+      });
+    } catch (e) {
       setState(() {
         isCheckingUser = false;
-        isVerified = true;
-        this.userExists = userExists;
       });
-
-      if (userExists) {
-        // 사용자가 존재하면 홈 화면으로 이동
-        Navigator.pushNamedAndRemoveUntil(
-          context,
-          '/home_navigation_screen',
-          (route) => false,
-        );
-      } else {
-        // 사용자가 존재하지 않을 때 UI 업데이트를 위해 setState 호출
-        setState(() {});
-      }
-    });
+      // 에러 처리
+      debugPrint('로그인 오류: $e');
+    }
   }
 
   // -------------------------

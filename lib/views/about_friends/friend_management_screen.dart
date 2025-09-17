@@ -68,8 +68,8 @@ class _FriendManagementScreenState extends State<FriendManagementScreen>
   void dispose() {
     // 페이지를 벗어날 때 동기화 일시 중지 (비동기로 처리)
     _pauseSyncIfNeededAsync();
-    _authController?.dispose();
-    _contactController?.dispose();
+    // Provider로 관리되는 컨트롤러들은 직접 dispose하지 않음
+    // _authController와 _contactController는 Provider가 관리하므로 dispose 불필요
     super.dispose();
   }
 
