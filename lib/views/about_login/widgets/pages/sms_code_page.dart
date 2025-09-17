@@ -18,36 +18,43 @@ class SmsCodePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const PageTitle(title: '인증번호를 입력해주세요.'),
-        SizedBox(height: 24.h),
-        CustomTextField(
-          controller: controller,
-          hintText: '인증번호',
-          keyboardType: TextInputType.number,
-          borderRadius: 16.5,
-          contentPadding: EdgeInsets.only(bottom: 7.h),
-          onChanged: onChanged,
-        ),
-        TextButton(
-          onPressed: onResendPressed,
-          child: RichText(
-            text: TextSpan(
-              text: '인증번호 다시 받기',
-              style: TextStyle(
-                color: const Color(0xFFF8F8F8),
-                fontSize: 12,
-                fontFamily: 'Pretendard Variable',
-                fontWeight: FontWeight.w500,
-                decoration: TextDecoration.underline,
+    // 키보드 높이 계산
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final verticalOffset = keyboardHeight > 0 ? -30.0 : 0.0; // 키보드가 올라올 때 위로 이동
+
+    return Transform.translate(
+      offset: Offset(0, verticalOffset),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const PageTitle(title: '인증번호를 입력해주세요.'),
+          SizedBox(height: 24.h),
+          CustomTextField(
+            controller: controller,
+            hintText: '인증번호',
+            keyboardType: TextInputType.number,
+            borderRadius: 16.5,
+            contentPadding: EdgeInsets.only(bottom: 7.h),
+            onChanged: onChanged,
+          ),
+          TextButton(
+            onPressed: onResendPressed,
+            child: RichText(
+              text: TextSpan(
+                text: '인증번호 다시 받기',
+                style: TextStyle(
+                  color: const Color(0xFFF8F8F8),
+                  fontSize: 12,
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: FontWeight.w500,
+                  decoration: TextDecoration.underline,
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

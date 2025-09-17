@@ -1,8 +1,10 @@
-import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter_screenutil/flutter_screenutil.dart'; // File 클래스를 사용하기 위한 import 추가
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 // 이미지를 표시하는 위젯
 // 로컬 이미지 경로나 Firebase Storage URL을 기반으로 이미지를 표시합니다.
@@ -13,6 +15,7 @@ class PhotoDisplayWidget extends StatefulWidget {
   final bool useDownloadUrl;
   final double width;
   final double height;
+  final Future<void> Function()? onCancel;
 
   const PhotoDisplayWidget({
     super.key,
@@ -22,6 +25,7 @@ class PhotoDisplayWidget extends StatefulWidget {
     required this.useDownloadUrl,
     this.width = 354,
     this.height = 471,
+    this.onCancel,
   });
 
   @override
@@ -45,6 +49,7 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
       }
     } catch (e) {
       // 캐시 제거 실패해도 계속 진행
+      debugPrint('Error evicting image from cache: $e');
     }
     super.dispose();
   }
@@ -57,10 +62,10 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.black,
-        borderRadius: BorderRadius.circular(20.0), // 반응형 반지름
+        borderRadius: BorderRadius.circular(20.0),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20.0), // 반응형 반지름
+        borderRadius: BorderRadius.circular(20.0),
         child: _buildImageWidget(context),
       ),
     );
@@ -87,9 +92,8 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
             },
           ),
           IconButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
+            onPressed: () async {
+              await _handleCancel(doublePop: true);
             },
             icon: Icon(Icons.cancel, color: Color(0xff1c1b1f), size: 35.sp),
           ),
@@ -109,9 +113,9 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
             // 메모리 최적화 설정 추가
             memCacheWidth: (widget.width * 2).round(),
             memCacheHeight: (widget.height * 2).round(),
-            maxWidthDiskCache: 400, // 디스크 캐시 크기 제한
+            maxWidthDiskCache: 400,
             maxHeightDiskCache: 400,
-            filterQuality: FilterQuality.medium, // 품질 최적화
+            filterQuality: FilterQuality.medium,
             placeholder:
                 (context, url) =>
                     const Center(child: CircularProgressIndicator()),
@@ -120,10 +124,12 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                     const Icon(Icons.error, color: Colors.white),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () async {
+              await _handleCancel(doublePop: false);
+            },
             icon: Icon(
               Icons.cancel,
-              color: Color(0xff1c1b1f).withValues(alpha: 0.8),
+              color: Color.fromARGB(255, 17, 15, 22).withValues(alpha: 0.8),
               size: 30.sp,
             ),
           ),
@@ -135,6 +141,21 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
       return const Center(
         child: Text("이미지를 불러올 수 없습니다.", style: TextStyle(color: Colors.white)),
       );
+    }
+  }
+
+  Future<void> _handleCancel({required bool doublePop}) async {
+    if (widget.onCancel != null) {
+      await widget.onCancel!();
+    }
+
+    if (!mounted) return;
+
+    final navigator = Navigator.of(context);
+    navigator.pop();
+
+    if (doublePop && navigator.canPop()) {
+      navigator.pop();
     }
   }
 }

@@ -17,25 +17,32 @@ class PhoneInputPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const PageTitle(title: 'SOI 접속을 위해 전화번호를 입력해주세요.'),
-        SizedBox(height: 24.h),
-        CustomTextField(
-          controller: controller,
-          hintText: '전화번호',
-          keyboardType: TextInputType.phone,
-          textAlign: TextAlign.start,
-          prefixIcon: Icon(
-            SolarIconsOutline.phone,
-            color: const Color(0xffC0C0C0),
-            size: 24.sp,
+    // 키보드 높이 계산
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final verticalOffset = keyboardHeight > 0 ? -30.0 : 0.0; // 키보드가 올라올 때 위로 이동
+
+    return Transform.translate(
+      offset: Offset(0, verticalOffset),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const PageTitle(title: 'SOI 접속을 위해 전화번호를 입력해주세요.'),
+          SizedBox(height: 24.h),
+          CustomTextField(
+            controller: controller,
+            hintText: '전화번호',
+            keyboardType: TextInputType.phone,
+            textAlign: TextAlign.start,
+            prefixIcon: Icon(
+              SolarIconsOutline.phone,
+              color: const Color(0xffC0C0C0),
+              size: 24.sp,
+            ),
+            onChanged: onChanged,
           ),
-          onChanged: onChanged,
-        ),
-        SizedBox(height: 24.h),
-      ],
+          SizedBox(height: 24.h),
+        ],
+      ),
     );
   }
 }

@@ -46,6 +46,14 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   bool _shouldAutoOpenCategorySheet = true;
   bool _isDisposing = false;
 
+  static const double _kInitialSheetExtent = 0.0;
+  static const double _kLockedSheetExtent = 0.19;
+  static const double _kMaxSheetExtent = 0.8;
+
+  double _minChildSize = _kInitialSheetExtent;
+  double _initialChildSize = _kInitialSheetExtent;
+  bool _hasLockedSheetExtent = false;
+
   // 오디오 관련 변수들
   List<double>? _recordedWaveformData;
   String? _recordedAudioPath;
@@ -200,7 +208,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
             if (_shouldAutoOpenCategorySheet) {
               _shouldAutoOpenCategorySheet = false;
-              _animateSheetTo(0.19);
+              _animateSheetTo(_kLockedSheetExtent, lockExtent: true);
             }
 
             MemoryMonitor.logCurrentMemoryUsage('카테고리 로드 완료');
@@ -246,13 +254,10 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
               .take(8)
               .toList();
 
-      debugPrint('카테고리 이미지 preload 시작: ${priorityCategories.length}개');
-
       for (final category in priorityCategories) {
         try {
           final imageProvider = NetworkImage(category.categoryPhotoUrl!);
           unawaited(precacheImage(imageProvider, context));
-          debugPrint('카테고리 이미지 preload: ${category.name}');
 
           if (MemoryMonitor.isMemoryUsageHigh()) {
             debugPrint('메모리 압박으로 preload 중단');
@@ -266,7 +271,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       }
 
       MemoryMonitor.logCurrentMemoryUsage('카테고리 이미지 preload 완료');
-      debugPrint('카테고리 이미지 preload 완료');
     } catch (e) {
       debugPrint('카테고리 이미지 preload 전체 실패: $e');
     }
@@ -286,29 +290,71 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     }
   }
 
-  void _animateSheetTo(double size) {
+  void _animateSheetTo(double size, {bool lockExtent = false}) {
     if (!mounted || _isDisposing) return;
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted || _isDisposing) return;
 
       try {
         if (_draggableScrollController.isAttached) {
-          _draggableScrollController
-              .animateTo(
-                size,
-                duration: Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
-              )
-              .catchError((error) {
-                debugPrint('애니메이션 에러: $error');
-                return null;
-              });
+          await _draggableScrollController.animateTo(
+            size,
+            duration: Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
         }
       } catch (e) {
         debugPrint('애니메이션 실행 에러: $e');
+      } finally {
+        if (lockExtent) {
+          _lockSheetExtent(size);
+        }
       }
     });
+  }
+
+  void _lockSheetExtent(double size) {
+    if (!mounted || _isDisposing || _hasLockedSheetExtent) return;
+
+    setState(() {
+      _minChildSize = size;
+      _initialChildSize = size;
+      _hasLockedSheetExtent = true;
+    });
+
+    if (_draggableScrollController.isAttached) {
+      try {
+        _draggableScrollController.jumpTo(size);
+      } catch (e) {
+        debugPrint('시트 고정 중 jumpTo 오류: $e');
+      }
+    }
+  }
+
+  Future<void> _resetBottomSheetIfNeeded() async {
+    if (_isDisposing || !_draggableScrollController.isAttached) {
+      return;
+    }
+
+    final double targetSize =
+        _hasLockedSheetExtent ? _kLockedSheetExtent : _initialChildSize;
+    final double currentSize = _draggableScrollController.size;
+
+    const double tolerance = 0.001;
+    if ((currentSize - targetSize).abs() <= tolerance) {
+      return;
+    }
+
+    try {
+      await _draggableScrollController.animateTo(
+        targetSize,
+        duration: Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+      );
+    } catch (e) {
+      debugPrint('바텀시트 초기화 중 애니메이션 오류: $e');
+    }
   }
 
   Future<void> _createNewCategory(
@@ -673,6 +719,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                 useDownloadUrl: _useDownloadUrl,
                                 width: 354.w,
                                 height: 500.h,
+                                onCancel: _resetBottomSheetIfNeeded,
                               ),
                               SizedBox(height: (15.h)),
                               AudioRecorderWidget(
@@ -691,9 +738,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                     _recordedWaveformData = waveformData;
                                     _recordedAudioPath = audioPath;
                                   });
-                                  debugPrint(
-                                    '녹음 완료 - audioPath: $audioPath, waveformData: ${waveformData?.length}',
-                                  );
                                 },
                               ),
                             ],
@@ -704,21 +748,19 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
           ),
           bottomSheet: NotificationListener<DraggableScrollableNotification>(
             onNotification: (notification) {
-              // 바텀시트가 최소 크기 이하로 내려가면 자동으로 다시 올리기
-              if (notification.extent < 0.02) {
-                Future.delayed(Duration(milliseconds: 100), () {
-                  if (mounted && !_isDisposing) {
-                    _animateSheetTo(0.19);
-                  }
-                });
+              if (!_hasLockedSheetExtent && notification.extent < 0.01) {
+                if (mounted && !_isDisposing && !_hasLockedSheetExtent) {
+                  _animateSheetTo(_kLockedSheetExtent, lockExtent: true);
+                }
               }
+
               return true;
             },
             child: DraggableScrollableSheet(
               controller: _draggableScrollController,
-              initialChildSize: 0.0,
-              minChildSize: 0.0,
-              maxChildSize: 0.8,
+              initialChildSize: _initialChildSize,
+              minChildSize: _minChildSize,
+              maxChildSize: _kMaxSheetExtent,
               expand: false,
               builder: (context, scrollController) {
                 return LayoutBuilder(
@@ -814,7 +856,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                                       _categoryNameController
                                                           .clear();
                                                     });
-                                                    _animateSheetTo(0.18);
+                                                    _animateSheetTo(
+                                                      _kLockedSheetExtent,
+                                                    );
                                                   },
                                                   onSavePressed:
                                                       (
