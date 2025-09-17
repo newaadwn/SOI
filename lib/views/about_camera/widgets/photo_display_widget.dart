@@ -81,12 +81,14 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
             // 메모리 최적화: 이미지 캐시 크기 제한
             cacheWidth: (widget.width * 2).round(),
             cacheHeight: (widget.height * 2).round(),
+
             errorBuilder: (context, error, stackTrace) {
               return const Icon(Icons.error, color: Colors.white);
             },
           ),
           IconButton(
             onPressed: () {
+              Navigator.pop(context);
               Navigator.pop(context);
             },
             icon: Icon(Icons.cancel, color: Color(0xff1c1b1f), size: 35.sp),

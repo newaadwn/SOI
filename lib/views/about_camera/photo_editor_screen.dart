@@ -1,13 +1,12 @@
 import 'dart:async';
-
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
-// 🔥 메모리 최적화: 이미지 처리용 추가
-import 'dart:ui' as ui; // 🔥 메모리 최적화: 이미지 압축용 추가
-import 'package:flutter/services.dart'; // 🔥 메모리 최적화: 이미지 압축용 추가
+import 'dart:ui' as ui;
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../controllers/audio_controller.dart';
 import '../../controllers/auth_controller.dart';
@@ -42,6 +41,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   bool _showAddCategoryUI = false;
   String? _selectedCategoryId;
   bool _categoriesLoaded = false; // 카테고리 로드 상태 추적
+  bool _shouldAutoOpenCategorySheet = true;
 
   // 추출된 파형 데이터 저장
   List<double>? _recordedWaveformData;
@@ -196,6 +196,11 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
             );
             _categoriesLoaded = true;
             // 로드된 카테고리 목록 준비 완료
+
+            if (_shouldAutoOpenCategorySheet) {
+              _shouldAutoOpenCategorySheet = false;
+              _animateSheetTo(0.19);
+            }
 
             // 메모리 사용량 체크
             MemoryMonitor.logCurrentMemoryUsage('카테고리 로드 완료');
@@ -517,7 +522,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     // 백그라운드에서 바텀시트 정리 (화면 전환 후)
     Future.microtask(() {
       if (_draggableScrollController.isAttached) {
-        _draggableScrollController.jumpTo(0.19);
+        _draggableScrollController.jumpTo(0.0);
       }
     });
   }
@@ -770,79 +775,121 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
           ),
           bottomSheet: DraggableScrollableSheet(
             controller: _draggableScrollController,
-            initialChildSize: 0.19,
-            minChildSize: 0.19,
+            initialChildSize: 0.0,
+            minChildSize: 0.0,
             maxChildSize: 0.8,
             expand: false,
             builder: (context, scrollController) {
-              return Container(
-                decoration: BoxDecoration(
-                  color: Color(0xff171717),
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: Column(
-                  children: [
-                    // 드래그 핸들
-                    _showAddCategoryUI
-                        ? Center(
-                          child: Container(
-                            margin: EdgeInsets.only(bottom: 12.h),
-                          ),
-                        )
-                        : Center(
-                          child: Container(
-                            height: 3.h,
-                            width: 56.w,
-                            margin: EdgeInsets.only(top: 10.h, bottom: 12.h),
-                            decoration: BoxDecoration(
-                              color: Color(0xffcdcdcd),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        ),
-                    //드래그 핸들과 카테고리 아이템 사이 간격 벌리긴
-                    SizedBox(height: 4.h),
-                    // 콘텐츠 영역: 조건에 따라 카테고리 목록 또는 카테고리 추가 UI 표시
-                    Expanded(
-                      child: AnimatedSwitcher(
-                        duration: Duration(milliseconds: 300),
-                        child:
-                            // _showAddCategoryUI가 참이면 AddCategoryWidget, 거짓이면 CategoryListWidget
-                            _showAddCategoryUI
-                                ? AddCategoryWidget(
-                                  textController: _categoryNameController,
-                                  scrollController: scrollController,
-                                  onBackPressed: () {
-                                    setState(() {
-                                      _showAddCategoryUI = false;
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final double maxHeight = constraints.maxHeight;
+                  final double desiredHandleHeight =
+                      _showAddCategoryUI ? 12.h : (3.h + 10.h + 12.h);
+                  final double effectiveHandleHeight =
+                      math.min(maxHeight, desiredHandleHeight);
+                  final double desiredSpacing = 4.h;
+                  final double effectiveSpacing =
+                      maxHeight > effectiveHandleHeight ? desiredSpacing : 0.0;
+                  final double contentHeight = math.max(
+                    0.0,
+                    maxHeight - effectiveHandleHeight - effectiveSpacing,
+                  );
 
-                                      _categoryNameController.clear();
-                                    });
-                                    _animateSheetTo(0.18);
-                                  },
-                                  onSavePressed:
-                                      (selectedFriends) => _createNewCategory(
-                                        _categoryNameController.text.trim(),
-                                        selectedFriends,
-                                      ),
-                                )
-                                : CategoryListWidget(
-                                  scrollController: scrollController,
-                                  selectedCategoryId: _selectedCategoryId,
-                                  onCategorySelected: _handleCategorySelection,
-                                  addCategoryPressed: () {
-                                    setState(() {
-                                      _showAddCategoryUI = true;
-                                    });
-                                    // 시트 애니메이션 - 안전한 방법으로 실행
-                                    _animateSheetTo(0.65);
-                                  },
-                                  isLoading: _categoryController.isLoading,
-                                ),
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Color(0xff171717),
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(20),
                       ),
                     ),
-                  ],
-                ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        SizedBox(
+                          height: effectiveHandleHeight,
+                          child: _showAddCategoryUI
+                              ? Center(
+                                child: Container(
+                                  margin: EdgeInsets.only(bottom: 12.h),
+                                ),
+                              )
+                              : Center(
+                                child: Container(
+                                  height: math.min(3.h, effectiveHandleHeight),
+                                  width: 56.w,
+                                  margin: EdgeInsets.only(
+                                    top: math.min(10.h, effectiveHandleHeight / 2),
+                                    bottom:
+                                        math.min(12.h, effectiveHandleHeight / 2),
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Color(0xffcdcdcd),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                ),
+                              ),
+                        ),
+                        SizedBox(height: effectiveSpacing),
+                        SizedBox(
+                          height: contentHeight,
+                          child: AnimatedSwitcher(
+                            duration: Duration(milliseconds: 300),
+                            child:
+                                _showAddCategoryUI
+                                    ? ClipRect(
+                                      child: LayoutBuilder(
+                                        builder: (context, addConstraints) {
+                                          return ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              maxHeight:
+                                                  addConstraints.maxHeight,
+                                              maxWidth: addConstraints.maxWidth,
+                                            ),
+                                            child: AddCategoryWidget(
+                                              textController:
+                                                  _categoryNameController,
+                                              scrollController:
+                                                  scrollController,
+                                              onBackPressed: () {
+                                                setState(() {
+                                                  _showAddCategoryUI = false;
+                                                  _categoryNameController
+                                                      .clear();
+                                                });
+                                                _animateSheetTo(0.18);
+                                              },
+                                              onSavePressed:
+                                                  (selectedFriends) =>
+                                                      _createNewCategory(
+                                                        _categoryNameController
+                                                            .text
+                                                            .trim(),
+                                                        selectedFriends,
+                                                      ),
+                                            ),
+                                          );
+                                        },
+                                      ),
+                                    )
+                                    : CategoryListWidget(
+                                      scrollController: scrollController,
+                                      selectedCategoryId: _selectedCategoryId,
+                                      onCategorySelected:
+                                          _handleCategorySelection,
+                                      addCategoryPressed: () {
+                                        setState(() {
+                                          _showAddCategoryUI = true;
+                                        });
+                                        _animateSheetTo(0.65);
+                                      },
+                                      isLoading: _categoryController.isLoading,
+                                    ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
               );
             },
           ),
@@ -922,7 +969,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     try {
       if (_draggableScrollController.isAttached) {
         // 모든 제스처 완료를 위해 잠시 기다린 후 최소 크기로 설정
-        _draggableScrollController.jumpTo(0.19);
+        _draggableScrollController.jumpTo(0.0);
 
         // 다음 프레임에서 dispose 시도
         WidgetsBinding.instance.addPostFrameCallback((_) {
