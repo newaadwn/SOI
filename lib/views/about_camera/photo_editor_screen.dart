@@ -702,136 +702,159 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
               ],
             ),
           ),
-          bottomSheet: DraggableScrollableSheet(
-            controller: _draggableScrollController,
-            initialChildSize: 0.0,
-            minChildSize: 0.0,
-            maxChildSize: 0.8,
-            expand: false,
-            builder: (context, scrollController) {
-              return LayoutBuilder(
-                builder: (context, constraints) {
-                  final double maxHeight = constraints.maxHeight;
-                  final double desiredHandleHeight =
-                      _showAddCategoryUI ? 12.h : (3.h + 10.h + 12.h);
-                  final double effectiveHandleHeight = math.min(
-                    maxHeight,
-                    desiredHandleHeight,
-                  );
-                  final double desiredSpacing = 4.h;
-                  final double effectiveSpacing =
-                      maxHeight > effectiveHandleHeight ? desiredSpacing : 0.0;
-                  final double contentHeight = math.max(
-                    0.0,
-                    maxHeight - effectiveHandleHeight - effectiveSpacing,
-                  );
+          bottomSheet: NotificationListener<DraggableScrollableNotification>(
+            onNotification: (notification) {
+              // 바텀시트가 최소 크기 이하로 내려가면 자동으로 다시 올리기
+              if (notification.extent < 0.02) {
+                Future.delayed(Duration(milliseconds: 100), () {
+                  if (mounted && !_isDisposing) {
+                    _animateSheetTo(0.19);
+                  }
+                });
+              }
+              return true;
+            },
+            child: DraggableScrollableSheet(
+              controller: _draggableScrollController,
+              initialChildSize: 0.0,
+              minChildSize: 0.0,
+              maxChildSize: 0.8,
+              expand: false,
+              builder: (context, scrollController) {
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final double maxHeight = constraints.maxHeight;
+                    final double desiredHandleHeight =
+                        _showAddCategoryUI ? 12.h : (3.h + 10.h + 12.h);
+                    final double effectiveHandleHeight = math.min(
+                      maxHeight,
+                      desiredHandleHeight,
+                    );
+                    final double desiredSpacing = 4.h;
+                    final double effectiveSpacing =
+                        maxHeight > effectiveHandleHeight
+                            ? desiredSpacing
+                            : 0.0;
+                    final double contentHeight = math.max(
+                      0.0,
+                      maxHeight - effectiveHandleHeight - effectiveSpacing,
+                    );
 
-                  return Container(
-                    decoration: BoxDecoration(
-                      color: Color(0xff171717),
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(20),
-                      ),
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          height: effectiveHandleHeight,
-                          child:
-                              _showAddCategoryUI
-                                  ? Center(
-                                    child: Container(
-                                      margin: EdgeInsets.only(bottom: 12.h),
-                                    ),
-                                  )
-                                  : Center(
-                                    child: Container(
-                                      height: math.min(
-                                        3.h,
-                                        effectiveHandleHeight,
-                                      ),
-                                      width: 56.w,
-                                      margin: EdgeInsets.only(
-                                        top: math.min(
-                                          10.h,
-                                          effectiveHandleHeight / 2,
-                                        ),
-                                        bottom: math.min(
-                                          12.h,
-                                          effectiveHandleHeight / 2,
-                                        ),
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Color(0xffcdcdcd),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ),
-                                  ),
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Color(0xff171717),
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(20),
                         ),
-                        SizedBox(height: effectiveSpacing),
-                        SizedBox(
-                          height: contentHeight,
-                          child: AnimatedSwitcher(
-                            duration: Duration(milliseconds: 300),
-                            child:
-                                _showAddCategoryUI
-                                    ? ClipRect(
-                                      child: LayoutBuilder(
-                                        builder: (context, addConstraints) {
-                                          return ConstrainedBox(
-                                            constraints: BoxConstraints(
-                                              maxHeight:
-                                                  addConstraints.maxHeight,
-                                              maxWidth: addConstraints.maxWidth,
+                      ),
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            SizedBox(
+                              height: effectiveHandleHeight,
+                              child:
+                                  _showAddCategoryUI
+                                      ? Center(
+                                        child: Container(
+                                          margin: EdgeInsets.only(bottom: 12.h),
+                                        ),
+                                      )
+                                      : Center(
+                                        child: Container(
+                                          height: math.min(
+                                            3.h,
+                                            effectiveHandleHeight,
+                                          ),
+                                          width: 56.w,
+                                          margin: EdgeInsets.only(
+                                            top: math.min(
+                                              10.h,
+                                              effectiveHandleHeight / 2,
                                             ),
-                                            child: AddCategoryWidget(
-                                              textController:
-                                                  _categoryNameController,
-                                              scrollController:
-                                                  scrollController,
-                                              onBackPressed: () {
-                                                setState(() {
-                                                  _showAddCategoryUI = false;
-                                                  _categoryNameController
-                                                      .clear();
-                                                });
-                                                _animateSheetTo(0.18);
-                                              },
-                                              onSavePressed:
-                                                  (selectedFriends) =>
-                                                      _createNewCategory(
+                                            bottom: math.min(
+                                              12.h,
+                                              effectiveHandleHeight / 2,
+                                            ),
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Color(0xffcdcdcd),
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                            ),
+                            SizedBox(height: effectiveSpacing),
+                            SizedBox(
+                              height: contentHeight,
+                              child: AnimatedSwitcher(
+                                duration: Duration(milliseconds: 300),
+                                child:
+                                    _showAddCategoryUI
+                                        ? ClipRect(
+                                          child: LayoutBuilder(
+                                            builder: (context, addConstraints) {
+                                              return ConstrainedBox(
+                                                constraints: BoxConstraints(
+                                                  maxHeight:
+                                                      addConstraints.maxHeight,
+                                                  maxWidth:
+                                                      addConstraints.maxWidth,
+                                                ),
+                                                child: AddCategoryWidget(
+                                                  textController:
+                                                      _categoryNameController,
+                                                  scrollController:
+                                                      scrollController,
+                                                  onBackPressed: () {
+                                                    setState(() {
+                                                      _showAddCategoryUI =
+                                                          false;
+                                                      _categoryNameController
+                                                          .clear();
+                                                    });
+                                                    _animateSheetTo(0.18);
+                                                  },
+                                                  onSavePressed:
+                                                      (
+                                                        selectedFriends,
+                                                      ) => _createNewCategory(
                                                         _categoryNameController
                                                             .text
                                                             .trim(),
                                                         selectedFriends,
                                                       ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    )
-                                    : CategoryListWidget(
-                                      scrollController: scrollController,
-                                      selectedCategoryId: _selectedCategoryId,
-                                      onCategorySelected:
-                                          _handleCategorySelection,
-                                      addCategoryPressed: () {
-                                        setState(() {
-                                          _showAddCategoryUI = true;
-                                        });
-                                        _animateSheetTo(0.65);
-                                      },
-                                      isLoading: _categoryController.isLoading,
-                                    ),
-                          ),
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                        )
+                                        : CategoryListWidget(
+                                          scrollController: scrollController,
+                                          selectedCategoryId:
+                                              _selectedCategoryId,
+                                          onCategorySelected:
+                                              _handleCategorySelection,
+                                          addCategoryPressed: () {
+                                            setState(() {
+                                              _showAddCategoryUI = true;
+                                            });
+                                            _animateSheetTo(0.65);
+                                          },
+                                          isLoading:
+                                              _categoryController.isLoading,
+                                        ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  );
-                },
-              );
-            },
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ),
       ],
