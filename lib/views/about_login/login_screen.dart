@@ -99,6 +99,16 @@ class _LoginScreenState extends State<LoginScreen> {
 
     return Stack(
       children: [
+        Positioned(
+          top: 60.h,
+          left: 20.w,
+          child: IconButton(
+            onPressed: () {
+              Navigator.of(context).maybePop();
+            },
+            icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+          ),
+        ),
         // 입력 필드들을 화면 중앙에 고정
         Positioned(
           top: 0.35.sh,
@@ -239,102 +249,124 @@ class _LoginScreenState extends State<LoginScreen> {
     final ValueNotifier<bool> hasCode = ValueNotifier<bool>(false);
     final controller = TextEditingController();
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
+    return Stack(
       children: [
-        Text(
-          '인증번호를 입력해주세요.',
-          style: TextStyle(
-            color: const Color(0xFFF8F8F8),
-            fontSize: 18,
-            fontFamily: GoogleFonts.inter().fontFamily,
-            fontWeight: FontWeight.w600,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        SizedBox(height: 24.h),
-        Container(
-          width: 239.w,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Color(0xff323232),
-            borderRadius: BorderRadius.circular(16.5),
-          ),
-          padding: EdgeInsets.only(bottom: 7.h),
-          child: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            textAlignVertical: TextAlignVertical.center,
-            cursorColor: const Color(0xFFF8F8F8),
-            style: TextStyle(
-              color: const Color(0xFFF8F8F8),
-              fontSize: 16,
-              fontFamily: 'Pretendard',
-              fontWeight: FontWeight.w600,
-              letterSpacing: -0.08,
-            ),
-            decoration: InputDecoration(
-              border: InputBorder.none,
-              hintText: '인증번호',
-              hintStyle: TextStyle(
-                color: const Color(0xFFCBCBCB),
-                fontSize: 16,
-                fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-            onChanged: (value) {
-              // 인증번호 입력 여부에 따라 상태 변경
-              hasCode.value = value.isNotEmpty;
-
-              // 인증 완료 후, 사용자가 인증번호를 변경하면 상태 초기화
-              if (isVerified) {
-                setState(() {
-                  isVerified = false;
-                });
-              }
-
-              // 기존 타이머 취소
-              _autoVerifyTimer?.cancel();
-
-              // 인증번호가 입력되면 2초 후 자동 인증 시작
-              if (value.isNotEmpty && value.length >= 6) {
-                _autoVerifyTimer = Timer(Duration(seconds: 2), () {
-                  _performAutoVerification(value);
-                });
-              }
+        Positioned(
+          top: 60.h,
+          left: 20.w,
+          child: IconButton(
+            onPressed: () {
+              _pageController.previousPage(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
             },
+            icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           ),
         ),
-
-        // Updated the TextButton to use a custom underline implementation
-        TextButton(
-          onPressed: () {
-            // 인증번호 재전송 로직
-            _authController.verifyPhoneNumber(phoneNumber, (
-              verificationId,
-              resendToken,
-            ) {
-              // 재전송 성공 시 처리
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text('인증번호가 재전송되었습니다.')));
-            }, (verificationId) {});
-          },
-          child: RichText(
-            text: TextSpan(
-              text: '인증번호 다시 받기',
-              style: TextStyle(
-                color: const Color(0xFFF8F8F8),
-                fontSize: 12,
-                fontFamily: 'Pretendard Variable',
-                fontWeight: FontWeight.w500,
-
-                decoration: TextDecoration.underline,
+        Align(
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Text(
+                '인증번호를 입력해주세요.',
+                style: TextStyle(
+                  color: const Color(0xFFF8F8F8),
+                  fontSize: 18,
+                  fontFamily: GoogleFonts.inter().fontFamily,
+                  fontWeight: FontWeight.w600,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
+              SizedBox(height: 24.h),
+              Container(
+                width: 239.w,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Color(0xff323232),
+                  borderRadius: BorderRadius.circular(16.5),
+                ),
+                padding: EdgeInsets.only(bottom: 7.h),
+                child: TextField(
+                  controller: controller,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  textAlignVertical: TextAlignVertical.center,
+                  cursorColor: const Color(0xFFF8F8F8),
+                  style: TextStyle(
+                    color: const Color(0xFFF8F8F8),
+                    fontSize: 16,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.08,
+                  ),
+                  decoration: InputDecoration(
+                    border: InputBorder.none,
+                    hintText: '인증번호',
+                    hintStyle: TextStyle(
+                      color: const Color(0xFFCBCBCB),
+                      fontSize: 16,
+                      fontFamily: 'Pretendard',
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                  onChanged: (value) {
+                    // 인증번호 입력 여부에 따라 상태 변경
+                    hasCode.value = value.isNotEmpty;
+
+                    // 인증 완료 후, 사용자가 인증번호를 변경하면 상태 초기화
+                    if (isVerified) {
+                      setState(() {
+                        isVerified = false;
+                      });
+                    }
+
+                    // 기존 타이머 취소
+                    _autoVerifyTimer?.cancel();
+
+                    // 인증번호가 입력되면 2초 후 자동 인증 시작
+                    if (value.isNotEmpty && value.length >= 6) {
+                      _autoVerifyTimer = Timer(Duration(seconds: 2), () {
+                        _performAutoVerification(value);
+                      });
+                    }
+                  },
+                ),
+              ),
+
+              // Updated the TextButton to use a custom underline implementation
+              TextButton(
+                onPressed: () {
+                  // 인증번호 재전송 로직
+                  _authController.verifyPhoneNumber(phoneNumber, (
+                    verificationId,
+                    resendToken,
+                  ) {
+                    // 재전송 성공 시 처리
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(
+                      SnackBar(content: Text('인증번호가 재전송되었습니다.')),
+                    );
+                  }, (verificationId) {});
+                },
+                child: RichText(
+                  text: TextSpan(
+                    text: '인증번호 다시 받기',
+                    style: TextStyle(
+                      color: const Color(0xFFF8F8F8),
+                      fontSize: 12,
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w500,
+
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],

@@ -14,6 +14,7 @@ class StartScreen extends StatefulWidget {
 class _StartScreenState extends State<StartScreen>
     with TickerProviderStateMixin {
   bool _isCheckingAutoLogin = true;
+  bool _homeNavigationScheduled = false;
 
   // 애니메이션 컨트롤러들
   late AnimationController _logoController;
@@ -106,7 +107,7 @@ class _StartScreenState extends State<StartScreen>
     super.dispose();
   }
 
-  /// ✅ 자동 로그인 체크
+  /// 자동 로그인 체크
   Future<void> _checkAutoLogin() async {
     try {
       final authController = Provider.of<AuthController>(
@@ -117,7 +118,7 @@ class _StartScreenState extends State<StartScreen>
 
       if (mounted) {
         if (canAutoLogin) {
-          Navigator.pushReplacementNamed(context, '/home_navigation_screen');
+          await _navigateToHome();
         } else {
           setState(() {
             _isCheckingAutoLogin = false;
@@ -137,58 +138,43 @@ class _StartScreenState extends State<StartScreen>
     }
   }
 
-  /// ✅ 로그인 버튼 클릭 처리
-  Future<void> _handleLoginButtonPress() async {
-    try {
-      final authController = Provider.of<AuthController>(
-        context,
-        listen: false,
-      );
-
-      // 저장된 로그인 기록 확인
-      final isLoggedIn = await authController.isLoggedIn();
-
-      if (isLoggedIn) {
-        // 자동 로그인 시도
-        final canAutoLogin = await authController.tryAutoLogin();
-
-        if (canAutoLogin && mounted) {
-          // ✅ 로그인 기록이 있으면 바로 홈 화면으로 이동
-          Navigator.pushReplacementNamed(context, '/home_navigation_screen');
-        } else if (mounted) {
-          // 자동 로그인 실패 시 로그인 화면으로
-          Navigator.pushNamed(context, '/login');
-        }
-      } else if (mounted) {
-        Navigator.pushNamed(context, '/login');
-      }
-    } catch (e) {
-      // 오류 발생 시 기본 로그인 화면으로
-      if (mounted) {
-        Navigator.pushNamed(context, '/login');
-      }
+  Future<void> _navigateToHome() async {
+    if (!mounted || _homeNavigationScheduled) {
+      return;
     }
+
+    _homeNavigationScheduled = true;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      Navigator.pushReplacementNamed(context, '/home_navigation_screen');
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    // ✅ 자동 로그인 체크 중일 때 로딩 화면 표시
+    // 자동 로그인 체크 중일 때 로딩 화면 표시
     if (_isCheckingAutoLogin) {
       return Scaffold(
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
         body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset('assets/SOI_logo.png', width: 126.w, height: 88.h),
-              SizedBox(height: 40),
-              CircularProgressIndicator(color: Colors.white),
-              SizedBox(height: 20),
-              Text(
-                '로그인 확인 중...',
-                style: TextStyle(color: Colors.white, fontSize: 16),
-              ),
-            ],
+          child: AnimatedBuilder(
+            animation: _logoController,
+            builder: (context, child) {
+              return SlideTransition(
+                position: _logoSlide,
+                child: FadeTransition(
+                  opacity: _logoOpacity,
+                  child: Image.asset(
+                    'assets/SOI_logo.png',
+                    width: 126.w,
+                    height: 88.h,
+                  ),
+                ),
+              );
+            },
           ),
         ),
       );
@@ -298,9 +284,9 @@ class _StartScreenState extends State<StartScreen>
         ),
         SizedBox(height: 19.w),
         ElevatedButton(
-          onPressed: () async {
+          onPressed: () {
             // 로그인 기록 체크 후 분기 처리
-            await _handleLoginButtonPress();
+            Navigator.pushNamed(context, '/login');
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: Color(0xff171717),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// 약관 동의 페이지
 class AgreementPage extends StatelessWidget {
@@ -12,6 +13,7 @@ class AgreementPage extends StatelessWidget {
   final ValueChanged<bool> onToggleServiceTerms;
   final ValueChanged<bool> onTogglePrivacyTerms;
   final ValueChanged<bool> onToggleMarketingInfo;
+  final PageController? pageController;
 
   const AgreementPage({
     super.key,
@@ -24,68 +26,102 @@ class AgreementPage extends StatelessWidget {
     required this.onToggleServiceTerms,
     required this.onTogglePrivacyTerms,
     required this.onToggleMarketingInfo,
+    required this.pageController,
   });
 
   @override
   Widget build(BuildContext context) {
     final String displayName = name.isNotEmpty ? name : '회원';
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 22.w),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          SizedBox(height: (320).h),
-          Text(
-            '$displayName님, 환영합니다.',
-            style: TextStyle(
-              color: const Color(0xFFF8F8F8),
-              fontSize: 20,
-              fontFamily: 'Pretendard Variable',
-              fontWeight: FontWeight.w700,
+    return Stack(
+      children: [
+        Positioned(
+          top: 60.h,
+          left: 20.w,
+          child: IconButton(
+            onPressed: () {
+              pageController?.previousPage(
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            },
+            icon: Icon(Icons.arrow_back_ios, color: Colors.white),
+          ),
+        ),
+        Align(
+          alignment: Alignment.center,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 22.w),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(height: (320).h),
+                Text(
+                  '$displayName님, 환영합니다.',
+                  style: TextStyle(
+                    color: const Color(0xFFF8F8F8),
+                    fontSize: 20,
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 12.h),
+                Text(
+                  '선택하신 정보를 기반으로 개인화된\n서비스를 제공해드릴게요.',
+                  style: TextStyle(
+                    color: const Color(0xFFF8F8F8),
+                    fontSize: 16,
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: FontWeight.w600,
+                    height: 1.61,
+                    letterSpacing: 0.32,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: (136.1).h),
+                _AgreementOption(
+                  label: '약관 전체 동의',
+                  value: agreeAll,
+                  onChanged: onToggleAll,
+                  onTap: () {},
+                ),
+                SizedBox(height: 24.h),
+                _AgreementOption(
+                  label: '이용약관 동의(필수)',
+                  value: agreeServiceTerms,
+                  onChanged: onToggleServiceTerms,
+                  showArrow: true,
+                  onTap: () {},
+                ),
+                SizedBox(height: (10.2).h),
+                _AgreementOption(
+                  label: '개인정보 수집 및 이용동의(필수)',
+                  value: agreePrivacyTerms,
+                  onChanged: onTogglePrivacyTerms,
+                  showArrow: true,
+                  onTap: () async {
+                    final url = Uri.parse(
+                      "https://firebasestorage.googleapis.com/v0/b/soi-privacy.firebasestorage.app/o/index.html?alt=media&token=a34771bf-ec02-4fe0-9d48-0f272068908e",
+                    );
+                    if (await canLaunchUrl(url)) {
+                      await launchUrl(url);
+                    } else {
+                      debugPrint('Could not launch $url');
+                    }
+                  },
+                ),
+                SizedBox(height: (10.2).h),
+                _AgreementOption(
+                  label: 'E-mail 및 SMS 광고성 정보 수신동의(선택)',
+                  value: agreeMarketingInfo,
+                  onChanged: onToggleMarketingInfo,
+                  onTap: () {},
+                ),
+              ],
             ),
           ),
-          SizedBox(height: 12.h),
-          Text(
-            '선택하신 정보를 기반으로 개인화된\n서비스를 제공해드릴게요.',
-            style: TextStyle(
-              color: const Color(0xFFF8F8F8),
-              fontSize: 16,
-              fontFamily: 'Pretendard Variable',
-              fontWeight: FontWeight.w600,
-              height: 1.61,
-              letterSpacing: 0.32,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: (136.1).h),
-          _AgreementOption(
-            label: '약관 전체 동의',
-            value: agreeAll,
-            onChanged: onToggleAll,
-          ),
-          SizedBox(height: 24.h),
-          _AgreementOption(
-            label: '이용약관 동의(필수)',
-            value: agreeServiceTerms,
-            onChanged: onToggleServiceTerms,
-            showArrow: true,
-          ),
-          SizedBox(height: (10.2).h),
-          _AgreementOption(
-            label: '개인정보 수집 및 이용동의(필수)',
-            value: agreePrivacyTerms,
-            onChanged: onTogglePrivacyTerms,
-            showArrow: true,
-          ),
-          SizedBox(height: (10.2).h),
-          _AgreementOption(
-            label: 'E-mail 및 SMS 광고성 정보 수신동의(선택)',
-            value: agreeMarketingInfo,
-            onChanged: onToggleMarketingInfo,
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -95,11 +131,13 @@ class _AgreementOption extends StatelessWidget {
   final bool value;
   final bool showArrow;
   final ValueChanged<bool> onChanged;
+  final Function onTap;
 
   const _AgreementOption({
     required this.label,
     required this.value,
     required this.onChanged,
+    required this.onTap,
     this.showArrow = false,
   });
 
@@ -149,9 +187,7 @@ class _AgreementOption extends StatelessWidget {
         ),
         if (showArrow)
           InkWell(
-            onTap: () {
-              // 여기에 약관 상세 보기 기능을 추가할 수 있습니다
-            },
+            onTap: () => onTap(),
             child: Icon(
               Icons.arrow_forward_ios_sharp,
               color: Colors.white,

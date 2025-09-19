@@ -5,8 +5,13 @@ import 'package:image_picker/image_picker.dart';
 
 class SelectProfileImagePage extends StatefulWidget {
   final ValueChanged<String?>? onImageSelected; // 이미지 경로 콜백 추가
+  final PageController? pageController;
 
-  const SelectProfileImagePage({super.key, this.onImageSelected});
+  const SelectProfileImagePage({
+    super.key,
+    this.onImageSelected,
+    required this.pageController,
+  });
 
   @override
   State<SelectProfileImagePage> createState() => _SelectProfileImagePageState();
@@ -72,100 +77,120 @@ class _SelectProfileImagePageState extends State<SelectProfileImagePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Stack(
       children: [
-        Text(
-          '프로필 사진을 선택해주세요',
-          style: TextStyle(
-            color: const Color(0xFFF8F8F8),
-            fontSize: 18,
-            fontFamily: 'Inter',
-            fontWeight: FontWeight.w600,
+        Positioned(
+          top: 60.h,
+          left: 20.w,
+          child: IconButton(
+            onPressed: () {
+              widget.pageController?.previousPage(
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            },
+            icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           ),
         ),
-        SizedBox(height: 24.h),
-        // 프로필 이미지 선택 UI
-        Stack(
-          children: [
-            GestureDetector(
-              onTap: _selectImageFromGallery,
-              child: Container(
-                width: 96,
-                height: 96,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Color(0xFFD9D9D9),
+        Align(
+          alignment: Alignment.center,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '프로필 사진을 선택해주세요',
+                style: TextStyle(
+                  color: const Color(0xFFF8F8F8),
+                  fontSize: 18,
+                  fontFamily: 'Inter',
+                  fontWeight: FontWeight.w600,
                 ),
-                child: ClipOval(
-                  child:
-                      _profileImagePath != null
-                          ? Image.file(
-                            File(_profileImagePath!),
-                            width: 96,
-                            height: 96,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                width: 96,
-                                height: 96,
-                                color: const Color(0xFFD9D9D9),
-                                child: Icon(
-                                  Icons.person,
-                                  size: 48.sp,
-                                  color: Colors.white,
+              ),
+              SizedBox(height: 24.h),
+              // 프로필 이미지 선택 UI
+              Stack(
+                children: [
+                  GestureDetector(
+                    onTap: _selectImageFromGallery,
+                    child: Container(
+                      width: 96,
+                      height: 96,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Color(0xFFD9D9D9),
+                      ),
+                      child: ClipOval(
+                        child:
+                            _profileImagePath != null
+                                ? Image.file(
+                                  File(_profileImagePath!),
+                                  width: 96,
+                                  height: 96,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Container(
+                                      width: 96,
+                                      height: 96,
+                                      color: const Color(0xFFD9D9D9),
+                                      child: Icon(
+                                        Icons.person,
+                                        size: 48.sp,
+                                        color: Colors.white,
+                                      ),
+                                    );
+                                  },
+                                )
+                                : Container(
+                                  width: 96,
+                                  height: 96,
+                                  color: const Color(0xFFD9D9D9),
+                                  child: Icon(
+                                    Icons.person,
+                                    size: 48.sp,
+                                    color: Colors.white,
+                                  ),
                                 ),
-                              );
-                            },
-                          )
-                          : Container(
-                            width: 96,
-                            height: 96,
-                            color: const Color(0xFFD9D9D9),
-                            child: Icon(
-                              Icons.person,
-                              size: 48.sp,
-                              color: Colors.white,
-                            ),
-                          ),
-                ),
-              ),
-            ),
-            // 편집 아이콘
-            Positioned(
-              right: 0.w,
-              bottom: 4.h,
-              child: GestureDetector(
-                onTap: _selectImageFromGallery,
-                child: Container(
-                  padding: EdgeInsets.all(4.w),
+                      ),
+                    ),
+                  ),
+                  // 편집 아이콘
+                  Positioned(
+                    right: 0.w,
+                    bottom: 4.h,
+                    child: GestureDetector(
+                      onTap: _selectImageFromGallery,
+                      child: Container(
+                        padding: EdgeInsets.all(4.w),
 
-                  child: Image.asset(
-                    'assets/pencil.png',
-                    width: 18,
-                    height: 18,
-                    fit: BoxFit.contain,
+                        child: Image.asset(
+                          'assets/pencil.png',
+                          width: 18,
+                          height: 18,
+                          fit: BoxFit.contain,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  // 선택 중일 때 로딩 표시
+                  if (_isSelecting)
+                    Container(
+                      width: 96,
+                      height: 96,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black.withValues(alpha: 0.5),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2.0,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-            ),
-            // 선택 중일 때 로딩 표시
-            if (_isSelecting)
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.black.withValues(alpha: 0.5),
-                ),
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2.0,
-                  ),
-                ),
-              ),
-          ],
+            ],
+          ),
         ),
       ],
     );

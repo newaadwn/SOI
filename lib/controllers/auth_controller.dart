@@ -220,13 +220,20 @@ class AuthController extends ChangeNotifier {
     }
   }
 
-  Future<void> sharePreparedInviteLink({String? message}) async {
+  Future<void> sharePreparedInviteLink({
+    required BuildContext originContext,
+    String? message,
+  }) async {
     final link = _pendingInviteLink;
     if (link == null || link.isEmpty) {
       throw Exception('공유할 링크가 준비되지 않았습니다.');
     }
 
-    await _shareService.shareLink(link, message: message);
+    await _shareService.shareLink(
+      link,
+      message: message,
+      originContext: originContext,
+    );
   }
 
   Future<String> getUserPhoneNumber() async {

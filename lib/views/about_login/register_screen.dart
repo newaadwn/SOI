@@ -165,6 +165,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 monthController: monthController,
                 dayController: dayController,
                 yearController: yearController,
+                pageController: _pageController,
                 onChanged: () {
                   setState(() {
                     selectedMonth = monthController.text;
@@ -188,6 +189,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 onChanged: (value) {
                   pageReady[2].value = value.isNotEmpty;
                 },
+                pageController: _pageController,
               ),
               // 인증번호 입력 페이지
               SmsCodePage(
@@ -225,6 +227,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ).showSnackBar(SnackBar(content: Text('인증번호가 재전송되었습니다.')));
                   }, (verificationId) {});
                 },
+                pageController: _pageController,
               ),
               // 4. 아이디 입력 페이지
               IdInputPage(
@@ -251,6 +254,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     );
                   }
                 },
+                pageController: _pageController,
               ),
               // 5. 약관동의 페이지
               AgreementPage(
@@ -293,6 +297,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     _updateAgreeAllStatus();
                   });
                 },
+                pageController: _pageController,
               ),
               // 6. 프로필 이미지 선택 페이지
               SelectProfileImagePage(
@@ -302,9 +307,10 @@ class _AuthScreenState extends State<AuthScreen> {
                     pageReady[6].value = true; // 이미지 선택은 선택사항이므로 항상 true
                   });
                 },
+                pageController: _pageController,
               ),
               // 7. 친구 추가 및 공유 페이지
-              FriendAddAndSharePage(),
+              FriendAddAndSharePage(pageController: _pageController),
             ],
           ),
 

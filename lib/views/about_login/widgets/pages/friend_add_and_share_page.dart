@@ -6,7 +6,12 @@ import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/contact_controller.dart';
 
 class FriendAddAndSharePage extends StatefulWidget {
-  const FriendAddAndSharePage({super.key});
+  final PageController? pageController;
+
+  const FriendAddAndSharePage({
+    super.key,
+    required this.pageController,
+  });
 
   @override
   State<FriendAddAndSharePage> createState() => _FriendAddAndSharePageState();
@@ -48,129 +53,151 @@ class _FriendAddAndSharePageState extends State<FriendAddAndSharePage> {
         final bool canShareInvite =
             !inviteLoading && inviteLink != null && inviteLink.isNotEmpty;
 
-        return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        return Stack(
           children: [
-            Text(
-              '공유 링크를 통해 친구를 추가해 보세요.',
-              style: TextStyle(
-                color: const Color(0xFFF8F8F8),
-                fontSize: 18,
-                fontFamily: 'Inter',
-                fontWeight: FontWeight.w600,
+            Positioned(
+              top: 60.h,
+              left: 20.w,
+              child: IconButton(
+                onPressed: () {
+                  widget.pageController?.previousPage(
+                    duration: Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                icon: Icon(Icons.arrow_back_ios, color: Colors.white),
               ),
             ),
-            SizedBox(height: 39.h),
-            ElevatedButton(
-              onPressed:
-                  isContactLoading
-                      ? null
-                      : () => _handleContactSync(contactController),
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all(Color(0xFF303030)),
-                padding: WidgetStateProperty.all(EdgeInsets.zero),
-                shape: WidgetStateProperty.all(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(33.31),
+            Align(
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '공유 링크를 통해 친구를 추가해 보세요.',
+                    style: TextStyle(
+                      color: const Color(0xFFF8F8F8),
+                      fontSize: 18,
+                      fontFamily: 'Inter',
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                overlayColor: WidgetStateProperty.all(
-                  Colors.white.withValues(alpha: 0.1),
-                ),
-              ),
-              child: SizedBox(
-                width: 185.w,
-                height: 44,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (isContactLoading)
-                      SizedBox(
-                        width: 20.w,
-                        height: 20.h,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
+                  SizedBox(height: 39.h),
+                  ElevatedButton(
+                    onPressed:
+                        isContactLoading
+                            ? null
+                            : () => _handleContactSync(contactController),
+                    style: ButtonStyle(
+                      backgroundColor:
+                          WidgetStateProperty.all(Color(0xFF303030)),
+                      padding: WidgetStateProperty.all(EdgeInsets.zero),
+                      shape: WidgetStateProperty.all(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(33.31),
                         ),
-                      )
-                    else
-                      Image.asset(
-                        'assets/contact.png',
-                        width: 22.5.w,
-                        height: 22.5.h,
                       ),
-                    SizedBox(width: 11.5.w),
-                    Text(
-                      '연락처 동기화',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w600,
+                      overlayColor: WidgetStateProperty.all(
+                        Colors.white.withValues(alpha: 0.1),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
+                    child: SizedBox(
+                      width: 185.w,
+                      height: 44,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (isContactLoading)
+                            SizedBox(
+                              width: 20.w,
+                              height: 20.h,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          else
+                            Image.asset(
+                              'assets/contact.png',
+                              width: 22.5.w,
+                              height: 22.5.h,
+                            ),
+                          SizedBox(width: 11.5.w),
+                          Text(
+                            '연락처 동기화',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
 
-            SizedBox(height: 27.h),
-            ElevatedButton(
-              onPressed:
-                  canShareInvite
-                      ? () => _shareInviteLink(authController)
-                      : null,
-              style: ButtonStyle(
-                backgroundColor: WidgetStateProperty.all(Color(0xFF303030)),
-                padding: WidgetStateProperty.all(EdgeInsets.zero),
-                shape: WidgetStateProperty.all(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(33.31),
-                  ),
-                ),
-                overlayColor: WidgetStateProperty.all(
-                  Colors.white.withValues(alpha: 0.1),
-                ),
-              ),
-              child: SizedBox(
-                width: 185.w,
-                height: 44,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (inviteLoading)
-                      SizedBox(
-                        width: 20.w,
-                        height: 20.h,
-                        child: const CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
+                  SizedBox(height: 27.h),
+                  ElevatedButton(
+                    onPressed:
+                        canShareInvite
+                            ? () => _shareInviteLink(authController)
+                            : null,
+                    style: ButtonStyle(
+                      backgroundColor:
+                          WidgetStateProperty.all(Color(0xFF303030)),
+                      padding: WidgetStateProperty.all(EdgeInsets.zero),
+                      shape: WidgetStateProperty.all(
+                        RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(33.31),
                         ),
-                      )
-                    else
-                      Image.asset(
-                        'assets/icon_share.png',
-                        width: 23.w,
-                        height: 23.h,
                       ),
-                    SizedBox(width: 11.5.w),
-                    Text(
-                      '친구 링크 공유',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontFamily: 'Inter',
-                        fontWeight: FontWeight.w600,
+                      overlayColor: WidgetStateProperty.all(
+                        Colors.white.withValues(alpha: 0.1),
                       ),
                     ),
-                  ],
-                ),
+                    child: SizedBox(
+                      width: 185.w,
+                      height: 44,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (inviteLoading)
+                            SizedBox(
+                              width: 20.w,
+                              height: 20.h,
+                              child: const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          else
+                            Image.asset(
+                              'assets/icon_share.png',
+                              width: 23.w,
+                              height: 23.h,
+                            ),
+                          SizedBox(width: 11.5.w),
+                          Text(
+                            '친구 링크 공유',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontFamily: 'Inter',
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -182,6 +209,7 @@ class _FriendAddAndSharePageState extends State<FriendAddAndSharePage> {
   Future<void> _shareInviteLink(AuthController authController) async {
     try {
       await authController.sharePreparedInviteLink(
+        originContext: context,
         message: 'SOI에서 함께 친구가 되어볼까요?',
       );
     } catch (e) {

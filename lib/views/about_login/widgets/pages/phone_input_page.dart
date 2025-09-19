@@ -8,11 +8,13 @@ import '../common/custom_text_field.dart';
 class PhoneInputPage extends StatelessWidget {
   final TextEditingController controller;
   final Function(String) onChanged;
+  final PageController? pageController;
 
   const PhoneInputPage({
     super.key,
     required this.controller,
     required this.onChanged,
+    required this.pageController,
   });
 
   @override
@@ -21,28 +23,48 @@ class PhoneInputPage extends StatelessWidget {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final verticalOffset = keyboardHeight > 0 ? -30.0 : 0.0; // 키보드가 올라올 때 위로 이동
 
-    return Transform.translate(
-      offset: Offset(0, verticalOffset),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const PageTitle(title: 'SOI 접속을 위해 전화번호를 입력해주세요.'),
-          SizedBox(height: 24.h),
-          CustomTextField(
-            controller: controller,
-            hintText: '전화번호',
-            keyboardType: TextInputType.phone,
-            textAlign: TextAlign.start,
-            prefixIcon: Icon(
-              SolarIconsOutline.phone,
-              color: const Color(0xffC0C0C0),
-              size: 24.sp,
-            ),
-            onChanged: onChanged,
+    return Stack(
+      children: [
+        Positioned(
+          top: 60.h,
+          left: 20.w,
+          child: IconButton(
+            onPressed: () {
+              pageController?.previousPage(
+                duration: Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+              );
+            },
+            icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           ),
-          SizedBox(height: 24.h),
-        ],
-      ),
+        ),
+        Align(
+          alignment: Alignment.center,
+          child: Transform.translate(
+            offset: Offset(0, verticalOffset),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const PageTitle(title: 'SOI 접속을 위해 전화번호를 입력해주세요.'),
+                SizedBox(height: 24.h),
+                CustomTextField(
+                  controller: controller,
+                  hintText: '전화번호',
+                  keyboardType: TextInputType.phone,
+                  textAlign: TextAlign.start,
+                  prefixIcon: Icon(
+                    SolarIconsOutline.phone,
+                    color: const Color(0xffC0C0C0),
+                    size: 24.sp,
+                  ),
+                  onChanged: onChanged,
+                ),
+                SizedBox(height: 24.h),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

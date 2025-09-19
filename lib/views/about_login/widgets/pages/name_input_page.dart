@@ -20,22 +20,37 @@ class NameInputPage extends StatelessWidget {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final verticalOffset = keyboardHeight > 0 ? -30.0 : 0.0; // 키보드가 올라올 때 위로 이동
 
-    return Transform.translate(
-      offset: Offset(0, verticalOffset),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const PageTitle(title: '당신의 이름을 알려주세요.'),
-          SizedBox(height: 24.h),
-          CustomTextField(
-            controller: controller,
-            hintText: '이름',
-            keyboardType: TextInputType.text,
-            onChanged: onChanged,
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Positioned(
+          top: 60.h,
+          left: 20.w,
+          child: IconButton(
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            icon: Icon(Icons.arrow_back_ios, color: Colors.white),
           ),
-          SizedBox(height: 100.h),
-        ],
-      ),
+        ),
+        Transform.translate(
+          offset: Offset(0, verticalOffset),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const PageTitle(title: '당신의 이름을 알려주세요.'),
+              SizedBox(height: 24.h),
+              CustomTextField(
+                controller: controller,
+                hintText: '이름',
+                keyboardType: TextInputType.text,
+                onChanged: onChanged,
+              ),
+              SizedBox(height: 100.h),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

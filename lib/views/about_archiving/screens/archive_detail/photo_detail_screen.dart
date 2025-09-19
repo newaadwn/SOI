@@ -556,7 +556,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                 ),
                 SizedBox(height: 13.h),
                 SizedBox(
-                  width: 185.5.w,
+                  width: (185.5).w,
                   height: 38.h,
                   child: ElevatedButton(
                     onPressed: () => Navigator.of(ctx).pop(),
@@ -572,7 +572,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                       style: TextStyle(
                         fontFamily: 'Pretendard',
                         fontWeight: FontWeight.w500,
-                        fontSize: 17.8.sp,
+                        fontSize: (17.8).sp,
                       ),
                     ),
                   ),
