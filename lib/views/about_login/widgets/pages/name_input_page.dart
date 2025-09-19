@@ -18,7 +18,7 @@ class NameInputPage extends StatelessWidget {
   Widget build(BuildContext context) {
     // 키보드 높이 계산
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    final verticalOffset = keyboardHeight > 0 ? -30.0 : 0.0; // 키보드가 올라올 때 위로 이동
+    final verticalOffset = keyboardHeight > 0 ? -30.0 : 0.0;
 
     return Stack(
       alignment: Alignment.center,

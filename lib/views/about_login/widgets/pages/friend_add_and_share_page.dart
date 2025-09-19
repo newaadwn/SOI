@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/contact_controller.dart';
 
 class FriendAddAndSharePage extends StatefulWidget {
   final PageController? pageController;
+  final VoidCallback? onSkip;
 
   const FriendAddAndSharePage({
     super.key,
     required this.pageController,
+    this.onSkip,
   });
 
   @override
@@ -68,6 +70,22 @@ class _FriendAddAndSharePageState extends State<FriendAddAndSharePage> {
                 icon: Icon(Icons.arrow_back_ios, color: Colors.white),
               ),
             ),
+            Positioned(
+              top: 60.h,
+              right: 20.w,
+              child: TextButton(
+                onPressed: widget.onSkip,
+                child: Text(
+                  '건너뛰기 >',
+                  style: TextStyle(
+                    color: const Color(0xFFCBCBCB),
+                    fontSize: 16,
+                    fontFamily: GoogleFonts.inter().fontFamily,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
             Align(
               alignment: Alignment.center,
               child: Column(
@@ -89,8 +107,9 @@ class _FriendAddAndSharePageState extends State<FriendAddAndSharePage> {
                             ? null
                             : () => _handleContactSync(contactController),
                     style: ButtonStyle(
-                      backgroundColor:
-                          WidgetStateProperty.all(Color(0xFF303030)),
+                      backgroundColor: WidgetStateProperty.all(
+                        Color(0xFF303030),
+                      ),
                       padding: WidgetStateProperty.all(EdgeInsets.zero),
                       shape: WidgetStateProperty.all(
                         RoundedRectangleBorder(
@@ -147,8 +166,9 @@ class _FriendAddAndSharePageState extends State<FriendAddAndSharePage> {
                             ? () => _shareInviteLink(authController)
                             : null,
                     style: ButtonStyle(
-                      backgroundColor:
-                          WidgetStateProperty.all(Color(0xFF303030)),
+                      backgroundColor: WidgetStateProperty.all(
+                        Color(0xFF303030),
+                      ),
                       padding: WidgetStateProperty.all(EdgeInsets.zero),
                       shape: WidgetStateProperty.all(
                         RoundedRectangleBorder(

@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:provider/provider.dart';
-
 import '../../theme/theme.dart';
-import '../../controllers/auth_controller.dart';
 
 class AuthFinalScreen extends StatelessWidget {
   final String? id;
@@ -23,21 +20,17 @@ class AuthFinalScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    AuthController authController = Provider.of<AuthController>(
-      context,
-      listen: false,
-    );
-
     // ✅ Navigator arguments에서 사용자 정보 가져오기
     final arguments =
-        ModalRoute.of(context)?.settings.arguments as Map<String, String>?;
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
     // 생성자 파라미터 또는 arguments에서 사용자 정보 결정
     final String finalId = id ?? arguments?['id'] ?? '';
     final String finalName = name ?? arguments?['name'] ?? '';
     final String finalPhone = phone ?? arguments?['phone'] ?? '';
     final String finalBirthDate = birthDate ?? arguments?['birthDate'] ?? '';
-    final String? finalProfileImagePath = profileImagePath;
+    final String? finalProfileImagePath =
+        profileImagePath ?? (arguments?['profileImagePath'] as String?);
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
 
@@ -91,50 +84,19 @@ class AuthFinalScreen extends StatelessWidget {
               right: 22.w,
             ),
             child: ElevatedButton(
-              onPressed: () async {
-                try {
-                  // 사용자 정보 먼저 생성
-                  await authController.createUserInFirestore(
-                    authController.currentUser!,
-                    finalId,
-                    finalName,
-                    finalPhone,
-                    finalBirthDate,
-                  );
-
-                  // 프로필 이미지가 있으면 업로드
-                  if (finalProfileImagePath != null &&
-                      finalProfileImagePath.isNotEmpty) {
-                    try {
-                      // 프로필 이미지 업로드 (파일 경로 사용)
-                      await authController.uploadProfileImageFromPath(
-                        finalProfileImagePath,
-                      );
-                      debugPrint('프로필 이미지 업로드 완료');
-                    } catch (e) {
-                      debugPrint('프로필 이미지 업로드 실패: $e');
-                      // 프로필 이미지 업로드 실패해도 계속 진행
-                    }
-                  }
-
-                  // 회원가입 완료 후 로그인 상태 저장 확인
-                  final currentUser = authController.currentUser;
-                  if (currentUser != null) {
-                    await authController.saveLoginState(
-                      userId: currentUser.uid,
-                      phoneNumber: finalPhone,
-                    );
-                    // debugPrint('✅ 회원가입 완료 후 로그인 상태 저장 완료');
-                  }
-
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    '/home_navigation_screen',
-                    (route) => false,
-                  );
-                } catch (e) {
-                  // debugPrint('Error creating user in Firestore: $e');
-                }
+              onPressed: () {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/onboarding',
+                  (route) => false,
+                  arguments: {
+                    'id': finalId,
+                    'name': finalName,
+                    'phone': finalPhone,
+                    'birthDate': finalBirthDate,
+                    'profileImagePath': finalProfileImagePath,
+                  },
+                );
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xffffffff),

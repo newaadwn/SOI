@@ -31,6 +31,7 @@ import 'views/about_login/register_screen.dart';
 import 'views/about_login/login_screen.dart';
 import 'views/about_login/start_screen.dart';
 import 'views/about_notification/notification_screen.dart';
+import 'views/about_onboarding/onboarding_main_screen.dart';
 import 'views/about_profile/profile_screen.dart';
 import 'views/about_setting/privacy.dart';
 import 'views/about_friends/friend_management_screen.dart';
@@ -232,6 +233,7 @@ class _MyAppState extends State<MyApp> {
             '/start': (context) => const StartScreen(),
             '/auth': (context) => AuthScreen(),
             '/login': (context) => const LoginScreen(),
+            '/onboarding': (context) => const OnboardingMainScreen(),
 
             // 아카이빙 관련 라우트
             '/share_record': (context) => const SharedArchivesScreen(),

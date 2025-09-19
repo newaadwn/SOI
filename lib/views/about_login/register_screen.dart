@@ -308,9 +308,13 @@ class _AuthScreenState extends State<AuthScreen> {
                   });
                 },
                 pageController: _pageController,
+                onSkip: _navigateToAuthFinal,
               ),
               // 7. 친구 추가 및 공유 페이지
-              FriendAddAndSharePage(pageController: _pageController),
+              FriendAddAndSharePage(
+                pageController: _pageController,
+                onSkip: _navigateToAuthFinal,
+              ),
             ],
           ),
 
@@ -398,20 +402,7 @@ class _AuthScreenState extends State<AuthScreen> {
                                     );
                                     break;
                                   case 7:
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder:
-                                            (context) => AuthFinalScreen(
-                                              id: id,
-                                              name: name,
-                                              phone: phoneNumber,
-                                              birthDate: birthDate,
-                                              profileImagePath:
-                                                  profileImagePath,
-                                            ),
-                                      ),
-                                    );
+                                    _navigateToAuthFinal();
                                     break;
                                 }
                               }
@@ -455,5 +446,20 @@ class _AuthScreenState extends State<AuthScreen> {
   // 전체 동의 상태 업데이트 함수
   void _updateAgreeAllStatus() {
     agreeAll = agreeServiceTerms && agreePrivacyTerms && agreeMarketingInfo;
+  }
+
+  void _navigateToAuthFinal() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AuthFinalScreen(
+          id: id,
+          name: name,
+          phone: phoneNumber,
+          birthDate: birthDate,
+          profileImagePath: profileImagePath,
+        ),
+      ),
+    );
   }
 }
