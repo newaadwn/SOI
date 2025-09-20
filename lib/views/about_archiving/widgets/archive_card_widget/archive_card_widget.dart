@@ -84,9 +84,22 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
 
   /// 실제 카테고리 카드 빌드
   Widget _buildCategoryCard(BuildContext context, CategoryDataModel category) {
-    return Card(
-      color: const Color(0xFF1C1C1C),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6.61)),
+    final userId = AuthController().getUserId;
+    final hasNewPhoto =
+        userId != null ? category.hasNewPhotoForUser(userId) : false;
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1C),
+        borderRadius: BorderRadius.circular(6.61),
+        border: Border.all(
+          color:
+              (hasNewPhoto)
+                  ? Colors.white.withValues(alpha: 0.35)
+                  : Colors.transparent,
+          width: 1,
+        ),
+      ),
+
       child: InkWell(
         onTap:
             widget.isEditMode

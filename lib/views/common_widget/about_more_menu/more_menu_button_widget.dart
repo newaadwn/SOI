@@ -66,7 +66,7 @@ class MoreMenuButton extends StatelessWidget {
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 20.w),
                         child: Text(
-                          '사진 삭제하면 더 이상 해당 카테고리에서 확인할 수 없으며\n 삭제 후 복구가 불가능합니다.',
+                          '사진 삭제 시 해당 카테고리에서 확인할 수 없으며,\n30일 이내에 복구가 가능합니다',
                           style: TextStyle(
                             color: const Color(0xFFF8F8F8),
                             fontSize: 14.sp,

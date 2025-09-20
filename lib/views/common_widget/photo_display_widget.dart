@@ -540,9 +540,6 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                   _selectedCommentPosition = clampedPosition;
                                   _showActionOverlay = true;
                                 });
-                                debugPrint(
-                                  'Long press detected on comment: ${comment.id}',
-                                );
                               },
                               child: Consumer2<
                                 AuthController,
