@@ -13,11 +13,13 @@ class VoiceCommentListSheet extends StatelessWidget {
   final String photoId;
   final String? categoryId; // 리액션 스트림용 (선택적 - 없으면 표시 생략)
   final String title; // 상단 제목 (예: "공감")
+  final String? commentIdFilter; // 특정 댓글만 표시할 때 사용
   const VoiceCommentListSheet({
     super.key,
     required this.photoId,
     this.categoryId,
     this.title = '공감',
+    this.commentIdFilter,
   });
 
   @override
@@ -54,9 +56,10 @@ class VoiceCommentListSheet extends StatelessWidget {
           // 통합 ListView: (리액션들 + 음성 댓글) 하나의 스크롤
           Consumer2<EmojiReactionController, CommentRecordController>(
             builder: (context, reactionController, recordController, _) {
+              final hasCommentFilter = commentIdFilter != null;
               // 1) 리액션 스트림 (optional)
               final reactionsStream =
-                  (categoryId != null)
+                  (!hasCommentFilter && categoryId != null)
                       ? reactionController.reactionsStream(
                         categoryId: categoryId!,
                         photoId: photoId,
@@ -102,14 +105,24 @@ class VoiceCommentListSheet extends StatelessWidget {
                           ),
                         );
                       }
-                      final comments = commentSnap.data ?? [];
-                      final total = reactions.length + comments.length;
+                      final allComments = commentSnap.data ?? [];
+                      final comments =
+                          hasCommentFilter
+                              ? allComments
+                                  .where(
+                                    (comment) => comment.id == commentIdFilter,
+                                  )
+                                  .toList()
+                              : allComments;
+                      final total =
+                          (hasCommentFilter ? 0 : reactions.length) +
+                          comments.length;
                       if (total == 0) {
                         return SizedBox(
                           height: 120.h,
                           child: Center(
                             child: Text(
-                              '댓글이 없습니다',
+                              hasCommentFilter ? '댓글을 찾을 수 없습니다' : '댓글이 없습니다',
                               style: TextStyle(
                                 color: const Color(0xFF9E9E9E),
                                 fontSize: 16.sp,
@@ -126,14 +139,18 @@ class VoiceCommentListSheet extends StatelessWidget {
                           itemCount: total,
                           separatorBuilder: (_, __) => SizedBox(height: 18.h),
                           itemBuilder: (context, index) {
-                            if (index < reactions.length) {
+                            if (!hasCommentFilter && index < reactions.length) {
                               final r = reactions[index];
                               return ReactionRow(
                                 data: r,
                                 emoji: r['emoji'] ?? '',
                               );
                             }
-                            final comment = comments[index - reactions.length];
+                            final commentIndex =
+                                hasCommentFilter
+                                    ? index
+                                    : index - reactions.length;
+                            final comment = comments[commentIndex];
                             return VoiceCommentRow(comment: comment);
                           },
                         ),

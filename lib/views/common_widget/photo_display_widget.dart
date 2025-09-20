@@ -13,6 +13,7 @@ import '../../utils/format_utils.dart';
 import '../../utils/position_converter.dart';
 import '../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
 import '../about_archiving/screens/archive_detail/category_photos_screen.dart';
+import 'voice_comment_list_sheet.dart';
 
 /// 사진 표시 위젯
 ///
@@ -175,7 +176,10 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                             (context, url, error) =>
                                 Container(color: Colors.grey[700]),
                       )
-                      : Container(color: Colors.grey[700]),
+                      : Container(
+                        color: Colors.grey[700],
+                        child: Icon(Icons.person, size: 20),
+                      ),
             );
       },
     );
@@ -241,19 +245,17 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                   return Stack(
                     alignment: Alignment.topCenter,
                     children: [
-                      // 🔥 메모리 최적화: 배경 이미지 크기 제한
+                      // 메모리 최적화: 배경 이미지 크기 제한
                       CachedNetworkImage(
                         imageUrl: widget.photo.imageUrl,
                         fit: BoxFit.cover,
-                        width: 354.w, // 실제 이미지 너비
-                        height: 500.h, // 실제 이미지 높이
-                        // 🔥 메모리 최적화: 디코딩 크기 제한으로 메모리 사용량 대폭 감소
-                        memCacheHeight:
-                            (500 * 1.2).toInt(), // 화면 크기보다 약간 큰 정도로 제한
-                        memCacheWidth:
-                            (354 * 1.2).toInt(), // 화면 크기보다 약간 큰 정도로 제한
-                        maxHeightDiskCache: 1000, // 디스크 캐시도 제한
-                        maxWidthDiskCache: 700, // 디스크 캐시도 제한
+                        width: 354.w,
+                        height: 500.h,
+                        // 메모리 최적화: 디코딩 크기 제한으로 메모리 사용량 대폭 감소
+                        memCacheHeight: (500 * 1.2).toInt(),
+                        memCacheWidth: (354 * 1.2).toInt(),
+                        maxHeightDiskCache: 1000,
+                        maxWidthDiskCache: 700,
                         placeholder: (context, url) {
                           return Container(
                             width: 354.w,
@@ -556,19 +558,36 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
 
                                   return InkWell(
                                     onTap: () async {
-                                      if (comment.audioUrl.isNotEmpty) {
-                                        try {
-                                          // CommentAudioController 사용하여 개별 댓글 재생
-                                          await commentAudioController
-                                              .toggleComment(
-                                                comment.id,
-                                                comment.audioUrl,
-                                              );
-                                        } catch (e) {
-                                          debugPrint(
-                                            '❌ Feed - 음성 댓글 재생 실패: $e',
-                                          );
-                                        }
+                                      if (!mounted) {
+                                        return;
+                                      }
+
+                                      try {
+                                        final recordController =
+                                            context
+                                                .read<
+                                                  CommentRecordController
+                                                >();
+
+                                        await showModalBottomSheet<void>(
+                                          context: context,
+                                          isScrollControlled: true,
+                                          backgroundColor: Colors.transparent,
+                                          builder: (sheetContext) {
+                                            return ChangeNotifierProvider.value(
+                                              value: recordController,
+                                              child: VoiceCommentListSheet(
+                                                photoId: widget.photo.id,
+                                                categoryId:
+                                                    widget.photo.categoryId,
+                                                title: '음성 댓글',
+                                                commentIdFilter: comment.id,
+                                              ),
+                                            );
+                                          },
+                                        );
+                                      } catch (e) {
+                                        debugPrint('Feed - 댓글 팝업 표시 실패: $e');
                                       }
                                     },
                                     child: Container(
