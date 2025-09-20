@@ -38,47 +38,51 @@ class MoreMenuButton extends StatelessWidget {
       menuChildren: [
         MenuItemButton(
           onPressed: () async {
-            final confirmed = await showDialog<bool>(
+            final confirmed = await showModalBottomSheet<bool>(
               context: context,
-              barrierDismissible: true,
-              builder: (context) {
-                return AlertDialog(
-                  backgroundColor: const Color(0xff323232),
-                  shape: RoundedRectangleBorder(
+              backgroundColor: Colors.transparent,
+              builder: (sheetContext) {
+                return Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xff323232),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  content: Column(
+                  child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       SizedBox(height: 17.h),
                       Text(
                         '사진 삭제',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontFamily: 'Pretendard',
-                          fontWeight: FontWeight.bold,
-                          fontSize: 19.8.sp,
+                          color: const Color(0xFFF8F8F8),
+                          fontSize: (19.78).sp,
+                          fontFamily: 'Pretendard Variable',
+                          fontWeight: FontWeight.w700,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                      SizedBox(height: 12.h),
-                      Text(
-                        '사진 삭제하면 더 이상 해당 카테고리에서 확인할 수 없으며 삭제 후 복구가 \n불가능합니다.',
-                        style: TextStyle(
-                          color: const Color(0xfff9f9f9),
-                          fontFamily: 'Pretendard',
-                          fontSize: 15.8.sp,
-                          fontWeight: FontWeight.w500,
+                      SizedBox(height: 10.h),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 20.w),
+                        child: Text(
+                          '사진 삭제하면 더 이상 해당 카테고리에서 확인할 수 없으며\n 삭제 후 복구가 불가능합니다.',
+                          style: TextStyle(
+                            color: const Color(0xFFF8F8F8),
+                            fontSize: 14.sp,
+                            fontFamily: 'Pretendard Variable',
+                            fontWeight: FontWeight.w400,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
                       ),
                       SizedBox(height: 12.h),
                       SizedBox(
-                        width: (185.5).w,
                         height: 38.h,
+                        width: 344.w,
                         child: ElevatedButton(
                           onPressed: () {
-                            Navigator.of(context).pop(true); // confirm
+                            Navigator.of(sheetContext).pop(true);
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xfff5f5f5),
@@ -99,13 +103,16 @@ class MoreMenuButton extends StatelessWidget {
                       ),
                       SizedBox(height: 13.h),
                       SizedBox(
-                        width: (185.5).w,
                         height: 38.h,
+                        width: 344.w,
                         child: ElevatedButton(
-                          onPressed: () => Navigator.of(context).pop(false),
+                          onPressed: () {
+                            Navigator.of(sheetContext).pop(false);
+                          },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xff5a5a5a),
+                            backgroundColor: const Color(0xFF323232),
                             foregroundColor: Colors.white,
+                            elevation: 0,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14.2),
                             ),
@@ -120,7 +127,7 @@ class MoreMenuButton extends StatelessWidget {
                           ),
                         ),
                       ),
-                      SizedBox(height: 14.h),
+                      SizedBox(height: 30.h),
                     ],
                   ),
                 );
