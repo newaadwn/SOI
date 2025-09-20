@@ -246,24 +246,31 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                     alignment: Alignment.topCenter,
                     children: [
                       // 메모리 최적화: 배경 이미지 크기 제한
-                      CachedNetworkImage(
-                        imageUrl: widget.photo.imageUrl,
-                        fit: BoxFit.cover,
-                        width: 354.w,
-                        height: 500.h,
-                        // 메모리 최적화: 디코딩 크기 제한으로 메모리 사용량 대폭 감소
-                        memCacheHeight: (500 * 1.2).toInt(),
-                        memCacheWidth: (354 * 1.2).toInt(),
-                        maxHeightDiskCache: 1000,
-                        maxWidthDiskCache: 700,
-                        placeholder: (context, url) {
-                          return Container(
-                            width: 354.w,
-                            height: 500.h,
-                            color: Colors.grey[900],
-                            child: const Center(),
-                          );
+                      GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _isShowingComments = !_isShowingComments;
+                          });
                         },
+                        child: CachedNetworkImage(
+                          imageUrl: widget.photo.imageUrl,
+                          fit: BoxFit.cover,
+                          width: 354.w,
+                          height: 500.h,
+                          // 메모리 최적화: 디코딩 크기 제한으로 메모리 사용량 대폭 감소
+                          memCacheHeight: (500 * 1.2).toInt(),
+                          memCacheWidth: (354 * 1.2).toInt(),
+                          maxHeightDiskCache: 1000,
+                          maxWidthDiskCache: 700,
+                          placeholder: (context, url) {
+                            return Container(
+                              width: 354.w,
+                              height: 500.h,
+                              color: Colors.grey[900],
+                              child: const Center(),
+                            );
+                          },
+                        ),
                       ),
                       // 댓글 보기 토글 시(롱프레스 액션 오버레이 아닐 때) 살짝 어둡게 마스킹하여 아바타 대비 확보
                       if (_isShowingComments && !_showActionOverlay)
