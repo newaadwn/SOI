@@ -359,8 +359,10 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               padding: EdgeInsets.only(right: 32.w),
               child: IconButton(
                 onPressed: _showCategoryBottomSheet,
-                icon: SizedBox(
-                  child: Icon(Icons.add, color: Colors.white, size: 33.sp),
+                icon: Image.asset(
+                  "assets/create_category_icon.png",
+                  width: 30.w,
+                  height: 30.h,
                 ),
               ),
             ),
@@ -391,7 +393,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                 left: 20.w,
                 right: 20.w,
                 top: 15.h,
-                bottom: 15.h,
+                bottom: 5.h,
               ),
               child: Container(
                 height: 41.h,
@@ -431,6 +433,20 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                   ],
                 ),
               ),
+            ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  onPressed: () {},
+                  icon: Image.asset(
+                    "assets/category_grid_icon.png",
+                    width: (17.36),
+                    height: (17.36),
+                  ),
+                ),
+                SizedBox(width: (10).w),
+              ],
             ),
             Expanded(
               child: PageView(
