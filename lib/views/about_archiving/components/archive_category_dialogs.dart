@@ -19,7 +19,7 @@ class ArchiveCategoryDialogs {
           backgroundColor: Colors.transparent,
           child: Container(
             width: 314.w,
-            height: 326.h,
+            height: 286,
 
             decoration: BoxDecoration(
               color: const Color(0xFF323232),
@@ -48,12 +48,11 @@ class ArchiveCategoryDialogs {
                         child: Text(
                           '카테고리를 나가면, 해당 카테고리에 저장된 사진은 더 이상 확인할 수 없으며 복구가 불가능합니다.',
                           style: TextStyle(
-                            color: Color(0xFFF9F9F9),
-                            fontSize: (15.78).sp,
-                            fontWeight: FontWeight.w500,
+                            color: const Color(0xFFF8F8F8),
+                            fontSize: 15.78.sp,
                             fontFamily: 'Pretendard Variable',
+                            fontWeight: FontWeight.w500,
                             height: 1.66,
-                            overflow: TextOverflow.visible,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -62,7 +61,7 @@ class ArchiveCategoryDialogs {
                   ),
                 ),
 
-                SizedBox(height: 12.h),
+                Spacer(),
 
                 // 버튼들
                 Column(
@@ -126,6 +125,7 @@ class ArchiveCategoryDialogs {
                     ),
                   ],
                 ),
+                SizedBox(height: 15.h),
               ],
             ),
           ),

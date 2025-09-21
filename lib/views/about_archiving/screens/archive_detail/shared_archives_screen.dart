@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/category_controller.dart';
 import '../../../../theme/theme.dart';
+import '../../models/archive_layout_mode.dart';
 import '../../widgets/archive_card_widget/archive_card_widget.dart';
 
 class SharedArchivesScreen extends StatefulWidget {
@@ -11,6 +12,7 @@ class SharedArchivesScreen extends StatefulWidget {
   final String? editingCategoryId;
   final TextEditingController? editingController;
   final Function(String categoryId, String currentName)? onStartEdit;
+  final ArchiveLayoutMode layoutMode;
 
   const SharedArchivesScreen({
     super.key,
@@ -18,6 +20,7 @@ class SharedArchivesScreen extends StatefulWidget {
     this.editingCategoryId,
     this.editingController,
     this.onStartEdit,
+    this.layoutMode = ArchiveLayoutMode.grid,
   });
 
   @override
@@ -168,58 +171,104 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
           }
 
           // 데이터가 있으면 스크롤 가능한 화면으로 만들기
-          return SingleChildScrollView(
-            physics: AlwaysScrollableScrollPhysics(),
-            child: Padding(
-              padding: EdgeInsets.only(left: 22.w, right: 20.w),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  GridView.builder(
-                    key: ValueKey(
-                      'shared_grid_${sharedCategories.length}_${categoryController.searchQuery}',
-                    ),
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: (168.w / 229.h),
-                      mainAxisSpacing: 15.h,
-                      crossAxisSpacing: 15.w,
-                    ),
-                    itemCount: sharedCategories.length,
-                    itemBuilder: (context, index) {
-                      final category = sharedCategories[index];
-                      final categoryId = category.id;
-
-                      return ArchiveCardWidget(
-                        key: ValueKey('shared_archive_card_$categoryId'),
-                        categoryId: categoryId,
-                        isEditMode: widget.isEditMode,
-                        isEditing:
-                            widget.isEditMode &&
-                            widget.editingCategoryId == categoryId,
-                        editingController:
-                            widget.isEditMode &&
-                                    widget.editingCategoryId == categoryId
-                                ? widget.editingController
-                                : null,
-                        onStartEdit: () {
-                          if (widget.onStartEdit != null) {
-                            widget.onStartEdit!(categoryId, category.name);
-                          }
-                        },
-                      );
-                    },
-                  ),
-                  // 하단 여백을 더 크게 늘리기
-                  SizedBox(height: 20.h),
-                ],
-              ),
-            ),
-          );
+          return widget.layoutMode == ArchiveLayoutMode.grid
+              ? _buildGridView(categoryController, sharedCategories)
+              : _buildListView(categoryController, sharedCategories);
         },
       ),
+    );
+  }
+
+  Widget _buildGridView(
+    CategoryController categoryController,
+    List sharedCategories,
+  ) {
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Padding(
+        padding: EdgeInsets.only(left: 22.w, right: 20.w),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            GridView.builder(
+              key: ValueKey(
+                'shared_grid_${sharedCategories.length}_${categoryController.searchQuery}',
+              ),
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: (168.w / 229.h),
+                mainAxisSpacing: 15.h,
+                crossAxisSpacing: 15.w,
+              ),
+              itemCount: sharedCategories.length,
+              itemBuilder: (context, index) {
+                final category = sharedCategories[index];
+                final categoryId = category.id;
+
+                return ArchiveCardWidget(
+                  key: ValueKey('shared_archive_card_$categoryId'),
+                  categoryId: categoryId,
+                  layoutMode: ArchiveLayoutMode.grid,
+                  isEditMode: widget.isEditMode,
+                  isEditing:
+                      widget.isEditMode &&
+                      widget.editingCategoryId == categoryId,
+                  editingController:
+                      widget.isEditMode &&
+                              widget.editingCategoryId == categoryId
+                          ? widget.editingController
+                          : null,
+                  onStartEdit: () {
+                    if (widget.onStartEdit != null) {
+                      widget.onStartEdit!(categoryId, category.name);
+                    }
+                  },
+                );
+              },
+            ),
+            SizedBox(height: 20.h),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListView(
+    CategoryController categoryController,
+    List sharedCategories,
+  ) {
+    return ListView.separated(
+      key: ValueKey(
+        'shared_list_${sharedCategories.length}_${categoryController.searchQuery}',
+      ),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: EdgeInsets.only(left: 22.w, right: 20.w, top: 8.h, bottom: 20.h),
+      itemBuilder: (context, index) {
+        final category = sharedCategories[index];
+        final categoryId = category.id;
+
+        return ArchiveCardWidget(
+          key: ValueKey('shared_archive_list_card_$categoryId'),
+          categoryId: categoryId,
+          layoutMode: ArchiveLayoutMode.list,
+          isEditMode: widget.isEditMode,
+          isEditing:
+              widget.isEditMode && widget.editingCategoryId == categoryId,
+          editingController:
+              widget.isEditMode && widget.editingCategoryId == categoryId
+                  ? widget.editingController
+                  : null,
+          onStartEdit: () {
+            if (widget.onStartEdit != null) {
+              widget.onStartEdit!(categoryId, category.name);
+            }
+          },
+        );
+      },
+      separatorBuilder: (_, __) => SizedBox(height: 12.h),
+      itemCount: sharedCategories.length,
     );
   }
 }

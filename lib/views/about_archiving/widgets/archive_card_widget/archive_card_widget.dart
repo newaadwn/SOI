@@ -10,6 +10,7 @@ import '../../screens/archive_detail/category_photos_screen.dart';
 import 'archive_profile_row_widget.dart';
 import 'archive_popup_menu_widget.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import '../../models/archive_layout_mode.dart';
 
 // 아카이브 카드 위젯
 class ArchiveCardWidget extends StatefulWidget {
@@ -18,6 +19,7 @@ class ArchiveCardWidget extends StatefulWidget {
   final bool isEditing;
   final TextEditingController? editingController;
   final VoidCallback? onStartEdit;
+  final ArchiveLayoutMode layoutMode;
 
   const ArchiveCardWidget({
     super.key,
@@ -26,6 +28,7 @@ class ArchiveCardWidget extends StatefulWidget {
     this.isEditing = false,
     this.editingController,
     this.onStartEdit,
+    this.layoutMode = ArchiveLayoutMode.grid,
   });
 
   @override
@@ -43,6 +46,10 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
         return StreamBuilder<CategoryDataModel?>(
           stream: categoryController.streamSingleCategory(widget.categoryId),
           builder: (context, snapshot) {
+            final loadingSkeleton =
+                widget.layoutMode == ArchiveLayoutMode.list
+                    ? _buildLoadingListCard()
+                    : _buildLoadingGridCard();
             // 데이터가 있으면 캐시 업데이트
             if (snapshot.hasData && snapshot.data != null) {
               _cachedCategory = snapshot.data!;
@@ -55,7 +62,7 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                     snapshot.connectionState == ConnectionState.none ||
                     !snapshot.hasData ||
                     snapshot.data == null)) {
-              return _buildLoadingCard(context);
+              return loadingSkeleton;
             }
 
             // 에러가 있거나 카테고리가 삭제된 경우
@@ -68,13 +75,16 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
 
             // 여전히 데이터가 없으면 로딩 카드 표시
             if (category == null || category.name.isEmpty) {
-              return _buildLoadingCard(context);
+              return loadingSkeleton;
             }
 
             // AnimatedSwitcher로 부드러운 전환 효과 적용
             return AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              child: _buildCategoryCard(context, category),
+              child: KeyedSubtree(
+                key: ValueKey('${widget.layoutMode}_${category.id}'),
+                child: _buildCategoryCard(context, category),
+              ),
             );
           },
         );
@@ -84,23 +94,31 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
 
   /// 실제 카테고리 카드 빌드
   Widget _buildCategoryCard(BuildContext context, CategoryDataModel category) {
+    return widget.layoutMode == ArchiveLayoutMode.list
+        ? _buildListLayout(context, category)
+        : _buildGridLayout(context, category);
+  }
+
+  Widget _buildGridLayout(BuildContext context, CategoryDataModel category) {
     final userId = AuthController().getUserId;
     final hasNewPhoto =
         userId != null ? category.hasNewPhotoForUser(userId) : false;
+
     return Container(
+      key: ValueKey('grid_${category.id}'),
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C1C),
         borderRadius: BorderRadius.circular(6.61),
         border: Border.all(
           color:
-              (hasNewPhoto)
+              hasNewPhoto
                   ? Colors.white.withValues(alpha: 0.35)
                   : Colors.transparent,
           width: 1,
         ),
       ),
-
       child: InkWell(
+        borderRadius: BorderRadius.circular(6.61),
         onTap:
             widget.isEditMode
                 ? null
@@ -117,236 +135,36 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 메인 이미지 (실시간 업데이트)
             Stack(
               alignment: Alignment.topLeft,
               children: [
-                // 메인 이미지
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(6.61),
-                  child:
-                      (category.categoryPhotoUrl != null &&
-                              category.categoryPhotoUrl!.isNotEmpty)
-                          ? CachedNetworkImage(
-                            key: ValueKey(
-                              '${category.id}_${category.categoryPhotoUrl}',
-                            ),
-                            imageUrl: category.categoryPhotoUrl!,
-                            cacheKey:
-                                '${category.id}_${category.categoryPhotoUrl}',
-                            width: (146.7).w,
-                            height: (146.8).h,
-                            memCacheHeight: ((146.8).h * 3).toInt(),
-                            memCacheWidth: ((146.7).w * 3).toInt(),
-                            maxHeightDiskCache: 600,
-                            maxWidthDiskCache: 600,
-                            fit: BoxFit.cover,
-                            placeholder:
-                                (context, url) => Shimmer.fromColors(
-                                  baseColor: Colors.grey.shade800,
-                                  highlightColor: Colors.grey.shade700,
-                                  period: const Duration(milliseconds: 1500),
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(6.61),
-                                    child: Container(
-                                      width: (146.7).w,
-                                      height: (146.8).h,
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade800,
-                                        border: Border.all(
-                                          color: Colors.white.withValues(
-                                            alpha: 0.12,
-                                          ),
-                                          width: 1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          6.61,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            errorWidget:
-                                (context, url, error) => Container(
-                                  color: Color(
-                                    0xFFcacaca,
-                                  ).withValues(alpha: 0.9),
-                                  width: (146.7).w,
-                                  height: (146.8).h,
-                                  child: Icon(
-                                    Icons.image,
-                                    color: Color(0xff5a5a5a),
-                                    size: 51.sp,
-                                  ),
-                                ),
-                          )
-                          : Container(
-                            color: Color(0xFFcacaca).withValues(alpha: 0.9),
-                            width: (146.7).w,
-                            height: (146.8).h,
-                            child: Icon(
-                              Icons.image,
-                              color: Color(0xff5a5a5a),
-                              size: 51.sp,
-                            ),
-                          ),
+                _buildCategoryImage(
+                  category,
+                  width: 146.7.w,
+                  height: 146.8.h,
+                  borderRadius: 6.61,
                 ),
-
-                // 고정 아이콘 (현재 사용자에게 고정된 경우에만 표시)
-                Builder(
-                  builder: (context) {
-                    final authController = AuthController();
-                    final userId = authController.getUserId;
-
-                    // 현재 사용자의 고정 상태 확인
-                    final isPinnedForCurrentUser =
-                        userId != null
-                            ? category.isPinnedForUser(userId)
-                            : false;
-
-                    if (!isPinnedForCurrentUser) return SizedBox.shrink();
-
-                    return Positioned(
-                      top: (5).h,
-                      left: (5).w,
-                      child: Container(
-                        padding: const EdgeInsets.all(4.0),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.7),
-                          borderRadius: BorderRadius.circular(12.0),
-                        ),
-                        child: Image.asset(
-                          'assets/pin_icon.png',
-                          width: 9.w,
-                          height: 9.h,
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                // New 아이콘 (다른 사용자가 최근에 사진을 올린 경우에만 표시)
-                Builder(
-                  builder: (context) {
-                    final authController = AuthController();
-                    final userId = authController.getUserId;
-
-                    // 현재 사용자에게 새로운 사진이 있는지 확인
-                    final hasNewPhoto =
-                        userId != null
-                            ? category.hasNewPhotoForUser(userId)
-                            : false;
-
-                    if (!hasNewPhoto) return SizedBox.shrink();
-
-                    return Positioned(
-                      top: (3.43).h,
-                      left: (130).w,
-                      child: Image.asset(
-                        'assets/new_icon.png',
-                        width: 13.87.w,
-                        height: 13.87.h,
-                      ),
-                    );
-                  },
-                ),
+                _buildPinnedBadge(category, top: 5.h, left: 5.w),
+                _buildNewBadge(category, top: 3.43.h, left: 130.w),
               ],
             ),
-
-            // 카테고리 이름과 더보기 버튼 행
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // 카테고리 이름 (편집 모드에 따라 TextField 또는 Text)
                 Expanded(
                   child: Padding(
                     padding: EdgeInsets.only(left: 14.w, right: 8.w),
-                    child:
-                        widget.isEditing
-                            ? TextField(
-                              controller: widget.editingController,
-                              style: TextStyle(
-                                color: const Color(0xFFF9F9F9),
-                                fontSize: 14.sp,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: -0.4,
-                                fontFamily: "Pretendard",
-                              ),
-                              cursorColor: Color(0xfff9f9f9),
-                              cursorHeight: 13.h,
-                              decoration: InputDecoration(
-                                border: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: Colors.white),
-                                ),
-                                focusedBorder: UnderlineInputBorder(
-                                  borderSide: BorderSide(color: Colors.white),
-                                ),
-                                contentPadding: EdgeInsets.zero,
-                                isDense: true,
-                              ),
-                              maxLines: 1,
-                              autofocus: true,
-                            )
-                            : Builder(
-                              builder: (context) {
-                                final authController = AuthController();
-                                final userId = authController.getUserId;
-                                final categoryController =
-                                    Provider.of<CategoryController>(
-                                      context,
-                                      listen: false,
-                                    );
-
-                                final displayName =
-                                    userId != null
-                                        ? categoryController
-                                            .getCategoryDisplayName(
-                                              category,
-                                              userId,
-                                            )
-                                        : category.name;
-
-                                return Text(
-                                  displayName,
-                                  style: TextStyle(
-                                    color: const Color(0xFFF9F9F9),
-                                    fontSize: 14.sp,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: "Pretendard",
-                                    letterSpacing: -0.4,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                );
-                              },
-                            ),
-                  ),
-                ),
-
-                // 더보기 버튼 (편집 모드가 아닐 때만 표시)
-                if (!widget.isEditMode)
-                  IgnorePointer(
-                    ignoring: widget.isEditMode,
-                    child: ArchivePopupMenuWidget(
-                      category: category,
-                      onEditName: widget.onStartEdit,
-                      child: Container(
-                        width: 30.w,
-                        height: 30.h,
-                        alignment: Alignment.center,
-                        child: Icon(
-                          Icons.more_vert,
-                          color: widget.isEditMode ? Colors.grey : Colors.white,
-                          size: 22.sp,
-                        ),
-                      ),
+                    child: _buildTitleWidget(
+                      context,
+                      category,
+                      fontSize: 14.sp,
                     ),
                   ),
+                ),
+                _buildPopupMenu(category),
               ],
             ),
-
             SizedBox(height: 8.h),
-
-            // 프로필 이미지들 (카테고리의 mates를 직접 사용)
             Padding(
               padding: EdgeInsets.only(left: 14.w),
               child: ArchiveProfileRowWidget(mates: category.mates),
@@ -357,8 +175,295 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
     );
   }
 
-  /// 로딩 카드 (Shimmer 효과 적용)
-  Widget _buildLoadingCard(BuildContext context) {
+  Widget _buildListLayout(BuildContext context, CategoryDataModel category) {
+    final userId = AuthController().getUserId;
+    final hasNewPhoto =
+        userId != null ? category.hasNewPhotoForUser(userId) : false;
+
+    return Container(
+      height: 99,
+      key: ValueKey('list_${category.id}'),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C1C),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color:
+              hasNewPhoto
+                  ? Colors.white.withValues(alpha: 0.35)
+                  : Colors.transparent,
+          width: 1,
+        ),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap:
+            widget.isEditMode
+                ? null
+                : () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (context) => CategoryPhotosScreen(category: category),
+                    ),
+                  );
+                },
+        child: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 74.w,
+                height: 74.w,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    _buildCategoryImage(
+                      category,
+                      width: (80.9).w,
+                      height: 81.w,
+                      borderRadius: (3.65),
+                    ),
+                    _buildPinnedBadge(category, top: 6.h, left: 6.w),
+                    _buildNewBadge(category, top: 4.h, right: 4.w),
+                  ],
+                ),
+              ),
+              SizedBox(width: 16.w),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _buildTitleWidget(
+                            context,
+                            category,
+                            fontSize: 16.sp,
+                          ),
+                        ),
+                        _buildPopupMenu(category),
+                      ],
+                    ),
+                    SizedBox(height: 14.h),
+                    Row(
+                      children: [
+                        const Spacer(),
+                        ArchiveProfileRowWidget(mates: category.mates),
+                        SizedBox(width: 10.w),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTitleWidget(
+    BuildContext context,
+    CategoryDataModel category, {
+    required double fontSize,
+  }) {
+    if (widget.isEditing) {
+      return TextField(
+        controller: widget.editingController,
+        style: TextStyle(
+          color: const Color(0xFFF9F9F9),
+          fontSize: fontSize,
+          fontWeight: FontWeight.bold,
+          letterSpacing: -0.4,
+          fontFamily: 'Pretendard',
+        ),
+        cursorColor: const Color(0xfff9f9f9),
+        decoration: const InputDecoration(
+          border: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.white),
+          ),
+          focusedBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Colors.white),
+          ),
+          contentPadding: EdgeInsets.zero,
+          isDense: true,
+        ),
+        maxLines: 1,
+        autofocus: true,
+      );
+    }
+
+    final authController = AuthController();
+    final userId = authController.getUserId;
+    final categoryController = Provider.of<CategoryController>(
+      context,
+      listen: false,
+    );
+
+    final displayName =
+        userId != null
+            ? categoryController.getCategoryDisplayName(category, userId)
+            : category.name;
+
+    return Text(
+      displayName,
+      style: TextStyle(
+        color: const Color(0xFFF9F9F9),
+        fontSize: fontSize,
+        fontWeight: FontWeight.bold,
+        fontFamily: 'Pretendard',
+        letterSpacing: -0.4,
+      ),
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  Widget _buildPopupMenu(CategoryDataModel category) {
+    if (widget.isEditMode) {
+      return SizedBox(width: 30.w, height: 30.h);
+    }
+
+    return ArchivePopupMenuWidget(
+      category: category,
+      onEditName: widget.onStartEdit,
+      child: Container(
+        width: 30.w,
+        height: 30.h,
+        alignment: Alignment.center,
+        child: Icon(Icons.more_vert, color: Colors.white, size: 22.sp),
+      ),
+    );
+  }
+
+  Widget _buildCategoryImage(
+    CategoryDataModel category, {
+    required double width,
+    required double height,
+    required double borderRadius,
+  }) {
+    if (category.categoryPhotoUrl != null &&
+        category.categoryPhotoUrl!.isNotEmpty) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: CachedNetworkImage(
+          key: ValueKey(
+            '${category.id}_${category.categoryPhotoUrl}_${widget.layoutMode}',
+          ),
+          imageUrl: category.categoryPhotoUrl!,
+          cacheKey: '${category.id}_${category.categoryPhotoUrl}',
+          width: width,
+          height: height,
+          memCacheHeight: (height * 3).toInt(),
+          memCacheWidth: (width * 3).toInt(),
+          maxHeightDiskCache: 600,
+          maxWidthDiskCache: 600,
+          fit: BoxFit.cover,
+          placeholder:
+              (context, url) => Shimmer.fromColors(
+                baseColor: Colors.grey.shade800,
+                highlightColor: Colors.grey.shade700,
+                period: const Duration(milliseconds: 1500),
+                child: Container(
+                  width: width,
+                  height: height,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade800,
+                    borderRadius: BorderRadius.circular(borderRadius),
+                  ),
+                ),
+              ),
+          errorWidget:
+              (context, url, error) => Container(
+                width: width,
+                height: height,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCACACA).withValues(alpha: 0.9),
+                  borderRadius: BorderRadius.circular(borderRadius),
+                ),
+                child: Icon(
+                  Icons.image,
+                  color: const Color(0xff5a5a5a),
+                  size: 32.sp,
+                ),
+              ),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: Container(
+        width: width,
+        height: height,
+        color: const Color(0xFFCACACA).withValues(alpha: 0.9),
+        child: Icon(Icons.image, color: const Color(0xff5a5a5a), size: 32.sp),
+      ),
+    );
+  }
+
+  Widget _buildPinnedBadge(
+    CategoryDataModel category, {
+    double? top,
+    double? left,
+    double? right,
+  }) {
+    final authController = AuthController();
+    final userId = authController.getUserId;
+    final isPinned = userId != null ? category.isPinnedForUser(userId) : false;
+
+    if (!isPinned) {
+      return const SizedBox.shrink();
+    }
+
+    return Positioned(
+      top: top,
+      left: left,
+      right: right,
+      child: Container(
+        padding: EdgeInsets.all(4.w),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        child: Image.asset('assets/pin_icon.png', width: 9.w, height: 9.h),
+      ),
+    );
+  }
+
+  Widget _buildNewBadge(
+    CategoryDataModel category, {
+    double? top,
+    double? left,
+    double? right,
+  }) {
+    final authController = AuthController();
+    final userId = authController.getUserId;
+    final hasNewPhoto =
+        userId != null ? category.hasNewPhotoForUser(userId) : false;
+
+    if (!hasNewPhoto) {
+      return const SizedBox.shrink();
+    }
+
+    return Positioned(
+      top: top,
+      left: left,
+      right: right,
+      child: Image.asset(
+        'assets/new_icon.png',
+        width: 13.87.w,
+        height: 13.87.h,
+      ),
+    );
+  }
+
+  Widget _buildLoadingGridCard() {
     return Shimmer.fromColors(
       baseColor: Colors.grey.shade800,
       highlightColor: Colors.grey.shade700,
@@ -378,24 +483,22 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // 이미지 영역 Shimmer (상단 큰 블럭)
             ClipRRect(
               borderRadius: BorderRadius.circular(6.61),
               child: Container(
-                width: (146.7).w,
-                height: (146.8).h,
+                width: 146.7.w,
+                height: 146.8.h,
                 color: Colors.grey.shade800,
               ),
             ),
-            SizedBox(height: (10).h),
-            // 텍스트 라인
+            SizedBox(height: 10.h),
             Align(
               alignment: Alignment.centerLeft,
               child: Padding(
                 padding: EdgeInsets.only(left: 14.w),
                 child: Container(
-                  width: (90).w,
-                  height: (12).h,
+                  width: 90.w,
+                  height: 12.h,
                   decoration: BoxDecoration(
                     color: Colors.grey.shade700,
                     borderRadius: BorderRadius.circular(4),
@@ -404,7 +507,6 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
               ),
             ),
             SizedBox(height: 12.h),
-            // 프로필 동그라미 3개
             Padding(
               padding: EdgeInsets.only(left: 14.w),
               child: Row(
@@ -422,6 +524,71 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                     ),
                   ),
                 ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadingListCard() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade800,
+      highlightColor: Colors.grey.shade700,
+      period: const Duration(milliseconds: 1500),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey.shade800,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+        child: Row(
+          children: [
+            Container(
+              width: 74.w,
+              height: 74.w,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade700,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            SizedBox(width: 16.w),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 130.w,
+                    height: 14.h,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade700,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  ),
+                  SizedBox(height: 14.h),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(
+                        3,
+                        (index) => Padding(
+                          padding: EdgeInsets.only(left: index == 0 ? 0 : 6.w),
+                          child: Container(
+                            width: 20.w,
+                            height: 20.h,
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade700,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

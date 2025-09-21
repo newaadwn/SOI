@@ -11,6 +11,7 @@ import '../../../models/selected_friend_model.dart';
 import '../../../theme/theme.dart';
 import '../../about_friends/friend_list_add_screen.dart';
 import '../components/overlapping_profiles_widget.dart';
+import '../models/archive_layout_mode.dart';
 import 'archive_detail/all_archives_screen.dart';
 import 'archive_detail/my_archives_screen.dart';
 import 'archive_detail/shared_archives_screen.dart';
@@ -25,6 +26,7 @@ class ArchiveMainScreen extends StatefulWidget {
 
 class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   int _selectedIndex = 0;
+  ArchiveLayoutMode _layoutMode = ArchiveLayoutMode.grid;
 
   // 컨트롤러들
   final _categoryNameController = TextEditingController();
@@ -52,18 +54,21 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   // 탭 화면 목록을 동적으로 생성하는 메서드
   List<Widget> get _screens => [
     AllArchivesScreen(
+      layoutMode: _layoutMode,
       isEditMode: _isEditMode,
       editingCategoryId: _editingCategoryId,
       editingController: _editingNameController,
       onStartEdit: startEditMode,
     ),
     MyArchivesScreen(
+      layoutMode: _layoutMode,
       isEditMode: _isEditMode,
       editingCategoryId: _editingCategoryId,
       editingController: _editingNameController,
       onStartEdit: startEditMode,
     ),
     SharedArchivesScreen(
+      layoutMode: _layoutMode,
       isEditMode: _isEditMode,
       editingCategoryId: _editingCategoryId,
       editingController: _editingNameController,
@@ -78,7 +83,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     // 검색 기능 설정
     _searchController.addListener(_onSearchChanged);
 
-    // ✅ 최적화: 초기화 작업을 지연시켜 UI 블로킹 방지
+    // 최적화: 초기화 작업을 지연시켜 UI 블로킹 방지
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // 다음 프레임에서 실행하여 UI 렌더링을 먼저 완료
       Future.delayed(Duration.zero, () {
@@ -438,12 +443,26 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 IconButton(
-                  onPressed: () {},
-                  icon: Image.asset(
-                    "assets/category_grid_icon.png",
-                    width: (17.36),
-                    height: (17.36),
-                  ),
+                  onPressed: () {
+                    setState(() {
+                      _layoutMode =
+                          _layoutMode == ArchiveLayoutMode.grid
+                              ? ArchiveLayoutMode.list
+                              : ArchiveLayoutMode.grid;
+                    });
+                  },
+                  icon:
+                      _layoutMode == ArchiveLayoutMode.grid
+                          ? Image.asset(
+                            "assets/list_icon.png",
+                            width: (16.92).w,
+                            height: (17.27).h,
+                          )
+                          : Image.asset(
+                            "assets/grid_icon.png",
+                            width: (17.36).w,
+                            height: (17.36).h,
+                          ),
                 ),
                 SizedBox(width: (10).w),
               ],
