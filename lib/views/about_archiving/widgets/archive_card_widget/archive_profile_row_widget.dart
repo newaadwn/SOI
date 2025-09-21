@@ -52,70 +52,29 @@ class ArchiveProfileRowWidget extends StatelessWidget {
                           mateUid,
                         ),
                         builder: (context, snapshot) {
-                          String? imageUrl;
-                          if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                            imageUrl = snapshot.data;
+                          if (snapshot.connectionState ==
+                              ConnectionState.waiting) {
+                            return _buildShimmerCircle();
                           }
 
-                          return Container(
-                            width: 19,
-                            height: 19,
-                            decoration: BoxDecoration(shape: BoxShape.circle),
-                            child:
-                                imageUrl != null && imageUrl.isNotEmpty
-                                    ? ClipOval(
-                                      child: CachedNetworkImage(
-                                        imageUrl: imageUrl,
-                                        fit: BoxFit.cover,
-                                        memCacheHeight: (19 * 4).toInt(),
-                                        memCacheWidth: (19 * 4).toInt(),
-                                        maxHeightDiskCache: 150,
-                                        maxWidthDiskCache: 150,
-                                        placeholder:
-                                            (context, url) => Container(
-                                              width: 19,
-                                              height: 19,
+                          final imageUrl = snapshot.data ?? '';
 
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: Colors.grey[400],
-                                              ),
-                                              child: Icon(
-                                                Icons.person,
-                                                color: Colors.white,
-                                                size: 15,
-                                              ),
-                                            ),
-                                        errorWidget:
-                                            (context, url, error) => Container(
-                                              width: 19,
-                                              height: 19,
+                          if (imageUrl.isEmpty) {
+                            return _buildDefaultCircle();
+                          }
 
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: Colors.grey[400],
-                                              ),
-                                              child: Icon(
-                                                Icons.person,
-                                                color: Colors.white,
-                                                size: 15,
-                                              ),
-                                            ),
-                                      ),
-                                    )
-                                    : Container(
-                                      width: 19,
-                                      height: 19,
-                                      decoration: BoxDecoration(
-                                        shape: BoxShape.circle,
-                                        color: Colors.grey[400],
-                                      ),
-                                      child: Icon(
-                                        Icons.person,
-                                        color: Colors.white,
-                                        size: 15,
-                                      ),
-                                    ),
+                          return ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              fit: BoxFit.cover,
+                              memCacheHeight: (19 * 3).toInt(),
+                              memCacheWidth: (19 * 3).toInt(),
+                              maxHeightDiskCache: 150,
+                              maxWidthDiskCache: 150,
+                              placeholder: (context, url) => _buildShimmerCircle(),
+                              errorWidget: (context, url, error) =>
+                                  _buildDefaultCircle(),
+                            ),
                           );
                         },
                       ),
@@ -127,4 +86,35 @@ class ArchiveProfileRowWidget extends StatelessWidget {
       },
     );
   }
+}
+
+Widget _buildShimmerCircle() {
+  return Shimmer.fromColors(
+    baseColor: Colors.grey.shade600,
+    highlightColor: Colors.grey.shade400,
+    child: Container(
+      width: 19,
+      height: 19,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+      ),
+    ),
+  );
+}
+
+Widget _buildDefaultCircle() {
+  return Container(
+    width: 19,
+    height: 19,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: Colors.grey.shade500,
+    ),
+    child: const Icon(
+      Icons.person,
+      color: Colors.white,
+      size: 14,
+    ),
+  );
 }

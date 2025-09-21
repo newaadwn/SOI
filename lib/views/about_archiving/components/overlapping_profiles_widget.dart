@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../models/selected_friend_model.dart';
 
 /// 선택된 친구들의 프로필 이미지를 겹쳐서 표시하는 위젯
@@ -54,32 +55,9 @@ class OverlappingProfilesWidget extends StatelessWidget {
 
                   return Positioned(
                     left: (index * overlapDistance).w,
-                    child: Container(
-                      width: profileSize,
-                      height: profileSize,
-                      decoration: BoxDecoration(shape: BoxShape.circle),
-                      child: CircleAvatar(
-                        backgroundColor: Color(0xFF404040),
-                        backgroundImage:
-                            friend.profileImageUrl != null
-                                ? CachedNetworkImageProvider(
-                                  friend.profileImageUrl!,
-                                )
-                                : null,
-                        child:
-                            friend.profileImageUrl == null
-                                ? Text(
-                                  friend.name.isNotEmpty
-                                      ? friend.name[0].toUpperCase()
-                                      : '?',
-                                  style: TextStyle(
-                                    color: Color(0xFFE2E2E2),
-                                    fontSize: (profileSize * 0.33).sp,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                )
-                                : null,
-                      ),
+                    child: _ProfileAvatar(
+                      size: profileSize,
+                      imageUrl: friend.profileImageUrl,
                     ),
                   );
                 }),
@@ -105,6 +83,69 @@ class OverlappingProfilesWidget extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  final double size;
+  final String? imageUrl;
+
+  const _ProfileAvatar({required this.size, this.imageUrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
+
+    if (!hasImage) {
+      return _buildDefault();
+    }
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: ClipOval(
+        child: CachedNetworkImage(
+          imageUrl: imageUrl!,
+          fit: BoxFit.cover,
+          memCacheHeight: (size * 3).toInt(),
+          memCacheWidth: (size * 3).toInt(),
+          placeholder: (context, url) => _buildShimmer(),
+          errorWidget: (context, url, error) => _buildDefault(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefault() {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFF404040),
+      ),
+      alignment: Alignment.center,
+      child: Icon(
+        Icons.person,
+        color: const Color(0xFFE2E2E2),
+        size: size * 0.55,
+      ),
+    );
+  }
+
+  Widget _buildShimmer() {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade600,
+      highlightColor: Colors.grey.shade300,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+        ),
       ),
     );
   }

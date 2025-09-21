@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../controllers/category_controller.dart';
 import '../../../models/selected_friend_model.dart';
@@ -277,10 +278,13 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               SizedBox(width: 32.w),
               Consumer<AuthController>(
                 builder: (context, authController, _) {
-                  return FutureBuilder(
+                  return FutureBuilder<String>(
                     future: authController.getUserProfileImageUrl(),
                     builder: (context, imageSnapshot) {
-                      String profileImageUrl = imageSnapshot.data ?? '';
+                      final isLoadingAvatar =
+                          imageSnapshot.connectionState ==
+                              ConnectionState.waiting;
+                      final profileImageUrl = imageSnapshot.data ?? '';
 
                       return Padding(
                         padding: EdgeInsets.symmetric(
@@ -290,66 +294,42 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                         child: Container(
                           decoration: BoxDecoration(shape: BoxShape.circle),
                           child: Builder(
-                            builder:
-                                (context) =>
-                                    profileImageUrl.isNotEmpty
-                                        ? InkWell(
-                                          onTap: () {
-                                            Navigator.pushNamed(
-                                              context,
-                                              '/profile_screen',
-                                            );
-                                          },
-                                          child: SizedBox(
-                                            width: 34.w,
-                                            height: 34.h,
-                                            child: CircleAvatar(
-                                              // 메모리 최적화: 프로필 이미지 캐시 크기 제한
-                                              backgroundImage:
-                                                  CachedNetworkImageProvider(
-                                                    profileImageUrl,
-                                                    maxHeight: 70,
-                                                    maxWidth: 70,
-                                                  ),
-                                              onBackgroundImageError: (
-                                                exception,
-                                                stackTrace,
-                                              ) {
+                            builder: (context) {
+                              return InkWell(
+                                onTap: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    '/profile_screen',
+                                  );
+                                },
+                                child: SizedBox(
+                                  width: 34.w,
+                                  height: 34.h,
+                                  child: ClipOval(
+                                    child: isLoadingAvatar
+                                        ? _buildAvatarShimmer()
+                                        : profileImageUrl.isNotEmpty
+                                            ? CachedNetworkImage(
+                                              imageUrl: profileImageUrl,
+                                              fit: BoxFit.cover,
+                                              memCacheHeight: 120,
+                                              memCacheWidth: 120,
+                                              placeholder: (context, url) =>
+                                                  _buildAvatarShimmer(),
+                                              errorWidget:
+                                                  (context, url, error) {
                                                 Future.microtask(
-                                                  () =>
-                                                      authController
-                                                          .cleanInvalidProfileImageUrl(),
+                                                  () => authController
+                                                      .cleanInvalidProfileImageUrl(),
                                                 );
+                                                return _buildAvatarFallback();
                                               },
-                                              child:
-                                                  profileImageUrl.isEmpty
-                                                      ? Icon(
-                                                        Icons.person,
-                                                        color: Colors.white,
-                                                      )
-                                                      : null,
-                                            ),
-                                          ),
-                                        )
-                                        : InkWell(
-                                          onTap: () {
-                                            Navigator.pushNamed(
-                                              context,
-                                              '/profile_screen',
-                                            );
-                                          },
-                                          child: SizedBox(
-                                            width: 34,
-                                            height: 34,
-                                            child: CircleAvatar(
-                                              backgroundColor: Colors.grey,
-                                              child: Icon(
-                                                Icons.person,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+                                            )
+                                            : _buildAvatarFallback(),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       );
@@ -968,4 +948,27 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     PaintingBinding.instance.imageCache.clear();
     super.dispose();
   }
+}
+
+Widget _buildAvatarShimmer() {
+  return Shimmer.fromColors(
+    baseColor: Colors.grey.shade600,
+    highlightColor: Colors.grey.shade400,
+    child: Container(
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+      ),
+    ),
+  );
+}
+
+Widget _buildAvatarFallback() {
+  return Container(
+    color: Colors.grey.shade700,
+    child: const Icon(
+      Icons.person,
+      color: Colors.white,
+    ),
+  );
 }
