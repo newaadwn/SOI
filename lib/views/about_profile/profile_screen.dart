@@ -196,98 +196,96 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(left: 24.w, right: 24.w, bottom: 24.h),
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF323232),
-                borderRadius: BorderRadius.circular(16),
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF323232),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: 26.h),
+              Text(
+                '탈퇴하기',
+                style: TextStyle(
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 19.8.sp,
+                  color: const Color(0xFFF9F9F9),
+                ),
+                textAlign: TextAlign.center,
               ),
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 24.h),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '탈퇴하기',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard Variable',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 19.8.sp,
-                        color: const Color(0xFFF9F9F9),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 12.h),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.w),
-                      child: Text(
-                        '탈퇴 버튼 선택시, 계정은\n삭제되며 복구가 불가능합니다.',
-                        style: TextStyle(
-                          fontFamily: 'Pretendard Variable',
-                          fontWeight: FontWeight.w500,
-                          fontSize: 15.8.sp,
-                          height: 1.6,
-                          color: const Color(0xFFF9F9F9),
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                    SizedBox(height: 28.h),
-                    SizedBox(
-                      height: 38.h,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          Navigator.of(sheetContext).pop();
-                          await _performDeleteAccount();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFF9F9F9),
-                          foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14.2),
-                          ),
-                        ),
-                        child: Text(
-                          '탈퇴',
-                          style: TextStyle(
-                            fontFamily: 'Pretendard Variable',
-                            fontWeight: FontWeight.w600,
-                            fontSize: 17.8.sp,
-                          ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 14.h),
-                    SizedBox(
-                      height: 38.h,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(sheetContext).pop();
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF5A5A5A),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14.2),
-                          ),
-                        ),
-                        child: Text(
-                          '취소',
-                          style: TextStyle(
-                            fontFamily: 'Pretendard Variable',
-                            fontWeight: FontWeight.w500,
-                            fontSize: 17.8.sp,
-                            color: const Color(0xFFCCCCCC),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+              SizedBox(height: 12.h),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.w),
+                child: Text(
+                  '탈퇴 버튼 선택시, 계정은\n삭제되며 복구가 불가능합니다.',
+                  style: TextStyle(
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 15.8.sp,
+                    height: 1.6,
+                    color: const Color(0xFFF9F9F9),
+                  ),
+                  textAlign: TextAlign.center,
                 ),
               ),
-            ),
+              SizedBox(height: 28.h),
+              SizedBox(
+                width: 344.w,
+                height: 38.h,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(sheetContext).pop();
+                    await _performDeleteAccount();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF9F9F9),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                  ),
+                  child: Text(
+                    '탈퇴',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w600,
+                      fontSize: 17.8.sp,
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 14.h),
+              SizedBox(
+                width: 344.w,
+                height: 38.h,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(sheetContext).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor: const Color(0xFF323232),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                  ),
+                  child: Text(
+                    '취소',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 17.8.sp,
+                      color: const Color(0xFFCCCCCC),
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: (16.5).h),
+            ],
           ),
         );
       },

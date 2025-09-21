@@ -26,6 +26,7 @@ class ArchiveCategoryDialogs {
               borderRadius: BorderRadius.circular(14.2),
             ),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // 제목
                 Padding(
@@ -61,7 +62,7 @@ class ArchiveCategoryDialogs {
                   ),
                 ),
 
-                Spacer(),
+                //Spacer(),
 
                 // 버튼들
                 Column(
@@ -69,7 +70,7 @@ class ArchiveCategoryDialogs {
                     // 확인 버튼
                     GestureDetector(
                       onTap: () async {
-                        Navigator.of(context).pop(); // 다이얼로그 닫기
+                        Navigator.of(context).pop();
                         onConfirm();
                       },
                       child: Container(
