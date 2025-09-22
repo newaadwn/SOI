@@ -67,13 +67,17 @@ class ArchiveProfileRowWidget extends StatelessWidget {
                             child: CachedNetworkImage(
                               imageUrl: imageUrl,
                               fit: BoxFit.cover,
+                              width: 19,
+                              height: 19,
                               memCacheHeight: (19 * 3).toInt(),
                               memCacheWidth: (19 * 3).toInt(),
                               maxHeightDiskCache: 150,
                               maxWidthDiskCache: 150,
-                              placeholder: (context, url) => _buildShimmerCircle(),
-                              errorWidget: (context, url, error) =>
-                                  _buildDefaultCircle(),
+                              placeholder:
+                                  (context, url) => _buildShimmerCircle(),
+                              errorWidget:
+                                  (context, url, error) =>
+                                      _buildDefaultCircle(),
                             ),
                           );
                         },
@@ -111,10 +115,6 @@ Widget _buildDefaultCircle() {
       shape: BoxShape.circle,
       color: Colors.grey.shade500,
     ),
-    child: const Icon(
-      Icons.person,
-      color: Colors.white,
-      size: 14,
-    ),
+    child: const Icon(Icons.person, color: Colors.white, size: 14),
   );
 }
