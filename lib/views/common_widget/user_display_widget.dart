@@ -20,9 +20,10 @@ class UserDisplayName extends StatelessWidget {
               displayName,
               style: TextStyle(
                 color: Colors.white,
-                fontSize: 14.sp,
-                fontWeight: FontWeight.w600,
+                fontSize: 13.sp,
                 fontFamily: 'Pretendard',
+                fontWeight: FontWeight.w500,
+                letterSpacing: -0.40,
               ),
             );
           },

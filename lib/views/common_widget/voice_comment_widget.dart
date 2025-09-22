@@ -177,11 +177,9 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
           waveformData,
           recordingDuration,
         );
-
-        // debugPrint('✅ 음성 댓글 녹음 완료: $filePath, 시간: ${recordingDuration}ms');
       }
     } catch (e) {
-      // debugPrint('❌ 녹음 중지 오류: $e');
+      debugPrint('❌ 녹음 중지 오류: $e');
     }
   }
 
@@ -202,10 +200,8 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
       // 삭제 콜백 호출
       widget.onRecordingDeleted?.call();
-
-      // debugPrint('음성 댓글 녹음 삭제 완료');
     } catch (e) {
-      // debugPrint('녹음 삭제 오류: $e');
+      debugPrint('녹음 삭제 오류: $e');
     }
   }
 

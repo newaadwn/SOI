@@ -24,7 +24,7 @@ class VoiceCommentRow extends StatelessWidget {
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
-
+              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 // 프로필 이미지
                 ClipOval(
@@ -52,7 +52,6 @@ class VoiceCommentRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       UserDisplayName(userId: comment.recorderUser),
-                      SizedBox(height: 6.h),
                       _WaveformPlaybackBar(
                         isPlaying: isPlaying,
                         progress: progress,
@@ -68,7 +67,7 @@ class VoiceCommentRow extends StatelessWidget {
                         },
                         position: position,
                         duration: duration,
-                        waveformData: comment.waveformData, // 실제 파형 데이터 전달
+                        waveformData: comment.waveformData,
                       ),
                     ],
                   ),
@@ -76,17 +75,18 @@ class VoiceCommentRow extends StatelessWidget {
                 SizedBox(width: 10.w),
               ],
             ),
-            SizedBox(height: 12.h),
+            SizedBox(height: 7.h),
             Row(
               children: [
                 Spacer(),
                 Text(
                   FormatUtils.formatRelativeTime(comment.createdAt),
                   style: TextStyle(
-                    color: const Color(0xFFB5B5B5),
-                    fontSize: 12.sp,
+                    color: const Color(0xFFC4C4C4),
+                    fontSize: 10.sp,
                     fontFamily: 'Pretendard',
-                    fontWeight: FontWeight.w400,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.40,
                   ),
                 ),
                 SizedBox(width: 12.w),
@@ -123,12 +123,11 @@ class _WaveformPlaybackBar extends StatelessWidget {
     final barProgress = (playedMs / totalMs).clamp(0.0, 1.0);
 
     return Container(
-      height: 56.h,
       decoration: BoxDecoration(
-        color: const Color(0xFF151515),
-        borderRadius: BorderRadius.circular(16.r),
+        color: const Color(0xFF000000).withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(12),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 14.w),
+
       child: Row(
         children: [
           IconButton(
@@ -139,7 +138,7 @@ class _WaveformPlaybackBar extends StatelessWidget {
               size: 25.sp,
             ),
           ),
-          //  SizedBox(width: 16.w),
+
           Expanded(
             child: Stack(
               alignment: Alignment.centerLeft,
@@ -192,7 +191,7 @@ class _WaveformPlaybackBar extends StatelessWidget {
     }
 
     // 실제 waveformData 사용
-    const maxBars = 30; // 최대 막대 수
+    const maxBars = 30;
     const minHeight = 4.0;
     const maxHeight = 20.0;
 
@@ -200,7 +199,6 @@ class _WaveformPlaybackBar extends StatelessWidget {
     final sampledData = _sampleWaveformData(waveformData, maxBars);
 
     return Row(
-      mainAxisSize: MainAxisSize.max,
       children:
           sampledData.asMap().entries.map((entry) {
             final value = entry.value;
@@ -208,7 +206,7 @@ class _WaveformPlaybackBar extends StatelessWidget {
             final barHeight = minHeight + (value * (maxHeight - minHeight));
 
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1.2),
+              padding: EdgeInsets.symmetric(horizontal: (2.2).w),
               child: Container(
                 width: 3,
                 height: barHeight,

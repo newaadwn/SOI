@@ -584,7 +584,6 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                                 photoId: widget.photo.id,
                                                 categoryId:
                                                     widget.photo.categoryId,
-                                                title: '음성 댓글',
                                                 commentIdFilter: comment.id,
                                               ),
                                             );

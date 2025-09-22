@@ -11,14 +11,12 @@ import 'about_voice_comment/voice_comment_widget.dart';
 /// feed / archive 모두에서 사용
 class VoiceCommentListSheet extends StatelessWidget {
   final String photoId;
-  final String? categoryId; // 리액션 스트림용 (선택적 - 없으면 표시 생략)
-  final String title; // 상단 제목 (예: "공감")
-  final String? commentIdFilter; // 특정 댓글만 표시할 때 사용
+  final String? categoryId;
+  final String? commentIdFilter;
   const VoiceCommentListSheet({
     super.key,
     required this.photoId,
     this.categoryId,
-    this.title = '공감',
     this.commentIdFilter,
   });
 
@@ -27,7 +25,7 @@ class VoiceCommentListSheet extends StatelessWidget {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: const Color(0xFF262626),
+        color: const Color(0xFF323232),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(24.8),
           topRight: Radius.circular(24.8),
@@ -44,12 +42,12 @@ class VoiceCommentListSheet extends StatelessWidget {
 
         children: [
           Text(
-            title,
+            "댓글",
             style: TextStyle(
-              color: Colors.white,
-              fontSize: 20.sp,
-              fontWeight: FontWeight.w600,
+              color: const Color(0xFFF8F8F8),
+              fontSize: 18,
               fontFamily: 'Pretendard',
+              fontWeight: FontWeight.w700,
             ),
           ),
 

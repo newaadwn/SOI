@@ -80,9 +80,12 @@ class UserInfoWidget extends StatelessWidget {
               builder: (ctx) {
                 return ChangeNotifierProvider.value(
                   value: recordController,
-                  child: VoiceCommentListSheet(
-                    photoId: photo.id,
-                    categoryId: photo.categoryId,
+                  child: SizedBox(
+                    height: 480.h,
+                    child: VoiceCommentListSheet(
+                      photoId: photo.id,
+                      categoryId: photo.categoryId,
+                    ),
                   ),
                 );
               },
