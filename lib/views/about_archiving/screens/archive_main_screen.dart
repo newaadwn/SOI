@@ -865,6 +865,13 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         return;
       }
 
+      print('[ArchiveMainScreen] 카테고리 생성 시작');
+      print(
+        '[ArchiveMainScreen] 카테고리 이름: ${_categoryNameController.text.trim()}',
+      );
+      print('[ArchiveMainScreen] 현재 사용자 ID: $userId');
+      print('[ArchiveMainScreen] 선택된 친구 수: ${_selectedFriends.length}');
+
       // 메이트 리스트 준비 (현재 사용자 + 선택된 친구들)
       // 중요: mates 필드에는 Firebase Auth UID를 사용해야 함
       List<String> mates = [userId];
@@ -876,11 +883,15 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         }
       }
 
+      print('[ArchiveMainScreen] 최종 멤버 목록: $mates');
+
       // 카테고리 생성
       await categoryController.createCategory(
         name: _categoryNameController.text.trim(),
         mates: mates,
       );
+
+      print('[ArchiveMainScreen] 카테고리 생성 완료');
 
       // bottom sheet 닫기
       Navigator.pop(context);
@@ -891,12 +902,17 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         _selectedFriends = [];
       });
 
+      print('[ArchiveMainScreen] UI 상태 초기화 완료');
+
       // 성공 메시지 표시
       ScaffoldMessenger.of(context).showSnackBar(_showSuccessSnackBar());
+
+      print('[ArchiveMainScreen] 성공 메시지 표시 완료');
     } catch (e) {
+      print('[ArchiveMainScreen] 카테고리 생성 오류: $e');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(_snackBarComponenet('카테고리 생성 중 오류가 발생했습니다'));
+      ).showSnackBar(_snackBarComponenet('카테고리 생성에 실패했습니다'));
     }
   }
 

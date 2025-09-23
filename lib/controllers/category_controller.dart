@@ -822,6 +822,23 @@ class CategoryController extends ChangeNotifier {
     return _matchesAcronym(text, query);
   }
 
+  /// 외부에서도 검색어 매칭 여부를 재사용할 수 있도록 공개 메서드 제공
+  bool matchesSearchQuery(
+    CategoryDataModel category,
+    String query, {
+    String? currentUserId,
+  }) {
+    if (query.isEmpty) {
+      return true;
+    }
+
+    final displayName =
+        currentUserId != null
+            ? category.getDisplayName(currentUserId)
+            : category.name;
+    return _matchesSearch(displayName, query);
+  }
+
   /// 한글 초성 검색 매치
   bool _matchesChosung(String text, String query) {
     try {

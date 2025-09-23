@@ -158,7 +158,6 @@ class CategoryService {
 
       return AuthResult.success(categoryId);
     } catch (e) {
-      // // debugPrint('카테고리 생성 오류: $e');
       return AuthResult.failure('카테고리 생성 중 오류가 발생했습니다.');
     }
   }

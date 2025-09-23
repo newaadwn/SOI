@@ -194,6 +194,7 @@ class _PrivacyProtectScreenState extends State<PrivacyProtectScreen> {
       body: Center(
         child: Column(
           children: [
+            SizedBox(height: 29.h),
             ElevatedButton(
               onPressed: () {
                 Navigator.pushNamed(context, '/blocked_friends');
