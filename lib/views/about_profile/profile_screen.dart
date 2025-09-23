@@ -582,6 +582,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildSettingsItem('알림 설정', hasToggle: true),
               Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem('언어', value: '한국어'),
+              Divider(height: 1, color: const Color(0xFF323232)),
+              _buildSettingsItem('개인정보 보호', value: ''),
+              Divider(height: 1, color: const Color(0xFF323232)),
+              _buildSettingsItem('게시물 관리', value: ''),
             ],
           ),
         ),
@@ -619,7 +623,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildSettingsItem('개인정보 처리방침'),
               Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem('서비스 이용 약관'),
-
               Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem('앱 버전', value: '1.0.0'),
             ],
@@ -660,19 +663,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem('차단된 친구'),
               Divider(height: 1, color: const Color(0xFF323232)),
-              GestureDetector(
-                onTap: () {
-                  _showLogoutDialog();
-                },
-                child: _buildSettingsItem('로그아웃', isRed: true),
+              _buildSettingsItem(
+                '회원 탈퇴',
+                isRed: true,
+                onTap: _showDeleteAccountDialog,
               ),
               Divider(height: 1, color: const Color(0xFF323232)),
-              GestureDetector(
-                onTap: () {
-                  _showDeleteAccountDialog();
-                },
-                child: _buildSettingsItem('계정 삭제', isRed: true),
-              ),
+              _buildSettingsItem('로그아웃', isRed: true, onTap: _showLogoutDialog),
             ],
           ),
         ),
@@ -685,51 +682,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String? value,
     bool hasToggle = false,
     bool isRed = false,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontFamily: 'Pretendard Variable',
-                fontWeight: FontWeight.w400,
-                fontSize: 16.sp,
-                color:
-                    isRed ? const Color(0xFFFF0000) : const Color(0xFFF9F9F9),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (hasToggle)
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _isNotificationEnabled = !_isNotificationEnabled;
-                });
-              },
-              child: _profileSwitch(_isNotificationEnabled),
-            )
-          else if (value != null)
-            Flexible(
+    return GestureDetector(
+      onTap:
+          onTap ??
+          () {
+            if (title == '개인정보 보호') {
+              Navigator.pushNamed(context, '/privacy_protect');
+            } else if (title == '게시물 관리') {
+              Navigator.pushNamed(context, '/post_management');
+            }
+          },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
               child: Text(
-                value,
+                title,
                 style: TextStyle(
                   fontFamily: 'Pretendard Variable',
                   fontWeight: FontWeight.w400,
                   fontSize: 16.sp,
-                  color: const Color(0xFFF9F9F9),
+                  color:
+                      isRed ? const Color(0xFFFF0000) : const Color(0xFFF9F9F9),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
               ),
             ),
-        ],
+            if (hasToggle)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isNotificationEnabled = !_isNotificationEnabled;
+                  });
+                },
+                child: _profileSwitch(_isNotificationEnabled),
+              )
+            else if (value != null)
+              Flexible(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 16.sp,
+                    color: const Color(0xFFF9F9F9),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -32,6 +32,7 @@ import 'views/about_login/login_screen.dart';
 import 'views/about_login/start_screen.dart';
 import 'views/about_notification/notification_screen.dart';
 import 'views/about_onboarding/onboarding_main_screen.dart';
+import 'views/about_profile/privacy_protect_screen.dart';
 import 'views/about_profile/profile_screen.dart';
 import 'views/about_setting/privacy.dart';
 import 'views/about_friends/friend_management_screen.dart';
@@ -252,6 +253,7 @@ class _MyAppState extends State<MyApp> {
 
             // 프로필 페이지 라우트
             '/profile_screen': (context) => const ProfileScreen(),
+            '/privacy_protect': (context) => const PrivacyProtectScreen(),
 
             // 알림 페이지 라우트
             '/notifications': (context) => const NotificationScreen(),

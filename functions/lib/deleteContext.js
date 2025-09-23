@@ -51,6 +51,35 @@ module.exports.deleteUserData = async function({
   }
 
   /**
+   * Delete photo document along with related assets and comments.
+   * @param {import('firebase-admin/firestore').QueryDocumentSnapshot}
+   *     photoDoc - snapshot
+   */
+  async function deletePhotoDocumentWithAssets(photoDoc) {
+    if (!photoDoc) return;
+    const data = photoDoc.data() || {};
+
+    try {
+      const comments = await db
+          .collection("comment_records")
+          .where("photoId", "==", photoDoc.id)
+          .get();
+      for (const c of comments.docs) {
+        const cd = c.data() || {};
+        if (cd.audioUrl) await deleteAnyStorageByUrl(cd.audioUrl);
+        await c.ref.delete();
+      }
+    } catch (e) {
+      logger.warn(`Failed deleting comments of photo ${photoDoc.id}: ${e}`);
+    }
+
+    if (data.imageUrl) await deleteAnyStorageByUrl(data.imageUrl);
+    if (data.audioUrl) await deleteAnyStorageByUrl(data.audioUrl);
+
+    await photoDoc.ref.delete();
+  }
+
+  /**
    * Try to delete Firebase Storage object from a download URL.
    * @param {string} url - download URL
    * @return {Promise<boolean>} success
@@ -153,24 +182,7 @@ module.exports.deleteUserData = async function({
         .where("userID", "==", uid)
         .get();
     for (const doc of photos.docs) {
-      const data = doc.data();
-      try {
-        const comments = await db
-            .collection("comment_records")
-            .where("photoId", "==", doc.id)
-            .get();
-        for (const c of comments.docs) {
-          const cd = c.data();
-          if (cd.audioUrl) await deleteAnyStorageByUrl(cd.audioUrl);
-          await c.ref.delete();
-        }
-      } catch (e) {
-        logger.warn(`Failed deleting comments of photo ${doc.id}: ${e}`);
-      }
-
-      if (data.imageUrl) await deleteAnyStorageByUrl(data.imageUrl);
-      if (data.audioUrl) await deleteAnyStorageByUrl(data.audioUrl);
-      await doc.ref.delete();
+      await deletePhotoDocumentWithAssets(doc);
     }
   } catch (e) {
     logger.warn(`Failed deleting photos for ${uid}: ${e}`);
@@ -217,6 +229,21 @@ module.exports.deleteUserData = async function({
         data.mates.filter((m) => m !== uid) :
         [];
       if (mates.length === 0) {
+        try {
+          const photos = await c.ref.collection("photos").get();
+          for (const photoDoc of photos.docs) {
+            await deletePhotoDocumentWithAssets(photoDoc);
+          }
+        } catch (e) {
+          logger.warn(
+              `Failed deleting photos before removing category ${c.id}: ${e}`,
+          );
+        }
+
+        if (data.categoryPhotoUrl) {
+          await deleteAnyStorageByUrl(data.categoryPhotoUrl);
+        }
+
         await c.ref.delete();
       } else {
         await c.ref.update({mates});

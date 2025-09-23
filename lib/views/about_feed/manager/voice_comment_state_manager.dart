@@ -7,6 +7,30 @@ import '../../../controllers/comment_record_controller.dart';
 import '../../../models/comment_record_model.dart';
 import '../../../utils/position_converter.dart';
 
+/// 보류 중인 음성 댓글 정보를 담는 단순 데이터 객체
+class PendingVoiceComment {
+  final String audioPath;
+  final List<double> waveformData;
+  final int duration;
+  final Offset? relativePosition;
+
+  const PendingVoiceComment({
+    required this.audioPath,
+    required this.waveformData,
+    required this.duration,
+    this.relativePosition,
+  });
+
+  PendingVoiceComment withPosition(Offset? position) {
+    return PendingVoiceComment(
+      audioPath: audioPath,
+      waveformData: waveformData,
+      duration: duration,
+      relativePosition: position,
+    );
+  }
+}
+
 class VoiceCommentStateManager {
   // 음성 댓글 상태 관리 (다중 댓글 지원)
   final Map<String, bool> _voiceCommentActiveStates = {};
@@ -14,27 +38,21 @@ class VoiceCommentStateManager {
   final Map<String, List<String>> _savedCommentIds = {}; // 사진별 여러 댓글 ID 저장
 
   // 임시 음성 댓글 데이터 (파형 클릭 시 저장용)
-  final Map<String, Map<String, dynamic>> _pendingVoiceComments = {};
-
-  // 임시 프로필 위치 (음성 댓글 저장 전 드래그된 위치)
-  final Map<String, Offset> _pendingProfilePositions = {};
+  final Map<String, PendingVoiceComment> _pendingVoiceComments = {};
 
   // 프로필 이미지 관리 (다중 댓글 지원)
   final Map<String, Offset?> _profileImagePositions = {}; // 임시 위치용 (기존 호환성)
   final Map<String, String> _commentProfileImageUrls = {}; // 임시용 (기존 호환성)
   final Map<String, String> _droppedProfileImageUrls = {}; // 임시용 (기존 호환성)
 
+  // 댓글별 개별 관리 (새로운 구조)
+  // 기존에는 댓글 ID 위치를 별도 관리했으나, 주입되는 CommentRecordModel의
+  // relativePosition을 그대로 사용하므로 별도 맵을 유지할 필요가 없다.
+
   // 실시간 스트림 관리
   final Map<String, List<CommentRecordModel>> _photoComments = {};
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
   _commentStreams = {};
-
-  static const bool _logEnabled = true;
-
-  void _log(String message) {
-    if (!_logEnabled) return;
-    debugPrint('🎙️ VoiceStateManager | ' + message);
-  }
 
   // Getters
   Map<String, bool> get voiceCommentActiveStates => _voiceCommentActiveStates;
@@ -58,18 +76,8 @@ class VoiceCommentStateManager {
 
   /// 음성 댓글 토글
   void toggleVoiceComment(String photoId) {
-    final nextState = !(_voiceCommentActiveStates[photoId] ?? false);
-    _voiceCommentActiveStates[photoId] = nextState;
-
-    if (nextState) {
-      // 새 댓글 녹음을 시작하는 순간에는 "저장됨" 상태를 해제해
-      // 이후 드래그가 기존 댓글의 위치를 덮어쓰지 않도록 방지한다.
-      _voiceCommentSavedStates[photoId] = false;
-      _pendingProfilePositions.remove(photoId);
-      _profileImagePositions.remove(photoId);
-      _pendingVoiceComments.remove(photoId);
-    }
-    _log('toggleVoiceComment photo:$photoId -> $nextState');
+    _voiceCommentActiveStates[photoId] =
+        !(_voiceCommentActiveStates[photoId] ?? false);
     _notifyStateChanged();
   }
 
@@ -85,23 +93,18 @@ class VoiceCommentStateManager {
     }
 
     // 임시 저장 (파형 클릭 시 실제 저장)
-    _pendingVoiceComments[photoId] = {
-      'audioPath': audioPath,
-      'waveformData': waveformData,
-      'duration': duration,
-    };
-
-    // 방금 녹음된 댓글은 아직 저장되지 않았으므로 저장 플래그를 해제한다.
-    _voiceCommentSavedStates[photoId] = false;
-    _pendingProfilePositions.remove(photoId);
-    _profileImagePositions.remove(photoId);
+    _pendingVoiceComments[photoId] = PendingVoiceComment(
+      audioPath: audioPath,
+      waveformData: waveformData,
+      duration: duration,
+    );
     _notifyStateChanged();
   }
 
   /// 실제 음성 댓글 저장 (파형 클릭 시 호출)
   Future<void> saveVoiceComment(String photoId, BuildContext context) async {
-    final pendingData = _pendingVoiceComments[photoId];
-    if (pendingData == null) {
+    final pendingComment = _pendingVoiceComments[photoId];
+    if (pendingComment == null) {
       return;
     }
 
@@ -120,23 +123,21 @@ class VoiceCommentStateManager {
       final profileImageUrl = await authController
           .getUserProfileImageUrlWithCache(currentUserId);
 
-      final currentProfilePosition = _pendingProfilePositions[photoId];
+      // 현재 드래그된 위치를 사용 (각 댓글마다 고유한 위치)
+      final currentProfilePosition =
+          _profileImagePositions[photoId] ?? pendingComment.relativePosition;
+
       if (currentProfilePosition == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('사진 위 원하는 위치에 프로필을 먼저 놓아주세요.'),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+        debugPrint('음성 댓글 저장 위치를 찾을 수 없습니다. photoId: $photoId');
         return;
       }
 
       final commentRecord = await commentRecordController.createCommentRecord(
-        audioFilePath: pendingData['audioPath'],
+        audioFilePath: pendingComment.audioPath,
         photoId: photoId,
         recorderUser: currentUserId,
-        waveformData: pendingData['waveformData'],
-        duration: pendingData['duration'],
+        waveformData: pendingComment.waveformData,
+        duration: pendingComment.duration,
         profileImageUrl: profileImageUrl,
         relativePosition: currentProfilePosition,
       );
@@ -156,14 +157,15 @@ class VoiceCommentStateManager {
 
         // 임시 데이터 삭제
         _pendingVoiceComments.remove(photoId);
-        _pendingProfilePositions.remove(photoId);
 
         // 다음 댓글을 위해 위치 초기화 (기존 댓글은 건드리지 않음)
-        _profileImagePositions.remove(photoId);
+        _profileImagePositions[photoId] = null;
 
         _notifyStateChanged();
       } else {
-        commentRecordController.showErrorToUser(context);
+        if (context.mounted) {
+          commentRecordController.showErrorToUser(context);
+        }
       }
     } catch (e) {
       debugPrint("음성 댓글 저장 중 오류 발생: $e");
@@ -174,8 +176,7 @@ class VoiceCommentStateManager {
   void onVoiceCommentDeleted(String photoId) {
     _voiceCommentActiveStates[photoId] = false;
     _voiceCommentSavedStates[photoId] = false;
-    _profileImagePositions.remove(photoId);
-    _pendingProfilePositions.remove(photoId);
+    _profileImagePositions[photoId] = null;
     _notifyStateChanged();
   }
 
@@ -186,7 +187,6 @@ class VoiceCommentStateManager {
     // _voiceCommentSavedStates는 건드리지 않음 (실제 댓글이 저장되어 있으므로)
     // 임시 데이터 정리
     _pendingVoiceComments.remove(photoId);
-    _pendingProfilePositions.remove(photoId);
     _notifyStateChanged();
   }
 
@@ -203,20 +203,25 @@ class VoiceCommentStateManager {
 
     // UI에 즉시 반영 (임시 위치)
     _profileImagePositions[photoId] = relativePosition;
-    _pendingProfilePositions[photoId] = relativePosition;
+    final pendingComment = _pendingVoiceComments[photoId];
+    if (pendingComment != null) {
+      _pendingVoiceComments[photoId] = pendingComment.withPosition(
+        relativePosition,
+      );
+      _notifyStateChanged();
+      return; // 저장 전 위치만 갱신하고 종료
+    }
+
     _notifyStateChanged();
 
     // 음성 댓글이 이미 저장된 경우에만 즉시 Firestore 업데이트
-    final isSaved = _voiceCommentSavedStates[photoId] == true;
-    if (isSaved) {
-      // 가장 최근 댓글에 위치 업데이트
+    if (_voiceCommentSavedStates[photoId] == true) {
       final commentIds = _savedCommentIds[photoId];
       if (commentIds != null && commentIds.isNotEmpty) {
-        final latestCommentId = commentIds.last;
         _updateProfilePositionInFirestore(
           photoId,
           relativePosition,
-          latestCommentId,
+          commentIds.last,
         );
       }
     }
@@ -274,9 +279,15 @@ class VoiceCommentStateManager {
             .toList();
 
     if (userComments.isNotEmpty) {
-      final updatedIds = userComments.map((c) => c.id).toList()..sort();
-      _savedCommentIds[photoId] = updatedIds;
+      // 사진별 댓글 ID 목록 업데이트 (중복 방지)
+      final mergedIds = <String>[
+        ...(_savedCommentIds[photoId] ?? const <String>[]),
+        ...userComments.map((c) => c.id),
+      ];
 
+      _savedCommentIds[photoId] = mergedIds.toSet().toList();
+
+      // 기존 호환성을 위해 마지막 댓글의 정보를 기존 변수에도 저장
       final lastComment = userComments.last;
       if (lastComment.profileImageUrl.isNotEmpty) {
         _commentProfileImageUrls[photoId] = lastComment.profileImageUrl;
@@ -299,20 +310,16 @@ class VoiceCommentStateManager {
         _profileImagePositions[photoId] = relativePosition;
         _droppedProfileImageUrls[photoId] = lastComment.profileImageUrl;
       }
-      _log(
-        'handleCommentsUpdate photo:$photoId userComments:${userComments.length} ids:$updatedIds',
-      );
     } else {
       // 현재 사용자의 댓글이 없는 경우 상태 초기화
       _voiceCommentSavedStates[photoId] = false;
       _savedCommentIds.remove(photoId);
-      _profileImagePositions.remove(photoId);
+      _profileImagePositions[photoId] = null;
       _commentProfileImageUrls.remove(photoId);
       // 다른 사용자의 댓글은 유지하되 현재 사용자 관련 상태만 초기화
       if (comments.isEmpty) {
         _photoComments[photoId] = [];
       }
-      _log('handleCommentsUpdate photo:$photoId -> cleared user state');
     }
 
     _notifyStateChanged();
@@ -322,111 +329,26 @@ class VoiceCommentStateManager {
   Future<void> _updateProfilePositionInFirestore(
     String photoId,
     Offset position,
-    String latestCommentId, {
-    int retryCount = 0,
-    int maxRetries = 3,
-  }) async {
-    try {
-      final isSaved = _voiceCommentSavedStates[photoId] == true;
-
-      if (!isSaved) {
-        if (retryCount < maxRetries) {
-          await Future.delayed(const Duration(seconds: 1));
-          return _updateProfilePositionInFirestore(
-            photoId,
-            position,
-            latestCommentId,
-            retryCount: retryCount + 1,
-          );
-        } else {
-          return;
-        }
-      }
-
-      final commentRecordController = CommentRecordController();
-
-      // 저장된 댓글 ID 확인 및 사용
-      final savedCommentIds = _savedCommentIds[photoId];
-      String targetCommentId = latestCommentId;
-
-      if (targetCommentId.isEmpty) {
-        // 파라미터가 없으면 저장된 댓글 목록에서 가장 최근 댓글 사용
-        if (savedCommentIds != null && savedCommentIds.isNotEmpty) {
-          targetCommentId = savedCommentIds.last;
-        }
-      }
-
-      if (targetCommentId.isNotEmpty) {
-        // 상대 위치를 Map 형태로 변환해서 Firestore에 저장
-        PositionConverter.relativePositionToMap(position);
-
-        final success = await commentRecordController
-            .updateRelativeProfilePosition(
-              commentId: targetCommentId,
-              photoId: photoId,
-              relativePosition: position, // 상대 위치로 전달
-            );
-
-        // 프로필 위치 업데이트 성공 후 위젯 초기화 (추가 댓글을 위한 준비)
-        if (success) {
-          onSaveCompleted(photoId);
-        }
-        return;
-      }
-
-      // 저장된 댓글 ID가 없는 경우 재시도 또는 검색
-      if (retryCount < maxRetries) {
-        await Future.delayed(const Duration(seconds: 1));
-        return _updateProfilePositionInFirestore(
-          photoId,
-          position,
-          latestCommentId,
-        );
-      }
-
-      // 최종적으로 캐시/서버에서 댓글 찾기
-      await _findAndUpdateCommentPosition(
-        commentRecordController,
-        photoId,
-        position,
-      );
-    } catch (e) {
-      return;
-    }
-  }
-
-  /// 댓글을 찾아서 위치 업데이트
-  Future<void> _findAndUpdateCommentPosition(
-    CommentRecordController commentRecordController,
-    String photoId,
-    Offset position,
+    String targetCommentId,
   ) async {
-    var comments = commentRecordController.getCommentsByPhotoId(photoId);
-
-    if (comments.isEmpty) {
-      await commentRecordController.loadCommentRecordsByPhotoId(photoId);
-      comments = commentRecordController.commentRecords;
+    if (targetCommentId.isEmpty) {
+      return;
     }
 
-    final userComment =
-        comments
-            .where(
-              (comment) =>
-                  _savedCommentIds[photoId]?.contains(comment.id) == true,
-            )
-            .firstOrNull;
+    try {
+      final success = await CommentRecordController()
+          .updateRelativeProfilePosition(
+            commentId: targetCommentId,
+            photoId: photoId,
+            relativePosition: position,
+          );
 
-    if (userComment != null) {
-      await commentRecordController.updateRelativeProfilePosition(
-        commentId: userComment.id,
-        photoId: photoId,
-        relativePosition: position,
-      );
-
-      // 프로필 위치 업데이트 성공 후 위젯 초기화 (추가 댓글을 위한 준비)
-      onSaveCompleted(photoId);
-    } else {
-      return;
+      if (success) {
+        _profileImagePositions[photoId] = position;
+        _notifyStateChanged();
+      }
+    } catch (e) {
+      debugPrint('음성 댓글 위치 업데이트 실패: $e');
     }
   }
 

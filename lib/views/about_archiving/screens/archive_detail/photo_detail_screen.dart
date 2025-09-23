@@ -56,8 +56,23 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   final Map<String, CommentRecordModel> _pendingVoiceComments = {};
   final Map<String, Offset> _pendingProfilePositions = {};
   final Map<String, List<String>> _savedCommentIds = {};
+  final Map<String, Offset> _commentPositions = {};
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
   _commentStreams = {};
+
+  static const List<Offset> _autoPlacementPattern = [
+    Offset(0.5, 0.5),
+    Offset(0.62, 0.5),
+    Offset(0.38, 0.5),
+    Offset(0.5, 0.62),
+    Offset(0.5, 0.38),
+    Offset(0.62, 0.62),
+    Offset(0.38, 0.62),
+    Offset(0.62, 0.38),
+    Offset(0.38, 0.38),
+  ];
+
+  final Map<String, int> _autoPlacementIndices = {};
 
   @override
   void initState() {
@@ -330,12 +345,21 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         final updatedIds = userComments.map((c) => c.id).toList();
         _savedCommentIds[photoId] = updatedIds;
 
+        for (final comment in userComments) {
+          final relative = _extractRelativeOffset(comment.relativePosition);
+          if (relative != null) {
+            _commentPositions[comment.id] = relative;
+          }
+          if (comment.profileImageUrl.isNotEmpty) {
+            _commentProfileImageUrls[photoId] = comment.profileImageUrl;
+          }
+        }
+
         final lastComment = userComments.last;
         final lastPosition = _extractRelativeOffset(
           lastComment.relativePosition,
         );
         if (lastComment.profileImageUrl.isNotEmpty) {
-          _commentProfileImageUrls[photoId] = lastComment.profileImageUrl;
           _droppedProfileImageUrls[photoId] = lastComment.profileImageUrl;
         }
         if (lastPosition != null) {
@@ -343,13 +367,15 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         }
       } else {
         _voiceCommentSavedStates[photoId] = false;
+        final previousIds = _savedCommentIds[photoId] ?? const <String>[];
         _savedCommentIds.remove(photoId);
         _profileImagePositions.remove(photoId);
         _commentProfileImageUrls.remove(photoId);
         _droppedProfileImageUrls.remove(photoId);
         _pendingProfilePositions.remove(photoId);
-        if (comments.isEmpty) {
-          _photoComments[photoId] = [];
+        _autoPlacementIndices.remove(photoId);
+        for (final commentId in previousIds) {
+          _commentPositions.remove(commentId);
         }
       }
     });
@@ -398,6 +424,13 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         photoId: photoId,
         relativePosition: relativePosition,
       );
+      if (mounted) {
+        setState(() {
+          _commentPositions[commentId] = relativePosition;
+        });
+      } else {
+        _commentPositions[commentId] = relativePosition;
+      }
     } catch (e) {
       debugPrint('❌ 프로필 위치 업데이트 실패: $e');
     }
@@ -414,19 +447,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
   void _toggleVoiceComment(String photoId) {
     setState(() {
-      final nextState = !(_voiceCommentActiveStates[photoId] ?? false);
-      _voiceCommentActiveStates[photoId] = nextState;
-      if (nextState) {
-        _voiceCommentSavedStates[photoId] = false;
-        _pendingVoiceComments.remove(photoId);
-        _pendingProfilePositions.remove(photoId);
-        _profileImagePositions.remove(photoId);
-        _droppedProfileImageUrls.remove(photoId);
-      }
+      _voiceCommentActiveStates[photoId] =
+          !(_voiceCommentActiveStates[photoId] ?? false);
     });
-    debugPrint(
-      'toggleVoiceComment photo:$photoId -> ${_voiceCommentActiveStates[photoId]}',
-    );
   }
 
   Future<void> _onVoiceCommentRecordingFinished(
@@ -444,6 +467,8 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       final currentUserProfileImageUrl = await _authController!
           .getUserProfileImageUrlWithCache(userId);
 
+      final autoPosition = _generateAutoProfilePosition(photoId);
+
       _pendingVoiceComments[photoId] = CommentRecordModel(
         id: 'pending',
         audioUrl: audioPath,
@@ -453,21 +478,17 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         duration: duration,
         profileImageUrl: currentUserProfileImageUrl, // 현재 사용자 프로필 이미지 사용
         createdAt: DateTime.now(),
-        relativePosition: null,
+        relativePosition: autoPosition,
       );
-      _pendingProfilePositions.remove(photoId);
+      _pendingProfilePositions[photoId] = autoPosition;
       if (mounted) {
         setState(() {
           _voiceCommentSavedStates[photoId] = false;
           _voiceCommentActiveStates[photoId] = true; // 위젯 유지
-          _profileImagePositions.remove(photoId);
+          _profileImagePositions[photoId] = autoPosition;
           _commentProfileImageUrls[photoId] = currentUserProfileImageUrl;
-          _droppedProfileImageUrls.remove(photoId);
         });
       }
-      debugPrint(
-        'onVoiceCommentRecordingFinished photo:$photoId pending ready',
-      );
     } catch (e) {
       debugPrint('❌ 음성 댓글 임시 저장 준비 실패: $e');
     }
@@ -481,25 +502,16 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       final userId = _authController?.currentUser?.uid;
       if (userId == null) return;
 
-      final relativePosition = _pendingProfilePositions[photoId];
-      if (relativePosition == null) {
-        debugPrint(
-          'onSaveRequested blocked photo:$photoId reason:no-drop-position',
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('사진 위 원하는 위치에 프로필을 먼저 놓아주세요.'),
-              behavior: SnackBarBehavior.floating,
-            ),
-          );
-        }
-        return;
-      }
-
       // 현재 로그인한 사용자의 프로필 이미지 URL 가져오기
       final currentUserProfileImageUrl = await _authController!
           .getUserProfileImageUrlWithCache(userId);
+
+      final relativePosition =
+          _pendingProfilePositions[photoId] ??
+          pending.relativePosition ??
+          _generateAutoProfilePosition(photoId);
+
+      _pendingProfilePositions[photoId] = relativePosition;
 
       final controller = CommentRecordController();
       final comment = await controller.createCommentRecord(
@@ -513,6 +525,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       );
 
       if (comment != null) {
+        _commentPositions[comment.id] =
+            comment.relativePosition ?? relativePosition;
+
         _voiceCommentSavedStates[photoId] = true;
 
         if (mounted) {
@@ -541,9 +556,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
           _pendingProfilePositions.remove(photoId);
           _pendingVoiceComments.remove(photoId);
         }
-        debugPrint(
-          'onSaveRequested photo:$photoId comment:${comment.id} position:$relativePosition mounted:$mounted',
-        );
       }
     } catch (e) {
       debugPrint('❌ 음성 댓글 저장 실패(사용자 요청): $e');
@@ -571,6 +583,92 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       return PositionConverter.mapToRelativePosition(relativePosition);
     }
     return null;
+  }
+
+  Offset _generateAutoProfilePosition(String photoId) {
+    final occupiedPositions = <Offset>[];
+
+    final comments = _photoComments[photoId] ?? const <CommentRecordModel>[];
+    for (final comment in comments) {
+      final position = _extractRelativeOffset(comment.relativePosition);
+      if (position != null) {
+        occupiedPositions.add(position);
+      }
+    }
+
+    final savedCommentIds = _savedCommentIds[photoId] ?? const <String>[];
+    for (final commentId in savedCommentIds) {
+      final cachedPosition = _commentPositions[commentId];
+      if (cachedPosition != null) {
+        occupiedPositions.add(cachedPosition);
+      }
+    }
+
+    final previewPosition = _profileImagePositions[photoId];
+    if (previewPosition != null) {
+      occupiedPositions.add(previewPosition);
+    }
+
+    final pendingPosition = _pendingProfilePositions[photoId];
+    if (pendingPosition != null) {
+      occupiedPositions.add(pendingPosition);
+    }
+
+    const maxAttempts = 30;
+    final patternLength = _autoPlacementPattern.length;
+    final startingIndex = _autoPlacementIndices[photoId] ?? 0;
+
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      final rawIndex = startingIndex + attempt;
+      final baseOffset = _autoPlacementPattern[rawIndex % patternLength];
+      final loop = rawIndex ~/ patternLength;
+      final candidate = _applyJitter(baseOffset, loop, attempt);
+
+      if (!_isPositionTooClose(candidate, occupiedPositions)) {
+        _autoPlacementIndices[photoId] = rawIndex + 1;
+        return candidate;
+      }
+    }
+
+    _autoPlacementIndices[photoId] = startingIndex + 1;
+    return const Offset(0.5, 0.5);
+  }
+
+  Offset _applyJitter(Offset base, int loop, int attempt) {
+    if (loop <= 0) {
+      return _clampOffset(base);
+    }
+
+    final double step = (0.02 * loop).clamp(0.02, 0.08).toDouble();
+    final double dxDirection = (attempt % 2 == 0) ? 1 : -1;
+    final double dyDirection = ((attempt ~/ 2) % 2 == 0) ? 1 : -1;
+
+    final offsetWithJitter = Offset(
+      base.dx + (step * dxDirection),
+      base.dy + (step * dyDirection),
+    );
+
+    return _clampOffset(offsetWithJitter);
+  }
+
+  Offset _clampOffset(Offset offset) {
+    const double min = 0.05;
+    const double max = 0.95;
+    return Offset(
+      offset.dx.clamp(min, max).toDouble(),
+      offset.dy.clamp(min, max).toDouble(),
+    );
+  }
+
+  bool _isPositionTooClose(Offset candidate, List<Offset> occupied) {
+    const double threshold = 0.04;
+    for (final existing in occupied) {
+      if ((candidate.dx - existing.dx).abs() < threshold &&
+          (candidate.dy - existing.dy).abs() < threshold) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void _onLikePressed() {}

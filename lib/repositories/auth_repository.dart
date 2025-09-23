@@ -216,21 +216,44 @@ class AuthRepository {
           .collection('friends');
       final friendsSnapshot = await friendsCollection.get();
 
-      // 배치 삭제로 성능 최적화
+      // 배치 삭제로 성능 최적화 (500 한도 대비 챙김)
       WriteBatch batch = _firestore.batch();
+      int operationCount = 0;
+
+      Future<void> commitIfNeeded() async {
+        if (operationCount >= 450) {
+          await batch.commit();
+          batch = _firestore.batch();
+          operationCount = 0;
+        }
+      }
+
+      Future<void> queueDelete(DocumentReference ref) async {
+        batch.delete(ref);
+        operationCount++;
+        await commitIfNeeded();
+      }
+
+      Future<void> queueUpdate(
+        DocumentReference ref,
+        Map<String, dynamic> data,
+      ) async {
+        batch.update(ref, data);
+        operationCount++;
+        await commitIfNeeded();
+      }
 
       for (var friendDoc in friendsSnapshot.docs) {
-        batch.delete(friendDoc.reference);
+        await queueDelete(friendDoc.reference);
       }
 
       // 2. 다른 사용자들의 friends 컬렉션에서 이 사용자 제거
       final allUsersSnapshot = await _firestore.collection('users').get();
       for (var userDoc in allUsersSnapshot.docs) {
         if (userDoc.id != uid) {
-          final otherUserFriendDoc = userDoc.reference
-              .collection('friends')
-              .doc(uid);
-          batch.delete(otherUserFriendDoc);
+          final otherUserFriendDoc =
+              userDoc.reference.collection('friends').doc(uid);
+          await queueDelete(otherUserFriendDoc);
         }
       }
 
@@ -247,19 +270,25 @@ class AuthRepository {
         mates.remove(uid);
 
         if (mates.isEmpty) {
-          // 멤버가 없으면 카테고리 삭제
-          batch.delete(categoryDoc.reference);
+          final photosSnapshot =
+              await categoryDoc.reference.collection('photos').get();
+
+          for (final photoDoc in photosSnapshot.docs) {
+            await _deletePhotoDocumentWithAssets(photoDoc);
+          }
+
+          await queueDelete(categoryDoc.reference);
         } else {
-          // 멤버 목록에서만 제거
-          batch.update(categoryDoc.reference, {'mates': mates});
+          await queueUpdate(categoryDoc.reference, {'mates': mates});
         }
       }
 
       // 4. 사용자 문서 삭제
-      batch.delete(_firestore.collection('users').doc(uid));
+      await queueDelete(_firestore.collection('users').doc(uid));
 
-      // 모든 변경사항 커밋
-      await batch.commit();
+      if (operationCount > 0) {
+        await batch.commit();
+      }
 
       // debugPrint('✅ 사용자 데이터 완전 삭제 완료: $uid');
     } catch (e) {
@@ -349,39 +378,41 @@ class AuthRepository {
               .get();
 
       for (final doc in snap.docs) {
-        final data = doc.data();
-        final imageUrl = data['imageUrl'] as String?;
-        final audioUrl = data['audioUrl'] as String?;
-
-        // 이 사진에 달린 음성댓글들도 함께 삭제
-        try {
-          final photoId = doc.id;
-          final commentsSnap =
-              await _firestore
-                  .collection('comment_records')
-                  .where('photoId', isEqualTo: photoId)
-                  .get();
-          for (final c in commentsSnap.docs) {
-            final cAudio = (c.data()['audioUrl'] as String?);
-            if (cAudio != null && cAudio.isNotEmpty) {
-              await _tryDeleteAnyStorageFile(cAudio);
-            }
-            await c.reference.delete();
-          }
-        } catch (_) {}
-
-        // 파일 삭제 시도
-        if (imageUrl != null && imageUrl.isNotEmpty) {
-          await _tryDeleteAnyStorageFile(imageUrl);
-        }
-        if (audioUrl != null && audioUrl.isNotEmpty) {
-          await _tryDeleteAnyStorageFile(audioUrl);
-        }
-
-        // 사진 문서 삭제
-        await doc.reference.delete();
+        await _deletePhotoDocumentWithAssets(doc);
       }
     } catch (_) {}
+  }
+
+  Future<void> _deletePhotoDocumentWithAssets(
+    QueryDocumentSnapshot<Map<String, dynamic>> doc,
+  ) async {
+    final data = doc.data();
+    final imageUrl = data['imageUrl'] as String?;
+    final audioUrl = data['audioUrl'] as String?;
+
+    try {
+      final commentsSnap =
+          await _firestore
+              .collection('comment_records')
+              .where('photoId', isEqualTo: doc.id)
+              .get();
+      for (final c in commentsSnap.docs) {
+        final cAudio = c.data()['audioUrl'] as String?;
+        if (cAudio != null && cAudio.isNotEmpty) {
+          await _tryDeleteAnyStorageFile(cAudio);
+        }
+        await c.reference.delete();
+      }
+    } catch (_) {}
+
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      await _tryDeleteAnyStorageFile(imageUrl);
+    }
+    if (audioUrl != null && audioUrl.isNotEmpty) {
+      await _tryDeleteAnyStorageFile(audioUrl);
+    }
+
+    await doc.reference.delete();
   }
 
   Future<void> _deleteUserNotifications(String uid) async {
