@@ -671,6 +671,117 @@ class PhotoService {
       return photos; // 오류 발생 시 원본 반환
     }
   }
+
+  // ==================== 삭제된 사진 관리 ====================
+
+  /// 사용자의 삭제된 사진 목록 조회
+  Future<List<PhotoDataModel>> getDeletedPhotosByUser(String userId) async {
+    try {
+      debugPrint('📱 PhotoService: 삭제된 사진 조회 - userId: $userId');
+
+      // 입력 검증
+      if (userId.isEmpty) {
+        throw Exception('사용자 ID가 필요합니다.');
+      }
+
+      // Repository에서 삭제된 사진 목록 조회
+      final deletedPhotos = await _photoRepository.getDeletedPhotosByUser(
+        userId,
+      );
+
+      debugPrint('📸 PhotoService: 조회된 삭제된 사진 수: ${deletedPhotos.length}');
+      return deletedPhotos;
+    } catch (e) {
+      debugPrint('❌ PhotoService: 삭제된 사진 조회 실패 - $e');
+      throw Exception('삭제된 사진을 불러오는 중 오류가 발생했습니다: ${e.toString()}');
+    }
+  }
+
+  /// 사진 복원
+  Future<bool> restorePhoto({
+    required String categoryId,
+    required String photoId,
+    required String userId,
+  }) async {
+    try {
+      debugPrint('🔄 PhotoService: 사진 복원 시작 - photoId: $photoId');
+
+      // 입력 검증
+      if (categoryId.isEmpty || photoId.isEmpty || userId.isEmpty) {
+        throw Exception('필수 매개변수가 누락되었습니다.');
+      }
+
+      // 1. 사진이 존재하고 삭제된 상태인지 확인
+      final photo = await _photoRepository.getPhotoById(
+        categoryId: categoryId,
+        photoId: photoId,
+      );
+
+      if (photo == null) {
+        throw Exception('사진을 찾을 수 없습니다.');
+      }
+
+      if (photo.status != PhotoStatus.deleted) {
+        throw Exception('삭제된 사진만 복원할 수 있습니다.');
+      }
+
+      // 2. 사용자 권한 확인 (사진 소유자 또는 카테고리 멤버인지)
+      final hasPermission = await _checkUserPermissionForPhoto(
+        categoryId: categoryId,
+        photoUserId: photo.userID,
+        requestUserId: userId,
+      );
+
+      if (!hasPermission) {
+        throw Exception('사진을 복원할 권한이 없습니다.');
+      }
+
+      // 3. 사진 복원 실행
+      final success = await _photoRepository.restorePhoto(
+        categoryId: categoryId,
+        photoId: photoId,
+      );
+
+      if (success) {
+        debugPrint('✅ PhotoService: 사진 복원 완료 - photoId: $photoId');
+
+        // 4. 필요시 알림 생성 (복원 알림은 선택사항)
+        // await _createPhotoRestoredNotification(categoryId, photoId, userId);
+
+        return true;
+      } else {
+        throw Exception('사진 복원에 실패했습니다.');
+      }
+    } catch (e) {
+      debugPrint('❌ PhotoService: 사진 복원 실패 - $e');
+      return false;
+    }
+  }
+
+  /// 사진에 대한 사용자 권한 확인
+  Future<bool> _checkUserPermissionForPhoto({
+    required String categoryId,
+    required String photoUserId,
+    required String requestUserId,
+  }) async {
+    try {
+      // 1. 사진 소유자인 경우 권한 있음
+      if (photoUserId == requestUserId) {
+        return true;
+      }
+
+      // 2. 카테고리 멤버인지 확인
+      final category = await categoryService.getCategory(categoryId);
+      if (category != null && category.mates.contains(requestUserId)) {
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      debugPrint('❌ 사용자 권한 확인 실패: $e');
+      return false;
+    }
+  }
 }
 
 /// 사진 검증 결과

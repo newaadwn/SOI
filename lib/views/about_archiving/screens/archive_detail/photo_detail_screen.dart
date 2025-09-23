@@ -685,7 +685,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         categoryId: widget.categoryId,
         photoId: photo.id,
         userId: currentUserId,
-        permanentDelete: true,
+        permanentDelete: false, // 소프트 삭제로 변경
       );
       if (!mounted) return;
       if (success) {

@@ -1,7 +1,11 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:soi/controllers/auth_controller.dart';
+import '../../controllers/photo_controller.dart';
+import '../../models/photo_data_model.dart';
 
 class DeletedPostListScreen extends StatefulWidget {
   const DeletedPostListScreen({super.key});
@@ -11,37 +15,45 @@ class DeletedPostListScreen extends StatefulWidget {
 }
 
 class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
-  List<String> _deletedPosts = [];
+  List<PhotoDataModel> _deletedPosts = [];
   bool _isLoading = true;
   String? _error;
+  PhotoController? _photoController;
+  AuthController? _authController;
 
   @override
   void initState() {
     super.initState();
-    _loadDeletedPosts();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _photoController = Provider.of<PhotoController>(context, listen: false);
+      _authController = Provider.of<AuthController>(context, listen: false);
+      _loadDeletedPosts();
+    });
   }
 
   Future<void> _loadDeletedPosts() async {
+    if (_photoController == null) return;
+
+    final user = _authController?.currentUser;
+    if (user == null) {
+      setState(() {
+        _error = '로그인이 필요합니다.';
+        _isLoading = false;
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _error = null;
     });
 
     try {
-      // TODO: 실제 삭제된 게시물 데이터를 가져오는 로직 구현
-      // 임시 데이터
-      await Future.delayed(const Duration(seconds: 1));
+      // PhotoController를 통해 삭제된 사진 로드
+      await _photoController!.loadDeletedPhotosByUser(user.uid);
 
       setState(() {
-        _deletedPosts = [
-          // 임시 이미지 URL들 (실제 구현 시 삭제된 게시물 URL로 교체)
-          'https://picsum.photos/175/233?random=1',
-          'https://picsum.photos/175/233?random=2',
-          'https://picsum.photos/175/233?random=3',
-          'https://picsum.photos/175/233?random=4',
-          'https://picsum.photos/175/233?random=5',
-          'https://picsum.photos/175/233?random=6',
-        ];
+        _deletedPosts = _photoController!.deletedPhotos;
         _isLoading = false;
       });
     } catch (e) {
@@ -166,11 +178,10 @@ class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
     );
   }
 
-  Widget _buildDeletedPostItem(String imageUrl, int index) {
+  Widget _buildDeletedPostItem(PhotoDataModel photo, int index) {
     return GestureDetector(
       onTap: () {
         // 삭제된 게시물 상세보기 또는 복원 기능
-        _showPostOptionsBottomSheet(imageUrl, index);
       },
       child: Container(
         width: 175,
@@ -182,7 +193,7 @@ class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
           child: CachedNetworkImage(
-            imageUrl: imageUrl,
+            imageUrl: photo.imageUrl,
             fit: BoxFit.cover,
             placeholder:
                 (context, url) => Shimmer.fromColors(
@@ -212,131 +223,11 @@ class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
     );
   }
 
-  void _showPostOptionsBottomSheet(String imageUrl, int index) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder:
-          (context) => Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF2C2C2E),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(25.3),
-                topRight: Radius.circular(25.3),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(height: 7.h),
-                Container(
-                  width: 56.w,
-                  height: 3.h,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFCBCBCB),
-                    borderRadius: BorderRadius.circular(24.80),
-                  ),
-                ),
-                SizedBox(height: 24.h),
-                Text(
-                  '게시물 옵션',
-                  style: TextStyle(
-                    color: const Color(0xFFF8F8F8),
-                    fontSize: 19.78.sp,
-                    fontFamily: 'Pretendard',
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                SizedBox(height: 24.h),
-                SizedBox(
-                  width: 344.w,
-                  height: 38.h,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      // TODO: 게시물 복원 기능 구현
-                      _restorePost(index);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(19),
-                      ),
-                    ),
-                    child: Text(
-                      '복원',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontSize: 17.78.sp,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12.h),
-                SizedBox(
-                  width: 344.w,
-                  height: 38.h,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      // TODO: 완전 삭제 기능 구현
-                      _permanentlyDeletePost(index);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(19),
-                      ),
-                    ),
-                    child: Text(
-                      '완전 삭제',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 17.78.sp,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 12.h),
-                SizedBox(
-                  width: 344.w,
-                  height: 38.h,
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(
-                      '취소',
-                      style: TextStyle(
-                        color: const Color(0xFFCBCBCB),
-                        fontSize: 17.78.sp,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 24.h),
-              ],
-            ),
-          ),
-    );
-  }
-
   void _restorePost(int index) {
     // TODO: 실제 복원 로직 구현
     setState(() {
       _deletedPosts.removeAt(index);
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('게시물이 복원되었습니다.'),
-        backgroundColor: Colors.green,
-      ),
-    );
   }
 
   void _permanentlyDeletePost(int index) {
@@ -344,12 +235,5 @@ class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
     setState(() {
       _deletedPosts.removeAt(index);
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('게시물이 완전히 삭제되었습니다.'),
-        backgroundColor: Colors.red,
-      ),
-    );
   }
 }

@@ -33,6 +33,7 @@ import 'views/about_login/start_screen.dart';
 import 'views/about_notification/notification_screen.dart';
 import 'views/about_onboarding/onboarding_main_screen.dart';
 import 'views/about_profile/blocked_friend_list_screen.dart';
+import 'views/about_profile/deleted_post_list_screen.dart';
 import 'views/about_profile/post_management_screen.dart';
 import 'views/about_profile/privacy_protect_screen.dart';
 import 'views/about_profile/profile_screen.dart';
@@ -258,6 +259,7 @@ class _MyAppState extends State<MyApp> {
             '/privacy_protect': (context) => const PrivacyProtectScreen(),
             '/blocked_friends': (context) => const BlockedFriendListScreen(),
             '/post_management': (context) => const PostManagementScreen(),
+            '/delete_photo': (context) => const DeletedPostListScreen(),
 
             // 알림 페이지 라우트
             '/notifications': (context) => const NotificationScreen(),

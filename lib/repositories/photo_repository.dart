@@ -351,12 +351,107 @@ class PhotoRepository {
           .doc(photoId)
           .update({
             'status': PhotoStatus.deleted.name,
+            'deletedAt': Timestamp.now(), // 삭제 시간 기록
             'updatedAt': Timestamp.now(),
           });
 
       return true;
     } catch (e) {
       // debugPrint('사진 삭제 오류: $e');
+      return false;
+    }
+  }
+
+  /// 삭제된 사진 목록 조회 (사용자별)
+  Future<List<PhotoDataModel>> getDeletedPhotosByUser(String userId) async {
+    try {
+      debugPrint('📱 PhotoRepository: 삭제된 사진 조회 시작 - userId: $userId');
+
+      // 1. 사용자가 속한 모든 카테고리 조회
+      final categorySnapshot =
+          await _firestore
+              .collection('categories')
+              .where('mates', arrayContains: userId)
+              .get();
+
+      debugPrint('📷 사용자가 속한 카테고리 수: ${categorySnapshot.docs.length}');
+
+      List<PhotoDataModel> deletedPhotos = [];
+      Set<String> seenPhotoIds = {}; // 중복 방지
+
+      // 2. 각 카테고리에서 삭제된 사진들 조회
+      for (final categoryDoc in categorySnapshot.docs) {
+        try {
+          final photosSnapshot =
+              await categoryDoc.reference
+                  .collection('photos')
+                  .where('status', isEqualTo: PhotoStatus.deleted.name)
+                  .orderBy('deletedAt', descending: true)
+                  .get();
+
+          debugPrint(
+            '📸 카테고리 ${categoryDoc.id}의 삭제된 사진: ${photosSnapshot.docs.length}개',
+          );
+
+          for (final photoDoc in photosSnapshot.docs) {
+            // 중복 방지 (같은 사진이 여러 카테고리에 있을 수 있음)
+            if (!seenPhotoIds.add(photoDoc.id)) {
+              continue;
+            }
+
+            final photoData = PhotoDataModel.fromFirestore(
+              photoDoc.data(),
+              photoDoc.id,
+            );
+
+            deletedPhotos.add(photoData);
+          }
+        } catch (e) {
+          debugPrint('❌ 카테고리 ${categoryDoc.id} 삭제된 사진 조회 오류: $e');
+          continue; // 개별 카테고리 오류는 무시하고 계속 진행
+        }
+      }
+
+      // 3. 삭제 시간 기준으로 정렬 (최신순)
+      deletedPhotos.sort((a, b) {
+        final aDeletedAt =
+            a.deletedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bDeletedAt =
+            b.deletedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDeletedAt.compareTo(aDeletedAt);
+      });
+
+      debugPrint('✅ 전체 삭제된 사진 수: ${deletedPhotos.length}');
+      return deletedPhotos;
+    } catch (e) {
+      debugPrint('❌ 삭제된 사진 조회 전체 오류: $e');
+      return [];
+    }
+  }
+
+  /// 사진 복원 (deleted -> active)
+  Future<bool> restorePhoto({
+    required String categoryId,
+    required String photoId,
+  }) async {
+    try {
+      debugPrint('🔄 PhotoRepository: 사진 복원 시작 - photoId: $photoId');
+
+      await _firestore
+          .collection('categories')
+          .doc(categoryId)
+          .collection('photos')
+          .doc(photoId)
+          .update({
+            'status': PhotoStatus.active.name,
+            'deletedAt': FieldValue.delete(), // 삭제 시간 필드 제거
+            'updatedAt': Timestamp.now(),
+          });
+
+      debugPrint('✅ 사진 복원 완료 - photoId: $photoId');
+      return true;
+    } catch (e) {
+      debugPrint('❌ 사진 복원 오류: $e');
       return false;
     }
   }

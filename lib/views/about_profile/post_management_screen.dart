@@ -144,6 +144,7 @@ class _PostManagementScreenState extends State<PostManagementScreen> {
           ElevatedButton(
             onPressed: () {
               // 아카이브 관리 기능
+              Navigator.pushNamed(context, '/delete_photo');
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: Color(0xFF1C1C1E),

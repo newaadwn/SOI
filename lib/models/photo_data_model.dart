@@ -13,6 +13,7 @@ class PhotoDataModel {
   final List<double>? waveformData; // 실제 오디오 파형 데이터 추가
   final Duration duration; // 음성 길이 (초 단위) 추가
   final bool unactive; // 사용자 비활성화 상태
+  final DateTime? deletedAt; // 삭제된 시간 (30일 후 영구 삭제를 위해)
 
   PhotoDataModel({
     required this.id,
@@ -26,6 +27,7 @@ class PhotoDataModel {
     this.waveformData, // 파형 데이터 추가
     this.duration = const Duration(seconds: 0), // 기본값 0초
     this.unactive = false, // 기본값 false
+    this.deletedAt, // 삭제 시간
   });
 
   // Firestore에서 데이터를 가져올 때 사용
@@ -34,7 +36,6 @@ class PhotoDataModel {
     List<double>? waveformData;
     if (data['waveformData'] != null) {
       final dynamic waveformRaw = data['waveformData'];
-      // debugPrint('  - waveformRaw 타입: ${waveformRaw.runtimeType}');
 
       if (waveformRaw is List) {
         try {
@@ -60,6 +61,7 @@ class PhotoDataModel {
       waveformData: waveformData, // 파형 데이터 추가
       duration: Duration(seconds: (data['duration'] ?? 0) as int), // 음성 길이 추가
       unactive: data['unactive'] ?? false, // 사용자 비활성화 상태 추가
+      deletedAt: (data['deletedAt'] as Timestamp?)?.toDate(), // 삭제 시간 추가
     );
   }
 
@@ -80,6 +82,11 @@ class PhotoDataModel {
     // waveformData가 있을 때만 추가
     if (waveformData != null) {
       data['waveformData'] = waveformData;
+    }
+
+    // deletedAt이 있을 때만 추가
+    if (deletedAt != null) {
+      data['deletedAt'] = Timestamp.fromDate(deletedAt!);
     }
 
     return data;

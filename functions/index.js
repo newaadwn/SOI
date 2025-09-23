@@ -5,6 +5,7 @@
 
 const {setGlobalOptions} = require("firebase-functions");
 const {onRequest, onCall} = require("firebase-functions/v2/https");
+const {onSchedule} = require("firebase-functions/v2/scheduler");
 const {initializeApp} = require("firebase-admin/app");
 const {getFirestore} = require("firebase-admin/firestore");
 const {getStorage} = require("firebase-admin/storage");
@@ -12,6 +13,7 @@ const {getAuth} = require("firebase-admin/auth");
 const logger = require("firebase-functions/logger");
 const {generateInviteImage} = require("./lib/image-generator");
 const {deleteUserData: runDeleteUserData} = require("./lib/deleteContext");
+const {cleanupDeletedPhotos} = require("./lib/cleanupDeletedPhotos");
 
 // Initialize Firebase Admin
 initializeApp();
@@ -174,6 +176,102 @@ exports.deleteUserData = onCall(
         uid,
       });
       return {success: true};
+    },
+);
+
+// Scheduled function to cleanup deleted photos (runs daily at 2 AM KST)
+exports.scheduledCleanupDeletedPhotos = onSchedule(
+    {
+      schedule: "0 2 * * *", // Daily at 2 AM KST
+      timeZone: "Asia/Seoul",
+      memory: "1GiB",
+      timeoutSeconds: 540,
+    },
+    async (event) => {
+      logger.info("Starting scheduled cleanup of deleted photos");
+
+      try {
+        const result = await cleanupDeletedPhotos({
+          db,
+          storage,
+          supabase,
+          logger,
+        });
+
+        logger.info("Scheduled cleanup completed successfully", result);
+
+        // 결과를 관리자에게 알림 (선택사항)
+        if (result.deletedCount > 0 || result.errorCount > 0) {
+          const resultMsg = `Cleanup completed: ${result.deletedCount} ` +
+            `photos deleted, ${result.errorCount} errors`;
+          await db.collection("admin_logs").add({
+            type: "photo_cleanup",
+            timestamp: new Date(),
+            result,
+            message: resultMsg,
+          });
+        }
+
+        return result;
+      } catch (error) {
+        logger.error("Scheduled cleanup failed:", error);
+
+        // 에러를 관리자 로그에 기록
+        await db.collection("admin_logs").add({
+          type: "photo_cleanup_error",
+          timestamp: new Date(),
+          error: error.message,
+          stack: error.stack,
+        });
+
+        throw error;
+      }
+    },
+);
+
+// Manual cleanup function for testing/admin use
+exports.manualCleanupDeletedPhotos = onCall(
+    {timeoutSeconds: 540, memory: "1GiB"},
+    async (request) => {
+      const auth = request.auth;
+      if (!auth || !auth.uid) {
+        throw new Error("Unauthenticated request");
+      }
+
+      // 관리자 권한 확인 (선택사항 - 실제 관리자 UID로 제한)
+      // const adminUIDs = ['admin-uid-1', 'admin-uid-2'];
+      // if (!adminUIDs.includes(auth.uid)) {
+      //   throw new Error("Unauthorized: Admin access required");
+      // }
+
+      logger.info(`Manual cleanup initiated by user: ${auth.uid}`);
+
+      try {
+        const result = await cleanupDeletedPhotos({
+          db,
+          storage,
+          supabase,
+          logger,
+        });
+
+        logger.info("Manual cleanup completed successfully", result);
+
+        // 관리자 로그에 기록
+        await db.collection("admin_logs").add({
+          type: "manual_photo_cleanup",
+          timestamp: new Date(),
+          initiatedBy: auth.uid,
+          result,
+        });
+
+        return {
+          success: true,
+          ...result,
+        };
+      } catch (error) {
+        logger.error("Manual cleanup failed:", error);
+        throw new Error(`Cleanup failed: ${error.message}`);
+      }
     },
 );
 

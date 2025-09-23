@@ -420,6 +420,72 @@ class PhotoController extends ChangeNotifier {
     }
   }
 
+  // ==================== 삭제된 사진 관리 ====================
+
+  List<PhotoDataModel> _deletedPhotos = [];
+
+  /// 삭제된 사진 목록 getter
+  List<PhotoDataModel> get deletedPhotos => _deletedPhotos;
+
+  /// 사용자의 삭제된 사진 목록 로드
+  Future<void> loadDeletedPhotosByUser(String userId) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final deletedPhotos = await _photoService.getDeletedPhotosByUser(userId);
+
+      _deletedPhotos = deletedPhotos;
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('PhotoController: 삭제된 사진 로드 오류 - $e');
+      _isLoading = false;
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  /// 사진 복원
+  Future<bool> restorePhoto({
+    required String categoryId,
+    required String photoId,
+    required String userId,
+  }) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final success = await _photoService.restorePhoto(
+        categoryId: categoryId,
+        photoId: photoId,
+        userId: userId,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (success) {
+        // 삭제된 사진 목록에서 제거
+        _deletedPhotos.removeWhere((photo) => photo.id == photoId);
+        notifyListeners();
+
+        return true;
+      } else {
+        _error = '사진 복원에 실패했습니다.';
+        return false;
+      }
+    } catch (e) {
+      debugPrint('PhotoController: 사진 복원 오류 - $e');
+      _isLoading = false;
+      _error = '사진 복원 중 오류가 발생했습니다.';
+      notifyListeners();
+      return false;
+    }
+  }
+
   // ==================== 기존 호환성 메서드 ====================
 
   // ==================== 통계 및 유틸리티 ====================
