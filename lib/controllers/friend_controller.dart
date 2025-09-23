@@ -222,6 +222,18 @@ class FriendController extends ChangeNotifier {
     }
   }
 
+  /// 차단된 사용자 목록 조회
+  ///
+  /// Returns: 차단된 사용자의 UID 목록
+  Future<List<String>> getBlockedUsers() async {
+    try {
+      return await _friendService.getBlockedUsers();
+    } catch (e) {
+      _setError('차단 목록 조회 실패: $e');
+      return [];
+    }
+  }
+
   /// 친구 검색
   ///
   /// [query] 검색 쿼리

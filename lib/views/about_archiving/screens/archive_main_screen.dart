@@ -253,7 +253,6 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
         resizeToAvoidBottomInset: true,
-
         appBar: AppBar(
           centerTitle: true,
           leadingWidth: 90.w,
@@ -283,7 +282,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                     builder: (context, imageSnapshot) {
                       final isLoadingAvatar =
                           imageSnapshot.connectionState ==
-                              ConnectionState.waiting;
+                          ConnectionState.waiting;
                       final profileImageUrl = imageSnapshot.data ?? '';
 
                       return Padding(
@@ -303,24 +302,32 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                   );
                                 },
                                 child: SizedBox(
-                                  width: 34.w,
-                                  height: 34.h,
+                                  width: 34,
+                                  height: 34,
                                   child: ClipOval(
-                                    child: isLoadingAvatar
-                                        ? _buildAvatarShimmer()
-                                        : profileImageUrl.isNotEmpty
+                                    child:
+                                        isLoadingAvatar
+                                            ? _buildAvatarShimmer()
+                                            : profileImageUrl.isNotEmpty
                                             ? CachedNetworkImage(
                                               imageUrl: profileImageUrl,
                                               fit: BoxFit.cover,
+                                              width: 34,
+                                              height: 34,
                                               memCacheHeight: 120,
                                               memCacheWidth: 120,
-                                              placeholder: (context, url) =>
-                                                  _buildAvatarShimmer(),
-                                              errorWidget:
-                                                  (context, url, error) {
+                                              placeholder:
+                                                  (context, url) =>
+                                                      _buildAvatarShimmer(),
+                                              errorWidget: (
+                                                context,
+                                                url,
+                                                error,
+                                              ) {
                                                 Future.microtask(
-                                                  () => authController
-                                                      .cleanInvalidProfileImageUrl(),
+                                                  () =>
+                                                      authController
+                                                          .cleanInvalidProfileImageUrl(),
                                                 );
                                                 return _buildAvatarFallback();
                                               },
@@ -966,9 +973,6 @@ Widget _buildAvatarShimmer() {
 Widget _buildAvatarFallback() {
   return Container(
     color: Colors.grey.shade700,
-    child: const Icon(
-      Icons.person,
-      color: Colors.white,
-    ),
+    child: const Icon(Icons.person, color: Colors.white),
   );
 }

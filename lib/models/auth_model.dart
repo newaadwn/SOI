@@ -10,6 +10,7 @@ class AuthModel {
   final String profileImage;
   final DateTime createdAt;
   final DateTime lastLogin;
+  final bool isDeactivated; // 계정 비활성화 상태
 
   AuthModel({
     required this.uid,
@@ -20,6 +21,7 @@ class AuthModel {
     this.profileImage = '',
     required this.createdAt,
     required this.lastLogin,
+    this.isDeactivated = false, // 기본값 false
   });
 
   /// Firestore 문서에서 UserModel 생성
@@ -33,6 +35,7 @@ class AuthModel {
       profileImage: data['profile_image'] ?? '',
       createdAt: (data['createdAt'] as Timestamp).toDate(),
       lastLogin: (data['lastLogin'] as Timestamp).toDate(),
+      isDeactivated: data['isDeactivated'] ?? false, // 비활성화 상태 추가
     );
   }
 
@@ -46,6 +49,7 @@ class AuthModel {
       'birth_date': birthDate,
       'profile_image': profileImage,
       'lastLogin': FieldValue.serverTimestamp(),
+      'isDeactivated': isDeactivated, // 비활성화 상태 추가
     };
 
     if (!isUpdate) {

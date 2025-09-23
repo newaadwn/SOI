@@ -34,6 +34,7 @@ class CategoryRepository {
                       .collection('categories')
                       .doc(doc.id)
                       .collection('photos')
+                      .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
                       .orderBy('createdAt', descending: true)
                       .limit(1)
                       .get();
@@ -77,6 +78,7 @@ class CategoryRepository {
                     .collection('categories')
                     .doc(categoryId)
                     .collection('photos')
+                    .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
                     .orderBy('createdAt', descending: true)
                     .limit(1)
                     .get();
@@ -134,13 +136,13 @@ class CategoryRepository {
             }
           } else {
             // 닉네임이 없거나 비어있는 경우
+            debugPrint('사용자 닉네임이 없습니다.');
           }
         }
       } catch (e) {
         // 사용자 문서가 없거나 닉네임을 찾을 수 없는 경우
+        debugPrint('사용자 닉네임을 가져오는 중 오류 발생: $e');
       }
-    } else {
-      // 닉네임 검색은 생략
     }
 
     final categories = <CategoryDataModel>[];
@@ -158,6 +160,7 @@ class CategoryRepository {
                 .collection('categories')
                 .doc(doc.id)
                 .collection('photos')
+                .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
                 .orderBy('createdAt', descending: true)
                 .limit(1)
                 .get();
@@ -252,6 +255,7 @@ class CategoryRepository {
             .collection('categories')
             .doc(categoryId)
             .collection('photos')
+            .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
             .orderBy('createdAt', descending: true)
             .limit(1)
             .get();

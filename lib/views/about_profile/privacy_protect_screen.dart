@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
+import '../../controllers/auth_controller.dart';
+import '../../models/auth_model.dart';
 
 class PrivacyProtectScreen extends StatefulWidget {
   const PrivacyProtectScreen({super.key});
@@ -10,8 +13,32 @@ class PrivacyProtectScreen extends StatefulWidget {
 
 class _PrivacyProtectScreenState extends State<PrivacyProtectScreen> {
   bool _isContactSyncEnabled = false;
+  AuthModel? _currentUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  Future<void> _loadUserData() async {
+    try {
+      final authController = context.read<AuthController>();
+      final userId = authController.getUserId;
+      if (userId != null) {
+        final userInfo = await authController.getUserInfo(userId);
+        setState(() {
+          _currentUser = userInfo;
+        });
+      }
+    } catch (e) {
+      // 에러 처리
+    }
+  }
 
   void _showDeactivateBottomSheet(BuildContext context) {
+    final isDeactivated = _currentUser?.isDeactivated ?? false;
+
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -45,7 +72,7 @@ class _PrivacyProtectScreenState extends State<PrivacyProtectScreen> {
               SizedBox(height: 24.h),
               // 제목
               Text(
-                '계정 비활성화',
+                isDeactivated ? '계정 활성화' : '계정 비활성화',
                 style: TextStyle(
                   color: const Color(0xFFF8F8F8),
                   fontSize: 19.78,
@@ -53,30 +80,42 @@ class _PrivacyProtectScreenState extends State<PrivacyProtectScreen> {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              SizedBox(height: 16),
+              SizedBox(height: 16.h),
               // 설명 텍스트
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
-                child: Text(
-                  '계정을 비활성화하면, 사용자가 올린 게시물은\n자동으로 비공개 처리됩니다.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: const Color(0xFFF8F8F8),
-                    fontSize: 14,
-                    fontFamily: 'Pretendard Variable',
-                    fontWeight: FontWeight.w400,
-                    height: 1.51,
-                  ),
+              Text(
+                isDeactivated
+                    ? '계정을 활성화하면, 사용자가 올린 게시물이\n다시 공개됩니다.'
+                    : '계정을 비활성화하면, 사용자가 올린 게시물은\n자동으로 비공개 처리됩니다.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: const Color(0xFFF8F8F8),
+                  fontSize: 14.sp,
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: FontWeight.w400,
+                  height: 1.51,
                 ),
               ),
-              SizedBox(height: 40),
-              // 비활성화 버튼
+              SizedBox(height: 40.h),
+              // 비활성화/활성화 버튼
               SizedBox(
                 width: 344.w,
                 height: 38,
                 child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: 비활성화 기능 구현
+                  onPressed: () async {
+                    Navigator.pop(context);
+
+                    try {
+                      final authController = context.read<AuthController>();
+                      if (isDeactivated) {
+                        await authController.activateAccount();
+                      } else {
+                        await authController.deactivateAccount();
+                      }
+                      // 사용자 데이터 다시 로드
+                      await _loadUserData();
+                    } catch (e) {
+                      throw Exception('계정 상태 변경 중 오류 발생: $e');
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
@@ -86,7 +125,7 @@ class _PrivacyProtectScreenState extends State<PrivacyProtectScreen> {
                     ),
                   ),
                   child: Text(
-                    '비활성화',
+                    isDeactivated ? '활성화' : '비활성화',
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 17.78,
@@ -156,7 +195,9 @@ class _PrivacyProtectScreenState extends State<PrivacyProtectScreen> {
         child: Column(
           children: [
             ElevatedButton(
-              onPressed: () {},
+              onPressed: () {
+                Navigator.pushNamed(context, '/blocked_friends');
+              },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Color(0xFF1C1C1E),
                 overlayColor: Color(0xffffffff).withValues(alpha: 0.1),
@@ -222,7 +263,9 @@ class _PrivacyProtectScreenState extends State<PrivacyProtectScreen> {
                     ),
                     SizedBox(width: 25.w),
                     Text(
-                      '계정 비활성화',
+                      _currentUser?.isDeactivated == true
+                          ? '계정 활성화'
+                          : '계정 비활성화',
                       style: TextStyle(
                         color: const Color(0xFFF8F8F8),
                         fontSize: 17.sp,

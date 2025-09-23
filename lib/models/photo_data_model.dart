@@ -12,6 +12,7 @@ class PhotoDataModel {
   final PhotoStatus status;
   final List<double>? waveformData; // 실제 오디오 파형 데이터 추가
   final Duration duration; // 음성 길이 (초 단위) 추가
+  final bool unactive; // 사용자 비활성화 상태
 
   PhotoDataModel({
     required this.id,
@@ -24,6 +25,7 @@ class PhotoDataModel {
     this.status = PhotoStatus.active,
     this.waveformData, // 파형 데이터 추가
     this.duration = const Duration(seconds: 0), // 기본값 0초
+    this.unactive = false, // 기본값 false
   });
 
   // Firestore에서 데이터를 가져올 때 사용
@@ -57,6 +59,7 @@ class PhotoDataModel {
       ),
       waveformData: waveformData, // 파형 데이터 추가
       duration: Duration(seconds: (data['duration'] ?? 0) as int), // 음성 길이 추가
+      unactive: data['unactive'] ?? false, // 사용자 비활성화 상태 추가
     );
   }
 
@@ -71,6 +74,7 @@ class PhotoDataModel {
       'createdAt': Timestamp.fromDate(createdAt),
       'status': status.name,
       'duration': duration.inSeconds, // 음성 길이 추가 (초 단위로 저장)
+      'unactive': unactive, // 사용자 비활성화 상태 추가
     };
 
     // waveformData가 있을 때만 추가

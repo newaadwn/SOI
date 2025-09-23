@@ -382,12 +382,38 @@ class AuthController extends ChangeNotifier {
     }
   }
 
+  // 계정 비활성화
+  Future<void> deactivateAccount() async {
+    final result = await _authService.deactivateAccount();
+
+    if (result.isSuccess) {
+      debugPrint("계정이 비활성화되었습니다.");
+      notifyListeners(); // UI 업데이트를 위해 추가
+    } else {
+      debugPrint(result.error ?? "계정 비활성화 중 오류가 발생했습니다.");
+      throw Exception(result.error ?? "계정 비활성화 중 오류가 발생했습니다.");
+    }
+  }
+
+  // 계정 활성화
+  Future<void> activateAccount() async {
+    final result = await _authService.activateAccount();
+
+    if (result.isSuccess) {
+      debugPrint("계정이 활성화되었습니다.");
+      notifyListeners(); // UI 업데이트를 위해 추가
+    } else {
+      debugPrint(result.error ?? "계정 활성화 중 오류가 발생했습니다.");
+      throw Exception(result.error ?? "계정 활성화 중 오류가 발생했습니다.");
+    }
+  }
+
   // 프로필 이미지 URL 정리 (현재는 Service에서 처리하지 않으므로 빈 메서드로 유지)
   Future<void> cleanInvalidProfileImageUrl() async {
     notifyListeners();
   }
 
-  // ✅ ===== 자동 로그인 관련 메서드들 =====
+  // ===== 자동 로그인 관련 메서드들 =====
 
   /// 로그인 상태를 SharedPreferences에 저장
   Future<void> saveLoginState({
@@ -401,9 +427,8 @@ class AuthController extends ChangeNotifier {
       await prefs.setString(_keyPhoneNumber, phoneNumber);
       await prefs.setBool(_keyOnboardingCompleted, true);
       await prefs.remove(_keyRegistrationInProgress);
-      // debugPrint('🔐 로그인 상태 저장 완료: $userId');
     } catch (e) {
-      // debugPrint('❌ 로그인 상태 저장 실패: $e');
+      debugPrint('❌ 로그인 상태 저장 실패: $e');
     }
   }
 
@@ -415,10 +440,10 @@ class AuthController extends ChangeNotifier {
       final onboardingCompleted =
           prefs.getBool(_keyOnboardingCompleted) ?? false;
       final result = isLoggedIn && onboardingCompleted;
-      // debugPrint('🔍 저장된 로그인 상태: $result (isLoggedIn=$isLoggedIn, onboarding=$onboardingCompleted)');
+
       return result;
     } catch (e) {
-      // debugPrint('❌ 로그인 상태 확인 실패: $e');
+      debugPrint('❌ 로그인 상태 확인 실패: $e');
       return false;
     }
   }
@@ -432,7 +457,7 @@ class AuthController extends ChangeNotifier {
         'phoneNumber': prefs.getString(_keyPhoneNumber),
       };
     } catch (e) {
-      // debugPrint('❌ 저장된 사용자 정보 가져오기 실패: $e');
+      debugPrint('❌ 저장된 사용자 정보 가져오기 실패: $e');
       return {'userId': null, 'phoneNumber': null};
     }
   }
@@ -444,7 +469,7 @@ class AuthController extends ChangeNotifier {
       final userId = savedInfo['userId'];
 
       if (userId == null) {
-        // debugPrint('❌ 저장된 사용자 ID 없음');
+        debugPrint('❌ 저장된 사용자 ID 없음');
         return null;
       }
 
@@ -459,10 +484,10 @@ class AuthController extends ChangeNotifier {
         };
       }
 
-      // debugPrint('❌ Firestore에서 사용자 정보를 찾을 수 없음');
+      debugPrint('❌ Firestore에서 사용자 정보를 찾을 수 없음');
       return null;
     } catch (e) {
-      // debugPrint('❌ 사용자 Firestore 정보 가져오기 실패: $e');
+      debugPrint('❌ 사용자 Firestore 정보 가져오기 실패: $e');
       return null;
     }
   }
@@ -470,27 +495,24 @@ class AuthController extends ChangeNotifier {
   /// 자동 로그인 시도
   Future<bool> tryAutoLogin() async {
     try {
-      // debugPrint('🔄 자동 로그인 시도 중...');
-
       // 저장된 로그인 상태 확인
       final isUserLoggedIn = await isLoggedIn();
       if (!isUserLoggedIn) {
-        // debugPrint('❌ 저장된 로그인 정보 없음');
+        debugPrint('❌ 저장된 로그인 정보 없음');
         return false;
       }
 
       // Firebase Auth 현재 사용자 확인
       final currentUser = _authService.currentUser;
       if (currentUser == null) {
-        // debugPrint('❌ Firebase Auth 사용자 없음 - 로그인 상태 초기화');
+        debugPrint('❌ Firebase Auth 사용자 없음 - 로그인 상태 초기화');
         await clearLoginState();
         return false;
       }
 
-      // debugPrint('✅ 자동 로그인 성공: ${currentUser.uid}');
       return true;
     } catch (e) {
-      // debugPrint('❌ 자동 로그인 실패: $e');
+      debugPrint('❌ 자동 로그인 실패: $e');
       await clearLoginState();
       return false;
     }
@@ -505,9 +527,8 @@ class AuthController extends ChangeNotifier {
       await prefs.remove(_keyPhoneNumber);
       await prefs.remove(_keyOnboardingCompleted);
       await prefs.remove(_keyRegistrationInProgress);
-      // debugPrint('🗑️ 로그인 상태 삭제 완료');
     } catch (e) {
-      // debugPrint('❌ 로그인 상태 삭제 실패: $e');
+      debugPrint('❌ 로그인 상태 삭제 실패: $e');
     }
   }
 
@@ -523,7 +544,7 @@ class AuthController extends ChangeNotifier {
       await prefs.setBool(_keyOnboardingCompleted, false);
       await prefs.remove(_keyIsLoggedIn);
     } catch (e) {
-      // debugPrint('❌ 회원가입 진행 상태 저장 실패: $e');
+      debugPrint('❌ 회원가입 진행 상태 저장 실패: $e');
     }
   }
 
@@ -548,18 +569,18 @@ class AuthController extends ChangeNotifier {
     );
 
     if (result.isSuccess) {
-      // ✅ 로그인 성공 시 상태 저장
+      // 로그인 성공 시 상태 저장
       final currentUser = _authService.currentUser;
       if (currentUser != null) {
         await _markRegistrationInProgress(
           userId: currentUser.uid,
           phoneNumber: phoneNumber,
         );
-        // debugPrint("✅ SMS 인증 완료, 회원가입 진행 상태 저장");
+
         onSuccess();
       }
     } else {
-      // debugPrint(result.error ?? "로그인에 실패했습니다.");
+      debugPrint(result.error ?? "로그인에 실패했습니다.");
     }
   }
 

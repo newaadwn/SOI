@@ -101,6 +101,7 @@ class PhotoService {
         userIds: userIds,
         categoryId: categoryId,
         createdAt: DateTime.now(),
+        unactive: false, // 사진 생성 시 기본값으로 false 설정
       );
 
       // 4. Firestore에 메타데이터 저장

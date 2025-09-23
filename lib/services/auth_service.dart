@@ -403,4 +403,50 @@ class AuthService {
       return false;
     }
   }
+
+  // 계정 비활성화 (사진들의 unactive 필드를 true로 설정)
+  Future<AuthResult> deactivateAccount() async {
+    try {
+      final currentUser = _repository.currentUser;
+      if (currentUser == null) {
+        return AuthResult.failure('로그인이 필요합니다.');
+      }
+
+      final userId = currentUser.uid;
+
+      // 사용자가 올린 모든 사진의 unactive 필드를 true로 업데이트
+      await _repository.deactivateUserPhotos(userId);
+
+      // 사용자 비활성화 상태 업데이트
+      await _repository.updateUserDeactivationStatus(userId, true);
+
+      return AuthResult.success();
+    } catch (e) {
+      debugPrint('❌ 계정 비활성화 과정에서 오류 발생: $e');
+      return AuthResult.failure('계정 비활성화 중 오류가 발생했습니다.');
+    }
+  }
+
+  // 계정 활성화 (사진들의 unactive 필드를 false로 설정)
+  Future<AuthResult> activateAccount() async {
+    try {
+      final currentUser = _repository.currentUser;
+      if (currentUser == null) {
+        return AuthResult.failure('로그인이 필요합니다.');
+      }
+
+      final userId = currentUser.uid;
+
+      // 사용자가 올린 모든 사진의 unactive 필드를 false로 업데이트
+      await _repository.activateUserPhotos(userId);
+
+      // 사용자 활성화 상태 업데이트
+      await _repository.updateUserDeactivationStatus(userId, false);
+
+      return AuthResult.success();
+    } catch (e) {
+      debugPrint('❌ 계정 활성화 과정에서 오류 발생: $e');
+      return AuthResult.failure('계정 활성화 중 오류가 발생했습니다.');
+    }
+  }
 }

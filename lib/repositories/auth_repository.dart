@@ -251,8 +251,9 @@ class AuthRepository {
       final allUsersSnapshot = await _firestore.collection('users').get();
       for (var userDoc in allUsersSnapshot.docs) {
         if (userDoc.id != uid) {
-          final otherUserFriendDoc =
-              userDoc.reference.collection('friends').doc(uid);
+          final otherUserFriendDoc = userDoc.reference
+              .collection('friends')
+              .doc(uid);
           await queueDelete(otherUserFriendDoc);
         }
       }
@@ -519,6 +520,96 @@ class AuthRepository {
     } catch (e) {
       debugPrint('Error checking ID duplicate in Firestore: $e');
       return false;
+    }
+  }
+
+  // 사용자가 올린 모든 사진의 unactive 필드를 true로 설정
+  Future<void> deactivateUserPhotos(String userId) async {
+    try {
+      // collectionGroup을 사용하여 모든 카테고리의 photos 서브컬렉션에서 해당 사용자의 사진 찾기
+      final photosSnapshot =
+          await _firestore
+              .collectionGroup('photos')
+              .where('userID', isEqualTo: userId)
+              .get();
+
+      // 배치 업데이트로 성능 최적화
+      WriteBatch batch = _firestore.batch();
+      int operationCount = 0;
+
+      for (final doc in photosSnapshot.docs) {
+        batch.update(doc.reference, {'unactive': true});
+        operationCount++;
+
+        // Firestore 배치 제한(500개)에 대비하여 450개마다 커밋
+        if (operationCount >= 450) {
+          await batch.commit();
+          batch = _firestore.batch();
+          operationCount = 0;
+        }
+      }
+
+      // 남은 업데이트 커밋
+      if (operationCount > 0) {
+        await batch.commit();
+      }
+
+      debugPrint('✅ 사용자 $userId의 ${photosSnapshot.docs.length}개 사진을 비활성화했습니다.');
+    } catch (e) {
+      debugPrint('❌ 사용자 사진 비활성화 실패: $e');
+      rethrow;
+    }
+  }
+
+  // 사용자가 올린 모든 사진의 unactive 필드를 false로 설정 (활성화)
+  Future<void> activateUserPhotos(String userId) async {
+    try {
+      final photosSnapshot =
+          await _firestore
+              .collectionGroup('photos')
+              .where('userID', isEqualTo: userId)
+              .get();
+
+      WriteBatch batch = _firestore.batch();
+      int operationCount = 0;
+
+      for (final doc in photosSnapshot.docs) {
+        batch.update(doc.reference, {'unactive': false});
+        operationCount++;
+
+        if (operationCount >= 450) {
+          await batch.commit();
+          batch = _firestore.batch();
+          operationCount = 0;
+        }
+      }
+
+      if (operationCount > 0) {
+        await batch.commit();
+      }
+
+      debugPrint('✅ 사용자 $userId의 ${photosSnapshot.docs.length}개 사진을 활성화했습니다.');
+    } catch (e) {
+      debugPrint('❌ 사용자 사진 활성화 실패: $e');
+      rethrow;
+    }
+  }
+
+  // 사용자 비활성화 상태 업데이트
+  Future<void> updateUserDeactivationStatus(
+    String userId,
+    bool isDeactivated,
+  ) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({
+        'isDeactivated': isDeactivated,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      debugPrint('✅ 사용자 $userId 비활성화 상태를 $isDeactivated로 업데이트했습니다.');
+    } catch (e) {
+      debugPrint('❌ 사용자 비활성화 상태 업데이트 실패: $e');
+      rethrow;
     }
   }
 }

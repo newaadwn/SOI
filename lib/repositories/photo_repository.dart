@@ -95,6 +95,7 @@ class PhotoRepository {
         'createdAt': FieldValue.serverTimestamp(),
         'status': PhotoStatus.active.name,
         'duration': duration?.inSeconds ?? 0,
+        'unactive': false, // 사진 생성 시 기본값으로 false 설정
       };
 
       // 파형 데이터 처리 및 상세 로그
@@ -138,6 +139,7 @@ class PhotoRepository {
               .doc(categoryId)
               .collection('photos')
               .where('status', isEqualTo: PhotoStatus.active.name)
+              .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
               .orderBy('createdAt', descending: true)
               .get();
 
@@ -228,7 +230,10 @@ class PhotoRepository {
 
                 return PhotoDataModel.fromFirestore(data, doc.id);
               })
-              .where((photo) => photo.status == PhotoStatus.active)
+              .where(
+                (photo) =>
+                    photo.status == PhotoStatus.active && !photo.unactive,
+              ) // 비활성화된 사진 제외
               .toList();
 
       // 메모리에서 정렬
@@ -251,6 +256,7 @@ class PhotoRepository {
               .doc(categoryId)
               .collection('photos')
               .where('status', isEqualTo: PhotoStatus.active.name)
+              .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
               .orderBy('createdAt', descending: true)
               .get();
 
@@ -274,6 +280,7 @@ class PhotoRepository {
         .doc(categoryId)
         .collection('photos')
         .where('status', isEqualTo: PhotoStatus.active.name)
+        .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
@@ -293,6 +300,7 @@ class PhotoRepository {
               .collectionGroup('photos')
               .where('userID', isEqualTo: userId)
               .where('status', isEqualTo: PhotoStatus.active.name)
+              .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
               .orderBy('createdAt', descending: true)
               .get();
 

@@ -236,7 +236,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
             },
             onSaveRequested: _onSaveRequested,
             onSaveCompleted: _onSaveCompleted,
-            onDeletePressed: () => _showDeleteDialog(photo),
+            onDeletePressed: () => _deletePhoto(photo),
             onLikePressed: _onLikePressed,
           );
         },
@@ -672,96 +672,6 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   }
 
   void _onLikePressed() {}
-
-  void _showDeleteDialog(PhotoDataModel photo) {
-    showDialog(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            backgroundColor: const Color(0xff323232),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(height: 17.h),
-                Text(
-                  '사진 삭제',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Pretendard',
-                    fontWeight: FontWeight.w500,
-                    fontSize: 19.8.sp,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 12.h),
-                Text(
-                  '사진 삭제하면 더 이상 해당 카테고리에서 확인할 수 없으며 삭제 후 복구가 \n불가능합니다.',
-                  style: TextStyle(
-                    color: const Color(0xfff9f9f9),
-                    fontFamily: 'Pretendard',
-                    fontSize: 15.8.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 12.h),
-                SizedBox(
-                  width: 185.5.w,
-                  height: 38.h,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      _deletePhoto(photo);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xfff5f5f5),
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14.2),
-                      ),
-                    ),
-                    child: Text(
-                      '삭제',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 17.8.sp,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 13.h),
-                SizedBox(
-                  width: (185.5).w,
-                  height: 38.h,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xff5a5a5a),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14.2),
-                      ),
-                    ),
-                    child: Text(
-                      '취소',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w500,
-                        fontSize: (17.8).sp,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 14.h),
-              ],
-            ),
-          ),
-    );
-  }
 
   Future<void> _deletePhoto(PhotoDataModel photo) async {
     try {

@@ -661,8 +661,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _buildSettingsItem('앱 정보 동의 설정'),
               Divider(height: 1, color: const Color(0xFF323232)),
-              _buildSettingsItem('차단된 친구'),
-              Divider(height: 1, color: const Color(0xFF323232)),
+
               _buildSettingsItem(
                 '회원 탈퇴',
                 isRed: true,
