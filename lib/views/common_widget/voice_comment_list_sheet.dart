@@ -5,7 +5,7 @@ import '../../models/comment_record_model.dart';
 import '../../controllers/emoji_reaction_controller.dart';
 import '../../controllers/comment_record_controller.dart';
 import 'about_emoji/reaction_row_widget.dart';
-import 'about_voice_comment/voice_comment_widget.dart';
+import 'about_voice_comment/voice_comment_row_widget.dart';
 
 /// 재사용 가능한 음성 댓글 리스트 Bottom Sheet
 /// feed / archive 모두에서 사용
