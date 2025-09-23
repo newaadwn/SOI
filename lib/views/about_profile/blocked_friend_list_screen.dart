@@ -152,22 +152,29 @@ class _BlockedFriendListScreenState extends State<BlockedFriendListScreen> {
     }
 
     if (_blockedUsers.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.block, size: 64.sp, color: const Color(0xFF666666)),
-            SizedBox(height: 16.h),
-            Text(
-              '차단된 친구가 없습니다',
-              style: TextStyle(
-                color: const Color(0xFFB0B0B0),
-                fontSize: 16.sp,
-                fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w500,
+      return SizedBox(
+        height:
+            MediaQuery.of(context).size.height -
+            MediaQuery.of(context).padding.top -
+            kToolbarHeight -
+            100.h, // AppBar와 패딩을 제외한 높이
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.block, size: 64.sp, color: const Color(0xFF666666)),
+              SizedBox(height: 16.h),
+              Text(
+                '차단된 친구가 없습니다',
+                style: TextStyle(
+                  color: const Color(0xFFB0B0B0),
+                  fontSize: 16.sp,
+                  fontFamily: 'Pretendard',
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       );
     }
