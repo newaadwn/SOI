@@ -24,14 +24,17 @@ class VoiceCommentStateManager {
   final Map<String, String> _commentProfileImageUrls = {}; // 임시용 (기존 호환성)
   final Map<String, String> _droppedProfileImageUrls = {}; // 임시용 (기존 호환성)
 
-  // 댓글별 개별 관리 (새로운 구조)
-  final Map<String, Offset> _commentPositions = {}; // 댓글 ID -> 위치
-  final Map<String, String> _commentProfileUrls = {}; // 댓글 ID -> 프로필 URL
-
   // 실시간 스트림 관리
   final Map<String, List<CommentRecordModel>> _photoComments = {};
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
   _commentStreams = {};
+
+  static const bool _logEnabled = true;
+
+  void _log(String message) {
+    if (!_logEnabled) return;
+    debugPrint('🎙️ VoiceStateManager | ' + message);
+  }
 
   // Getters
   Map<String, bool> get voiceCommentActiveStates => _voiceCommentActiveStates;
@@ -55,8 +58,18 @@ class VoiceCommentStateManager {
 
   /// 음성 댓글 토글
   void toggleVoiceComment(String photoId) {
-    _voiceCommentActiveStates[photoId] =
-        !(_voiceCommentActiveStates[photoId] ?? false);
+    final nextState = !(_voiceCommentActiveStates[photoId] ?? false);
+    _voiceCommentActiveStates[photoId] = nextState;
+
+    if (nextState) {
+      // 새 댓글 녹음을 시작하는 순간에는 "저장됨" 상태를 해제해
+      // 이후 드래그가 기존 댓글의 위치를 덮어쓰지 않도록 방지한다.
+      _voiceCommentSavedStates[photoId] = false;
+      _pendingProfilePositions.remove(photoId);
+      _profileImagePositions.remove(photoId);
+      _pendingVoiceComments.remove(photoId);
+    }
+    _log('toggleVoiceComment photo:$photoId -> $nextState');
     _notifyStateChanged();
   }
 
@@ -77,6 +90,11 @@ class VoiceCommentStateManager {
       'waveformData': waveformData,
       'duration': duration,
     };
+
+    // 방금 녹음된 댓글은 아직 저장되지 않았으므로 저장 플래그를 해제한다.
+    _voiceCommentSavedStates[photoId] = false;
+    _pendingProfilePositions.remove(photoId);
+    _profileImagePositions.remove(photoId);
     _notifyStateChanged();
   }
 
@@ -102,9 +120,16 @@ class VoiceCommentStateManager {
       final profileImageUrl = await authController
           .getUserProfileImageUrlWithCache(currentUserId);
 
-      // 현재 드래그된 위치를 사용 (각 댓글마다 고유한 위치)
-      final currentProfilePosition =
-          _profileImagePositions[photoId] ?? _pendingProfilePositions[photoId];
+      final currentProfilePosition = _pendingProfilePositions[photoId];
+      if (currentProfilePosition == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('사진 위 원하는 위치에 프로필을 먼저 놓아주세요.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
 
       final commentRecord = await commentRecordController.createCommentRecord(
         audioFilePath: pendingData['audioPath'],
@@ -129,16 +154,12 @@ class VoiceCommentStateManager {
           }
         }
 
-        // 새 댓글의 고유 위치 저장 (기존 댓글 위치에 영향 없음)
-        _commentPositions[commentRecord.id] = currentProfilePosition!;
-        _commentProfileUrls[commentRecord.id] = profileImageUrl;
-
         // 임시 데이터 삭제
         _pendingVoiceComments.remove(photoId);
         _pendingProfilePositions.remove(photoId);
 
         // 다음 댓글을 위해 위치 초기화 (기존 댓글은 건드리지 않음)
-        _profileImagePositions[photoId] = null;
+        _profileImagePositions.remove(photoId);
 
         _notifyStateChanged();
       } else {
@@ -153,7 +174,8 @@ class VoiceCommentStateManager {
   void onVoiceCommentDeleted(String photoId) {
     _voiceCommentActiveStates[photoId] = false;
     _voiceCommentSavedStates[photoId] = false;
-    _profileImagePositions[photoId] = null;
+    _profileImagePositions.remove(photoId);
+    _pendingProfilePositions.remove(photoId);
     _notifyStateChanged();
   }
 
@@ -252,43 +274,9 @@ class VoiceCommentStateManager {
             .toList();
 
     if (userComments.isNotEmpty) {
-      // 사진별 댓글 ID 목록 업데이트 (중복 방지 및 정렬)
-      final existingCommentIds = _savedCommentIds[photoId] ?? [];
-      final newCommentIds = userComments.map((c) => c.id).toSet().toList();
+      final updatedIds = userComments.map((c) => c.id).toList()..sort();
+      _savedCommentIds[photoId] = updatedIds;
 
-      // 기존 댓글과 새 댓글을 합치되 중복 제거
-      final allCommentIds =
-          <dynamic>{...existingCommentIds, ...newCommentIds}.toList();
-
-      // 댓글 id를 정렬하는 함수
-      allCommentIds.sort();
-
-      // 중복 제거된 댓글 ID 목록 저장
-      _savedCommentIds[photoId] = allCommentIds.cast<String>();
-
-      // 각 댓글의 위치와 프로필 정보 저장 (기존 위치 절대 덮어쓰지 않음)
-      for (final comment in userComments) {
-        // 기존에 위치가 저장되어 있으면 절대 변경하지 않음
-        if (_commentPositions.containsKey(comment.id)) {
-          continue;
-        }
-
-        // 새로운 댓글인 경우에만 위치 설정
-        if (comment.relativePosition != null) {
-          _commentPositions[comment.id] = comment.relativePosition!;
-        } else {
-          // Firestore에서 위치 정보가 없는 경우 기본값
-          _commentPositions[comment.id] = Offset.zero;
-        }
-
-        // 프로필 이미지 URL 업데이트 (새 댓글인 경우에만)
-        if (comment.profileImageUrl.isNotEmpty &&
-            !_commentProfileUrls.containsKey(comment.id)) {
-          _commentProfileUrls[comment.id] = comment.profileImageUrl;
-        }
-      }
-
-      // 기존 호환성을 위해 마지막 댓글의 정보를 기존 변수에도 저장
       final lastComment = userComments.last;
       if (lastComment.profileImageUrl.isNotEmpty) {
         _commentProfileImageUrls[photoId] = lastComment.profileImageUrl;
@@ -311,16 +299,20 @@ class VoiceCommentStateManager {
         _profileImagePositions[photoId] = relativePosition;
         _droppedProfileImageUrls[photoId] = lastComment.profileImageUrl;
       }
+      _log(
+        'handleCommentsUpdate photo:$photoId userComments:${userComments.length} ids:$updatedIds',
+      );
     } else {
       // 현재 사용자의 댓글이 없는 경우 상태 초기화
       _voiceCommentSavedStates[photoId] = false;
       _savedCommentIds.remove(photoId);
-      _profileImagePositions[photoId] = null;
+      _profileImagePositions.remove(photoId);
       _commentProfileImageUrls.remove(photoId);
       // 다른 사용자의 댓글은 유지하되 현재 사용자 관련 상태만 초기화
       if (comments.isEmpty) {
         _photoComments[photoId] = [];
       }
+      _log('handleCommentsUpdate photo:$photoId -> cleared user state');
     }
 
     _notifyStateChanged();
