@@ -47,7 +47,7 @@ class PhotoController extends ChangeNotifier {
 
   // ==================== 사진 업로드 ====================
 
-  /// 사진 업로드 (이미지 + 오디오)
+  /// 사진 업로드
   Future<bool> uploadPhoto({
     required File imageFile,
     File? audioFile,
@@ -123,8 +123,8 @@ class PhotoController extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      // Service를 통해 업로드 (파형 데이터 전달)
-      await _photoService.savePhotoWithAudio(
+      // Service를 통해 업로드 (파형 데이터 전달) - 완료를 기다림
+      final photoId = await _photoService.savePhotoWithAudio(
         imageFilePath: imageFilePath,
         audioFilePath: audioFilePath,
         userID: userID,
@@ -139,7 +139,7 @@ class PhotoController extends ChangeNotifier {
       notifyListeners();
 
       // debugPrint('사진이 성공적으로 업로드되었습니다. ID: $photoId');
-      return true;
+      return photoId.isNotEmpty;
     } catch (e) {
       // debugPrint('사진 업로드 실패: $e');
       _isUploading = false;

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -28,13 +29,13 @@ class PhotoRepository {
           customFileName ??
           '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.png';
 
-      // supabase storage에 사진 업로드
+      // supabase storage에 사진 업로드 - 완료될 때까지 기다림
       await supabase.storage.from('photos').upload(fileName, imageFile);
 
-      // 즉시 공개 URL 생성 (다운로드 API 호출 없음)
+      // 업로드 완료 후 공개 URL 생성
       final publicUrl = supabase.storage.from('photos').getPublicUrl(fileName);
 
-      // 즉시 공개 URL 반환
+      // 업로드 완료된 공개 URL 반환
       return publicUrl;
     } catch (e) {
       debugPrint('이미지 업로드 오류: $e');
@@ -233,7 +234,7 @@ class PhotoRepository {
               .where(
                 (photo) =>
                     photo.status == PhotoStatus.active && !photo.unactive,
-              ) // 비활성화된 사진 제외
+              )
               .toList();
 
       // 메모리에서 정렬
@@ -331,7 +332,7 @@ class PhotoRepository {
       }
       return null;
     } catch (e) {
-      // debugPrint('사진 조회 오류: $e');
+      debugPrint('사진 조회 오류: $e');
       return null;
     }
   }
@@ -365,16 +366,12 @@ class PhotoRepository {
   /// 삭제된 사진 목록 조회 (사용자별)
   Future<List<PhotoDataModel>> getDeletedPhotosByUser(String userId) async {
     try {
-      debugPrint('📱 PhotoRepository: 삭제된 사진 조회 시작 - userId: $userId');
-
       // 1. 사용자가 속한 모든 카테고리 조회
       final categorySnapshot =
           await _firestore
               .collection('categories')
               .where('mates', arrayContains: userId)
               .get();
-
-      debugPrint('📷 사용자가 속한 카테고리 수: ${categorySnapshot.docs.length}');
 
       List<PhotoDataModel> deletedPhotos = [];
       Set<String> seenPhotoIds = {}; // 중복 방지
@@ -388,10 +385,6 @@ class PhotoRepository {
                   .where('status', isEqualTo: PhotoStatus.deleted.name)
                   .orderBy('deletedAt', descending: true)
                   .get();
-
-          debugPrint(
-            '📸 카테고리 ${categoryDoc.id}의 삭제된 사진: ${photosSnapshot.docs.length}개',
-          );
 
           for (final photoDoc in photosSnapshot.docs) {
             // 중복 방지 (같은 사진이 여러 카테고리에 있을 수 있음)
@@ -407,7 +400,7 @@ class PhotoRepository {
             deletedPhotos.add(photoData);
           }
         } catch (e) {
-          debugPrint('❌ 카테고리 ${categoryDoc.id} 삭제된 사진 조회 오류: $e');
+          debugPrint('카테고리 ${categoryDoc.id} 삭제된 사진 조회 오류: $e');
           continue; // 개별 카테고리 오류는 무시하고 계속 진행
         }
       }
@@ -421,10 +414,9 @@ class PhotoRepository {
         return bDeletedAt.compareTo(aDeletedAt);
       });
 
-      debugPrint('✅ 전체 삭제된 사진 수: ${deletedPhotos.length}');
       return deletedPhotos;
     } catch (e) {
-      debugPrint('❌ 삭제된 사진 조회 전체 오류: $e');
+      debugPrint('삭제된 사진 조회 전체 오류: $e');
       return [];
     }
   }
@@ -435,8 +427,6 @@ class PhotoRepository {
     required String photoId,
   }) async {
     try {
-      debugPrint('🔄 PhotoRepository: 사진 복원 시작 - photoId: $photoId');
-
       await _firestore
           .collection('categories')
           .doc(categoryId)
@@ -448,10 +438,9 @@ class PhotoRepository {
             'updatedAt': Timestamp.now(),
           });
 
-      debugPrint('✅ 사진 복원 완료 - photoId: $photoId');
       return true;
     } catch (e) {
-      debugPrint('❌ 사진 복원 오류: $e');
+      debugPrint('사진 복원 오류: $e');
       return false;
     }
   }
@@ -482,7 +471,7 @@ class PhotoRepository {
 
       return true;
     } catch (e) {
-      // debugPrint('사진 완전 삭제 오류: $e');
+      debugPrint('사진 완전 삭제 오류: $e');
       return false;
     }
   }
@@ -503,8 +492,6 @@ class PhotoRepository {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          // debugPrint('📺 [호환성] 스트림 업데이트 - 사진 개수: ${snapshot.docs.length}');
-
           return snapshot.docs.map((doc) {
             final data = doc.data();
             data['id'] = doc.id;
@@ -522,7 +509,7 @@ class PhotoRepository {
       final ref = _storage.refFromURL(downloadUrl);
       await ref.delete();
     } catch (e) {
-      // debugPrint('Storage 파일 삭제 오류: $e');
+      debugPrint('Storage 파일 삭제 오류: $e');
     }
   }
 
@@ -561,7 +548,7 @@ class PhotoRepository {
         'deleted': deletedPhotos,
       };
     } catch (e) {
-      // debugPrint('사진 통계 조회 오류: $e');
+      debugPrint('사진 통계 조회 오류: $e');
       return {'total': 0, 'active': 0, 'deleted': 0};
     }
   }
@@ -572,8 +559,6 @@ class PhotoRepository {
     required Function(String audioUrl) extractWaveformData,
   }) async {
     try {
-      // debugPrint('🔧 기존 사진들에 파형 데이터 추가 시작 - CategoryId: $categoryId');
-
       final querySnapshot =
           await _firestore
               .collection('categories')
@@ -582,8 +567,6 @@ class PhotoRepository {
               .where('status', isEqualTo: PhotoStatus.active.name)
               .where('audioUrl', isNotEqualTo: '')
               .get();
-
-      // debugPrint('🎵 오디오가 있는 사진 개수: ${querySnapshot.docs.length}');
 
       for (final doc in querySnapshot.docs) {
         final data = doc.data();
@@ -610,17 +593,15 @@ class PhotoRepository {
                 'updatedAt': FieldValue.serverTimestamp(),
               });
             } else {
-              // debugPrint('⚠️ 파형 데이터 추출 실패: ${doc.id}');
+              debugPrint('⚠️ 파형 데이터 추출 실패: ${doc.id}');
             }
           } catch (e) {
-            // debugPrint('❌ 파형 데이터 추출 오류 (${doc.id}): $e');
+            debugPrint('❌ 파형 데이터 추출 오류 (${doc.id}): $e');
           }
         }
       }
-
-      // debugPrint('🎉 기존 사진들에 파형 데이터 추가 완료');
     } catch (e) {
-      // debugPrint('❌ 파형 데이터 일괄 추가 실패: $e');
+      debugPrint('❌ 파형 데이터 일괄 추가 실패: $e');
       rethrow;
     }
   }
@@ -633,8 +614,6 @@ class PhotoRepository {
     double? audioDuration,
   }) async {
     try {
-      // debugPrint('🌊 사진에 파형 데이터 추가: $photoId');
-
       final updateData = <String, dynamic>{
         'waveformData': waveformData,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -651,10 +630,9 @@ class PhotoRepository {
           .doc(photoId)
           .update(updateData);
 
-      // debugPrint('✅ 파형 데이터 추가 완료: $photoId (${waveformData.length} samples)');
       return true;
     } catch (e) {
-      // debugPrint('❌ 파형 데이터 추가 실패: $e');
+      debugPrint('❌ 파형 데이터 추가 실패: $e');
       return false;
     }
   }

@@ -425,13 +425,15 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         return;
       }
 
-      await _executeUploadWithExtractedData(uploadData);
+      _navigateToHome();
+
+      unawaited(_executeUploadWithExtractedData(uploadData));
       _cleanMemoryAfterUpload();
       LoadingPopupWidget.hide(context);
 
-      if (mounted) {
+      /*if (mounted) {
         _navigateToHome();
-      }
+      }*/
     } catch (e) {
       debugPrint('업로드 오류: $e');
       LoadingPopupWidget.hide(context);

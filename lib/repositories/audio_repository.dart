@@ -259,8 +259,6 @@ class AudioRepository {
           customFileName ??
           '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.m4a';
 
-      debugPrint('AudioRepository: Supabase에 오디오 업로드 시작 - $fileName');
-
       // supabase storage에 오디오 업로드
       await supabase.storage.from('audio').upload(fileName, audioFile);
 
