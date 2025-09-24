@@ -293,7 +293,7 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                               });
                             },
                             child: Container(
-                              color: Color(0xffd9d9d9).withValues(alpha: .3),
+                              color: Color(0xffd9d9d9).withValues(alpha: 0.45),
                             ),
                           ),
                         ),
@@ -450,7 +450,8 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                             ),
                                           ),
                                         )
-                                        : Container(), // 오디오가 없으면 빈 컨테이너
+                                        // 오디오가 없으면 빈 컨테이너
+                                        : Container(),
                               ),
 
                               // 댓글 아이콘 영역 (고정 width)
@@ -475,7 +476,8 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                             ),
                                           ),
                                         )
-                                        : Container(), // 댓글이 없으면 빈 컨테이너
+                                        // 댓글이 없으면 빈 컨테이너
+                                        : Container(),
                               ),
                             ],
                           ),
@@ -484,8 +486,9 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
 
                       // 모든 댓글의 드롭된 프로필 이미지들 표시 (상대 좌표 사용)
                       ...(() {
+                        // 숨김 상태에서는 아무 것도 렌더링하지 않음
                         if (!_isShowingComments) {
-                          return <Widget>[]; // 숨김 상태에서는 아무 것도 렌더링하지 않음
+                          return <Widget>[];
                         }
                         final comments =
                             widget.photoComments[widget.photo.id] ?? [];

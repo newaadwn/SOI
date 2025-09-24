@@ -476,8 +476,6 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
   /// 저장 완료 상태로 변경
   void _markAsSaved() {
-    // debugPrint(' 음성 댓글 상태 변경: ${_currentState.toString()} → saved');
-
     // 애니메이션을 위해 _lastState 설정
     setState(() {
       _lastState = _currentState;
@@ -489,7 +487,8 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
       if (mounted) {
         _cleanupControllers();
         setState(() {
-          _waveformData = null; // 파형 데이터 정리
+          // 파형 데이터 정리
+          _waveformData = null;
         });
       }
     });
@@ -514,10 +513,8 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
       // 컨트롤러들 해제
       _playerController?.dispose();
       _playerController = null;
-
-      // debugPrint('🧹 컨트롤러 정리 완료');
     } catch (e) {
-      // debugPrint('❌ 컨트롤러 정리 중 오류: $e');
+      debugPrint('❌ 컨트롤러 정리 중 오류: $e');
     }
   }
 

@@ -32,13 +32,17 @@ class VoiceCommentRow extends StatelessWidget {
                       comment.profileImageUrl.isNotEmpty
                           ? CachedNetworkImage(
                             imageUrl: comment.profileImageUrl,
-                            width: 38.w,
-                            height: 38.w,
+                            width: 44.w,
+                            height: 44.w,
+                            memCacheHeight:
+                                (44 * 2).toInt(), // 실제 크기의 2배로 고해상도 지원
+                            memCacheWidth:
+                                (44 * 2).toInt(), // 실제 크기의 2배로 고해상도 지원
                             fit: BoxFit.cover,
                           )
                           : Container(
-                            width: 38.w,
-                            height: 38.w,
+                            width: 44.w,
+                            height: 44.w,
                             color: const Color(0xFF4E4E4E),
                             child: const Icon(
                               Icons.person,
@@ -52,6 +56,7 @@ class VoiceCommentRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       UserDisplayName(userId: comment.recorderUser),
+                      SizedBox(height: 4.h),
                       _WaveformPlaybackBar(
                         isPlaying: isPlaying,
                         progress: progress,
@@ -140,26 +145,36 @@ class _WaveformPlaybackBar extends StatelessWidget {
           ),
 
           Expanded(
-            child: Stack(
-              alignment: Alignment.centerLeft,
-              children: [
-                // 회색 배경 파형 (기본 흰색이지만 재생 시 회색으로)
-                GestureDetector(
-                  onTap: onPlayPause,
-                  child: _buildWaveformBase(
-                    color: isPlaying ? const Color(0xFF4A4A4A) : Colors.white,
-                  ),
-                ),
-                // 흰색 진행 파형 (재생 중에만 표시)
-                if (isPlaying)
-                  ClipRect(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: barProgress,
-                      child: _buildWaveformBase(color: Colors.white),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final availableWidth = constraints.maxWidth;
+                return Stack(
+                  alignment: Alignment.centerLeft,
+                  children: [
+                    // 회색 배경 파형 (기본 흰색이지만 재생 시 회색으로)
+                    GestureDetector(
+                      onTap: onPlayPause,
+                      child: _buildWaveformBase(
+                        color:
+                            isPlaying ? const Color(0xFF4A4A4A) : Colors.white,
+                        availableWidth: availableWidth,
+                      ),
                     ),
-                  ),
-              ],
+                    // 흰색 진행 파형 (재생 중에만 표시)
+                    if (isPlaying)
+                      ClipRect(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          widthFactor: barProgress,
+                          child: _buildWaveformBase(
+                            color: Colors.white,
+                            availableWidth: availableWidth,
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -167,65 +182,95 @@ class _WaveformPlaybackBar extends StatelessWidget {
     );
   }
 
-  Widget _buildWaveformBase({required Color color}) {
+  Widget _buildWaveformBase({
+    required Color color,
+    required double availableWidth,
+  }) {
+    // 파형 바 개수를 40개로 고정
+    const maxBars = 40;
+
     // 실제 waveformData 기반 파형 표현
     if (waveformData.isEmpty) {
       // 데이터가 없으면 기본 패턴 사용
-      return Row(
-        mainAxisSize: MainAxisSize.max,
-        children: List.generate(30, (i) {
-          final h = (i % 5 + 4) * 3.0;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 1.2),
-            child: Container(
-              width: 3,
+      return SizedBox(
+        width: availableWidth, // 고정 너비 설정
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly, // 균등하게 분배
+          children: List.generate(maxBars, (i) {
+            final h = (i % 5 + 4) * 3.0;
+            return Container(
+              width: (2.54).w,
               height: h,
               decoration: BoxDecoration(
                 color: color,
                 borderRadius: BorderRadius.circular(2),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       );
     }
 
     // 실제 waveformData 사용
-    const maxBars = 30;
     const minHeight = 4.0;
     const maxHeight = 20.0;
 
-    // 데이터 샘플링 (너무 많으면 일정 간격으로 추출)
+    // 데이터 샘플링 (항상 50개로 샘플링)
     final sampledData = _sampleWaveformData(waveformData, maxBars);
 
-    return Row(
-      children:
-          sampledData.asMap().entries.map((entry) {
-            final value = entry.value;
-            // 0~1 범위의 값을 minHeight~maxHeight로 매핑
-            final barHeight = minHeight + (value * (maxHeight - minHeight));
+    return Container(
+      width: availableWidth, // 고정 너비 설정
+      padding: EdgeInsets.only(right: 10.w),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly, // 균등하게 분배
+        children:
+            sampledData.asMap().entries.map((entry) {
+              final value = entry.value;
+              // 0~1 범위의 값을 minHeight~maxHeight로 매핑
+              final barHeight = minHeight + (value * (maxHeight - minHeight));
 
-            return Padding(
-              padding: EdgeInsets.symmetric(horizontal: (2.2).w),
-              child: Container(
-                width: 3,
+              return Container(
+                width: (2.54).w,
                 height: barHeight,
                 decoration: BoxDecoration(
                   color: color,
                   borderRadius: BorderRadius.circular(2),
                 ),
-              ),
-            );
-          }).toList(),
+              );
+            }).toList(),
+      ),
     );
   }
 
   /// waveformData를 지정된 수만큼 샘플링
   List<double> _sampleWaveformData(List<double> data, int targetCount) {
-    if (data.length <= targetCount) {
-      return data; // 이미 적거나 같으면 그대로 반환
+    if (data.isEmpty) {
+      // 데이터가 없으면 기본 패턴 생성
+      return List.generate(targetCount, (i) => (i % 5 + 4) / 10.0);
     }
 
+    if (data.length <= targetCount) {
+      // 데이터가 적으면 보간을 통해 확장
+      final sampled = <double>[];
+      for (int i = 0; i < targetCount; i++) {
+        final position = (i * (data.length - 1)) / (targetCount - 1);
+        final index = position.floor();
+        final fraction = position - index;
+
+        if (index >= data.length - 1) {
+          sampled.add(data.last.abs().clamp(0.0, 1.0));
+        } else {
+          // 선형 보간
+          final value1 = data[index].abs();
+          final value2 = data[index + 1].abs();
+          final interpolated = value1 + (value2 - value1) * fraction;
+          sampled.add(interpolated.clamp(0.0, 1.0));
+        }
+      }
+      return sampled;
+    }
+
+    // 데이터가 많으면 다운샘플링
     final step = data.length / targetCount;
     final sampled = <double>[];
 

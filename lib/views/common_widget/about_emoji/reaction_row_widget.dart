@@ -3,12 +3,20 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:soi/models/comment_record_model.dart';
 import '../../../utils/format_utils.dart';
 
 class ReactionRow extends StatelessWidget {
   final Map<String, dynamic> data;
   final String emoji;
-  const ReactionRow({super.key, required this.data, this.emoji = ''});
+  final CommentRecordModel comment;
+
+  const ReactionRow({
+    super.key,
+    required this.data,
+    this.emoji = '',
+    required this.comment,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -23,16 +31,19 @@ class ReactionRow extends StatelessWidget {
               // 프로필 이미지
               ClipOval(
                 child:
-                    (data['profileImageUrl'] ?? '').toString().isNotEmpty
+                    (comment.profileImageUrl).isNotEmpty
                         ? CachedNetworkImage(
-                          imageUrl: data['profileImageUrl'],
-                          width: 38.w,
-                          height: 38.w,
+                          imageUrl: comment.profileImageUrl,
+                          width: 44.w,
+                          height: 44.w,
+                          memCacheHeight:
+                              (44 * 2).toInt(), // 실제 크기의 2배로 고해상도 지원
+                          memCacheWidth: (44 * 2).toInt(), // 실제 크기의 2배로 고해상도 지원
                           fit: BoxFit.cover,
                         )
                         : Container(
-                          width: 38.w,
-                          height: 38.w,
+                          width: 44.w,
+                          height: 44.w,
                           color: const Color(0xFF4E4E4E),
                           child: const Icon(Icons.person, color: Colors.white),
                         ),
@@ -47,9 +58,10 @@ class ReactionRow extends StatelessWidget {
                       (data['id'] ?? '').toString(),
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Pretendard',
+                        fontSize: 13,
+                        fontFamily: 'Pretendard Variable',
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.40,
                       ),
                     ),
 
@@ -57,7 +69,7 @@ class ReactionRow extends StatelessWidget {
                       alignment: Alignment.centerRight,
                       child: Text(
                         emoji.isEmpty ? '😊' : emoji,
-                        style: TextStyle(fontSize: 32.sp),
+                        style: TextStyle(fontSize: 25.sp),
                       ),
                     ),
                   ],
@@ -77,10 +89,11 @@ class ReactionRow extends StatelessWidget {
                       : DateTime.now(),
                 ),
                 style: TextStyle(
-                  color: const Color(0xFFB5B5B5),
-                  fontSize: 12.sp,
-                  fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFFC5C5C5),
+                  fontSize: 10,
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -0.40,
                 ),
               ),
               SizedBox(width: 12.w),

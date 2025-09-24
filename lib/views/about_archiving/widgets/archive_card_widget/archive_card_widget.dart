@@ -185,7 +185,7 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
       key: ValueKey('list_${category.id}'),
       decoration: BoxDecoration(
         color: const Color(0xFF1C1C1C),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(6.61),
         border: Border.all(
           color:
               hasNewPhoto
@@ -209,20 +209,20 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                   );
                 },
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
+          padding: EdgeInsets.only(left: 7.w),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.start,
             children: [
               SizedBox(
                 width: 74.w,
                 height: 74.w,
                 child: Stack(
-                  clipBehavior: Clip.none,
                   children: [
                     _buildCategoryImage(
                       category,
-                      width: (80.9).w,
-                      height: 81.w,
+                      width: (80.92).w,
+                      height: 81.h,
                       borderRadius: (3.65),
                     ),
                     _buildPinnedBadge(category, top: 6.h, left: 6.w),
@@ -230,32 +230,41 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
                   ],
                 ),
               ),
-              SizedBox(width: 16.w),
+              SizedBox(width: (12.08).w),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: _buildTitleWidget(
-                            context,
-                            category,
-                            fontSize: 16.sp,
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(top: 12.h),
+                            child: _buildTitleWidget(
+                              context,
+                              category,
+                              fontSize: 14.sp,
+                            ),
                           ),
-                        ),
-                        _buildPopupMenu(category),
-                      ],
+                          Spacer(),
+                          Padding(
+                            padding: EdgeInsets.only(top: 12.h),
+                            child: _buildPopupMenu(category),
+                          ),
+                        ],
+                      ),
                     ),
-                    SizedBox(height: 14.h),
-                    Row(
-                      children: [
-                        const Spacer(),
-                        ArchiveProfileRowWidget(mates: category.mates),
-                        SizedBox(width: 10.w),
-                      ],
+
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 10.h, right: 10.w),
+                      child: Row(
+                        children: [
+                          Spacer(),
+                          ArchiveProfileRowWidget(mates: category.mates),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -276,11 +285,11 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
       return TextField(
         controller: widget.editingController,
         style: TextStyle(
-          color: const Color(0xFFF9F9F9),
-          fontSize: fontSize,
-          fontWeight: FontWeight.bold,
-          letterSpacing: -0.4,
-          fontFamily: 'Pretendard',
+          color: const Color(0xFFF8F8F8),
+          fontSize: 14.sp,
+          fontFamily: 'Pretendard ',
+          fontWeight: FontWeight.w400,
+          letterSpacing: -0.40,
         ),
         cursorColor: const Color(0xfff9f9f9),
         decoration: const InputDecoration(
@@ -314,7 +323,7 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
       displayName,
       style: TextStyle(
         color: const Color(0xFFF9F9F9),
-        fontSize: fontSize,
+        fontSize: 14.sp,
         fontWeight: FontWeight.bold,
         fontFamily: 'Pretendard',
         letterSpacing: -0.4,
@@ -332,12 +341,7 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
     return ArchivePopupMenuWidget(
       category: category,
       onEditName: widget.onStartEdit,
-      child: Container(
-        width: 30.w,
-        height: 30.h,
-        alignment: Alignment.center,
-        child: Icon(Icons.more_vert, color: Colors.white, size: 22.sp),
-      ),
+      child: Icon(Icons.more_vert, color: Colors.white, size: 22.sp),
     );
   }
 

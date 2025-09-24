@@ -135,19 +135,24 @@ class VoiceCommentListSheet extends StatelessWidget {
                         child: ListView.separated(
                           shrinkWrap: true,
                           itemCount: total,
-                          separatorBuilder: (_, __) => SizedBox(height: 18.h),
+                          separatorBuilder: (_, __) => SizedBox(height: 0.h),
                           itemBuilder: (context, index) {
                             if (!hasCommentFilter && index < reactions.length) {
                               final r = reactions[index];
+
+                              final comment = comments[index];
+
                               return ReactionRow(
                                 data: r,
                                 emoji: r['emoji'] ?? '',
+                                comment: comment,
                               );
                             }
                             final commentIndex =
                                 hasCommentFilter
                                     ? index
                                     : index - reactions.length;
+
                             final comment = comments[commentIndex];
                             return VoiceCommentRow(comment: comment);
                           },
