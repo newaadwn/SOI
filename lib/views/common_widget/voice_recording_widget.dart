@@ -21,7 +21,7 @@ class VoiceRecordingWidget extends StatelessWidget {
   final Function(String, String?, List<double>?, int?) onVoiceCommentCompleted;
   final Function(String) onVoiceCommentDeleted;
   final Function(String, Offset) onProfileImageDragged;
-  final Function(String)? onSaveRequested;
+  final Future<void> Function(String)? onSaveRequested; // 프로필 배치 확정 시 저장
   final Function(String)? onSaveCompleted; // 저장 완료 후 초기화 콜백
 
   const VoiceRecordingWidget({
@@ -93,9 +93,11 @@ class VoiceRecordingWidget extends StatelessWidget {
                         enableMultipleComments: true, // 다중 댓글 활성화
                         hasExistingComments:
                             (photoComments[photo.id] ?? []).isNotEmpty,
-                        onSaveRequested: () {
-                          // 파형 클릭 시 저장 요청
-                          onSaveRequested?.call(photo.id);
+                        onSaveRequested: () async {
+                          // 파형 배치 확정 시 저장 요청
+                          if (onSaveRequested != null) {
+                            await onSaveRequested!(photo.id);
+                          }
                         },
                         onSaveCompleted: () {
                           // 저장 완료 후 위젯 초기화

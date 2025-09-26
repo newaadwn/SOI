@@ -28,7 +28,7 @@ class FeedPageBuilder extends StatelessWidget {
   final Function(String, String?, List<double>?, int?) onVoiceCommentCompleted;
   final Function(String) onVoiceCommentDeleted;
   final Function(String, Offset) onProfileImageDragged;
-  final Function(String) onSaveRequested;
+  final Future<void> Function(String) onSaveRequested; // 프로필 배치 저장
   final Function(String) onSaveCompleted;
   final Function(int) onDeletePhoto;
   final VoidCallback onLikePressed;

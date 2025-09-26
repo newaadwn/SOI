@@ -132,7 +132,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     _feedDataManager?.dispose();
     _voiceCommentStateManager?.dispose();
     _profileCacheManager?.dispose();
-    _feedAudioManager?.dispose();
 
     PaintingBinding.instance.imageCache.clear();
 
@@ -386,9 +385,14 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                       userId: userId,
                     );
                     if (success && mounted) {
+                      // 로컬 상태에서 즉시 제거
                       setState(() {
                         _feedDataManager!.removePhoto(index);
                       });
+
+                      // 백그라운드에서 전체 피드 새로고침으로 데이터 동기화 보장
+                      _feedDataManager!.loadUserCategoriesAndPhotos(context);
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('사진이 삭제되었습니다.'),

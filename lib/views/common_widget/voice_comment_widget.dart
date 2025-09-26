@@ -15,6 +15,7 @@ enum VoiceCommentState {
   idle, // 초기 상태 (녹음 버튼 표시)
   recording, // 녹음 중
   recorded, // 녹음 완료 (재생 가능)
+  placing, // 프로필 배치 중 (드래그 가능)
   saved, // 저장 완료 (프로필 이미지 표시)
 }
 
@@ -24,7 +25,7 @@ class VoiceCommentWidget extends StatefulWidget {
   onRecordingCompleted; // 녹음 완료 콜백 (duration 추가)
   final VoidCallback? onRecordingDeleted; // 녹음 삭제 콜백
   final VoidCallback? onSaved; // 저장 완료 콜백 추가
-  final VoidCallback? onSaveRequested; // 저장 요청 콜백 (파형 클릭 시)
+  final Future<void> Function()? onSaveRequested; // 저장 요청 콜백 (파형 배치 확정 시)
   final VoidCallback? onSaveCompleted; // 저장 완료 후 위젯 초기화 콜백
   final String? profileImageUrl; // 프로필 이미지 URL 추가
   final bool startAsSaved; // 저장된 상태로 시작할지 여부
@@ -59,6 +60,8 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
   VoiceCommentState _currentState = VoiceCommentState.idle;
   List<double>? _waveformData;
   DateTime? _recordingStartTime; // 녹음 시작 시간 추가
+
+  bool _isFinalizingPlacement = false; // 중복 저장 방지
 
   /// 이전 녹음 상태 (애니메이션 제어용)
   VoiceCommentState? _lastState;
@@ -234,6 +237,62 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     }
   }
 
+  /// 프로필 배치 모드 진입
+  void _enterPlacementMode() {
+    if (_waveformData == null || _waveformData!.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _lastState = _currentState;
+      _currentState = VoiceCommentState.placing;
+    });
+  }
+
+  /// 프로필 배치 완료 처리
+  Future<void> _finalizePlacement() async {
+    if (_isFinalizingPlacement) {
+      return;
+    }
+
+    _isFinalizingPlacement = true;
+
+    try {
+      if (widget.onSaveRequested != null) {
+        await widget.onSaveRequested!.call();
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      _markAsSaved();
+      widget.onSaveCompleted?.call();
+    } catch (e) {
+      if (mounted) {
+        // 저장 실패 시 다시 파형 모드로 복귀
+        setState(() {
+          _lastState = _currentState;
+          _currentState = VoiceCommentState.recorded;
+        });
+      }
+    } finally {
+      _isFinalizingPlacement = false;
+    }
+  }
+
+  /// 프로필 배치 취소 처리
+  void _cancelPlacement() {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _lastState = _currentState;
+      _currentState = VoiceCommentState.recorded;
+    });
+  }
+
   /// 녹음 중 UI (AudioRecorderWidget과 동일)
   Widget _buildRecordingUI(String duration) {
     return Container(
@@ -334,9 +393,8 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
           Expanded(
             child: GestureDetector(
               onTap: () {
-                // 파형 클릭 시 저장 요청 후 프로필로 전환
-                widget.onSaveRequested?.call();
-                _markAsSaved();
+                // 파형 클릭 시 프로필 배치 모드로 전환
+                _enterPlacementMode();
               },
               child:
                   _waveformData != null && _waveformData!.isNotEmpty
@@ -518,14 +576,12 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     }
   }
 
-  /// 저장된 프로필 이미지 UI
-  Widget _buildSavedProfileUI() {
-    // 디버그 로그 추가
-
+  /// 프로필 이미지 드래그 UI (배치/저장 공통)
+  Widget _buildProfileDraggable({required bool isPlacementMode}) {
     final profileWidget = Container(
       width: 54,
       height: 54,
-      decoration: BoxDecoration(shape: BoxShape.circle),
+      decoration: const BoxDecoration(shape: BoxShape.circle),
       child:
           widget.profileImageUrl != null && widget.profileImageUrl!.isNotEmpty
               ? ClipOval(
@@ -540,47 +596,61 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
                         color: Colors.grey[700],
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.person, color: Colors.white, size: 14),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 14,
+                      ),
                     );
                   },
                   errorWidget: (context, url, error) {
                     return Container(
                       decoration: BoxDecoration(
-                        color: Colors.red[700], // 에러 상태 시각적 표시
+                        color: Colors.red[700],
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.error, color: Colors.white, size: 14),
+                      child: const Icon(
+                        Icons.error,
+                        color: Colors.white,
+                        size: 14,
+                      ),
                     );
                   },
                 ),
               )
               : Container(
                 decoration: BoxDecoration(
-                  color: Colors.orange[700], // URL이 없는 경우 시각적 표시
+                  color: Colors.orange[700],
                   shape: BoxShape.circle,
                 ),
-                child: Icon(Icons.person, color: Colors.white, size: 14),
+                child: const Icon(Icons.person, color: Colors.white, size: 14),
               ),
     );
 
-    // 드래그 기능이 있는 경우 Draggable로 감싸기
-    if (widget.onProfileImageDragged != null) {
-      return Draggable<String>(
-        data: 'profile_image',
-        feedback: Transform.scale(
-          scale: 1.2, // 드래그 중에는 조금 더 크게
-          child: Opacity(opacity: 0.8, child: profileWidget),
-        ),
-        childWhenDragging: Opacity(
-          opacity: 0.3, // 드래그 중에는 원본을 투명하게
-          child: profileWidget,
-        ),
-
-        child: profileWidget,
-      );
+    if (widget.onProfileImageDragged == null) {
+      return profileWidget;
     }
 
-    return profileWidget;
+    return Draggable<String>(
+      data: 'profile_image',
+      feedback: Transform.scale(
+        scale: 1.2,
+        child: Opacity(opacity: 0.8, child: profileWidget),
+      ),
+      childWhenDragging: Opacity(opacity: 0.3, child: profileWidget),
+      onDragEnd: (details) {
+        if (!isPlacementMode) {
+          return;
+        }
+
+        if (details.wasAccepted) {
+          _finalizePlacement();
+        } else {
+          _cancelPlacement();
+        }
+      },
+      child: profileWidget,
+    );
   }
 
   @override
@@ -615,6 +685,8 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     if (_lastState == VoiceCommentState.recording &&
         _currentState == VoiceCommentState.recorded) {
       widgetKey = 'audio-ui-no-animation';
+    } else if (_currentState == VoiceCommentState.placing) {
+      widgetKey = 'profile-placement';
     } else if (_currentState == VoiceCommentState.saved) {
       widgetKey = 'profile-mode'; // 프로필 모드용 고유 키 (recorded에서 전환 시 애니메이션)
     } else {
@@ -644,10 +716,16 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
       case VoiceCommentState.recorded:
         return Container(key: ValueKey(widgetKey), child: _buildPlaybackUI());
 
+      case VoiceCommentState.placing:
+        return Container(
+          key: ValueKey(widgetKey),
+          child: _buildProfileDraggable(isPlacementMode: true),
+        );
+
       case VoiceCommentState.saved:
         return Container(
           key: ValueKey(widgetKey),
-          child: _buildSavedProfileUI(),
+          child: _buildProfileDraggable(isPlacementMode: false),
         );
     }
   }

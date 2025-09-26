@@ -94,7 +94,6 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
   bool _wasRecording = true;
 
   // ========== 생명주기 메서드들 ==========
-
   @override
   void initState() {
     super.initState();
@@ -120,7 +119,6 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
   }
 
   // ========== 초기화 메서드들 ==========
-
   void _initializeAnimations() {
     _pulseAnimationController = AnimationController(
       duration: const Duration(milliseconds: 1000),
@@ -666,110 +664,138 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
     required bool isRecording,
     String? duration,
   }) {
+    final borderRadius = BorderRadius.circular(14.6);
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       key: const ValueKey('audio_ui'),
       curve: Curves.easeInOut,
       width: 354.w,
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(14.6),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      decoration: BoxDecoration(borderRadius: borderRadius),
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          SizedBox(width: 7.w),
-          // 삭제 버튼
-          GestureDetector(
-            onTap: isRecording ? _cancelRecording : _deleteRecording,
-            child: Container(
-              width: 32.w,
-              height: 32.h,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade800,
-                shape: BoxShape.circle,
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: borderRadius,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 450),
+                switchInCurve: Curves.easeInOut,
+                switchOutCurve: Curves.easeInOut,
+                transitionBuilder:
+                    (child, animation) =>
+                        FadeTransition(opacity: animation, child: child),
+                child: Container(
+                  key: ValueKey<int>(backgroundColor.value),
+                  color: backgroundColor,
+                ),
               ),
-              child: Image.asset('assets/trash.png', width: 32.w, height: 32.h),
             ),
           ),
-          SizedBox(width: 17.w),
-          // 파형 표시 영역
-          Expanded(
-            child:
-                isRecording
-                    ? AudioWaveforms(
-                      size: Size(1, 52.h),
-                      recorderController: recorderController,
-                      waveStyle: const WaveStyle(
-                        waveColor: Colors.white,
-                        extendWaveform: true,
-                        showMiddleLine: false,
-                      ),
-                    )
-                    : _buildWaveformDisplay(),
-          ),
-          SizedBox(width: 13.w),
-          // 시간 표시
-          SizedBox(
-            width: 45.w,
-            child:
-                isRecording
-                    ? Text(
-                      duration ?? '00:00',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12.sp,
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: -0.40,
-                      ),
-                    )
-                    : StreamBuilder<int>(
-                      stream:
-                          playerController?.onCurrentDurationChanged ??
-                          const Stream.empty(),
-                      builder: (context, snapshot) {
-                        final currentDurationMs = snapshot.data ?? 0;
-                        final currentDuration = Duration(
-                          milliseconds: currentDurationMs,
-                        );
-                        final minutes = currentDuration.inMinutes;
-                        final seconds = currentDuration.inSeconds % 60;
-                        return Text(
-                          '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12.sp,
-                            fontFamily: 'Pretendard',
-                            fontWeight: FontWeight.w500,
-                            letterSpacing: -0.40,
-                          ),
-                        );
-                      },
+          Positioned.fill(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                SizedBox(width: 7.w),
+                // 삭제 버튼
+                GestureDetector(
+                  onTap: isRecording ? _cancelRecording : _deleteRecording,
+                  child: Container(
+                    width: 32.w,
+                    height: 32.h,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade800,
+                      shape: BoxShape.circle,
                     ),
-          ),
-          // 재생/정지 버튼
-          Padding(
-            padding: EdgeInsets.only(right: 19.w),
-            child: IconButton(
-              onPressed:
-                  isRecording ? _stopAndPreparePlayback : _togglePlayback,
-              icon:
-                  isRecording
-                      ? Icon(Icons.stop, color: Colors.white, size: 28.sp)
-                      : StreamBuilder<PlayerState>(
-                        stream:
-                            playerController?.onPlayerStateChanged ??
-                            const Stream.empty(),
-                        builder: (context, snapshot) {
-                          final isPlaying = snapshot.data?.isPlaying ?? false;
-                          return Icon(
-                            isPlaying ? Icons.pause : Icons.play_arrow,
-                            color: Colors.white,
-                            size: 28.sp,
-                          );
-                        },
-                      ),
+                    child: Image.asset(
+                      'assets/trash.png',
+                      width: 32.w,
+                      height: 32.h,
+                    ),
+                  ),
+                ),
+                SizedBox(width: 17.w),
+                // 파형 표시 영역
+                Expanded(
+                  child:
+                      isRecording
+                          ? AudioWaveforms(
+                            size: Size(1, 52.h),
+                            recorderController: recorderController,
+                            waveStyle: const WaveStyle(
+                              waveColor: Colors.white,
+                              extendWaveform: true,
+                              showMiddleLine: false,
+                            ),
+                          )
+                          : _buildWaveformDisplay(),
+                ),
+                SizedBox(width: 13.w),
+                // 시간 표시
+                SizedBox(
+                  width: 45.w,
+                  child:
+                      isRecording
+                          ? Text(
+                            duration ?? '00:00',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12.sp,
+                              fontFamily: 'Pretendard',
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: -0.40,
+                            ),
+                          )
+                          : StreamBuilder<int>(
+                            stream:
+                                playerController?.onCurrentDurationChanged ??
+                                const Stream.empty(),
+                            builder: (context, snapshot) {
+                              final currentDurationMs = snapshot.data ?? 0;
+                              final currentDuration = Duration(
+                                milliseconds: currentDurationMs,
+                              );
+                              final minutes = currentDuration.inMinutes;
+                              final seconds = currentDuration.inSeconds % 60;
+                              return Text(
+                                '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12.sp,
+                                  fontFamily: 'Pretendard',
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: -0.40,
+                                ),
+                              );
+                            },
+                          ),
+                ),
+                // 재생/정지 버튼
+                Padding(
+                  padding: EdgeInsets.only(right: 19.w),
+                  child: IconButton(
+                    onPressed:
+                        isRecording ? _stopAndPreparePlayback : _togglePlayback,
+                    icon:
+                        isRecording
+                            ? Icon(Icons.stop, color: Colors.white, size: 28.sp)
+                            : StreamBuilder<PlayerState>(
+                              stream:
+                                  playerController?.onPlayerStateChanged ??
+                                  const Stream.empty(),
+                              builder: (context, snapshot) {
+                                final isPlaying =
+                                    snapshot.data?.isPlaying ?? false;
+                                return Icon(
+                                  isPlaying ? Icons.pause : Icons.play_arrow,
+                                  color: Colors.white,
+                                  size: 28.sp,
+                                );
+                              },
+                            ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

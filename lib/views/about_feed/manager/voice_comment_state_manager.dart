@@ -35,7 +35,9 @@ class VoiceCommentStateManager {
   // 음성 댓글 상태 관리 (다중 댓글 지원)
   final Map<String, bool> _voiceCommentActiveStates = {};
   final Map<String, bool> _voiceCommentSavedStates = {};
-  final Map<String, List<String>> _savedCommentIds = {}; // 사진별 여러 댓글 ID 저장
+
+  // 사진별 여러 댓글 ID 저장
+  final Map<String, List<String>> _savedCommentIds = {};
 
   // 임시 음성 댓글 데이터 (파형 클릭 시 저장용)
   final Map<String, PendingVoiceComment> _pendingVoiceComments = {};
@@ -105,7 +107,7 @@ class VoiceCommentStateManager {
   Future<void> saveVoiceComment(String photoId, BuildContext context) async {
     final pendingComment = _pendingVoiceComments[photoId];
     if (pendingComment == null) {
-      return;
+      throw StateError('임시 음성 댓글 데이터를 찾을 수 없습니다. photoId: $photoId');
     }
 
     try {
@@ -128,8 +130,7 @@ class VoiceCommentStateManager {
           _profileImagePositions[photoId] ?? pendingComment.relativePosition;
 
       if (currentProfilePosition == null) {
-        debugPrint('음성 댓글 저장 위치를 찾을 수 없습니다. photoId: $photoId');
-        return;
+        throw StateError('음성 댓글 저장 위치를 찾을 수 없습니다. photoId: $photoId');
       }
 
       final commentRecord = await commentRecordController.createCommentRecord(
@@ -142,33 +143,35 @@ class VoiceCommentStateManager {
         relativePosition: currentProfilePosition,
       );
 
-      if (commentRecord != null) {
-        _voiceCommentSavedStates[photoId] = true;
-
-        // 다중 댓글 지원: 기존 댓글 목록에 새 댓글 추가 (중복 방지)
-        if (_savedCommentIds[photoId] == null) {
-          _savedCommentIds[photoId] = [commentRecord.id];
-        } else {
-          // 중복 확인 후 추가
-          if (!_savedCommentIds[photoId]!.contains(commentRecord.id)) {
-            _savedCommentIds[photoId]!.add(commentRecord.id);
-          }
-        }
-
-        // 임시 데이터 삭제
-        _pendingVoiceComments.remove(photoId);
-
-        // 다음 댓글을 위해 위치 초기화 (기존 댓글은 건드리지 않음)
-        _profileImagePositions[photoId] = null;
-
-        _notifyStateChanged();
-      } else {
+      if (commentRecord == null) {
         if (context.mounted) {
           commentRecordController.showErrorToUser(context);
         }
+        throw Exception('음성 댓글 저장에 실패했습니다. photoId: $photoId');
       }
+
+      _voiceCommentSavedStates[photoId] = true;
+
+      // 다중 댓글 지원: 기존 댓글 목록에 새 댓글 추가 (중복 방지)
+      if (_savedCommentIds[photoId] == null) {
+        _savedCommentIds[photoId] = [commentRecord.id];
+      } else {
+        // 중복 확인 후 추가
+        if (!_savedCommentIds[photoId]!.contains(commentRecord.id)) {
+          _savedCommentIds[photoId]!.add(commentRecord.id);
+        }
+      }
+
+      // 임시 데이터 삭제
+      _pendingVoiceComments.remove(photoId);
+
+      // 다음 댓글을 위해 위치 초기화 (기존 댓글은 건드리지 않음)
+      _profileImagePositions[photoId] = null;
+
+      _notifyStateChanged();
     } catch (e) {
       debugPrint("음성 댓글 저장 중 오류 발생: $e");
+      rethrow;
     }
   }
 
@@ -209,7 +212,8 @@ class VoiceCommentStateManager {
         relativePosition,
       );
       _notifyStateChanged();
-      return; // 저장 전 위치만 갱신하고 종료
+      // 저장 전 위치만 갱신하고 종료
+      return;
     }
 
     _notifyStateChanged();
@@ -242,7 +246,7 @@ class VoiceCommentStateManager {
       // 실시간 스트림과 별개로 기존 댓글도 직접 로드
       _loadExistingCommentsForPhoto(photoId, currentUserId);
     } catch (e) {
-      debugPrint('❌ Feed - 실시간 댓글 구독 시작 실패 - 사진 $photoId: $e');
+      debugPrint('Feed - 실시간 댓글 구독 시작 실패 - 사진 $photoId: $e');
     }
   }
 
@@ -260,7 +264,7 @@ class VoiceCommentStateManager {
         _handleCommentsUpdate(photoId, currentUserId, comments);
       }
     } catch (e) {
-      debugPrint('❌ Feed - 기존 댓글 직접 로드 실패: $e');
+      debugPrint('Feed - 기존 댓글 직접 로드 실패: $e');
     }
   }
 
@@ -352,7 +356,7 @@ class VoiceCommentStateManager {
     }
   }
 
-  /// 리소스 정리
+  // 리소스 정리
   void dispose() {
     for (var subscription in _commentStreams.values) {
       subscription.cancel();

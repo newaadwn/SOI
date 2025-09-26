@@ -494,15 +494,18 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     }
   }
 
-  void _onSaveRequested(String photoId) async {
-    // 사용자가 파형을 눌러 저장하려 할 때 호출. pending 있으면 실제 저장.
+  Future<void> _onSaveRequested(String photoId) async {
     final pending = _pendingVoiceComments[photoId];
-    if (pending == null) return;
+    if (pending == null) {
+      throw StateError('임시 음성 댓글이 없습니다. photoId: $photoId');
+    }
+
     try {
       final userId = _authController?.currentUser?.uid;
-      if (userId == null) return;
+      if (userId == null) {
+        throw StateError('로그인된 사용자를 찾을 수 없습니다.');
+      }
 
-      // 현재 로그인한 사용자의 프로필 이미지 URL 가져오기
       final currentUserProfileImageUrl = await _authController!
           .getUserProfileImageUrlWithCache(userId);
 
@@ -520,45 +523,46 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         recorderUser: userId,
         waveformData: pending.waveformData,
         duration: pending.duration,
-        profileImageUrl: currentUserProfileImageUrl, // 현재 사용자 프로필 이미지 사용
+        profileImageUrl: currentUserProfileImageUrl,
         relativePosition: relativePosition,
       );
 
-      if (comment != null) {
-        _commentPositions[comment.id] =
-            comment.relativePosition ?? relativePosition;
-
-        _voiceCommentSavedStates[photoId] = true;
-
+      if (comment == null) {
         if (mounted) {
-          setState(() {
-            final existingIds = _savedCommentIds[photoId] ?? const <String>[];
-            final updatedIds = <String>[
-              ...existingIds.where((id) => id != comment.id),
-              comment.id,
-            ];
-            _savedCommentIds[photoId] = updatedIds;
-            _commentProfileImageUrls[photoId] = comment.profileImageUrl;
-            _droppedProfileImageUrls[photoId] = comment.profileImageUrl;
-            _profileImagePositions.remove(photoId);
-            _pendingProfilePositions.remove(photoId);
-            _pendingVoiceComments.remove(photoId);
-          });
-        } else {
-          final existingIds = _savedCommentIds[photoId] ?? const <String>[];
-          _savedCommentIds[photoId] = <String>[
-            ...existingIds.where((id) => id != comment.id),
-            comment.id,
-          ];
-          _commentProfileImageUrls[photoId] = comment.profileImageUrl;
-          _droppedProfileImageUrls[photoId] = comment.profileImageUrl;
-          _profileImagePositions.remove(photoId);
-          _pendingProfilePositions.remove(photoId);
-          _pendingVoiceComments.remove(photoId);
+          controller.showErrorToUser(context);
         }
+        throw Exception('음성 댓글 저장에 실패했습니다. photoId: $photoId');
       }
+
+      _commentPositions[comment.id] =
+          comment.relativePosition ?? relativePosition;
+      _voiceCommentSavedStates[photoId] = true;
+
+      final existingIds = _savedCommentIds[photoId] ?? const <String>[];
+      final updatedIds = <String>[
+        ...existingIds.where((id) => id != comment.id),
+        comment.id,
+      ];
+
+      void applyUpdates() {
+        _savedCommentIds[photoId] = updatedIds;
+        _commentProfileImageUrls[photoId] = comment.profileImageUrl;
+        _droppedProfileImageUrls[photoId] = comment.profileImageUrl;
+        _profileImagePositions.remove(photoId);
+        _pendingProfilePositions.remove(photoId);
+        _pendingVoiceComments.remove(photoId);
+      }
+
+      if (mounted) {
+        setState(applyUpdates);
+      } else {
+        applyUpdates();
+      }
+
+      await _loadCommentsForPhoto(photoId);
     } catch (e) {
       debugPrint('❌ 음성 댓글 저장 실패(사용자 요청): $e');
+      rethrow;
     }
   }
 

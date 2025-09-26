@@ -31,6 +31,13 @@ class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _photoController?.dispose();
+    _authController?.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadDeletedPosts() async {
     if (_photoController == null) return;
 
@@ -223,7 +230,7 @@ class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
     );
   }
 
-  void _restorePost(int index) {
+  /*void _restorePost(int index) {
     // TODO: 실제 복원 로직 구현
     setState(() {
       _deletedPosts.removeAt(index);
@@ -235,5 +242,5 @@ class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
     setState(() {
       _deletedPosts.removeAt(index);
     });
-  }
+  }*/
 }
