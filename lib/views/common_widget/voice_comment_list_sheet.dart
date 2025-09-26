@@ -5,7 +5,6 @@ import '../../models/comment_record_model.dart';
 import '../../controllers/emoji_reaction_controller.dart';
 import '../../controllers/comment_record_controller.dart';
 import 'about_emoji/reaction_row_widget.dart';
-import 'about_voice_comment/voice_comment_row_widget.dart';
 
 /// 재사용 가능한 음성 댓글 리스트 Bottom Sheet
 /// feed / archive 모두에서 사용
@@ -138,23 +137,28 @@ class VoiceCommentListSheet extends StatelessWidget {
                           separatorBuilder: (_, __) => SizedBox(height: 0.h),
                           itemBuilder: (context, index) {
                             if (!hasCommentFilter && index < reactions.length) {
-                              final r = reactions[index];
+                              final reaction = reactions[index];
+                              final reactionUserId =
+                                  reaction['uid'] as String? ?? '';
 
-                              final comment = comments[index];
+                              CommentRecordModel? commentForReaction;
+                              if (reactionUserId.isNotEmpty) {
+                                try {
+                                  commentForReaction = comments.firstWhere(
+                                    (c) => c.recorderUser == reactionUserId,
+                                  );
+                                } catch (e) {
+                                  commentForReaction = null;
+                                }
+                              }
 
                               return ReactionRow(
-                                data: r,
-                                emoji: r['emoji'] ?? '',
-                                comment: comment,
+                                data: reaction,
+                                emoji: reaction['emoji'] as String? ?? '',
+                                comment: commentForReaction, // null 허용
                               );
                             }
-                            final commentIndex =
-                                hasCommentFilter
-                                    ? index
-                                    : index - reactions.length;
-
-                            final comment = comments[commentIndex];
-                            return VoiceCommentRow(comment: comment);
+                            return null;
                           },
                         ),
                       );

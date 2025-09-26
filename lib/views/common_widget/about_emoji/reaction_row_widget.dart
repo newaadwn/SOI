@@ -9,36 +9,48 @@ import '../../../utils/format_utils.dart';
 class ReactionRow extends StatelessWidget {
   final Map<String, dynamic> data;
   final String emoji;
-  final CommentRecordModel comment;
+  final CommentRecordModel? comment;
 
   const ReactionRow({
     super.key,
     required this.data,
     this.emoji = '',
-    required this.comment,
+    this.comment,
   });
 
   @override
   Widget build(BuildContext context) {
+    final fallbackProfile = data['profileImageUrl'] as String? ?? '';
+    final profileImageUrl =
+        (comment?.profileImageUrl.isNotEmpty ?? false)
+            ? comment!.profileImageUrl
+            : fallbackProfile;
+
+    final displayId =
+        comment?.recorderUser.isNotEmpty == true
+            ? comment!.recorderUser
+            : (data['id'] as String? ?? '');
+
+    final createdAt = data['createdAt'];
+    final createdDate =
+        createdAt is Timestamp ? createdAt.toDate() : DateTime.now();
+
     return Padding(
       padding: EdgeInsets.only(bottom: 12.h),
       child: Column(
         children: [
-          // 리액션 내용
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 프로필 이미지
               ClipOval(
                 child:
-                    (comment.profileImageUrl).isNotEmpty
+                    profileImageUrl.isNotEmpty
                         ? CachedNetworkImage(
-                          imageUrl: comment.profileImageUrl,
+                          imageUrl: profileImageUrl,
                           width: 44.w,
                           height: 44.w,
-                          memCacheHeight:
-                              (44 * 2).toInt(), // 실제 크기의 2배로 고해상도 지원
-                          memCacheWidth: (44 * 2).toInt(), // 실제 크기의 2배로 고해상도 지원
+                          memCacheHeight: (44 * 2).toInt(),
+                          memCacheWidth: (44 * 2).toInt(),
                           fit: BoxFit.cover,
                         )
                         : Container(
@@ -49,13 +61,12 @@ class ReactionRow extends StatelessWidget {
                         ),
               ),
               SizedBox(width: 12.w),
-              // 아이디와 리액션 이모지를 묶은 Column
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      (data['id'] ?? '').toString(),
+                      displayId,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 13,
@@ -64,7 +75,6 @@ class ReactionRow extends StatelessWidget {
                         letterSpacing: -0.40,
                       ),
                     ),
-
                     Container(
                       alignment: Alignment.centerRight,
                       child: Text(
@@ -78,16 +88,11 @@ class ReactionRow extends StatelessWidget {
               SizedBox(width: 10.w),
             ],
           ),
-          // 시간 표시
           Row(
             children: [
               const Spacer(),
               Text(
-                FormatUtils.formatRelativeTime(
-                  (data['createdAt'] is Timestamp)
-                      ? (data['createdAt'] as Timestamp).toDate()
-                      : DateTime.now(),
-                ),
+                FormatUtils.formatRelativeTime(createdDate),
                 style: TextStyle(
                   color: const Color(0xFFC5C5C5),
                   fontSize: 10,

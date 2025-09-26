@@ -490,7 +490,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         });
       }
     } catch (e) {
-      debugPrint('❌ 음성 댓글 임시 저장 준비 실패: $e');
+      debugPrint('음성 댓글 임시 저장 준비 실패: $e');
     }
   }
 
@@ -551,6 +551,9 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         _profileImagePositions.remove(photoId);
         _pendingProfilePositions.remove(photoId);
         _pendingVoiceComments.remove(photoId);
+
+        /// 추가: 저장 직후 다시 아이콘 모드로 돌려주기
+        _voiceCommentActiveStates[photoId] = false;
       }
 
       if (mounted) {
@@ -559,7 +562,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         applyUpdates();
       }
 
-      await _loadCommentsForPhoto(photoId);
+      unawaited(_loadCommentsForPhoto(photoId));
     } catch (e) {
       debugPrint('❌ 음성 댓글 저장 실패(사용자 요청): $e');
       rethrow;

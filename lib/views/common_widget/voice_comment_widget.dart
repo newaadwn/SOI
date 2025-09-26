@@ -392,10 +392,12 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
           // 재생 파형 - 클릭 시 저장
           Expanded(
             child: GestureDetector(
-              onTap: () {
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (details) {
                 // 파형 클릭 시 프로필 배치 모드로 전환
                 _enterPlacementMode();
               },
+
               child:
                   _waveformData != null && _waveformData!.isNotEmpty
                       ? StreamBuilder<int>(

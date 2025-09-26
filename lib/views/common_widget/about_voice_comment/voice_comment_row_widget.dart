@@ -34,10 +34,8 @@ class VoiceCommentRow extends StatelessWidget {
                             imageUrl: comment.profileImageUrl,
                             width: 44.w,
                             height: 44.w,
-                            memCacheHeight:
-                                (44 * 2).toInt(), // 실제 크기의 2배로 고해상도 지원
-                            memCacheWidth:
-                                (44 * 2).toInt(), // 실제 크기의 2배로 고해상도 지원
+                            memCacheHeight: (44 * 2).toInt(),
+                            memCacheWidth: (44 * 2).toInt(),
                             fit: BoxFit.cover,
                           )
                           : Container(
