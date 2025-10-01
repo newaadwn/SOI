@@ -11,6 +11,8 @@ import '../../models/notification_model.dart';
 import '../../models/photo_data_model.dart';
 import '../about_archiving/screens/archive_detail/photo_detail_screen.dart';
 import 'widgets/notification_item_widget.dart';
+import '../../repositories/auth_repository.dart';
+import 'widgets/category_invite_confirm_sheet.dart';
 
 /// 알림 메인 화면
 class NotificationScreen extends StatefulWidget {
@@ -25,6 +27,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   late ScrollController _scrollController;
   late CategoryController _categoryController;
   late PhotoController _photoController;
+  final AuthRepository _authRepository = AuthRepository();
 
   @override
   void initState() {
@@ -92,6 +95,124 @@ class _NotificationScreenState extends State<NotificationScreen> {
         _notificationController.refreshNotifications(user.uid),
         _notificationController.cleanupOldNotifications(user.uid),
       ]);
+    }
+  }
+
+  Future<List<String>> _loadUnknownMembers(
+    NotificationModel notification,
+  ) async {
+    final authController = context.read<AuthController>();
+    final currentUser = authController.currentUser;
+    if (currentUser == null) {
+      return [];
+    }
+
+    return _notificationController.getUnknownCategoryMembers(
+      notification: notification,
+      currentUserId: currentUser.uid,
+    );
+  }
+
+  Future<List<CategoryInviteePreview>> _fetchInviteeInfos(
+    List<String> userIds,
+  ) async {
+    final List<CategoryInviteePreview> results = [];
+
+    for (final uid in userIds) {
+      try {
+        final user = await _authRepository.getUser(uid);
+        if (user != null) {
+          final displayName =
+              user.name.isNotEmpty ? user.name : (user.id.isNotEmpty ? user.id : uid);
+          results.add(
+            CategoryInviteePreview(
+              id: uid,
+              name: displayName,
+              profileImageUrl: user.profileImage,
+            ),
+          );
+          continue;
+        }
+      } catch (_) {
+        // 무시하고 기본 정보로 대체
+      }
+
+      results.add(
+        CategoryInviteePreview(
+          id: uid,
+          name: uid,
+          profileImageUrl: '',
+        ),
+      );
+    }
+
+    return results;
+  }
+
+  Future<void> _handleCategoryInviteConfirm(
+    NotificationModel notification,
+  ) async {
+    final authController = context.read<AuthController>();
+    final currentUser = authController.currentUser;
+    if (currentUser == null) {
+      _showErrorSnackBar('로그인이 필요합니다');
+      return;
+    }
+
+    await _notificationController.onNotificationTap(notification);
+
+    try {
+      final unknownMembers = await _notificationController
+          .getUnknownCategoryMembers(
+        notification: notification,
+        currentUserId: currentUser.uid,
+      );
+
+      if (unknownMembers.isEmpty) {
+        _navigateToCategory(notification);
+        return;
+      }
+
+      final categoryId = notification.categoryId;
+      if (categoryId == null || categoryId.isEmpty) {
+        _showErrorSnackBar('카테고리 정보를 찾을 수 없습니다');
+        return;
+      }
+
+      final category = await _categoryController.getCategory(categoryId);
+      if (category == null) {
+        _showErrorSnackBar('카테고리를 찾을 수 없습니다');
+        return;
+      }
+
+      final inviteeInfos = await _fetchInviteeInfos(unknownMembers);
+
+      if (!mounted) {
+        return;
+      }
+
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (sheetContext) {
+          return CategoryInviteConfirmSheet(
+            categoryName: notification.categoryName ?? category.name,
+            categoryImageUrl: category.categoryPhotoUrl ?? '',
+            invitees: inviteeInfos,
+            onAccept: () {
+              Navigator.of(sheetContext).pop();
+              _navigateToCategory(notification);
+            },
+            onCancel: () {
+              Navigator.of(sheetContext).pop();
+            },
+          );
+        },
+      );
+    } catch (e) {
+      _showErrorSnackBar('카테고리 정보를 불러오지 못했습니다');
+      debugPrint('❌ 카테고리 초대 확인 실패: $e');
     }
   }
 
@@ -553,21 +674,31 @@ class _NotificationScreenState extends State<NotificationScreen> {
               children: [
                 SizedBox(height: 22.h),
                 // 알림 아이템들
-                for (
-                  int i = 0;
-                  i < _notificationController.notifications.length;
-                  i++
-                )
+                for (int i = 0;
+                    i < _notificationController.notifications.length;
+                    i++)
                   NotificationItemWidget(
                     notification: _notificationController.notifications[i],
-                    onTap:
-                        () => _onNotificationTap(
-                          _notificationController.notifications[i],
-                        ),
-                    onDelete:
-                        () => _notificationController.deleteNotification(
-                          _notificationController.notifications[i].id,
-                        ),
+                    onTap: () => _onNotificationTap(
+                      _notificationController.notifications[i],
+                    ),
+                    onDelete: () => _notificationController.deleteNotification(
+                      _notificationController.notifications[i].id,
+                    ),
+                    loadUnknownMembers:
+                        _notificationController.notifications[i].type ==
+                                NotificationType.categoryInvite
+                            ? () => _loadUnknownMembers(
+                                  _notificationController.notifications[i],
+                                )
+                            : null,
+                    onConfirm:
+                        _notificationController.notifications[i].type ==
+                                NotificationType.categoryInvite
+                            ? () => _handleCategoryInviteConfirm(
+                                  _notificationController.notifications[i],
+                                )
+                            : null,
                     isLast:
                         i == _notificationController.notifications.length - 1 &&
                         !_notificationController.hasMore,

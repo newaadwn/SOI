@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import '../services/notification_service.dart';
 import '../models/notification_model.dart';
+import '../repositories/friend_repository.dart';
+import '../repositories/user_search_repository.dart';
+import '../services/friend_service.dart';
+import '../services/notification_service.dart';
 
 /// Notification Controller - 알림 관련 UI와 비즈니스 로직을 연결하는 Controller
 /// Service를 사용해서 알림 상태를 관리하고 사용자 피드백을 제공
@@ -14,6 +17,7 @@ class NotificationController extends ChangeNotifier {
   List<NotificationModel> _notifications = [];
   int _unreadCount = 0;
   Map<String, int> _notificationStats = {};
+  final Map<String, List<String>> _categoryUnknownMembersCache = {};
 
   // 페이지네이션 상태
   bool _hasMore = true;
@@ -25,6 +29,15 @@ class NotificationController extends ChangeNotifier {
 
   // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
   final NotificationService _notificationService = NotificationService();
+  FriendService? _friendService;
+
+  FriendService get friendService {
+    _friendService ??= FriendService(
+      friendRepository: FriendRepository(),
+      userSearchRepository: UserSearchRepository(),
+    );
+    return _friendService!;
+  }
 
   // ==================== Getters ====================
 
@@ -80,7 +93,7 @@ class NotificationController extends ChangeNotifier {
           .listen(_onUnreadCountUpdated, onError: _onUnreadCountError);
     } catch (e) {
       _setError('알림 구독 시작 실패: $e');
-      debugPrint('❌ 알림 구독 시작 실패: $e');
+      debugPrint('알림 구독 시작 실패: $e');
     } finally {
       _setLoading(false);
     }
@@ -115,7 +128,7 @@ class NotificationController extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _setError('알림 새로고침 실패: $e');
-      debugPrint('❌ 알림 새로고침 실패: $e');
+      debugPrint('알림 새로고침 실패: $e');
     } finally {
       _setLoading(false);
     }
@@ -142,7 +155,7 @@ class NotificationController extends ChangeNotifier {
       }
     } catch (e) {
       _setError('추가 알림 로드 실패: $e');
-      debugPrint('❌ 추가 알림 로드 실패: $e');
+      debugPrint('추가 알림 로드 실패: $e');
     } finally {
       _setLoadingMore(false);
     }
@@ -176,7 +189,7 @@ class NotificationController extends ChangeNotifier {
       }
     } catch (e) {
       _setError('알림 읽음 처리 실패: $e');
-      debugPrint('❌ 알림 읽음 처리 실패: $e');
+      debugPrint('알림 읽음 처리 실패: $e');
     } finally {
       _setMarkingRead(false);
     }
@@ -204,7 +217,7 @@ class NotificationController extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _setError('모든 알림 읽음 처리 실패: $e');
-      debugPrint('❌ 모든 알림 읽음 처리 실패: $e');
+      debugPrint('모든 알림 읽음 처리 실패: $e');
     } finally {
       _setMarkingRead(false);
     }
@@ -237,7 +250,7 @@ class NotificationController extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _setError('알림 삭제 실패: $e');
-      debugPrint('❌ 알림 삭제 실패: $e');
+      debugPrint('알림 삭제 실패: $e');
     }
   }
 
@@ -259,7 +272,7 @@ class NotificationController extends ChangeNotifier {
       _notificationStats = stats;
       notifyListeners();
     } catch (e) {
-      debugPrint('❌ 알림 통계 로드 실패: $e');
+      debugPrint('알림 통계 로드 실패: $e');
     }
   }
 
@@ -271,7 +284,59 @@ class NotificationController extends ChangeNotifier {
       await _notificationService.cleanupOldNotifications(userId);
       await refreshNotifications(userId);
     } catch (e) {
-      debugPrint('❌ 오래된 알림 정리 실패: $e');
+      debugPrint('오래된 알림 정리 실패: $e');
+    }
+  }
+
+  /// 카테고리 초대 알림에서 친구가 아닌 사용자 목록 반환
+  Future<List<String>> getUnknownCategoryMembers({
+    required NotificationModel notification,
+    required String currentUserId,
+  }) async {
+    final categoryId = notification.categoryId;
+    if (categoryId == null || categoryId.isEmpty) {
+      return [];
+    }
+
+    final cached = _categoryUnknownMembersCache[categoryId];
+    if (cached != null) {
+      return cached;
+    }
+
+    try {
+      final category = await _notificationService.categoryService.getCategory(
+        categoryId,
+      );
+      if (category == null) {
+        _categoryUnknownMembersCache[categoryId] = const [];
+        return [];
+      }
+
+      final mates = category.mates;
+      if (mates.isEmpty) {
+        _categoryUnknownMembersCache[categoryId] = const [];
+        return [];
+      }
+
+      final friends = await friendService.getFriendsList().first;
+      final friendUids = friends.map((f) => f.userId).toSet();
+      final friendIds = friends.map((f) => f.id).toSet();
+
+      final Set<String> unknownSet = {};
+      for (final mate in mates) {
+        if (mate.isEmpty) continue;
+        if (mate == currentUserId) continue;
+        if (friendUids.contains(mate)) continue;
+        if (friendIds.contains(mate)) continue;
+        unknownSet.add(mate);
+      }
+
+      final unknownList = unknownSet.toList();
+      _categoryUnknownMembersCache[categoryId] = unknownList;
+      return unknownList;
+    } catch (e) {
+      debugPrint('모르는 사용자 검사 실패: $e');
+      return [];
     }
   }
 
@@ -279,7 +344,7 @@ class NotificationController extends ChangeNotifier {
   void _performBackgroundCleanup(String userId) {
     Future.delayed(Duration(seconds: 2), () {
       _notificationService.performUserCleanupOnStart(userId).catchError((e) {
-        debugPrint('❌ 백그라운드 알림 정리 실패: $e');
+        debugPrint('백그라운드 알림 정리 실패: $e');
       });
     });
   }
@@ -298,7 +363,7 @@ class NotificationController extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       _setError('모든 알림 삭제 실패: $e');
-      debugPrint('❌ 모든 알림 삭제 실패: $e');
+      debugPrint('모든 알림 삭제 실패: $e');
     }
   }
 
@@ -306,6 +371,7 @@ class NotificationController extends ChangeNotifier {
 
   /// 실시간 알림 업데이트 처리
   void _onNotificationsUpdated(List<NotificationModel> notifications) {
+    _categoryUnknownMembersCache.clear();
     _notifications = notifications;
     notifyListeners();
   }
@@ -313,7 +379,7 @@ class NotificationController extends ChangeNotifier {
   /// 실시간 알림 에러 처리
   void _onNotificationsError(dynamic error) {
     _setError('실시간 알림 업데이트 오류: $error');
-    debugPrint('❌ 실시간 알림 오류: $error');
+    debugPrint('실시간 알림 오류: $error');
   }
 
   /// 실시간 읽지 않은 개수 업데이트 처리
@@ -324,7 +390,7 @@ class NotificationController extends ChangeNotifier {
 
   /// 실시간 읽지 않은 개수 에러 처리
   void _onUnreadCountError(dynamic error) {
-    debugPrint('❌ 읽지 않은 개수 업데이트 오류: $error');
+    debugPrint('읽지 않은 개수 업데이트 오류: $error');
   }
 
   /// 로딩 상태 설정
