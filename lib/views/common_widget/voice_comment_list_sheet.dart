@@ -5,6 +5,7 @@ import '../../models/comment_record_model.dart';
 import '../../controllers/emoji_reaction_controller.dart';
 import '../../controllers/comment_record_controller.dart';
 import 'about_emoji/reaction_row_widget.dart';
+import 'about_voice_comment/voice_comment_row_widget.dart';
 
 /// 재사용 가능한 음성 댓글 리스트 Bottom Sheet
 /// feed / archive 모두에서 사용
@@ -134,7 +135,7 @@ class VoiceCommentListSheet extends StatelessWidget {
                         child: ListView.separated(
                           shrinkWrap: true,
                           itemCount: total,
-                          separatorBuilder: (_, __) => SizedBox(height: 0.h),
+                          separatorBuilder: (_, __) => SizedBox(height: 12.h),
                           itemBuilder: (context, index) {
                             if (!hasCommentFilter && index < reactions.length) {
                               final reaction = reactions[index];
@@ -158,7 +159,15 @@ class VoiceCommentListSheet extends StatelessWidget {
                                 comment: commentForReaction, // null 허용
                               );
                             }
-                            return null;
+                            final commentIndex =
+                                index -
+                                (hasCommentFilter ? 0 : reactions.length);
+                            if (commentIndex >= 0 &&
+                                commentIndex < comments.length) {
+                              final comment = comments[commentIndex];
+                              return VoiceCommentRow(comment: comment);
+                            }
+                            return const SizedBox.shrink();
                           },
                         ),
                       );

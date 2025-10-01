@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -62,6 +63,8 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
   DateTime? _recordingStartTime; // 녹음 시작 시간 추가
 
   bool _isFinalizingPlacement = false; // 중복 저장 방지
+  final GlobalKey _profileDraggableKey = GlobalKey();
+  TapDownDetails? _pendingTapDownDetails;
 
   /// 이전 녹음 상태 (애니메이션 제어용)
   VoiceCommentState? _lastState;
@@ -238,7 +241,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
   }
 
   /// 프로필 배치 모드 진입
-  void _enterPlacementMode() {
+  void _enterPlacementMode(TapDownDetails details) {
     if (_waveformData == null || _waveformData!.isEmpty) {
       return;
     }
@@ -246,6 +249,32 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     setState(() {
       _lastState = _currentState;
       _currentState = VoiceCommentState.placing;
+    });
+    _pendingTapDownDetails = details;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final tapDetails = _pendingTapDownDetails;
+      final draggableState = _profileDraggableKey.currentState;
+      if (tapDetails == null || draggableState == null) {
+        return;
+      }
+
+      _pendingTapDownDetails = null;
+      final PointerDeviceKind deviceKind =
+          tapDetails.kind ?? PointerDeviceKind.touch;
+      final dynamic draggable = draggableState;
+      final startDrag = draggable.startDrag;
+
+      try {
+        Function.apply(startDrag, [tapDetails.globalPosition, deviceKind]);
+      } catch (_) {
+        try {
+          Function.apply(startDrag, [tapDetails.globalPosition]);
+        } catch (_) {}
+      }
     });
   }
 
@@ -394,8 +423,8 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
             child: GestureDetector(
               behavior: HitTestBehavior.opaque,
               onTapDown: (details) {
-                // 파형 클릭 시 프로필 배치 모드로 전환
-                _enterPlacementMode();
+                // 파형 클릭 시 프로필 배치 모드로 전환 후 즉시 드래그 시작
+                _enterPlacementMode(details);
               },
 
               child:
@@ -634,7 +663,9 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     }
 
     return Draggable<String>(
+      key: isPlacementMode ? _profileDraggableKey : null,
       data: 'profile_image',
+      dragAnchorStrategy: pointerDragAnchorStrategy,
       feedback: Transform.scale(
         scale: 1.2,
         child: Opacity(opacity: 0.8, child: profileWidget),

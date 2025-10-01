@@ -34,6 +34,12 @@ class CategoryService {
     return _photoService!;
   }
 
+  UserSearchRepository? _userSearchRepository;
+  UserSearchRepository get userSearchRepository {
+    _userSearchRepository ??= UserSearchRepository();
+    return _userSearchRepository!;
+  }
+
   // FriendService 의존성 추가
   FriendService? _friendService;
   FriendService get friendService {
@@ -505,6 +511,28 @@ class CategoryService {
         categoryId: categoryId,
         nickName: nickName,
       );
+
+      final currentUserId = authService.currentUser?.uid;
+      if (currentUserId != null && currentUserId.isNotEmpty) {
+        try {
+          final users =
+              await userSearchRepository.searchUsersById(nickName, limit: 1);
+          if (users.isNotEmpty) {
+            final recipientUid = users.first.uid;
+            await notificationService.createCategoryInviteNotification(
+              categoryId: categoryId,
+              actorUserId: currentUserId,
+              recipientUserIds: [recipientUid],
+            );
+            debugPrint('🔔 카테고리 초대 알림 전송 완료 (닉네임 경로)');
+          } else {
+            debugPrint('⚠️ 닉네임으로 사용자를 찾지 못해 알림을 전송하지 못했습니다: $nickName');
+          }
+        } catch (e) {
+          debugPrint('⚠️ 카테고리 초대 알림 전송 실패 (닉네임 경로): $e');
+        }
+      }
+
       return AuthResult.success(null);
     } catch (e) {
       return AuthResult.failure('카테고리에 사용자 추가 실패: $e');
@@ -548,6 +576,17 @@ class CategoryService {
       // 6. 실제 추가 실행
       await _repository.addUidToCategory(categoryId: categoryId, uid: uid);
       debugPrint('✅ 카테고리 사용자 추가 성공');
+
+      try {
+        await notificationService.createCategoryInviteNotification(
+          categoryId: categoryId,
+          actorUserId: currentUserId,
+          recipientUserIds: [uid],
+        );
+        debugPrint('🔔 카테고리 초대 알림 전송 완료');
+      } catch (e) {
+        debugPrint('⚠️ 카테고리 초대 알림 전송 실패: $e');
+      }
 
       return AuthResult.success(null);
     } catch (e) {

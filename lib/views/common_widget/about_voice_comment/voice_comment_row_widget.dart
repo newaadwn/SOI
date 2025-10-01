@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../../controllers/comment_audio_controller.dart';
-import '../../../controllers/comment_record_controller.dart';
 import '../../../models/comment_record_model.dart';
 import '../../../utils/format_utils.dart';
 import '../user_display_widget.dart';
@@ -14,12 +13,12 @@ class VoiceCommentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer2<CommentAudioController, CommentRecordController>(
-      builder: (context, audioController, recordController, child) {
-        final isPlaying = audioController.isCommentPlaying(comment.id);
-        final progress = audioController.getCommentProgress(comment.id);
-        final position = audioController.getCommentPosition(comment.id);
-        final duration = audioController.getCommentDuration(comment.id);
+    return Consumer<CommentAudioController>(
+      builder: (context, commentAudioController, child) {
+        final isPlaying = commentAudioController.isCommentPlaying(comment.id);
+        final progress = commentAudioController.getCommentProgress(comment.id);
+        final position = commentAudioController.getCommentPosition(comment.id);
+        final duration = commentAudioController.getCommentDuration(comment.id);
         return Column(
           children: [
             Row(
@@ -60,9 +59,11 @@ class VoiceCommentRow extends StatelessWidget {
                         progress: progress,
                         onPlayPause: () async {
                           if (isPlaying) {
-                            await audioController.pauseComment(comment.id);
+                            await commentAudioController.pauseComment(
+                              comment.id,
+                            );
                           } else {
-                            await audioController.playComment(
+                            await commentAudioController.playComment(
                               comment.id,
                               comment.audioUrl,
                             );
