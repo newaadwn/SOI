@@ -94,9 +94,9 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
 
   /// 실제 카테고리 카드 빌드
   Widget _buildCategoryCard(BuildContext context, CategoryDataModel category) {
-    return widget.layoutMode == ArchiveLayoutMode.list
+    return /*widget.layoutMode == ArchiveLayoutMode.list
         ? _buildListLayout(context, category)
-        : _buildGridLayout(context, category);
+        :*/ _buildGridLayout(context, category);
   }
 
   Widget _buildGridLayout(BuildContext context, CategoryDataModel category) {
@@ -175,7 +175,7 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
     );
   }
 
-  Widget _buildListLayout(BuildContext context, CategoryDataModel category) {
+  /* Widget _buildListLayout(BuildContext context, CategoryDataModel category) {
     final userId = AuthController().getUserId;
     final hasNewPhoto =
         userId != null ? category.hasNewPhotoForUser(userId) : false;
@@ -274,7 +274,7 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
         ),
       ),
     );
-  }
+  }*/
 
   Widget _buildTitleWidget(
     BuildContext context,

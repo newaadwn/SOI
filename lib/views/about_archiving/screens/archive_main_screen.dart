@@ -426,10 +426,11 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                 ),
               ),
             ),
+            SizedBox(height: 25.h),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                IconButton(
+                /* IconButton(
                   onPressed: () {
                     setState(() {
                       _layoutMode =
@@ -438,7 +439,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                               : ArchiveLayoutMode.grid;
                     });
                   },
-                  icon:
+                 icon:
                       _layoutMode == ArchiveLayoutMode.grid
                           ? Image.asset(
                             "assets/list_icon.png",
@@ -450,7 +451,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                             width: (17.36).w,
                             height: (17.36).h,
                           ),
-                ),
+                ),*/
                 SizedBox(width: (10).w),
               ],
             ),
