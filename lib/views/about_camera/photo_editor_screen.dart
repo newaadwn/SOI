@@ -17,6 +17,7 @@ import 'widgets/audio_recorder_widget.dart';
 import 'widgets/category_list_widget.dart';
 import 'widgets/loading_popup_widget.dart';
 import 'widgets/photo_display_widget.dart';
+
 class PhotoEditorScreen extends StatefulWidget {
   final String? downloadUrl;
   final String? imagePath;
@@ -24,6 +25,7 @@ class PhotoEditorScreen extends StatefulWidget {
   @override
   State<PhotoEditorScreen> createState() => _PhotoEditorScreenState();
 }
+
 class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     with WidgetsBindingObserver {
   // ========== 상태 관리 변수들 ==========
@@ -64,26 +66,31 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     _initializeScreen();
     _captionController.addListener(_handleCaptionChanged);
   }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _initializeControllers();
     _loadCategoriesIfNeeded();
   }
+
   @override
   void didUpdateWidget(PhotoEditorScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     _handleWidgetUpdate(oldWidget);
   }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     super.didChangeAppLifecycleState(state);
     _handleAppStateChange(state);
   }
+
   // ========== 초기화 메서드들 ==========
   void _initializeScreen() {
     _loadImage();
   }
+
   void _initializeControllers() {
     _audioController = Provider.of<AudioController>(context, listen: false);
     _categoryController = Provider.of<CategoryController>(
@@ -96,6 +103,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       _audioController.initialize();
     });
   }
+
   void _handleCaptionChanged() {
     final isEmpty = _captionController.text.trim().isEmpty;
     if (isEmpty == _isCaptionEmpty) {
@@ -107,6 +115,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     }
     setState(() => _isCaptionEmpty = isEmpty);
   }
+
   void _loadCategoriesIfNeeded() {
     if (!_categoriesLoaded) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -114,6 +123,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       });
     }
   }
+
   void _handleWidgetUpdate(PhotoEditorScreen oldWidget) {
     if (oldWidget.imagePath != widget.imagePath ||
         oldWidget.downloadUrl != widget.downloadUrl) {
@@ -123,42 +133,65 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       });
     }
   }
+
   void _handleAppStateChange(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _categoriesLoaded = false;
       _loadUserCategories(forceReload: true);
     }
   }
+
   // ========== 이미지 및 카테고리 로딩 메서드들 ==========
   Future<void> _loadImage() async {
-    setState(() { _isLoading = true; _errorMessage = null; });
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     try {
       if (widget.imagePath != null && widget.imagePath!.isNotEmpty) {
         final file = File(widget.imagePath!);
         if (await file.exists()) {
-          setState(() { _useLocalImage = true; _isLoading = false; });
+          setState(() {
+            _useLocalImage = true;
+            _isLoading = false;
+          });
           return;
         } else {
           throw Exception('이미지 파일을 찾을 수 없습니다.');
         }
       } else if (widget.downloadUrl != null && widget.downloadUrl!.isNotEmpty) {
-        setState(() { _useDownloadUrl = true; _isLoading = false; });
+        setState(() {
+          _useDownloadUrl = true;
+          _isLoading = false;
+        });
         return;
       }
     } catch (e) {
-      setState(() { _errorMessage = "이미지 로딩 중 오류 발생: $e"; _isLoading = false; });
+      setState(() {
+        _errorMessage = "이미지 로딩 중 오류 발생: $e";
+        _isLoading = false;
+      });
       return;
     }
-    setState(() { _isLoading = false; });
+    setState(() {
+      _isLoading = false;
+    });
   }
+
   Future<void> _loadUserCategories({bool forceReload = false}) async {
     if (!forceReload && _categoriesLoaded) return;
     if (!forceReload) {
-      setState(() { _isLoading = false; });
+      setState(() {
+        _isLoading = false;
+      });
     }
     final currentUser = _authController.currentUser;
     if (currentUser == null) {
-      if (mounted) setState(() { _errorMessage = "로그인이 필요합니다."; _isLoading = false; });
+      if (mounted)
+        setState(() {
+          _errorMessage = "로그인이 필요합니다.";
+          _isLoading = false;
+        });
       return;
     }
     try {
@@ -173,9 +206,13 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       }
       if (mounted) setState(() {});
     } catch (e) {
-      if (mounted) setState(() { _errorMessage = "카테고리 로드 중 오류 발생: $e"; });
+      if (mounted)
+        setState(() {
+          _errorMessage = "카테고리 로드 중 오류 발생: $e";
+        });
     }
   }
+
   void _handleCategorySelection(String categoryId) {
     if (_selectedCategoryId == categoryId) {
       _uploadThenNavigate(categoryId);
@@ -183,6 +220,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       setState(() => _selectedCategoryId = categoryId);
     }
   }
+
   void _animateSheetTo(double size, {bool lockExtent = false}) {
     if (!mounted || _isDisposing) return;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -199,13 +237,19 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       }
     });
   }
+
   void _lockSheetExtent(double size) {
     if (!mounted || _isDisposing || _hasLockedSheetExtent) return;
-    setState(() { _minChildSize = size; _initialChildSize = size; _hasLockedSheetExtent = true; });
+    setState(() {
+      _minChildSize = size;
+      _initialChildSize = size;
+      _hasLockedSheetExtent = true;
+    });
     if (_draggableScrollController.isAttached) {
       _draggableScrollController.jumpTo(size);
     }
   }
+
   Future<void> _resetBottomSheetIfNeeded() async {
     if (_isDisposing || !_draggableScrollController.isAttached) {
       return;
@@ -223,6 +267,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       curve: Curves.easeInOut,
     );
   }
+
   Widget _buildCaptionInputBar() {
     final hasRecording =
         _recordedAudioPath != null && _recordedAudioPath!.isNotEmpty;
@@ -254,11 +299,21 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                     List<double>? waveformData,
                   ) {
                     if (!mounted) return;
-                    setState(() { _recordedWaveformData = waveformData; _recordedAudioPath = audioPath; _shouldAutoStartRecording = false; _isRecorderVisible = true; });
+                    setState(() {
+                      _recordedWaveformData = waveformData;
+                      _recordedAudioPath = audioPath;
+                      _shouldAutoStartRecording = false;
+                      _isRecorderVisible = true;
+                    });
                   },
                   onRecordingCleared: () {
                     if (!mounted) return;
-                    setState(() { _recordedWaveformData = null; _recordedAudioPath = null; _shouldAutoStartRecording = false; _isRecorderVisible = false; });
+                    setState(() {
+                      _recordedWaveformData = null;
+                      _recordedAudioPath = null;
+                      _shouldAutoStartRecording = false;
+                      _isRecorderVisible = false;
+                    });
                   },
                 ),
               )
@@ -272,7 +327,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                     child: DecoratedBox(
                       decoration: BoxDecoration(
                         color: backgroundColor,
-                        borderRadius: BorderRadius.circular(21.5.r),
+                        borderRadius: BorderRadius.circular(21.5),
                       ),
                       child: Padding(
                         padding: EdgeInsets.symmetric(horizontal: 19.w),
@@ -284,7 +339,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                 maxLines: 1,
                                 style: TextStyle(
                                   color: Colors.white,
-                                  fontSize: 16.sp,
+                                  fontSize: 16,
                                   fontFamily: 'Pretendard',
                                   fontWeight: FontWeight.w200,
                                   letterSpacing: -0.5,
@@ -297,8 +352,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                   border: InputBorder.none,
                                   hintText: '게시글 추가하기....',
                                   hintStyle: TextStyle(
-                                    color: Colors.white.withOpacity(0.6),
-                                    fontSize: 16.sp,
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    fontSize: 16,
                                     fontFamily: 'Pretendard',
                                     fontWeight: FontWeight.w200,
                                     letterSpacing: -0.5,
@@ -322,7 +377,12 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                         color: Colors.transparent,
                                         child: InkWell(
                                           onTap: () {
-                                            setState(() { _recordedAudioPath = null; _recordedWaveformData = null; _shouldAutoStartRecording = true; _isRecorderVisible = true; });
+                                            setState(() {
+                                              _recordedAudioPath = null;
+                                              _recordedWaveformData = null;
+                                              _shouldAutoStartRecording = true;
+                                              _isRecorderVisible = true;
+                                            });
                                           },
                                           borderRadius: BorderRadius.circular(
                                             18.r,
@@ -345,8 +405,12 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                                   blurRadius: 2.25,
                                                 ),
                                                 BoxShadow(
-                                                  color: Colors.white.withOpacity(0.06),
-                                                  offset: const Offset(0.28, 1.13),
+                                                  color: Colors.white
+                                                      .withOpacity(0.06),
+                                                  offset: const Offset(
+                                                    0.28,
+                                                    1.13,
+                                                  ),
                                                   blurRadius: 2.25,
                                                 ),
                                               ],
@@ -391,6 +455,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
               ),
     );
   }
+
   Future<void> _createNewCategory(
     List<SelectedFriendModel> selectedFriends,
   ) async {
@@ -420,7 +485,10 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       );
       _categoriesLoaded = false;
       await _loadUserCategories(forceReload: true);
-      setState(() { _showAddCategoryUI = false; _categoryNameController.clear(); });
+      setState(() {
+        _showAddCategoryUI = false;
+        _categoryNameController.clear();
+      });
       if (!context.mounted) return;
     } catch (e) {
       if (!context.mounted) return;
@@ -429,6 +497,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       ).showSnackBar(SnackBar(content: Text('카테고리 생성 중 오류가 발생했습니다')));
     }
   }
+
   // ========== 업로드 및 화면 전환 관련 메서드들 ==========
   Future<void> _uploadThenNavigate(String categoryId) async {
     LoadingPopupWidget.show(context, message: '사진을 업로드하고 있습니다.\n잠시만 기다려주세요');
@@ -459,6 +528,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       }
     }
   }
+
   Map<String, dynamic>? _extractUploadData(String categoryId) {
     final imagePath = widget.imagePath;
     final userId = _authController.getUserId;
@@ -478,6 +548,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
               : null,
     };
   }
+
   Future<void> _executeUploadWithExtractedData(
     Map<String, dynamic> data,
   ) async {
@@ -517,6 +588,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       );
     }
   }
+
   void _navigateToHome() {
     if (!mounted || _isDisposing) return;
     _audioController.stopAudio();
@@ -532,6 +604,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       _draggableScrollController.jumpTo(0.0);
     }
   }
+
   // ========== 이미지 및 데이터 최적화 메서드들 ==========
   // ========== UI 빌드 메서드 ==========
   @override
@@ -694,8 +767,15 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                                   scrollController:
                                                       scrollController,
                                                   onBackPressed: () {
-                                                    setState(() { _showAddCategoryUI = false; _categoryNameController.clear(); });
-                                                    _animateSheetTo(_kLockedSheetExtent);
+                                                    setState(() {
+                                                      _showAddCategoryUI =
+                                                          false;
+                                                      _categoryNameController
+                                                          .clear();
+                                                    });
+                                                    _animateSheetTo(
+                                                      _kLockedSheetExtent,
+                                                    );
                                                   },
                                                   onSavePressed:
                                                       (selectedFriends) =>
@@ -714,7 +794,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                           onCategorySelected:
                                               _handleCategorySelection,
                                           addCategoryPressed: () {
-                                            setState(() => _showAddCategoryUI = true);
+                                            setState(
+                                              () => _showAddCategoryUI = true,
+                                            );
                                             _animateSheetTo(0.65);
                                           },
                                           isLoading:
@@ -735,6 +817,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       ],
     );
   }
+
   // ========== 리소스 정리 메서드 ==========
   @override
   void dispose() {
