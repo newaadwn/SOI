@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:async';
 import 'controllers/comment_record_controller.dart';
 import 'controllers/contact_controller.dart';
 import 'controllers/photo_controller.dart';
@@ -64,40 +63,11 @@ void main() async {
   if (kDebugMode) {
     // Debug 모드: 개발 편의성을 위해 조금 더 여유롭게 설정
     PaintingBinding.instance.imageCache.maximumSize = 50; // 최대 50개 이미지 캐시
-    PaintingBinding.instance.imageCache.maximumSizeBytes =
-        50 * 1024 * 1024; // 50MB
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 50 * 1024 * 1024;
   } else {
     // Release 모드: 메모리 사용량 최소화
     PaintingBinding.instance.imageCache.maximumSize = 30; // 최대 30개 이미지 캐시
-    PaintingBinding.instance.imageCache.maximumSizeBytes =
-        30 * 1024 * 1024; // 30MB
-  }
-
-  // 추가 메모리 최적화: 이미지 캐시 정리 정책 설정
-  // 메모리 압박 시 자동 정리를 위한 설정
-  debugPrint(
-    'ImageCache 설정 완료 - 최대 ${PaintingBinding.instance.imageCache.maximumSize}개, ${PaintingBinding.instance.imageCache.maximumSizeBytes ~/ (1024 * 1024)}MB',
-  );
-
-  if (kDebugMode) {
-    // 메모리 사용량 주기적 모니터링 (개발 중에만)
-    Timer.periodic(Duration(seconds: 60), (timer) {
-      final cache = PaintingBinding.instance.imageCache;
-      final currentSizeMB = (cache.currentSizeBytes / 1024 / 1024)
-          .toStringAsFixed(1);
-      final maxSizeMB = (cache.maximumSizeBytes / 1024 / 1024).toStringAsFixed(
-        0,
-      );
-
-      debugPrint(
-        'ImageCache 상태: ${cache.currentSize}/${cache.maximumSize}개, ${currentSizeMB}MB/${maxSizeMB}MB',
-      );
-
-      // 메모리 사용량이 80% 이상이면 경고
-      if (cache.currentSizeBytes > cache.maximumSizeBytes * 0.8) {
-        debugPrint('ImageCache 메모리 사용량 높음 - 자동 정리 권장');
-      }
-    });
+    PaintingBinding.instance.imageCache.maximumSizeBytes = 30 * 1024 * 1024;
   }
 
   // Firebase 초기화 (더 안전한 방법)
@@ -229,7 +199,6 @@ class _MyAppState extends State<MyApp> {
           debugShowCheckedModeBanner: false,
           routes: {
             '/': (context) => const StartScreen(),
-
             '/home_navigation_screen':
                 (context) => HomePageNavigationBar(currentPageIndex: 1),
             '/camera': (context) => const CameraScreen(),

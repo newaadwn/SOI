@@ -143,7 +143,9 @@
 			<string>http</string>
 			<string>https</string>
 		</array>
-		<key>UIStatusBarHidden</key>
-		<false/>
-	</dict>
+	<key>UIStatusBarHidden</key>
+	<false/>
+	<key>FLTEnableWideGamut</key>
+	<false/>
+</dict>
 </plist>

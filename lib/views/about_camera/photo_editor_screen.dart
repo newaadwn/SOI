@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -57,9 +57,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   // 오디오 관련 변수들
   List<double>? _recordedWaveformData;
   String? _recordedAudioPath;
-
-  // 프로필 위치 관리
-  Offset? _profileImagePosition;
 
   // 컨트롤러들
   final _draggableScrollController = DraggableScrollableController();
@@ -358,7 +355,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   }
 
   Future<void> _createNewCategory(
-    String categoryName,
     List<SelectedFriendModel> selectedFriends,
   ) async {
     if (_categoryNameController.text.trim().isEmpty) {
@@ -419,7 +415,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
       MemoryMonitor.logCurrentMemoryUsage('업로드 데이터 추출 전');
       final uploadData = _extractUploadData(categoryId);
-      if (uploadData == null) {
+      if (uploadData == null && mounted) {
         LoadingPopupWidget.hide(context);
         _navigateToHome();
         return;
@@ -427,7 +423,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
       _navigateToHome();
 
-      unawaited(_executeUploadWithExtractedData(uploadData));
+      unawaited(_executeUploadWithExtractedData(uploadData!));
       _cleanMemoryAfterUpload();
       LoadingPopupWidget.hide(context);
     } catch (e) {
@@ -668,7 +664,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   }
 
   // ========== UI 빌드 메서드 ==========
-
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -725,9 +720,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                     widget.imagePath?.split('/').last ??
                                     'unknown',
                                 isCommentMode: false,
-                                profileImagePosition: _profileImagePosition,
-                                getProfileImagePosition:
-                                    () => _profileImagePosition,
                                 onRecordingCompleted: (
                                   String? audioPath,
                                   List<double>? waveformData,
@@ -862,9 +854,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                                       (
                                                         selectedFriends,
                                                       ) => _createNewCategory(
-                                                        _categoryNameController
-                                                            .text
-                                                            .trim(),
                                                         selectedFriends,
                                                       ),
                                                 ),
