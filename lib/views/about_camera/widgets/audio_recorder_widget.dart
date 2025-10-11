@@ -28,8 +28,11 @@ class AudioRecorderWidget extends StatefulWidget {
   // 기본 콜백들
   final Function(String?, List<double>?)? onRecordingCompleted;
   final Function(String audioFilePath, List<double> waveformData, int duration)?
-  onRecordingFinished;
+      onRecordingFinished;
   final Function(CommentRecordModel)? onCommentSaved;
+  final VoidCallback? onRecordingCleared;
+  final String? initialRecordingPath;
+  final List<double>? initialWaveformData;
 
   // 동작 설정
   final bool autoStart;
@@ -51,6 +54,9 @@ class AudioRecorderWidget extends StatefulWidget {
     this.onRecordingCompleted,
     this.onRecordingFinished,
     this.onCommentSaved,
+    this.onRecordingCleared,
+    this.initialRecordingPath,
+    this.initialWaveformData,
     this.autoStart = false,
     this.photoId,
     this.isCommentMode = true,
@@ -154,8 +160,47 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
       _userProfileImageUrl = widget.savedComment!.profileImageUrl;
       _recordedFilePath = widget.savedComment!.audioUrl;
       _waveformData = widget.savedComment!.waveformData;
+    } else if (widget.initialRecordingPath != null &&
+        widget.initialRecordingPath!.isNotEmpty) {
+      _currentState = RecordingState.recorded;
+      _recordedFilePath = widget.initialRecordingPath;
+      _waveformData = widget.initialWaveformData;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _preparePlayerForExistingRecording();
+      });
     } else if (widget.autoStart) {
       _currentState = RecordingState.recording;
+    }
+  }
+
+  Future<void> _preparePlayerForExistingRecording() async {
+    if (!mounted) return;
+
+    final path = widget.initialRecordingPath;
+    if (path == null || path.isEmpty || playerController == null) {
+      return;
+    }
+
+    try {
+      await playerController!.preparePlayer(
+        path: path,
+        shouldExtractWaveform: widget.initialWaveformData == null,
+      );
+
+      if ((_waveformData == null || _waveformData!.isEmpty)) {
+        final extractedWaveform = await playerController!
+            .extractWaveformData(path: path, noOfSamples: 100);
+
+        if (extractedWaveform.isNotEmpty && mounted) {
+          setState(() {
+            _waveformData = extractedWaveform;
+          });
+        } else if (_waveformData == null && extractedWaveform.isNotEmpty) {
+          _waveformData = extractedWaveform;
+        }
+      }
+    } catch (e) {
+      debugPrint('기존 녹음 준비 오류: $e');
     }
   }
 
@@ -279,6 +324,8 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
         });
       }
     }
+
+    widget.onRecordingCleared?.call();
   }
 
   void _deleteRecording() {
@@ -298,6 +345,8 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
     } catch (e) {
       debugPrint('녹음 파일 삭제 오류: $e');
     }
+
+    widget.onRecordingCleared?.call();
   }
 
   // ========== 재생 관련 메서드들 ==========
@@ -860,7 +909,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
         shape: BoxShape.circle,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
+            color: Colors.black.withOpacity(0.3),
             blurRadius: 8,
             offset: Offset(0, 2),
           ),
