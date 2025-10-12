@@ -43,7 +43,10 @@ class CaptionInputWidget extends StatelessWidget {
                     letterSpacing: -0.50,
                   ),
                   cursorColor: Colors.white,
-                  textInputAction: TextInputAction.done,
+                  textInputAction: TextInputAction.newline,
+                  onTapOutside: (event) {
+                    FocusScope.of(context).unfocus();
+                  },
                   decoration: InputDecoration(
                     isCollapsed: true,
                     border: InputBorder.none,

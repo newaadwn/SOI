@@ -148,8 +148,15 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
         settings.flashMode = flashMode
         
         // 🎨 색공간을 sRGB로 명시적 설정 (색상 일관성 향상)
-        if #available(iOS 10.0, *) {
-            settings.photoQualityPrioritization = .quality
+        if #available(iOS 13.0, *) {
+            let desiredPriority: AVCapturePhotoOutput.QualityPrioritization = .quality
+            let maxSupportedPriority = photoOutput.maxPhotoQualityPrioritization
+
+            if desiredPriority.rawValue <= maxSupportedPriority.rawValue {
+                settings.photoQualityPrioritization = desiredPriority
+            } else {
+                settings.photoQualityPrioritization = maxSupportedPriority
+            }
         }
         
         // 색공간 설정은 photoOutput에서 처리됨 (아래 setupPhotoOutput 참조)

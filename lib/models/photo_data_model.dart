@@ -14,6 +14,7 @@ class PhotoDataModel {
   final Duration duration; // 음성 길이 (초 단위) 추가
   final bool unactive; // 사용자 비활성화 상태
   final DateTime? deletedAt; // 삭제된 시간 (30일 후 영구 삭제를 위해)
+  final String? caption; // 게시글 텍스트
 
   PhotoDataModel({
     required this.id,
@@ -28,6 +29,7 @@ class PhotoDataModel {
     this.duration = const Duration(seconds: 0), // 기본값 0초
     this.unactive = false, // 기본값 false
     this.deletedAt, // 삭제 시간
+    this.caption, // 게시글
   });
 
   // Firestore에서 데이터를 가져올 때 사용
@@ -62,6 +64,7 @@ class PhotoDataModel {
       duration: Duration(seconds: (data['duration'] ?? 0) as int), // 음성 길이 추가
       unactive: data['unactive'] ?? false, // 사용자 비활성화 상태 추가
       deletedAt: (data['deletedAt'] as Timestamp?)?.toDate(), // 삭제 시간 추가
+      caption: data['caption'] as String?, // 게시글 추가
     );
   }
 
@@ -78,6 +81,11 @@ class PhotoDataModel {
       'duration': duration.inSeconds, // 음성 길이 추가 (초 단위로 저장)
       'unactive': unactive, // 사용자 비활성화 상태 추가
     };
+
+    // caption이 있을 때만 추가
+    if (caption != null && caption!.isNotEmpty) {
+      data['caption'] = caption;
+    }
 
     // waveformData가 있을 때만 추가
     if (waveformData != null) {

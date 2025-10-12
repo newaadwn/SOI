@@ -58,6 +58,7 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
   // 해당 사진(위젯 인스턴스)에서 음성 댓글 프로필 표시 여부
   bool _isShowingComments = false; // 기본은 숨김
   bool _autoOpenedOnce = false; // 최초 자동 열림 1회 제어
+  bool _isCaptionExpanded = false; // caption 확장 여부
 
   final CommentRecordController _commentRecordController =
       CommentRecordController();
@@ -339,122 +340,250 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                         ),
 
                       // 오디오 컨트롤 오버레이 (photo_detail처럼)
-                      Positioned(
-                        left: 20.w,
-                        bottom: 7.h,
-                        child: SizedBox(
-                          height: 50.h,
-                          child: Row(
-                            children: [
-                              // 오디오 영역 (고정 width)
-                              SizedBox(
-                                width: 278.w,
-                                child:
-                                    widget.photo.audioUrl.isNotEmpty
-                                        ? GestureDetector(
-                                          onTap:
-                                              () => widget.onToggleAudio(
-                                                widget.photo,
-                                              ),
-                                          child: Container(
-                                            width: 278.w,
-                                            height: 40,
+                      if (widget.photo.audioUrl.isNotEmpty)
+                        Positioned(
+                          left: 20.w,
+                          bottom: 7.h,
+                          child: SizedBox(
+                            height: 50.h,
+                            child: Row(
+                              children: [
+                                // 오디오 영역 (고정 width)
+                                SizedBox(
+                                  width: 278.w,
+                                  child: GestureDetector(
+                                    onTap:
+                                        () =>
+                                            widget.onToggleAudio(widget.photo),
+                                    child: Container(
+                                      width: 278.w,
+                                      height: 40,
+                                      decoration: BoxDecoration(
+                                        color: Color(
+                                          0xff000000,
+                                        ).withValues(alpha: 0.4),
+                                        borderRadius: BorderRadius.circular(15),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          // 왼쪽 프로필 이미지 (작은 버전)
+                                          Container(
+                                            width: 27,
+                                            height: 27,
                                             decoration: BoxDecoration(
-                                              color: Color(
-                                                0xff000000,
-                                              ).withValues(alpha: 0.4),
-                                              borderRadius:
-                                                  BorderRadius.circular(15),
+                                              shape: BoxShape.circle,
                                             ),
-                                            child: Row(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.center,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment.center,
-                                              children: [
-                                                // 왼쪽 프로필 이미지 (작은 버전)
-                                                Container(
-                                                  width: 27,
-                                                  height: 27,
-                                                  decoration: BoxDecoration(
-                                                    shape: BoxShape.circle,
-                                                  ),
-                                                  child: ClipOval(
-                                                    child:
-                                                        _buildUserProfileWidget(
-                                                          context,
-                                                        ),
-                                                  ),
-                                                ),
-                                                SizedBox(width: (17).w),
-
-                                                // 가운데 파형 (progress 포함)
-                                                SizedBox(
-                                                  width: (144.62).w,
-                                                  height: 32.h,
-                                                  child:
-                                                      _buildWaveformWidgetWithProgress(),
-                                                ),
-
-                                                SizedBox(width: (17).w),
-
-                                                // 오른쪽 재생 시간 (실시간 업데이트)
-                                                SizedBox(
-                                                  width: 45.w,
-                                                  child: Consumer<
-                                                    AudioController
-                                                  >(
-                                                    builder: (
-                                                      context,
-                                                      audioController,
-                                                      child,
-                                                    ) {
-                                                      // 현재 사진의 오디오가 재생 중인지 확인
-                                                      final isCurrentAudio =
-                                                          audioController
-                                                              .isPlaying &&
-                                                          audioController
-                                                                  .currentPlayingAudioUrl ==
-                                                              widget
-                                                                  .photo
-                                                                  .audioUrl;
-
-                                                      // 실시간 재생 시간 사용
-                                                      Duration displayDuration =
-                                                          Duration.zero;
-                                                      if (isCurrentAudio) {
-                                                        displayDuration =
-                                                            audioController
-                                                                .currentPosition;
-                                                      }
-
-                                                      return Text(
-                                                        FormatUtils.formatDuration(
-                                                          (isCurrentAudio)
-                                                              ? displayDuration
-                                                              : widget
-                                                                  .photo
-                                                                  .duration,
-                                                        ),
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 12.sp,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                        ),
-                                                      );
-                                                    },
-                                                  ),
-                                                ),
-                                              ],
+                                            child: ClipOval(
+                                              child: _buildUserProfileWidget(
+                                                context,
+                                              ),
                                             ),
                                           ),
-                                        )
-                                        // 오디오가 없으면 빈 컨테이너
-                                        : Container(),
-                              ),
+                                          SizedBox(width: (17).w),
 
-                              // 댓글 아이콘 영역 (고정 width)
+                                          // 가운데 파형 (progress 포함)
+                                          SizedBox(
+                                            width: (144.62).w,
+                                            height: 32.h,
+                                            child:
+                                                _buildWaveformWidgetWithProgress(),
+                                          ),
+
+                                          SizedBox(width: (17).w),
+
+                                          // 오른쪽 재생 시간 (실시간 업데이트)
+                                          SizedBox(
+                                            width: 45.w,
+                                            child: Consumer<AudioController>(
+                                              builder: (
+                                                context,
+                                                audioController,
+                                                child,
+                                              ) {
+                                                // 현재 사진의 오디오가 재생 중인지 확인
+                                                final isCurrentAudio =
+                                                    audioController.isPlaying &&
+                                                    audioController
+                                                            .currentPlayingAudioUrl ==
+                                                        widget.photo.audioUrl;
+
+                                                // 실시간 재생 시간 사용
+                                                Duration displayDuration =
+                                                    Duration.zero;
+                                                if (isCurrentAudio) {
+                                                  displayDuration =
+                                                      audioController
+                                                          .currentPosition;
+                                                }
+
+                                                return Text(
+                                                  FormatUtils.formatDuration(
+                                                    (isCurrentAudio)
+                                                        ? displayDuration
+                                                        : widget.photo.duration,
+                                                  ),
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 12.sp,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+
+                                // 댓글 아이콘 영역 (고정 width)
+                                SizedBox(
+                                  width: 60.w,
+                                  child:
+                                      (widget.photoComments[widget.photo.id] ??
+                                                  [])
+                                              .isNotEmpty
+                                          ? Center(
+                                            child: IconButton(
+                                              onPressed: () {
+                                                setState(() {
+                                                  _isShowingComments =
+                                                      !_isShowingComments;
+                                                });
+                                              },
+                                              icon: Image.asset(
+                                                "assets/comment_profile_icon.png",
+                                                width: 25.w,
+                                                height: 25.h,
+                                              ),
+                                            ),
+                                          )
+                                          // 댓글이 없으면 빈 컨테이너
+                                          : Container(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+
+                      // Caption 표시 (오디오가 없을 때)
+                      if (widget.photo.audioUrl.isEmpty &&
+                          widget.photo.caption != null &&
+                          widget.photo.caption!.isNotEmpty)
+                        Positioned(
+                          left: 20.w,
+                          bottom: 7.h,
+                          child: Row(
+                            children: [
+                              LayoutBuilder(
+                                builder: (context, constraints) {
+                                  // 텍스트가 오버플로우되는지 확인
+                                  final textSpan = TextSpan(
+                                    text: widget.photo.caption!,
+                                    style: TextStyle(
+                                      fontSize: 14.sp,
+                                      fontFamily: 'Pretendard',
+                                      fontWeight: FontWeight.w400,
+                                      letterSpacing: -0.5,
+                                      height: 1.4,
+                                    ),
+                                  );
+
+                                  final textPainter = TextPainter(
+                                    text: textSpan,
+                                    maxLines: 1,
+                                    textDirection: TextDirection.ltr,
+                                  );
+
+                                  textPainter.layout(
+                                    maxWidth: 278.w - 10.w * 2 - 27 - 12.w,
+                                  );
+                                  final isOverflowing =
+                                      textPainter.didExceedMaxLines ||
+                                      widget.photo.caption!.contains('\n');
+
+                                  return GestureDetector(
+                                    onTap:
+                                        isOverflowing
+                                            ? () {
+                                              setState(() {
+                                                _isCaptionExpanded =
+                                                    !_isCaptionExpanded;
+                                              });
+                                            }
+                                            : null,
+                                    child: Container(
+                                      width: 278.w,
+                                      constraints: BoxConstraints(
+                                        minHeight: 40.h,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Color(
+                                          0xff000000,
+                                        ).withValues(alpha: 0.4),
+                                        borderRadius: BorderRadius.circular(15),
+                                      ),
+                                      child: Padding(
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 10.w,
+                                          vertical: 6.5.h,
+                                        ),
+                                        child: Row(
+                                          crossAxisAlignment:
+                                              _isCaptionExpanded
+                                                  ? CrossAxisAlignment.start
+                                                  : CrossAxisAlignment.center,
+                                          children: [
+                                            // 왼쪽 프로필 이미지
+                                            Container(
+                                              width: 27,
+                                              height: 27,
+                                              decoration: BoxDecoration(
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: ClipOval(
+                                                child: _buildUserProfileWidget(
+                                                  context,
+                                                ),
+                                              ),
+                                            ),
+                                            SizedBox(width: 12.w),
+
+                                            // Caption 텍스트
+                                            Expanded(
+                                              child: Text(
+                                                widget.photo.caption!,
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 14.sp,
+                                                  fontFamily: 'Pretendard',
+                                                  fontWeight: FontWeight.w400,
+                                                  letterSpacing: -0.5,
+                                                  height: 1.4,
+                                                ),
+                                                maxLines:
+                                                    _isCaptionExpanded
+                                                        ? null
+                                                        : 1,
+                                                overflow:
+                                                    _isCaptionExpanded
+                                                        ? TextOverflow.visible
+                                                        : TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              // 댓글 아이콘 영역
                               SizedBox(
                                 width: 60.w,
                                 child:
@@ -476,13 +605,11 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                             ),
                                           ),
                                         )
-                                        // 댓글이 없으면 빈 컨테이너
                                         : Container(),
                               ),
                             ],
                           ),
                         ),
-                      ),
 
                       // 모든 댓글의 드롭된 프로필 이미지들 표시 (상대 좌표 사용)
                       ...(() {

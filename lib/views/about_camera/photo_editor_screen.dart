@@ -466,6 +466,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         userId: userId,
         userIds: [userId],
         audioFile: null,
+        caption: data['caption'] as String?,
       );
     }
   }
@@ -525,7 +526,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                   // 사진 영역 (스크롤 가능)
                   Positioned.fill(
                     child: SingleChildScrollView(
-                      physics: NeverScrollableScrollPhysics(),
+                      //physics: NeverScrollableScrollPhysics(),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -552,7 +553,10 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                             : MediaQuery.of(context).size.height *
                                 _kLockedSheetExtent,
 
-                    child: _buildCaptionInputBar(),
+                    child: SizedBox(
+                      height: 50.h,
+                      child: _buildCaptionInputBar(),
+                    ),
                   ),
                 ],
               ),

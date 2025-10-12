@@ -84,6 +84,7 @@ class PhotoRepository {
     required String categoryId,
     List<double>? waveformData,
     Duration? duration,
+    String? caption,
   }) async {
     try {
       // 기본 데이터 구성
@@ -96,8 +97,14 @@ class PhotoRepository {
         'createdAt': FieldValue.serverTimestamp(),
         'status': PhotoStatus.active.name,
         'duration': duration?.inSeconds ?? 0,
-        'unactive': false, // 사진 생성 시 기본값으로 false 설정
       };
+
+      // caption이 있을 때만 추가
+      if (caption != null && caption.isNotEmpty) {
+        photoData['caption'] = caption;
+      }
+
+      // 파형 데이터 처리 및 상세 로그
 
       // 파형 데이터 처리 및 상세 로그
       if (waveformData != null && waveformData.isNotEmpty) {

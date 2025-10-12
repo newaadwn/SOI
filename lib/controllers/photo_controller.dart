@@ -54,6 +54,7 @@ class PhotoController extends ChangeNotifier {
     required String categoryId,
     required String userId,
     required List<String> userIds,
+    String? caption,
   }) async {
     try {
       _isUploading = true;
@@ -80,6 +81,7 @@ class PhotoController extends ChangeNotifier {
         categoryId: categoryId,
         userId: userId,
         userIds: userIds,
+        caption: caption,
       );
 
       _isUploading = false;

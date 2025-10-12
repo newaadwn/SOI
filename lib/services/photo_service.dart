@@ -53,6 +53,7 @@ class PhotoService {
     required String categoryId,
     required String userId,
     required List<String> userIds,
+    String? caption,
   }) async {
     try {
       // 입력 검증
@@ -102,6 +103,7 @@ class PhotoService {
         categoryId: categoryId,
         createdAt: DateTime.now(),
         unactive: false, // 사진 생성 시 기본값으로 false 설정
+        caption: caption, // 게시글 추가
       );
 
       // 4. Firestore에 메타데이터 저장
@@ -195,6 +197,7 @@ class PhotoService {
     required String categoryId,
     List<double>? waveformData,
     Duration? duration,
+    String? caption,
   }) async {
     try {
       // 1. 이미지 업로드
@@ -242,6 +245,7 @@ class PhotoService {
         categoryId: categoryId,
         waveformData: finalWaveformData, // 파형 데이터 전달
         duration: duration, // 음성 길이 전달
+        caption: caption, // 게시글 전달
       );
 
       // 카테고리의 최신 사진 정보 업데이트
