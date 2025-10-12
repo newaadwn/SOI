@@ -54,6 +54,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   bool _isCaptionEmpty = true;
 
   // 키보드 높이
+  double get keyboardHeight => MediaQuery.of(context).viewInsets.bottom;
+  bool get isKeyboardVisible => keyboardHeight > 0;
 
   // 컨트롤러들
   final _draggableScrollController = DraggableScrollableController();
@@ -329,6 +331,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                     _shouldAutoStartRecording = true;
                   });
                 },
+                isKeyboardVisible: isKeyboardVisible,
+                keyboardHeight: keyboardHeight,
               ),
     );
   }
@@ -484,10 +488,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
 
   @override
   Widget build(BuildContext context) {
-    final double bottomInset = MediaQuery.of(context).viewInsets.bottom;
-    final bool keyboardVisible = bottomInset > 0;
-    // final double captionBottom = 10.h;
-
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
@@ -510,53 +510,34 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         toolbarHeight: 70.h,
         backgroundColor: Colors.black,
       ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            child: Column(
-              children: [
-                Center(
-                  child:
-                      _isLoading
-                          ? const CircularProgressIndicator()
-                          : _errorMessage != null
-                          ? Text(
-                            _errorMessage!,
-                            style: const TextStyle(color: Colors.white),
-                          )
-                          : Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              PhotoDisplayWidget(
-                                imagePath: widget.imagePath,
-                                downloadUrl: widget.downloadUrl,
-                                useLocalImage: _useLocalImage,
-                                useDownloadUrl: _useDownloadUrl,
-                                width: 354.w,
-                                height: 500.h,
-                                onCancel: _resetBottomSheetIfNeeded,
-                              ),
-                              SizedBox(height: 15.h),
-                            ],
-                          ),
+      body: SingleChildScrollView(
+        child:
+            _isLoading
+                ? const CircularProgressIndicator()
+                : _errorMessage != null
+                ? Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: Colors.white),
+                )
+                : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    PhotoDisplayWidget(
+                      imagePath: widget.imagePath,
+                      downloadUrl: widget.downloadUrl,
+                      useLocalImage: _useLocalImage,
+                      useDownloadUrl: _useDownloadUrl,
+                      width: 354.w,
+                      height: 500.h,
+                      onCancel: _resetBottomSheetIfNeeded,
+                    ),
+                    SizedBox(height: (15.h)),
+                    _buildCaptionInputBar(),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            top: 200,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20.w),
-              child: _buildCaptionInputBar(),
-            ),
-          ),
-        ],
       ),
       bottomSheet:
-          (keyboardVisible)
+          (isKeyboardVisible)
               ? null
               : NotificationListener<DraggableScrollableNotification>(
                 onNotification: (notification) {
