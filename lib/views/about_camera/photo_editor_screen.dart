@@ -14,6 +14,7 @@ import '../../models/selected_friend_model.dart';
 import '../home_navigator_screen.dart';
 import 'widgets/add_category_widget.dart';
 import 'widgets/audio_recorder_widget.dart';
+import 'widgets/caption_input_widget.dart';
 import 'widgets/category_list_widget.dart';
 import 'widgets/loading_popup_widget.dart';
 import 'widgets/photo_display_widget.dart';
@@ -44,12 +45,16 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   double _minChildSize = _kInitialSheetExtent;
   double _initialChildSize = _kInitialSheetExtent;
   bool _hasLockedSheetExtent = false;
+
   // 오디오 관련 변수들
   List<double>? _recordedWaveformData;
   String? _recordedAudioPath;
   bool _isRecorderVisible = false;
   bool _shouldAutoStartRecording = false;
   bool _isCaptionEmpty = true;
+
+  // 키보드 높이
+
   // 컨트롤러들
   final _draggableScrollController = DraggableScrollableController();
   final _categoryNameController = TextEditingController();
@@ -58,6 +63,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   late CategoryController _categoryController;
   late AuthController _authController;
   late PhotoController _photoController;
+
   // ========== 생명주기 메서드들 ==========
   @override
   void initState() {
@@ -187,11 +193,12 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     }
     final currentUser = _authController.currentUser;
     if (currentUser == null) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _errorMessage = "로그인이 필요합니다.";
           _isLoading = false;
         });
+      }
       return;
     }
     try {
@@ -206,10 +213,11 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       }
       if (mounted) setState(() {});
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _errorMessage = "카테고리 로드 중 오류 발생: $e";
         });
+      }
     }
   }
 
@@ -269,11 +277,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   }
 
   Widget _buildCaptionInputBar() {
-    final hasRecording =
-        _recordedAudioPath != null && _recordedAudioPath!.isNotEmpty;
-    final Color backgroundColor = const Color(0xFF383838).withOpacity(0.66);
-    final Color micBackground =
-        hasRecording ? const Color(0xFF3F3F40) : const Color(0xFF27272A);
     final bool showRecorder = _isRecorderVisible;
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
@@ -317,141 +320,15 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                   },
                 ),
               )
-              : Column(
-                key: const ValueKey('caption_view'),
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(
-                    width: 353.w,
-                    height: 46.h,
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: backgroundColor,
-                        borderRadius: BorderRadius.circular(21.5),
-                      ),
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 19.w),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _captionController,
-                                maxLines: 1,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontFamily: 'Pretendard',
-                                  fontWeight: FontWeight.w200,
-                                  letterSpacing: -0.5,
-                                  height: 1.18,
-                                ),
-                                cursorColor: Colors.white,
-                                textInputAction: TextInputAction.done,
-                                decoration: InputDecoration(
-                                  isCollapsed: true,
-                                  border: InputBorder.none,
-                                  hintText: '게시글 추가하기....',
-                                  hintStyle: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.6),
-                                    fontSize: 16,
-                                    fontFamily: 'Pretendard',
-                                    fontWeight: FontWeight.w200,
-                                    letterSpacing: -0.5,
-                                    height: 1.18,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            SizedBox(width: 12.w),
-                            AnimatedSwitcher(
-                              duration: const Duration(milliseconds: 200),
-                              transitionBuilder:
-                                  (child, animation) => FadeTransition(
-                                    opacity: animation,
-                                    child: child,
-                                  ),
-                              child:
-                                  _isCaptionEmpty
-                                      ? Material(
-                                        key: const ValueKey('mic_button'),
-                                        color: Colors.transparent,
-                                        child: InkWell(
-                                          onTap: () {
-                                            setState(() {
-                                              _recordedAudioPath = null;
-                                              _recordedWaveformData = null;
-                                              _shouldAutoStartRecording = true;
-                                              _isRecorderVisible = true;
-                                            });
-                                          },
-                                          borderRadius: BorderRadius.circular(
-                                            18.r,
-                                          ),
-                                          child: Ink(
-                                            width: 36.w,
-                                            height: 36.h,
-                                            decoration: BoxDecoration(
-                                              color: micBackground,
-                                              borderRadius:
-                                                  BorderRadius.circular(18.r),
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.black
-                                                      .withOpacity(0.31),
-                                                  offset: const Offset(
-                                                    -0.84,
-                                                    -1.97,
-                                                  ),
-                                                  blurRadius: 2.25,
-                                                ),
-                                                BoxShadow(
-                                                  color: Colors.white
-                                                      .withOpacity(0.06),
-                                                  offset: const Offset(
-                                                    0.28,
-                                                    1.13,
-                                                  ),
-                                                  blurRadius: 2.25,
-                                                ),
-                                              ],
-                                            ),
-                                            child: Icon(
-                                              hasRecording
-                                                  ? Icons.mic
-                                                  : Icons.mic_none,
-                                              color:
-                                                  hasRecording
-                                                      ? Colors.white
-                                                      : const Color(0xFFD9D9D9),
-                                              size: 20.sp,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                      : SizedBox(
-                                        key: const ValueKey('mic_placeholder'),
-                                        width: 36.w,
-                                        height: 36.h,
-                                      ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (hasRecording)
-                    Padding(
-                      padding: EdgeInsets.only(top: 8.h, left: 4.w),
-                      child: Text(
-                        '녹음된 음성 메모가 저장되었습니다.',
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 12.sp,
-                          fontFamily: 'Pretendard',
-                        ),
-                      ),
-                    ),
-                ],
+              : CaptionInputWidget(
+                controller: _captionController,
+                isCaptionEmpty: _isCaptionEmpty,
+                onMicTap: () {
+                  setState(() {
+                    _isRecorderVisible = true;
+                    _shouldAutoStartRecording = true;
+                  });
+                },
               ),
     );
   }
@@ -605,35 +482,37 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     }
   }
 
-  // ========== 이미지 및 데이터 최적화 메서드들 ==========
-  // ========== UI 빌드 메서드 ==========
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        Scaffold(
-          backgroundColor: Colors.black,
-          appBar: AppBar(
-            automaticallyImplyLeading: false,
-            title: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'SOI',
-                  style: TextStyle(
-                    color: Color(0xfff9f9f9),
-                    fontSize: 20.sp,
-                    fontFamily: GoogleFonts.inter().fontFamily,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: 30.h),
-              ],
+    final double bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    final bool keyboardVisible = bottomInset > 0;
+    // final double captionBottom = 10.h;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        automaticallyImplyLeading: false,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'SOI',
+              style: TextStyle(
+                color: Color(0xfff9f9f9),
+                fontSize: 20.sp,
+                fontFamily: GoogleFonts.inter().fontFamily,
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            toolbarHeight: 70.h,
-            backgroundColor: Colors.black,
-          ),
-          body: SingleChildScrollView(
+            SizedBox(height: 30.h),
+          ],
+        ),
+        toolbarHeight: 70.h,
+        backgroundColor: Colors.black,
+      ),
+      body: Stack(
+        children: [
+          SingleChildScrollView(
             child: Column(
               children: [
                 Center(
@@ -657,164 +536,184 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                 height: 500.h,
                                 onCancel: _resetBottomSheetIfNeeded,
                               ),
-                              SizedBox(height: (15.h)),
-                              _buildCaptionInputBar(),
+                              SizedBox(height: 15.h),
                             ],
                           ),
                 ),
               ],
             ),
           ),
-          bottomSheet: NotificationListener<DraggableScrollableNotification>(
-            onNotification: (notification) {
-              if (!_hasLockedSheetExtent && notification.extent < 0.01) {
-                if (mounted && !_isDisposing && !_hasLockedSheetExtent) {
-                  _animateSheetTo(_kLockedSheetExtent, lockExtent: true);
-                }
-              }
-              return true;
-            },
-            child: DraggableScrollableSheet(
-              controller: _draggableScrollController,
-              initialChildSize: _initialChildSize,
-              minChildSize: _minChildSize,
-              maxChildSize: _kMaxSheetExtent,
-              expand: false,
-              builder: (context, scrollController) {
-                return LayoutBuilder(
-                  builder: (context, constraints) {
-                    final double maxHeight = constraints.maxHeight;
-                    final double desiredHandleHeight =
-                        _showAddCategoryUI ? 12.h : (3.h + 10.h + 12.h);
-                    final double effectiveHandleHeight = math.min(
-                      maxHeight,
-                      desiredHandleHeight,
-                    );
-                    final double desiredSpacing = 4.h;
-                    final double effectiveSpacing =
-                        maxHeight > effectiveHandleHeight
-                            ? desiredSpacing
-                            : 0.0;
-                    final double contentHeight = math.max(
-                      0.0,
-                      maxHeight - effectiveHandleHeight - effectiveSpacing,
-                    );
-                    return Container(
-                      decoration: BoxDecoration(
-                        color: Color(0xff171717),
-                        borderRadius: BorderRadius.vertical(
-                          top: Radius.circular(20),
-                        ),
-                      ),
-                      child: SingleChildScrollView(
-                        child: Column(
-                          children: [
-                            SizedBox(
-                              height: effectiveHandleHeight,
-                              child:
-                                  _showAddCategoryUI
-                                      ? Center(
-                                        child: Container(
-                                          margin: EdgeInsets.only(bottom: 12.h),
-                                        ),
-                                      )
-                                      : Center(
-                                        child: Container(
-                                          height: math.min(
-                                            3.h,
-                                            effectiveHandleHeight,
-                                          ),
-                                          width: 56.w,
-                                          margin: EdgeInsets.only(
-                                            top: math.min(
-                                              10.h,
-                                              effectiveHandleHeight / 2,
-                                            ),
-                                            bottom: math.min(
-                                              12.h,
-                                              effectiveHandleHeight / 2,
-                                            ),
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: Color(0xffcdcdcd),
-                                            borderRadius: BorderRadius.circular(
-                                              4,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                            ),
-                            SizedBox(height: effectiveSpacing),
-                            SizedBox(
-                              height: contentHeight,
-                              child: AnimatedSwitcher(
-                                duration: Duration(milliseconds: 300),
-                                child:
-                                    _showAddCategoryUI
-                                        ? ClipRect(
-                                          child: LayoutBuilder(
-                                            builder: (context, addConstraints) {
-                                              return ConstrainedBox(
-                                                constraints: BoxConstraints(
-                                                  maxHeight:
-                                                      addConstraints.maxHeight,
-                                                  maxWidth:
-                                                      addConstraints.maxWidth,
-                                                ),
-                                                child: AddCategoryWidget(
-                                                  textController:
-                                                      _categoryNameController,
-                                                  scrollController:
-                                                      scrollController,
-                                                  onBackPressed: () {
-                                                    setState(() {
-                                                      _showAddCategoryUI =
-                                                          false;
-                                                      _categoryNameController
-                                                          .clear();
-                                                    });
-                                                    _animateSheetTo(
-                                                      _kLockedSheetExtent,
-                                                    );
-                                                  },
-                                                  onSavePressed:
-                                                      (selectedFriends) =>
-                                                          _createNewCategory(
-                                                            selectedFriends,
-                                                          ),
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        )
-                                        : CategoryListWidget(
-                                          scrollController: scrollController,
-                                          selectedCategoryId:
-                                              _selectedCategoryId,
-                                          onCategorySelected:
-                                              _handleCategorySelection,
-                                          addCategoryPressed: () {
-                                            setState(
-                                              () => _showAddCategoryUI = true,
-                                            );
-                                            _animateSheetTo(0.65);
-                                          },
-                                          isLoading:
-                                              _categoryController.isLoading,
-                                        ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            top: 200,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20.w),
+              child: _buildCaptionInputBar(),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
+      bottomSheet:
+          (keyboardVisible)
+              ? null
+              : NotificationListener<DraggableScrollableNotification>(
+                onNotification: (notification) {
+                  if (!_hasLockedSheetExtent && notification.extent < 0.01) {
+                    if (mounted && !_isDisposing && !_hasLockedSheetExtent) {
+                      _animateSheetTo(_kLockedSheetExtent, lockExtent: true);
+                    }
+                  }
+                  return true;
+                },
+                child: DraggableScrollableSheet(
+                  controller: _draggableScrollController,
+                  initialChildSize: _initialChildSize,
+                  minChildSize: _minChildSize,
+                  maxChildSize: _kMaxSheetExtent,
+                  expand: false,
+                  builder: (context, scrollController) {
+                    return LayoutBuilder(
+                      builder: (context, constraints) {
+                        final double maxHeight = constraints.maxHeight;
+                        final double desiredHandleHeight =
+                            _showAddCategoryUI ? 12.h : (3.h + 10.h + 12.h);
+                        final double effectiveHandleHeight = math.min(
+                          maxHeight,
+                          desiredHandleHeight,
+                        );
+                        final double desiredSpacing = 4.h;
+                        final double effectiveSpacing =
+                            maxHeight > effectiveHandleHeight
+                                ? desiredSpacing
+                                : 0.0;
+                        final double contentHeight = math.max(
+                          0.0,
+                          maxHeight - effectiveHandleHeight - effectiveSpacing,
+                        );
+                        return Container(
+                          decoration: BoxDecoration(
+                            color: Color(0xff171717),
+                            borderRadius: BorderRadius.vertical(
+                              top: Radius.circular(20),
+                            ),
+                          ),
+                          child: SingleChildScrollView(
+                            child: Column(
+                              children: [
+                                SizedBox(
+                                  height: effectiveHandleHeight,
+                                  child:
+                                      _showAddCategoryUI
+                                          ? Center(
+                                            child: Container(
+                                              margin: EdgeInsets.only(
+                                                bottom: 12.h,
+                                              ),
+                                            ),
+                                          )
+                                          : Center(
+                                            child: Container(
+                                              height: math.min(
+                                                3.h,
+                                                effectiveHandleHeight,
+                                              ),
+                                              width: 56.w,
+                                              margin: EdgeInsets.only(
+                                                top: math.min(
+                                                  10.h,
+                                                  effectiveHandleHeight / 2,
+                                                ),
+                                                bottom: math.min(
+                                                  12.h,
+                                                  effectiveHandleHeight / 2,
+                                                ),
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Color(0xffcdcdcd),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
+                                              ),
+                                            ),
+                                          ),
+                                ),
+                                SizedBox(height: effectiveSpacing),
+                                SizedBox(
+                                  height: contentHeight,
+                                  child: AnimatedSwitcher(
+                                    duration: Duration(milliseconds: 300),
+                                    child:
+                                        _showAddCategoryUI
+                                            ? ClipRect(
+                                              child: LayoutBuilder(
+                                                builder: (
+                                                  context,
+                                                  addConstraints,
+                                                ) {
+                                                  return ConstrainedBox(
+                                                    constraints: BoxConstraints(
+                                                      maxHeight:
+                                                          addConstraints
+                                                              .maxHeight,
+                                                      maxWidth:
+                                                          addConstraints
+                                                              .maxWidth,
+                                                    ),
+                                                    child: AddCategoryWidget(
+                                                      textController:
+                                                          _categoryNameController,
+                                                      scrollController:
+                                                          scrollController,
+                                                      onBackPressed: () {
+                                                        setState(() {
+                                                          _showAddCategoryUI =
+                                                              false;
+                                                          _categoryNameController
+                                                              .clear();
+                                                        });
+                                                        _animateSheetTo(
+                                                          _kLockedSheetExtent,
+                                                        );
+                                                      },
+                                                      onSavePressed:
+                                                          (selectedFriends) =>
+                                                              _createNewCategory(
+                                                                selectedFriends,
+                                                              ),
+                                                    ),
+                                                  );
+                                                },
+                                              ),
+                                            )
+                                            : CategoryListWidget(
+                                              scrollController:
+                                                  scrollController,
+                                              selectedCategoryId:
+                                                  _selectedCategoryId,
+                                              onCategorySelected:
+                                                  _handleCategorySelection,
+                                              addCategoryPressed: () {
+                                                setState(
+                                                  () =>
+                                                      _showAddCategoryUI = true,
+                                                );
+                                                _animateSheetTo(0.65);
+                                              },
+                                              isLoading:
+                                                  _categoryController.isLoading,
+                                            ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
     );
   }
 
