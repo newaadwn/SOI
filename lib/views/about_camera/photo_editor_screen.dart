@@ -510,32 +510,52 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
         toolbarHeight: 70.h,
         backgroundColor: Colors.black,
       ),
-      body: SingleChildScrollView(
-        child:
-            _isLoading
-                ? const CircularProgressIndicator()
-                : _errorMessage != null
-                ? Text(
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _errorMessage != null
+              ? Center(
+                child: Text(
                   _errorMessage!,
                   style: const TextStyle(color: Colors.white),
-                )
-                : Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    PhotoDisplayWidget(
-                      imagePath: widget.imagePath,
-                      downloadUrl: widget.downloadUrl,
-                      useLocalImage: _useLocalImage,
-                      useDownloadUrl: _useDownloadUrl,
-                      width: 354.w,
-                      height: 500.h,
-                      onCancel: _resetBottomSheetIfNeeded,
-                    ),
-                    SizedBox(height: (15.h)),
-                    _buildCaptionInputBar(),
-                  ],
                 ),
-      ),
+              )
+              : Stack(
+                children: [
+                  // 사진 영역 (스크롤 가능)
+                  Positioned.fill(
+                    child: SingleChildScrollView(
+                      physics: NeverScrollableScrollPhysics(),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          PhotoDisplayWidget(
+                            imagePath: widget.imagePath,
+                            downloadUrl: widget.downloadUrl,
+                            useLocalImage: _useLocalImage,
+                            useDownloadUrl: _useDownloadUrl,
+                            width: 354.w,
+                            height: 500.h,
+                            onCancel: _resetBottomSheetIfNeeded,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  // 텍스트 필드 영역 (고정, 키보드에 따라 올라감)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom:
+                        isKeyboardVisible
+                            ? 10.h
+                            : MediaQuery.of(context).size.height *
+                                _kLockedSheetExtent,
+
+                    child: _buildCaptionInputBar(),
+                  ),
+                ],
+              ),
       bottomSheet:
           (isKeyboardVisible)
               ? null

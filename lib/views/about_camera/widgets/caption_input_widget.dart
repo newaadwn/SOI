@@ -20,14 +20,11 @@ class CaptionInputWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(
-        left: 20.w,
-        right: 20.w,
-        bottom: (isKeyboardVisible) ? keyboardHeight + 10.h : 0,
-      ),
+      padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: const Color(0xFF373737).withValues(alpha: 0.66),
+
           borderRadius: BorderRadius.circular(21.5),
         ),
         child: Padding(
