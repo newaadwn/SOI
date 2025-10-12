@@ -521,6 +521,8 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                       width: 278.w,
                                       constraints: BoxConstraints(
                                         minHeight: 40.h,
+                                        maxHeight:
+                                            _isCaptionExpanded ? 274.h : 40.h,
                                       ),
                                       decoration: BoxDecoration(
                                         color: Color(
@@ -554,27 +556,81 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                             ),
                                             SizedBox(width: 12.w),
 
-                                            // Caption 텍스트
+                                            // Caption 텍스트 with Scroll and Fade Effect
                                             Expanded(
-                                              child: Text(
-                                                widget.photo.caption!,
-                                                style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 14.sp,
-                                                  fontFamily: 'Pretendard',
-                                                  fontWeight: FontWeight.w400,
-                                                  letterSpacing: -0.5,
-                                                  height: 1.4,
-                                                ),
-                                                maxLines:
-                                                    _isCaptionExpanded
-                                                        ? null
-                                                        : 1,
-                                                overflow:
-                                                    _isCaptionExpanded
-                                                        ? TextOverflow.visible
-                                                        : TextOverflow.ellipsis,
-                                              ),
+                                              child:
+                                                  _isCaptionExpanded
+                                                      ? ShaderMask(
+                                                        shaderCallback: (
+                                                          Rect bounds,
+                                                        ) {
+                                                          return LinearGradient(
+                                                            begin:
+                                                                Alignment
+                                                                    .topCenter,
+                                                            end:
+                                                                Alignment
+                                                                    .bottomCenter,
+                                                            colors: [
+                                                              Colors
+                                                                  .transparent,
+                                                              Colors.white,
+                                                              Colors.white,
+                                                              Colors
+                                                                  .transparent,
+                                                            ],
+                                                            stops: [
+                                                              0.0,
+                                                              0.05,
+                                                              0.95,
+                                                              1.0,
+                                                            ],
+                                                          ).createShader(
+                                                            bounds,
+                                                          );
+                                                        },
+                                                        blendMode:
+                                                            BlendMode.dstIn,
+                                                        child: SingleChildScrollView(
+                                                          physics:
+                                                              BouncingScrollPhysics(),
+                                                          child: Text(
+                                                            widget
+                                                                .photo
+                                                                .caption!,
+                                                            style: TextStyle(
+                                                              color:
+                                                                  Colors.white,
+                                                              fontSize: 14.sp,
+                                                              fontFamily:
+                                                                  'Pretendard',
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w400,
+                                                              letterSpacing:
+                                                                  -0.5,
+                                                              height: 1.4,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      )
+                                                      : Text(
+                                                        widget.photo.caption!,
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                          fontSize: 14.sp,
+                                                          fontFamily:
+                                                              'Pretendard',
+                                                          fontWeight:
+                                                              FontWeight.w400,
+                                                          letterSpacing: -0.5,
+                                                          height: 1.4,
+                                                        ),
+                                                        maxLines: 1,
+                                                        overflow:
+                                                            TextOverflow
+                                                                .ellipsis,
+                                                      ),
                                             ),
                                           ],
                                         ),
