@@ -554,7 +554,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                 _kLockedSheetExtent,
 
                     child: SizedBox(
-                      height: 50.h,
+                      //height: 50.h -> 고정 높이를 가려야, 텍스트의 높이에 따라 텍스트 필드가 유동적으로 변함
                       child: _buildCaptionInputBar(),
                     ),
                   ),

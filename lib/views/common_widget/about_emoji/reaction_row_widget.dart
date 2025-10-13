@@ -10,12 +10,14 @@ class ReactionRow extends StatelessWidget {
   final Map<String, dynamic> data;
   final String emoji;
   final CommentRecordModel? comment;
+  final String? userName; // 사용자 이름 직접 전달
 
   const ReactionRow({
     super.key,
     required this.data,
     this.emoji = '',
     this.comment,
+    this.userName, // 추가
   });
 
   @override
@@ -26,10 +28,10 @@ class ReactionRow extends StatelessWidget {
             ? comment!.profileImageUrl
             : fallbackProfile;
 
-    final displayId =
+    final userId =
         comment?.recorderUser.isNotEmpty == true
             ? comment!.recorderUser
-            : (data['id'] as String? ?? '');
+            : (data['uid'] as String? ?? '');
 
     final createdAt = data['createdAt'];
     final createdDate =
@@ -65,8 +67,9 @@ class ReactionRow extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // 사용자 이름 직접 표시 (FutureBuilder 제거)
                     Text(
-                      displayId,
+                      userName ?? userId,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 13,

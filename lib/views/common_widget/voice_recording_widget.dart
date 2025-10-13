@@ -37,13 +37,13 @@ class VoiceRecordingWidget extends StatelessWidget {
     required this.onVoiceCommentDeleted,
     required this.onProfileImageDragged,
     this.onSaveRequested,
-    this.onSaveCompleted, // 저장 완료 후 초기화 콜백
+    this.onSaveCompleted,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 90.h, // 고정된 높이 설정
+      height: 90.h,
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         transitionBuilder: (Widget child, Animation<double> animation) {
@@ -56,7 +56,7 @@ class VoiceRecordingWidget extends StatelessWidget {
             voiceCommentActiveStates[photo.id] == true
                 ? Container(
                   key: ValueKey('voice-widget-${photo.id}'), // 고유 키 설정
-                  height: 90.h, // 컨테이너도 같은 높이로 고정
+
                   alignment: Alignment.center, // 내용을 중앙 정렬
                   child: Consumer<AuthController>(
                     builder: (context, authController, child) {
@@ -127,16 +127,68 @@ class VoiceRecordingWidget extends StatelessWidget {
                   ),
                 )
                 : Container(
-                  key: ValueKey('comment-icon-${photo.id}'), // 고유 키 설정
-                  height: 90.h,
-                  alignment: Alignment.center, // 중앙 정렬
-                  child: IconButton(
-                    onPressed: () => onToggleVoiceComment(photo.id),
-                    icon: Image.asset(
-                      width: 54.w,
-                      height: 54.h,
-                      'assets/comment.png',
+                  width: 353,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: const Color(0xff161616),
+                    borderRadius: BorderRadius.circular(21.5),
+                    border: Border.all(
+                      color: const Color(0x66D9D9D9),
+                      width: 1,
                     ),
+                  ),
+                  padding: EdgeInsets.only(left: 11.w),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        child: InkWell(
+                          onTap: () => onToggleVoiceComment(photo.id),
+                          child: Center(
+                            child: Image.asset(
+                              'assets/mic_icon.png',
+                              width: 36,
+                              height: 36,
+                            ),
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 12.w),
+                      Expanded(
+                        child: TextField(
+                          decoration: InputDecoration(
+                            isCollapsed: true,
+                            contentPadding: EdgeInsets.zero,
+                            border: InputBorder.none,
+
+                            hintText: '댓글 추가 ....',
+                            hintStyle: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontFamily: 'Pretendard',
+                              fontWeight: FontWeight.w200,
+                              letterSpacing: -1.14,
+                            ),
+                          ),
+                          cursorColor: Colors.white,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontFamily: 'Pretendard',
+                            fontWeight: FontWeight.w200,
+                            letterSpacing: -1.14,
+                          ),
+                          textAlignVertical: TextAlignVertical.center,
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {},
+                        icon: Image.asset(
+                          'assets/send_icon.png',
+                          width: 17,
+                          height: 17,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
       ),

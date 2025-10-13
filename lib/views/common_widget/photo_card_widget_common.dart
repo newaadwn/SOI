@@ -72,52 +72,67 @@ class PhotoCardWidgetCommon extends StatefulWidget {
 class _PhotoCardWidgetCommonState extends State<PhotoCardWidgetCommon> {
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Stack(
       children: [
-        if (!widget.isArchive) SizedBox(height: 90.h),
+        SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (!widget.isArchive) SizedBox(height: 90.h),
 
-        // 사진 표시 위젯
-        PhotoDisplayWidget(
-          key: ValueKey(widget.photo.id),
-          photo: widget.photo,
-          categoryName: widget.categoryName,
-          isArchive: widget.isArchive,
-          profileImagePositions: widget.profileImagePositions,
-          droppedProfileImageUrls: widget.droppedProfileImageUrls,
-          photoComments: widget.photoComments,
-          userProfileImages: widget.userProfileImages,
-          profileLoadingStates: widget.profileLoadingStates,
-          onProfileImageDragged: widget.onProfileImageDragged,
-          onToggleAudio: widget.onToggleAudio,
+              // 사진 표시 위젯
+              PhotoDisplayWidget(
+                key: ValueKey(widget.photo.id),
+                photo: widget.photo,
+                categoryName: widget.categoryName,
+                isArchive: widget.isArchive,
+                profileImagePositions: widget.profileImagePositions,
+                droppedProfileImageUrls: widget.droppedProfileImageUrls,
+                photoComments: widget.photoComments,
+                userProfileImages: widget.userProfileImages,
+                profileLoadingStates: widget.profileLoadingStates,
+                onProfileImageDragged: widget.onProfileImageDragged,
+                onToggleAudio: widget.onToggleAudio,
+              ),
+              SizedBox(height: 12.h),
+
+              // 사용자 정보 위젯 (아이디와 날짜)
+              UserInfoWidget(
+                photo: widget.photo,
+                userNames: widget.userNames,
+                isCurrentUserPhoto: widget.isOwner,
+                onDeletePressed: widget.onDeletePressed,
+                onLikePressed: widget.onLikePressed,
+              ),
+              SizedBox(height: 10.h),
+
+              // 음성 녹음 위젯을 위한 공간 확보
+              SizedBox(height: 90.h),
+            ],
+          ),
         ),
-        SizedBox(height: 12.h),
 
-        // 사용자 정보 위젯 (아이디와 날짜)
-        UserInfoWidget(
-          photo: widget.photo,
-          userNames: widget.userNames,
-          isCurrentUserPhoto: widget.isOwner,
-          onDeletePressed: widget.onDeletePressed,
-          onLikePressed: widget.onLikePressed,
-        ),
-        SizedBox(height: 10.h),
-
-        // 음성 녹음 위젯
-        VoiceRecordingWidget(
-          photo: widget.photo,
-          voiceCommentActiveStates: widget.voiceCommentActiveStates,
-          voiceCommentSavedStates: widget.voiceCommentSavedStates,
-          commentProfileImageUrls: widget.commentProfileImageUrls,
-          userProfileImages: widget.userProfileImages,
-          photoComments: widget.photoComments,
-          onToggleVoiceComment: widget.onToggleVoiceComment,
-          onVoiceCommentCompleted: widget.onVoiceCommentCompleted,
-          onVoiceCommentDeleted: widget.onVoiceCommentDeleted,
-          onProfileImageDragged: widget.onProfileImageDragged,
-          onSaveRequested: widget.onSaveRequested,
-          onSaveCompleted: widget.onSaveCompleted,
+        // 음성 녹음 위젯을 Stack 위에 배치
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          child: VoiceRecordingWidget(
+            photo: widget.photo,
+            voiceCommentActiveStates: widget.voiceCommentActiveStates,
+            voiceCommentSavedStates: widget.voiceCommentSavedStates,
+            commentProfileImageUrls: widget.commentProfileImageUrls,
+            userProfileImages: widget.userProfileImages,
+            photoComments: widget.photoComments,
+            onToggleVoiceComment: widget.onToggleVoiceComment,
+            onVoiceCommentCompleted: widget.onVoiceCommentCompleted,
+            onVoiceCommentDeleted: widget.onVoiceCommentDeleted,
+            onProfileImageDragged: widget.onProfileImageDragged,
+            onSaveRequested: widget.onSaveRequested,
+            onSaveCompleted: widget.onSaveCompleted,
+          ),
         ),
       ],
     );

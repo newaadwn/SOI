@@ -325,34 +325,30 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
   /// 녹음 중 UI (AudioRecorderWidget과 동일)
   Widget _buildRecordingUI(String duration) {
     return Container(
-      width: 354.w, // 반응형 너비
-      height: 52.h, // 반응형 높이
+      width: 353, // 텍스트 필드와 동일한 너비
+      height: 46, // 텍스트 필드와 동일한 높이
       decoration: BoxDecoration(
-        color: const Color(0xff1c1c1c),
-        borderRadius: BorderRadius.circular(14.6),
+        color: const Color(0xffd9d9d9).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(21.5),
+        border: Border.all(
+          color: const Color(0x66D9D9D9).withValues(alpha: 0.4),
+          width: 1,
+        ),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SizedBox(width: 7.w),
+          SizedBox(width: 15.w),
           // 쓰레기통 아이콘 (녹음 취소)
           GestureDetector(
             onTap: _deleteRecording,
-            child: Container(
-              width: 32.w,
-              height: 32.h,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade800,
-                shape: BoxShape.circle,
-              ),
-              child: Image.asset('assets/trash.png', width: 32.w, height: 32.h),
-            ),
+            child: Image.asset('assets/trash.png', width: 25, height: 25),
           ),
-          SizedBox(width: 17.w),
+          SizedBox(width: 18.w),
           // 실시간 파형
           Expanded(
             child: AudioWaveforms(
-              size: Size(1, 52.h),
+              size: Size(1, 46),
               recorderController: _recorderController,
               waveStyle: const WaveStyle(
                 waveColor: Colors.white,
@@ -361,28 +357,23 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
               ),
             ),
           ),
-          SizedBox(width: 13.w),
+
           // 녹음 시간
-          SizedBox(
-            width: 45.w,
-            child: Text(
-              duration,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12.sp,
-                fontFamily: 'Pretendard',
-                fontWeight: FontWeight.w500,
-                letterSpacing: -0.40,
-              ),
+          Text(
+            duration,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontFamily: 'Pretendard Variable',
+              fontWeight: FontWeight.w500,
+              letterSpacing: -0.40,
             ),
           ),
           // 중지 버튼
-          Padding(
-            padding: EdgeInsets.only(right: 19.w),
-            child: IconButton(
-              onPressed: _stopAndPreparePlayback,
-              icon: Icon(Icons.stop, color: Colors.white, size: 28.sp),
-            ),
+          IconButton(
+            onPressed: _stopAndPreparePlayback,
+            padding: EdgeInsets.only(bottom: 3.h),
+            icon: Icon(Icons.stop, color: Colors.white, size: 35.sp),
           ),
         ],
       ),
@@ -391,171 +382,185 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
 
   /// 재생 UI (AudioRecorderWidget과 동일)
   Widget _buildPlaybackUI() {
+    final borderRadius = BorderRadius.circular(21.5);
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
-      width: 354.w, // 반응형 너비
-      height: 52.h, // 반응형 높이
-      decoration: BoxDecoration(
-        color: const Color(0xff323232), // 회색 배경
-        borderRadius: BorderRadius.circular(14.6), // 반응형 반지름
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      width: 353,
+      height: 46,
+      decoration: BoxDecoration(borderRadius: borderRadius),
+      child: Stack(
+        alignment: Alignment.center,
         children: [
-          SizedBox(width: 7.w),
-          // 쓰레기통 아이콘 (삭제)
-          GestureDetector(
-            onTap: _deleteRecording,
-            child: Container(
-              width: 32.w,
-              height: 32.h,
-              decoration: BoxDecoration(
-                color: Colors.grey.shade800,
-                shape: BoxShape.circle,
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: borderRadius,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 450),
+                transitionBuilder:
+                    (child, animation) =>
+                        FadeTransition(opacity: animation, child: child),
+
+                child: Container(
+                  key: ValueKey('playback_bg'),
+                  decoration: BoxDecoration(
+                    color: const Color(0xffd9d9d9).withValues(alpha: 0.1),
+                    border: Border.all(
+                      color: const Color(0x66D9D9D9).withValues(alpha: 0.4),
+                      width: 1,
+                    ),
+                    borderRadius: borderRadius,
+                  ),
+                ),
               ),
-              child: Image.asset('assets/trash.png', width: 32.w, height: 32.h),
             ),
           ),
-          SizedBox(width: 17.w),
-          // 재생 파형 - 클릭 시 저장
-          Expanded(
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTapDown: (details) {
-                // 파형 클릭 시 프로필 배치 모드로 전환 후 즉시 드래그 시작
-                _enterPlacementMode(details);
-              },
+          Positioned.fill(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(width: 15.w),
+                // 쓰레기통 아이콘 (삭제)
+                GestureDetector(
+                  onTap: _deleteRecording,
+                  child: Image.asset('assets/trash.png', width: 25, height: 25),
+                ),
+                SizedBox(width: 18.w),
+                // 재생 파형 - 클릭 시 저장
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (details) {
+                      // 파형 클릭 시 프로필 배치 모드로 전환 후 즉시 드래그 시작
+                      _enterPlacementMode(details);
+                    },
+                    child:
+                        _waveformData != null && _waveformData!.isNotEmpty
+                            ? StreamBuilder<int>(
+                              stream:
+                                  _playerController?.onCurrentDurationChanged ??
+                                  const Stream.empty(),
+                              builder: (context, positionSnapshot) {
+                                // mounted와 _playerController null 체크 추가
+                                if (!mounted || _playerController == null) {
+                                  return Container();
+                                }
 
-              child:
-                  _waveformData != null && _waveformData!.isNotEmpty
-                      ? StreamBuilder<int>(
-                        stream:
-                            _playerController?.onCurrentDurationChanged ??
-                            const Stream.empty(),
-                        builder: (context, positionSnapshot) {
-                          // mounted와 _playerController null 체크 추가
-                          if (!mounted || _playerController == null) {
-                            return Container();
-                          }
+                                final currentPosition =
+                                    positionSnapshot.data ?? 0;
+                                final totalDuration =
+                                    _playerController?.maxDuration ?? 1;
+                                final progress =
+                                    totalDuration > 0
+                                        ? (currentPosition / totalDuration)
+                                            .clamp(0.0, 1.0)
+                                        : 0.0;
 
-                          final currentPosition = positionSnapshot.data ?? 0;
-                          final totalDuration =
-                              _playerController?.maxDuration ?? 1;
-                          final progress =
-                              totalDuration > 0
-                                  ? (currentPosition / totalDuration).clamp(
-                                    0.0,
-                                    1.0,
-                                  )
-                                  : 0.0;
+                                // _waveformData가 여전히 null이 아닌지 다시 확인
+                                if (_waveformData == null ||
+                                    _waveformData!.isEmpty) {
+                                  return Container();
+                                }
 
-                          // _waveformData가 여전히 null이 아닌지 다시 확인
-                          if (_waveformData == null || _waveformData!.isEmpty) {
-                            return Container();
-                          }
-
-                          return CustomWaveformWidget(
-                            waveformData: _waveformData!,
-                            color: Colors.grey,
-                            activeColor: Colors.white,
-                            progress: progress,
-                          );
-                        },
-                      )
-                      : Container(
-                        height: 52.h,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade700,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Center(
-                          child: Text(
-                            '파형 없음',
-                            style: TextStyle(
-                              color: Colors.white54,
-                              fontSize: 14.sp,
-                              fontFamily: "Pretendard",
+                                return CustomWaveformWidget(
+                                  waveformData: _waveformData!,
+                                  color: Colors.grey,
+                                  activeColor: Colors.white,
+                                  progress: progress,
+                                );
+                              },
+                            )
+                            : Container(
+                              height: 46,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade700,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '파형 없음',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 14.sp,
+                                    fontFamily: "Pretendard",
+                                  ),
+                                ),
+                              ),
                             ),
-                          ),
+                  ),
+                ),
+                // 재생 시간
+                StreamBuilder<int>(
+                  stream:
+                      _playerController?.onCurrentDurationChanged ??
+                      const Stream.empty(),
+                  builder: (context, snapshot) {
+                    // mounted와 _playerController null 체크 추가
+                    if (!mounted || _playerController == null) {
+                      return Text(
+                        '00:00',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontFamily: 'Pretendard Variable',
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: -0.40,
                         ),
+                      );
+                    }
+
+                    final currentDurationMs = snapshot.data ?? 0;
+                    final currentDuration = Duration(
+                      milliseconds: currentDurationMs,
+                    );
+                    final minutes = currentDuration.inMinutes;
+                    final seconds = currentDuration.inSeconds % 60;
+                    return Text(
+                      '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontFamily: 'Pretendard Variable',
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.40,
                       ),
-            ),
-          ),
-          SizedBox(width: 13.w),
-          // 재생 시간
-          SizedBox(
-            width: 45.w,
-            child: StreamBuilder<int>(
-              stream:
-                  _playerController?.onCurrentDurationChanged ??
-                  const Stream.empty(),
-              builder: (context, snapshot) {
-                // mounted와 _playerController null 체크 추가
-                if (!mounted || _playerController == null) {
-                  return Text(
-                    '00:00',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 12.sp,
-                      fontFamily: 'Pretendard',
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -0.40,
-                    ),
-                  );
-                }
+                    );
+                  },
+                ),
+                // 재생/일시정지 버튼
+                StreamBuilder<PlayerState>(
+                  stream:
+                      _playerController?.onPlayerStateChanged ??
+                      const Stream.empty(),
+                  builder: (context, snapshot) {
+                    // mounted와 _playerController null 체크 추가
+                    if (!mounted || _playerController == null) {
+                      return IconButton(
+                        onPressed: null,
+                        icon: Icon(
+                          Icons.play_arrow,
+                          color: Colors.white54,
+                          size: 35.sp,
+                        ),
+                      );
+                    }
 
-                final currentDurationMs = snapshot.data ?? 0;
-                final currentDuration = Duration(
-                  milliseconds: currentDurationMs,
-                );
-                final minutes = currentDuration.inMinutes;
-                final seconds = currentDuration.inSeconds % 60;
-                return Text(
-                  '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 12.sp,
-                    fontFamily: 'Pretendard',
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: -0.40,
-                  ),
-                );
-              },
-            ),
-          ),
-          // 재생/일시정지 버튼
-          Padding(
-            padding: EdgeInsets.only(right: 19.w),
-            child: StreamBuilder<PlayerState>(
-              stream:
-                  _playerController?.onPlayerStateChanged ??
-                  const Stream.empty(),
-              builder: (context, snapshot) {
-                // mounted와 _playerController null 체크 추가
-                if (!mounted || _playerController == null) {
-                  return IconButton(
-                    onPressed: null,
-                    icon: Icon(
-                      Icons.play_arrow,
-                      color: Colors.white54,
-                      size: 28.sp,
-                    ),
-                  );
-                }
+                    final playerState = snapshot.data;
+                    final isPlaying = playerState?.isPlaying ?? false;
 
-                final playerState = snapshot.data;
-                final isPlaying = playerState?.isPlaying ?? false;
-
-                return IconButton(
-                  onPressed: _togglePlayback,
-                  icon: Icon(
-                    isPlaying ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white,
-                    size: 28.sp,
-                  ),
-                );
-              },
+                    return IconButton(
+                      onPressed: _togglePlayback,
+                      padding: EdgeInsets.only(bottom: 3.h),
+                      icon: Icon(
+                        isPlaying ? Icons.pause : Icons.play_arrow,
+                        color: Colors.white,
+                        size: 35.sp,
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ),
         ],
@@ -721,7 +726,7 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     } else if (_currentState == VoiceCommentState.placing) {
       widgetKey = 'profile-placement';
     } else if (_currentState == VoiceCommentState.saved) {
-      widgetKey = 'profile-mode'; // 프로필 모드용 고유 키 (recorded에서 전환 시 애니메이션)
+      widgetKey = 'profile-mode';
     } else {
       widgetKey = _currentState.toString();
     }

@@ -24,7 +24,6 @@ class CaptionInputWidget extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: const Color(0xFF373737).withValues(alpha: 0.66),
-
           borderRadius: BorderRadius.circular(21.5),
         ),
         child: Padding(

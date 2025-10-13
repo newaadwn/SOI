@@ -55,6 +55,7 @@ class VoiceCommentListSheet extends StatelessWidget {
           Consumer2<EmojiReactionController, CommentRecordController>(
             builder: (context, reactionController, recordController, _) {
               final hasCommentFilter = commentIdFilter != null;
+
               // 1) 리액션 스트림 (optional)
               final reactionsStream =
                   (!hasCommentFilter && categoryId != null)
@@ -68,6 +69,7 @@ class VoiceCommentListSheet extends StatelessWidget {
                 stream: reactionsStream,
                 builder: (context, reactSnap) {
                   final reactions = reactSnap.data ?? [];
+
                   // 2) 댓글 스트림 (중첩 StreamBuilder)
                   return StreamBuilder<List<CommentRecordModel>>(
                     stream: recordController.getCommentRecordsStream(photoId),
@@ -156,7 +158,8 @@ class VoiceCommentListSheet extends StatelessWidget {
                               return ReactionRow(
                                 data: reaction,
                                 emoji: reaction['emoji'] as String? ?? '',
-                                comment: commentForReaction, // null 허용
+                                comment: commentForReaction,
+                                userName: reaction['id'] as String?,
                               );
                             }
                             final commentIndex =

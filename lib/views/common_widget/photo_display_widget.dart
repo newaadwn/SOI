@@ -249,9 +249,15 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                       // 메모리 최적화: 배경 이미지 크기 제한
                       GestureDetector(
                         onTap: () {
-                          setState(() {
-                            _isShowingComments = !_isShowingComments;
-                          });
+                          // 음성 댓글이 있을 때만 토글 동작
+                          final hasComments =
+                              (widget.photoComments[widget.photo.id] ?? [])
+                                  .isNotEmpty;
+                          if (hasComments) {
+                            setState(() {
+                              _isShowingComments = !_isShowingComments;
+                            });
+                          }
                         },
                         child: CachedNetworkImage(
                           imageUrl: widget.photo.imageUrl,

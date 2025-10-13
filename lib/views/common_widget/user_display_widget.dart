@@ -38,10 +38,7 @@ class UserDisplayName extends StatelessWidget {
     String userId,
   ) async {
     try {
-      final userInfo = await authController.getUserInfo(userId);
-      if (userInfo != null && userInfo.name.isNotEmpty) {
-        return userInfo.id;
-      }
+      final userId = await authController.getUserID();
 
       return userId; // 최종 fallback
     } catch (e) {
