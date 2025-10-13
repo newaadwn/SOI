@@ -131,6 +131,8 @@ class CategoryService {
     required List<String> mates,
   }) async {
     try {
+      debugPrint('🎯 카테고리 생성 시도: $name, 멤버: ${mates.length}명');
+
       // 1. 카테고리 이름 검증
       final validationError = _validateCategoryName(name);
       if (validationError != null) {
@@ -142,10 +144,49 @@ class CategoryService {
         return AuthResult.failure('최소 1명의 멤버가 필요합니다.');
       }
 
-      // 3. 카테고리 이름 정규화
+      // 3. 현재 사용자 확인 (카테고리 생성자)
+      final currentUserId = authService.currentUser?.uid;
+      if (currentUserId == null || currentUserId.isEmpty) {
+        return AuthResult.failure('로그인이 필요합니다.');
+      }
+
+      // 4. 생성자는 mates에 포함되어야 함
+      if (!mates.contains(currentUserId)) {
+        return AuthResult.failure('카테고리 생성자가 멤버에 포함되어야 합니다.');
+      }
+
+      // 5. 카테고리 이름 정규화
       final normalizedName = _normalizeCategoryName(name);
 
-      // 4. 카테고리 생성
+      // 6. 친구 관계 확인: 생성자와 모든 다른 멤버가 친구인지 확인
+      final otherMates = mates.where((m) => m != currentUserId).toList();
+      debugPrint(
+        '🔍 친구 관계 확인 시작: 생성자($currentUserId)와 멤버 ${otherMates.length}명',
+      );
+
+      final nonFriendMates = <String>[];
+
+      for (final mateId in otherMates) {
+        debugPrint('  확인 중: $currentUserId ←→ $mateId');
+        final isFriend = await friendService.areUsersMutualFriends(
+          currentUserId,
+          mateId,
+        );
+        debugPrint('  결과: ${isFriend ? "✅ 친구" : "❌ 친구 아님"}');
+        if (!isFriend) {
+          nonFriendMates.add(mateId);
+        }
+      }
+
+      // 7. 친구가 아닌 멤버가 있으면 생성 불가
+      if (nonFriendMates.isNotEmpty) {
+        debugPrint('❌ 카테고리 생성 불가: 친구가 아닌 멤버 ${nonFriendMates.length}명');
+        debugPrint('❌ 친구가 아닌 멤버 목록: $nonFriendMates');
+        return AuthResult.failure('카테고리는 친구들과만 만들 수 있습니다. 먼저 친구를 추가해주세요.');
+      }
+
+      // 8. 모두 친구인 경우 카테고리 생성
+      debugPrint('✅ 모든 멤버가 친구 관계 - 카테고리 생성 진행');
       final category = CategoryDataModel(
         id: '', // Repository에서 생성됨
         name: normalizedName,
@@ -154,17 +195,16 @@ class CategoryService {
       );
 
       final categoryId = await _repository.createCategory(category);
+      debugPrint('✅ 카테고리 생성 완료: $categoryId');
 
-      // 5. 카테고리 초대 알림 생성 (카테고리 생성자가 액터)
+      // 9. 카테고리 초대 알림 생성
       try {
-        // 첫 번째 메이트를 생성자로 간주
-        final creatorUserId = mates.first;
         await notificationService.createCategoryInviteNotification(
           categoryId: categoryId,
-          actorUserId: creatorUserId,
-          recipientUserIds: mates,
+          actorUserId: currentUserId,
+          recipientUserIds: otherMates, // 생성자 제외한 멤버들에게만 알림
         );
-        debugPrint('🔔 카테고리 초대 알림 생성 완료 - 카테고리: $categoryId');
+        debugPrint('🔔 카테고리 초대 알림 생성 완료');
       } catch (e) {
         // 알림 생성 실패는 전체 카테고리 생성을 실패시키지 않음
         debugPrint('⚠️ 알림 생성 실패 (카테고리 생성은 성공): $e');
@@ -172,6 +212,7 @@ class CategoryService {
 
       return AuthResult.success(categoryId);
     } catch (e) {
+      debugPrint('💥 카테고리 생성 실패: $e');
       return AuthResult.failure('카테고리 생성 중 오류가 발생했습니다.');
     }
   }
@@ -507,24 +548,52 @@ class CategoryService {
     return category.mates.contains(userId);
   }
 
-  Future<List<String>> _getNonFriendMateIds({
+  Future<List<String>> _getPendingMateIds({
     required CategoryDataModel category,
     required String invitedUserId,
+    required String inviterUserId,
   }) async {
-    if (category.mates.isEmpty) return [];
-    final mateIds =
-        category.mates.where((mateId) => mateId != invitedUserId).toList();
-    if (mateIds.isEmpty) return [];
+    if (category.mates.isEmpty) {
+      debugPrint('📋 카테고리에 멤버가 없음');
+      return [];
+    }
 
+    // 초대자와 초대 대상자를 제외한 기존 멤버 목록
+    final otherMateIds =
+        category.mates
+            .where(
+              (mateId) => mateId != inviterUserId && mateId != invitedUserId,
+            )
+            .toSet();
+
+    if (otherMateIds.isEmpty) {
+      debugPrint('📋 초대자 외 다른 멤버가 없음');
+      return [];
+    }
+
+    debugPrint('🔍 기존 멤버와의 친구 관계 확인 중: ${otherMateIds.length}명');
+
+    // 각 멤버와의 친구 관계 확인
     final results = await Future.wait(
-      mateIds.map((mateId) async {
-        final isFriend =
-            await friendService.areUsersMutualFriends(invitedUserId, mateId);
+      otherMateIds.map((mateId) async {
+        final isFriend = await friendService.areUsersMutualFriends(
+          invitedUserId,
+          mateId,
+        );
+        debugPrint('  - $mateId: ${isFriend ? "친구" : "친구 아님"}');
         return isFriend ? null : mateId;
       }),
     );
 
-    return results.whereType<String>().toList();
+    final nonFriendIds = results.whereType<String>().toList();
+
+    if (nonFriendIds.isNotEmpty) {
+      debugPrint('❌ 친구가 아닌 멤버: ${nonFriendIds.length}명');
+      return nonFriendIds;
+    }
+
+    debugPrint('✅ 모든 멤버와 친구 관계');
+    return [];
   }
 
   Future<String> _createOrUpdateCategoryInvite({
@@ -533,17 +602,15 @@ class CategoryService {
     required String inviterUserId,
     required List<String> blockedMateIds,
   }) async {
-    final existingInvite =
-        await categoryInviteRepository.getPendingInviteForCategory(
-      categoryId: category.id,
-      invitedUserId: invitedUserId,
-    );
+    final existingInvite = await categoryInviteRepository
+        .getPendingInviteForCategory(
+          categoryId: category.id,
+          invitedUserId: invitedUserId,
+        );
 
     if (existingInvite != null) {
-      final updatedBlockedMates = {
-        ...existingInvite.blockedMateIds,
-        ...blockedMateIds,
-      }.toList();
+      final updatedBlockedMates =
+          {...existingInvite.blockedMateIds, ...blockedMateIds}.toList();
 
       await categoryInviteRepository.updateInvite(existingInvite.id, {
         'blockedMateIds': updatedBlockedMates,
@@ -573,20 +640,26 @@ class CategoryService {
     required String userId,
   }) async {
     try {
+      debugPrint('🎯 카테고리 초대 수락 시도: $inviteId by $userId');
+
       if (inviteId.isEmpty || userId.isEmpty) {
         return AuthResult.failure('유효하지 않은 초대입니다.');
       }
 
+      // 1. 초대 정보 조회
       final invite = await categoryInviteRepository.getInvite(inviteId);
       if (invite == null) {
         return AuthResult.failure('초대를 찾을 수 없습니다.');
       }
 
+      // 2. 초대 대상자 확인
       if (invite.invitedUserId != userId) {
         return AuthResult.failure('이 초대를 수락할 수 없습니다.');
       }
 
+      // 3. 초대 상태 확인
       if (invite.status == CategoryInviteStatus.accepted) {
+        debugPrint('✅ 이미 수락된 초대');
         return AuthResult.success(invite.categoryId);
       }
 
@@ -594,16 +667,48 @@ class CategoryService {
         return AuthResult.failure('만료되었거나 거절된 초대입니다.');
       }
 
+      // 4. 카테고리 존재 확인
       final category = await _repository.getCategory(invite.categoryId);
       if (category == null) {
         return AuthResult.failure('카테고리를 찾을 수 없습니다.');
       }
 
+      // 5. 이미 멤버인지 확인
+      if (category.mates.contains(userId)) {
+        debugPrint('✅ 이미 카테고리 멤버임');
+        await categoryInviteRepository.deleteInvite(invite.id);
+        return AuthResult.success(invite.categoryId);
+      }
+
+      // 6. blockedMateIds에 있는 멤버들과 실제로 친구 관계인지 재확인
+      if (invite.blockedMateIds.isNotEmpty) {
+        debugPrint('🔍 친구가 아닌 멤버 확인 중: ${invite.blockedMateIds.length}명');
+
+        final stillNotFriends = <String>[];
+        for (final mateId in invite.blockedMateIds) {
+          final isFriend = await friendService.areUsersMutualFriends(
+            userId,
+            mateId,
+          );
+          if (!isFriend) {
+            stillNotFriends.add(mateId);
+          }
+        }
+
+        if (stillNotFriends.isNotEmpty) {
+          debugPrint('❌ 여전히 친구가 아닌 멤버: ${stillNotFriends.length}명');
+          return AuthResult.failure('카테고리에 친구가 아닌 멤버가 있습니다. 먼저 친구 추가가 필요합니다.');
+        }
+      }
+
+      // 7. 모든 검증 통과 - 카테고리에 추가
+      debugPrint('✅ 모든 검증 통과 - 카테고리에 추가');
       await _repository.addUidToCategory(
         categoryId: invite.categoryId,
         uid: userId,
       );
 
+      // 8. 초대 상태 업데이트 및 삭제
       await categoryInviteRepository.updateInviteStatus(
         invite.id,
         CategoryInviteStatus.accepted,
@@ -612,9 +717,10 @@ class CategoryService {
 
       await categoryInviteRepository.deleteInvite(invite.id);
 
+      debugPrint('✅ 카테고리 초대 수락 완료');
       return AuthResult.success(invite.categoryId);
     } catch (e) {
-      debugPrint('카테고리 초대 수락 실패: $e');
+      debugPrint('💥 카테고리 초대 수락 실패: $e');
       return AuthResult.failure('초대 수락 중 오류가 발생했습니다.');
     }
   }
@@ -658,8 +764,10 @@ class CategoryService {
     required String nickName,
   }) async {
     try {
-      final users =
-          await userSearchRepository.searchUsersById(nickName, limit: 1);
+      final users = await userSearchRepository.searchUsersById(
+        nickName,
+        limit: 1,
+      );
       if (users.isEmpty) {
         return AuthResult.failure('사용자를 찾을 수 없습니다.');
       }
@@ -700,18 +808,35 @@ class CategoryService {
         return AuthResult.failure('이미 카테고리 멤버입니다.');
       }
 
-      // 5. 기존 멤버 중 친구가 아닌 사용자 확인
-      final nonFriendMateIds = await _getNonFriendMateIds(
-        category: category,
-        invitedUserId: uid,
+      // 5. 초대 대상자와 초대자의 친구 관계 확인
+      final isInviterMutualFriend = await friendService.areUsersMutualFriends(
+        currentUserId,
+        uid,
       );
 
-      if (nonFriendMateIds.isNotEmpty) {
+      // 6. 기존 멤버들과 초대 대상자의 친구 관계 확인
+      final pendingMateIds = await _getPendingMateIds(
+        category: category,
+        invitedUserId: uid,
+        inviterUserId: currentUserId,
+      );
+
+      // 7. 초대 대상자와 친구가 아닌 멤버 목록
+      final unknownMemberIds = <String>{
+        ...pendingMateIds,
+        if (!isInviterMutualFriend) currentUserId,
+      };
+
+      // 8. 친구가 아닌 멤버가 있으면 초대 프로세스 진행
+      if (unknownMemberIds.isNotEmpty) {
+        debugPrint('⏳ 친구가 아닌 멤버 발견: ${unknownMemberIds.length}명 - 초대 수락 필요');
+        debugPrint('⏳ 친구가 아닌 멤버 목록: $unknownMemberIds');
+
         final inviteId = await _createOrUpdateCategoryInvite(
           category: category,
           invitedUserId: uid,
           inviterUserId: currentUserId,
-          blockedMateIds: nonFriendMateIds,
+          blockedMateIds: unknownMemberIds.toList(),
         );
 
         try {
@@ -721,17 +846,19 @@ class CategoryService {
             recipientUserIds: [uid],
             requiresAcceptance: true,
             categoryInviteId: inviteId,
-            pendingMemberIds: nonFriendMateIds,
+            pendingMemberIds: unknownMemberIds.toList(),
           );
           debugPrint('🔔 카테고리 초대 알림 전송 (수락 대기) 완료');
         } catch (e) {
           debugPrint('⚠️ 카테고리 초대 알림 전송 실패 (수락 대기): $e');
         }
 
+        debugPrint('⏳ mates에 추가하지 않고 초대만 전송함');
         return AuthResult.success('초대를 보냈습니다. 상대방의 수락을 기다리고 있습니다.');
       }
 
-      // 6. 바로 추가 가능한 경우 mates 업데이트
+      // 9. 모든 멤버와 친구 관계일 경우 바로 추가
+      debugPrint('✅ 모든 멤버와 친구 관계 확인됨 - 즉시 추가');
       await _repository.addUidToCategory(categoryId: categoryId, uid: uid);
       debugPrint('✅ 카테고리 사용자 추가 성공');
 
@@ -746,7 +873,7 @@ class CategoryService {
         debugPrint('⚠️ 카테고리 초대 알림 전송 실패: $e');
       }
 
-      return AuthResult.success(null);
+      return AuthResult.success('카테고리에 추가되었습니다.');
     } catch (e) {
       debugPrint('💥 addUidToCategory 에러: $e');
       return AuthResult.failure('카테고리에 사용자 추가 실패: $e');

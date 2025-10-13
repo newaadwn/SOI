@@ -377,6 +377,25 @@ class NotificationController extends ChangeNotifier {
     return result;
   }
 
+  Future<AuthResult> declineCategoryInvite({
+    required NotificationModel notification,
+    required String currentUserId,
+  }) async {
+    final result = await _notificationService.declineCategoryInvite(
+      notification: notification,
+      userId: currentUserId,
+    );
+
+    if (result.isSuccess) {
+      _notifications.removeWhere((n) => n.id == notification.id);
+      if (notification.categoryId != null) {
+        _categoryUnknownMembersCache.remove(notification.categoryId!);
+      }
+      notifyListeners();
+    }
+    return result;
+  }
+
   /// 백그라운드에서 자동 알림 정리 수행
   void _performBackgroundCleanup(String userId) {
     Future.delayed(Duration(seconds: 2), () {

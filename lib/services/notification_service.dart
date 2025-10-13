@@ -468,11 +468,7 @@ class NotificationService {
       );
 
       if (result.isSuccess) {
-        await _notificationRepository.updateNotification(notification.id, {
-          'isRead': true,
-          'requiresAcceptance': false,
-          'pendingCategoryMemberIds': [],
-        });
+        await _notificationRepository.deleteNotification(notification.id);
       }
       return result;
     } catch (e) {

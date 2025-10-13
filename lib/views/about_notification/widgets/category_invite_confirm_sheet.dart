@@ -21,7 +21,7 @@ class CategoryInviteConfirmSheet extends StatelessWidget {
   final String categoryImageUrl;
   final List<CategoryInviteePreview> invitees;
   final VoidCallback onAccept;
-  final VoidCallback onCancel;
+  final VoidCallback onDecline;
   final VoidCallback? onViewFriends;
 
   const CategoryInviteConfirmSheet({
@@ -30,7 +30,7 @@ class CategoryInviteConfirmSheet extends StatelessWidget {
     required this.categoryImageUrl,
     required this.invitees,
     required this.onAccept,
-    required this.onCancel,
+    required this.onDecline,
     this.onViewFriends,
   });
 
@@ -133,14 +133,14 @@ class CategoryInviteConfirmSheet extends StatelessWidget {
             ),
             SizedBox(height: 12.h),
             TextButton(
-              onPressed: onCancel,
+              onPressed: onDecline,
               child: Text(
-                '취소',
+                '거절',
                 style: TextStyle(
-                  color: const Color(0xFFC4C4C4),
+                  color: const Color(0xFFEB6E6E),
                   fontSize: 16.sp,
                   fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w600,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),

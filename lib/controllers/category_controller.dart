@@ -729,6 +729,81 @@ class CategoryController extends ChangeNotifier {
     }
   }
 
+  /// 카테고리 초대 수락
+  ///
+  /// [inviteId] 초대 ID
+  /// [userId] 수락하는 사용자 UID
+  /// Returns: 성공 시 카테고리 ID, 실패 시 null
+  Future<String?> acceptCategoryInvite({
+    required String inviteId,
+    required String userId,
+  }) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final result = await _categoryService.acceptPendingInvite(
+        inviteId: inviteId,
+        userId: userId,
+      );
+
+      _isLoading = false;
+
+      if (!result.isSuccess) {
+        _error = result.error;
+        notifyListeners();
+        return null;
+      }
+
+      // 캐시 무효화하여 최신 데이터 로드
+      invalidateCache();
+      notifyListeners();
+
+      return result.data as String?;
+    } catch (e) {
+      _isLoading = false;
+      _error = e.toString();
+      notifyListeners();
+      return null;
+    }
+  }
+
+  /// 카테고리 초대 거절
+  ///
+  /// [inviteId] 초대 ID
+  /// [userId] 거절하는 사용자 UID
+  Future<bool> declineCategoryInvite({
+    required String inviteId,
+    required String userId,
+  }) async {
+    try {
+      _isLoading = true;
+      _error = null;
+      notifyListeners();
+
+      final result = await _categoryService.declinePendingInvite(
+        inviteId: inviteId,
+        userId: userId,
+      );
+
+      _isLoading = false;
+      notifyListeners();
+
+      if (!result.isSuccess) {
+        _error = result.error;
+        return false;
+      }
+
+      return true;
+    } catch (e) {
+      _isLoading = false;
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// 카테고리 캐시를 무효화합니다.
   void invalidateCache() {
     _lastLoadTime = null;

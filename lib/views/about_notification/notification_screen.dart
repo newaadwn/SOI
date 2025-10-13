@@ -220,8 +220,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
                 _navigateToCategory(notification);
               }
             },
-            onCancel: () {
+            onDecline: () async {
               Navigator.of(sheetContext).pop();
+              if (notification.requiresAcceptance) {
+                await _declineCategoryInvite(notification, currentUser.uid);
+              } else {
+                await _notificationController.deleteNotification(notification.id);
+                _showSuccessSnackBar('초대를 거절했습니다.');
+              }
             },
             onViewFriends: inviteeInfos.isEmpty
                 ? null
@@ -301,6 +307,39 @@ class _NotificationScreenState extends State<NotificationScreen> {
       _navigateToCategory(notification);
     } else {
       _showErrorSnackBar(result.error ?? '초대 수락 중 문제가 발생했습니다');
+    }
+  }
+
+  Future<void> _declineCategoryInvite(
+    NotificationModel notification,
+    String currentUserId,
+  ) async {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => const Center(
+            child: CircularProgressIndicator(color: Color(0xff634D45)),
+          ),
+    );
+
+    final result = await _notificationController.declineCategoryInvite(
+      notification: notification,
+      currentUserId: currentUserId,
+    );
+
+    if (mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (!mounted) return;
+
+    if (result.isSuccess) {
+      _showSuccessSnackBar('초대를 거절했습니다.');
+    } else {
+      _showErrorSnackBar(result.error ?? '초대 거절 중 문제가 발생했습니다');
     }
   }
 

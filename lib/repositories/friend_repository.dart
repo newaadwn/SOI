@@ -331,25 +331,44 @@ class FriendRepository {
   /// 두 사용자 ID가 서로를 친구로 가지고 있는지 확인
   Future<bool> areUsersMutualFriends(String userA, String userB) async {
     try {
+      debugPrint('    🔍 친구 관계 확인: $userA ←→ $userB');
+
       final userAFriendDoc =
-          await _usersCollection.doc(userA).collection('friends').doc(userB).get();
+          await _usersCollection
+              .doc(userA)
+              .collection('friends')
+              .doc(userB)
+              .get();
       if (!userAFriendDoc.exists) {
+        debugPrint('    ❌ $userA의 친구 목록에 $userB 없음');
         return false;
       }
       final userAFriend = FriendModel.fromFirestore(userAFriendDoc);
       if (userAFriend.status != FriendStatus.active) {
+        debugPrint('    ❌ $userA → $userB 상태: ${userAFriend.status}');
         return false;
       }
 
       final userBFriendDoc =
-          await _usersCollection.doc(userB).collection('friends').doc(userA).get();
+          await _usersCollection
+              .doc(userB)
+              .collection('friends')
+              .doc(userA)
+              .get();
       if (!userBFriendDoc.exists) {
+        debugPrint('    ❌ $userB의 친구 목록에 $userA 없음');
         return false;
       }
       final userBFriend = FriendModel.fromFirestore(userBFriendDoc);
-      return userBFriend.status == FriendStatus.active;
+      final result = userBFriend.status == FriendStatus.active;
+      if (!result) {
+        debugPrint('    ❌ $userB → $userA 상태: ${userBFriend.status}');
+      } else {
+        debugPrint('    ✅ 상호 친구 관계 확인됨');
+      }
+      return result;
     } catch (e) {
-      debugPrint('areUsersMutualFriends 에러: $e');
+      debugPrint('    💥 areUsersMutualFriends 에러: $e');
       return false;
     }
   }

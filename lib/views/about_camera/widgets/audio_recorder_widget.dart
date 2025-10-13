@@ -604,7 +604,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
               (context, controller) => controller.formattedRecordingDuration,
           builder: (context, duration, child) {
             return SizedBox(
-              height: 52,
+              height: 46,
               child: _buildAudioUI(
                 backgroundColor: const Color(
                   0xff373737,
@@ -619,7 +619,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
       case RecordingState.recorded:
         return SizedBox(
           key: ValueKey(widgetKey),
-          height: 52,
+          height: 46,
           child: _buildAudioUI(
             backgroundColor: const Color(0xff222222),
             isRecording: false,
@@ -666,6 +666,8 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
           ),
           Positioned.fill(
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 SizedBox(width: 14.w),
                 // 삭제 버튼
@@ -737,6 +739,7 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
                 IconButton(
                   onPressed:
                       isRecording ? _stopAndPreparePlayback : _togglePlayback,
+                  padding: EdgeInsets.only(bottom: 3.h),
                   icon:
                       isRecording
                           ? Icon(Icons.stop, color: Colors.white, size: 35.sp)
