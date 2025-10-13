@@ -112,49 +112,29 @@ class _NotificationItemWidgetState extends State<NotificationItemWidget> {
       child: Container(
         padding: EdgeInsets.only(left: 18.w, right: 18.w, bottom: 28.h),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             _buildProfileImage(),
             SizedBox(width: 9.w),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildInviteBubble(),
-                  if (widget.notification.requiresAcceptance)
-                    Padding(
-                      padding: EdgeInsets.only(top: 6.h),
-                      child: Text(
-                        '수락 대기 중',
-                        style: TextStyle(
-                          color: const Color(0xFF89F993),
-                          fontSize: 12.sp,
-                          fontFamily: 'Pretendard Variable',
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.25,
-                        ),
-                      ),
-                    ),
-                  if (isLoading)
-                    Padding(
-                      padding: EdgeInsets.only(top: 12.h),
-                      child: SizedBox(
-                        width: 24.w,
-                        height: 24.w,
-                        child: const CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  if (!isLoading &&
-                      (hasUnknown || widget.notification.requiresAcceptance))
-                    Padding(
-                      padding: EdgeInsets.only(top: 12.h),
-                      child: _buildConfirmButton(),
-                    ),
-                ],
-              ),
-            ),
-            SizedBox(width: 23.w),
-            _buildThumbnail(),
+            Expanded(child: _buildNotificationText()),
+            SizedBox(width: 12.w),
+            // 오른쪽에 로딩/확인 버튼 또는 썸네일 표시
+            if (isLoading)
+              SizedBox(
+                width: 44.w,
+                height: 44.h,
+                child: Center(
+                  child: SizedBox(
+                    width: 24.w,
+                    height: 24.w,
+                    child: const CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
+            else if (hasUnknown || widget.notification.requiresAcceptance)
+              _buildConfirmButton()
+            else
+              _buildThumbnail(),
           ],
         ),
       ),
@@ -342,35 +322,24 @@ class _NotificationItemWidgetState extends State<NotificationItemWidget> {
     }
   }
 
-  Widget _buildInviteBubble() {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 14.w, vertical: 12.h),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2C2C2C),
-        borderRadius: BorderRadius.circular(18.r),
-      ),
-      child: _buildNotificationText(),
-    );
-  }
-
   Widget _buildConfirmButton() {
-    return Align(
-      alignment: Alignment.centerLeft,
+    return SizedBox(
+      width: 44.w,
+      height: 29.h,
       child: TextButton(
-        onPressed:
-            widget.onConfirm == null ? null : () => widget.onConfirm!(),
+        onPressed: widget.onConfirm == null ? null : () => widget.onConfirm!(),
         style: TextButton.styleFrom(
           backgroundColor: const Color(0xFFF3F3F3),
-          padding: EdgeInsets.symmetric(horizontal: 20.w, vertical: 8.h),
+          padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20.r),
+            borderRadius: BorderRadius.circular(19.70),
           ),
         ),
         child: Text(
           '확인',
           style: TextStyle(
             color: const Color(0xFF1C1C1C),
-            fontSize: 14.sp,
+            fontSize: 12.sp,
             fontFamily: 'Pretendard Variable',
             fontWeight: FontWeight.w700,
             letterSpacing: -0.40,

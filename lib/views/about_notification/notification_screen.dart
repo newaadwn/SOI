@@ -10,9 +10,11 @@ import '../../controllers/friend_request_controller.dart';
 import '../../models/notification_model.dart';
 import '../../models/photo_data_model.dart';
 import '../about_archiving/screens/archive_detail/photo_detail_screen.dart';
-import 'widgets/notification_item_widget.dart';
 import '../../repositories/auth_repository.dart';
 import 'widgets/category_invite_confirm_sheet.dart';
+import 'widgets/category_invite_friend_list_sheet.dart';
+import 'widgets/category_invitee_preview.dart';
+import 'widgets/notification_item_widget.dart';
 
 /// 알림 메인 화면
 class NotificationScreen extends StatefulWidget {
@@ -136,7 +138,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
             CategoryInviteePreview(
               uid: uid,
               displayName: displayName,
-              handle: handle,
+              id: handle,
               profileImageUrl: user.profileImage,
             ),
           );
@@ -144,13 +146,14 @@ class _NotificationScreenState extends State<NotificationScreen> {
         }
       } catch (_) {
         // 무시하고 기본 정보로 대체
+        debugPrint('사용자 정보 로드 실패: $uid');
       }
 
       results.add(
         CategoryInviteePreview(
           uid: uid,
           displayName: uid,
-          handle: uid,
+          id: uid,
           profileImageUrl: '',
         ),
       );
@@ -225,13 +228,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
               if (notification.requiresAcceptance) {
                 await _declineCategoryInvite(notification, currentUser.uid);
               } else {
-                await _notificationController.deleteNotification(notification.id);
+                await _notificationController.deleteNotification(
+                  notification.id,
+                );
                 _showSuccessSnackBar('초대를 거절했습니다.');
               }
             },
-            onViewFriends: inviteeInfos.isEmpty
-                ? null
-                : () => _showInviteeListSheet(sheetContext, inviteeInfos),
+            onViewFriends:
+                inviteeInfos.isEmpty
+                    ? null
+                    : () => _showInviteeListSheet(sheetContext, inviteeInfos),
           );
         },
       );
@@ -256,22 +262,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
           invitees: invitees,
           onInviteeTap: (invitee) {
             Navigator.of(listContext).pop();
-            _showInviteeDetailSheet(context, invitee);
           },
         );
       },
-    );
-  }
-
-  Future<void> _showInviteeDetailSheet(
-    BuildContext context,
-    CategoryInviteePreview invitee,
-  ) async {
-    await showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => CategoryInviteFriendDetailSheet(invitee: invitee),
     );
   }
 

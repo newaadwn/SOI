@@ -47,24 +47,23 @@ class CategoryInviteService {
       return [];
     }
 
+    // 배치로 모든 친구 관계를 한 번에 확인 (병렬 처리)
+    final friendshipResults = await friendService.areBatchMutualFriends(
+      targetUserId,
+      otherMates,
+    );
+
     final nonFriendIds = <String>[];
-
     for (final mateId in otherMates) {
-      debugPrint('   확인 중: $targetUserId ←→ $mateId');
-      final areMutualFriends = await friendService.areUsersMutualFriends(
-        targetUserId,
-        mateId,
-      );
+      final isFriend = friendshipResults[mateId] ?? false;
 
-      if (!areMutualFriends) {
-        debugPrint('   결과: ❌ 상호 친구 아님');
+      if (!isFriend) {
         nonFriendIds.add(mateId);
-      } else {}
+      }
     }
 
-    if (nonFriendIds.isEmpty) {
-    } else {
-      debugPrint('   ❌ 친구 아닌 멤버: $nonFriendIds');
+    if (nonFriendIds.isNotEmpty) {
+      debugPrint('친구 아닌 멤버: $nonFriendIds');
     }
 
     return nonFriendIds;
@@ -88,16 +87,18 @@ class CategoryInviteService {
       return [];
     }
 
-    final nonFriendIds = <String>{};
+    // 배치로 모든 친구 관계를 한 번에 확인 (병렬 처리)
+    final friendshipResults = await friendService.areBatchMutualFriends(
+      invitedUserId,
+      existingMateIds.toList(),
+    );
 
+    final nonFriendIds = <String>[];
     for (final mateId in existingMateIds) {
-      final areMutualFriends = await friendService.areUsersMutualFriends(
-        invitedUserId,
-        mateId,
-      );
+      final isFriend = friendshipResults[mateId] ?? false;
 
-      if (!areMutualFriends) {
-        debugPrint('  결과: ❌ 상호 친구 아님');
+      if (!isFriend) {
+        debugPrint('결과: $invitedUserId ←→ $mateId 상호 친구 아님');
         nonFriendIds.add(mateId);
       }
     }
@@ -106,8 +107,8 @@ class CategoryInviteService {
       return [];
     }
 
-    debugPrint('❌ 친구 목록에 없는 멤버: ${nonFriendIds.length}명');
-    return nonFriendIds.toList();
+    debugPrint('친구 목록에 없는 멤버: ${nonFriendIds.length}명');
+    return nonFriendIds;
   }
 
   /// 초대 생성 또는 업데이트

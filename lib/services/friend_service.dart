@@ -91,6 +91,27 @@ class FriendService {
     return _friendRepository.areUsersMutualFriends(userA, userB);
   }
 
+  /// 여러 사용자와 기준 사용자 간의 친구 관계를 배치로 확인 (병렬 처리)
+  Future<Map<String, bool>> areBatchMutualFriends(
+    String baseUserId,
+    List<String> targetUserIds,
+  ) async {
+    if (baseUserId.isEmpty || targetUserIds.isEmpty) {
+      return {};
+    }
+
+    // 자기 자신 제거
+    final filteredIds = targetUserIds.where((id) => id != baseUserId).toList();
+    if (filteredIds.isEmpty) {
+      return {};
+    }
+
+    return await _friendRepository.areBatchMutualFriends(
+      baseUserId,
+      filteredIds,
+    );
+  }
+
   /// 특정 사용자의 친구 ID 목록을 반환
   Future<Set<String>> getFriendIdsForUser(String userId) async {
     try {
@@ -112,8 +133,6 @@ class FriendService {
   }
 
   /// 친구 삭제 (확인 절차 포함)
-  ///
-  /// [friendUid] 삭제할 친구의 UID
   Future<void> removeFriend(String friendUid) async {
     try {
       // 1. 친구 관계 확인
@@ -134,8 +153,6 @@ class FriendService {
   }
 
   /// 친구 차단
-  ///
-  /// [friendUid] 차단할 친구의 UID
   Future<void> blockFriend(String friendUid) async {
     try {
       // 1. 친구 관계 확인
@@ -156,8 +173,6 @@ class FriendService {
   }
 
   /// 친구 차단 해제
-  ///
-  /// [friendUid] 차단 해제할 친구의 UID
   Future<void> unblockFriend(String friendUid) async {
     try {
       // 1. 친구 관계 확인
@@ -178,8 +193,6 @@ class FriendService {
   }
 
   /// 친구 즐겨찾기 토글
-  ///
-  /// [friendUid] 즐겨찾기 설정할 친구의 UID
   Future<void> toggleFriendFavorite(String friendUid) async {
     try {
       // 1. 현재 즐겨찾기 상태 확인
@@ -200,9 +213,6 @@ class FriendService {
   }
 
   /// 친구 검색 (고급)
-  ///
-  /// [query] 검색 쿼리
-  /// [includeBlocked] 차단된 친구 포함 여부
   Future<List<FriendModel>> searchFriends(
     String query, {
     bool includeBlocked = false,
@@ -228,8 +238,6 @@ class FriendService {
   }
 
   /// 친구 정보 동기화 (프로필 변경사항 반영)
-  ///
-  /// [friendUid] 동기화할 친구의 UID
   Future<void> syncFriendInfo(String friendUid) async {
     try {
       // 1. 최신 사용자 정보 조회
@@ -262,7 +270,7 @@ class FriendService {
           await Future.delayed(const Duration(milliseconds: 100));
         } catch (e) {
           // 개별 친구 동기화 실패는 무시하고 계속 진행
-          // print('친구 ${friend.id} 정보 동기화 실패: $e');
+          debugPrint('친구 ${friend.id} 정보 동기화 실패: $e');
         }
       }
     } catch (e) {
@@ -271,20 +279,16 @@ class FriendService {
   }
 
   /// 친구 활동 기록 업데이트
-  ///
-  /// [friendUid] 상호작용한 친구의 UID
   Future<void> recordFriendInteraction(String friendUid) async {
     try {
       await _friendRepository.updateLastInteraction(friendUid);
     } catch (e) {
       // 상호작용 기록 실패는 중요하지 않으므로 로그만 출력
-      // print('친구 상호작용 기록 실패: $e');
+      debugPrint('친구 상호작용 기록 실패: $e');
     }
   }
 
   /// 친구 통계 정보
-  ///
-  /// Returns: Map with various friend statistics
   Future<Map<String, dynamic>> getFriendStats() async {
     try {
       final totalFriends = await _friendRepository.getFriendsCount();
@@ -325,8 +329,6 @@ class FriendService {
   }
 
   /// 친구 그룹 분류
-  ///
-  /// Returns: Map with categorized friends
   Future<Map<String, List<FriendModel>>> getCategorizedFriends() async {
     try {
       final allFriends = await _friendRepository.getFriendsList().first;

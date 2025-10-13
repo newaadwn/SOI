@@ -132,7 +132,6 @@ class CategoryService {
             );
 
         if (pendingInvite != null) {
-          debugPrint('⏳ 카테고리 ${category.id} - pending 상태로 UI에서 숨김');
           continue;
         }
 
@@ -151,8 +150,6 @@ class CategoryService {
     required List<String> mates,
   }) async {
     try {
-      debugPrint('🎯 카테고리 생성 시도: $name, 멤버: ${mates.length}명');
-
       final validationError = _validateCategoryName(name);
       if (validationError != null) {
         return AuthResult.failure(validationError);
@@ -173,31 +170,39 @@ class CategoryService {
 
       final normalizedName = _normalizeCategoryName(name);
 
-      // 생성자와 멤버 간 친구 관계 확인
-      debugPrint('🔍 친구 관계 확인 시작: 생성자($currentUserId)와 멤버 확인');
+      // 생성자와 멤버 간 친구 관계 확인 (병렬 처리)
+
       final otherMates = mates.where((m) => m != currentUserId).toList();
-      final nonFriendMates = <String>[];
 
-      for (final mateId in otherMates) {
-        debugPrint('  확인 중: $currentUserId ←→ $mateId');
-        final isFriend = await friendService.areUsersMutualFriends(
+      if (otherMates.isEmpty) {
+        debugPrint('생성자만 있는 카테고리 - 친구 확인 생략');
+      } else {
+        // 배치로 모든 친구 관계를 한 번에 확인
+        final friendshipResults = await friendService.areBatchMutualFriends(
           currentUserId,
-          mateId,
+          otherMates,
         );
-        debugPrint('  결과: ${isFriend ? "✅ 친구" : "❌ 친구 아님"}');
 
-        if (!isFriend) {
-          nonFriendMates.add(mateId);
+        final nonFriendMates = <String>[];
+        for (final mateId in otherMates) {
+          final isFriend = friendshipResults[mateId] ?? false;
+          debugPrint(
+            '  결과: $currentUserId ←→ $mateId = ${isFriend ? "✅" : "❌"}',
+          );
+
+          if (!isFriend) {
+            nonFriendMates.add(mateId);
+          }
+        }
+
+        if (nonFriendMates.isNotEmpty) {
+          debugPrint('카테고리 생성 불가: 생성자와 친구가 아닌 멤버 ${nonFriendMates.length}명');
+          return AuthResult.failure('카테고리는 친구들과만 만들 수 있습니다. 먼저 친구를 추가해주세요.');
         }
       }
 
-      if (nonFriendMates.isNotEmpty) {
-        debugPrint('❌ 카테고리 생성 불가: 생성자와 친구가 아닌 멤버 ${nonFriendMates.length}명');
-        return AuthResult.failure('카테고리는 친구들과만 만들 수 있습니다. 먼저 친구를 추가해주세요.');
-      }
-
       // 카테고리 생성
-      debugPrint('✅ 생성자와 모든 멤버가 친구 관계 - 카테고리 생성 진행');
+
       final category = CategoryDataModel(
         id: '',
         name: normalizedName,
@@ -206,7 +211,6 @@ class CategoryService {
       );
 
       final categoryId = await _repository.createCategory(category);
-      debugPrint('✅ 카테고리 생성 완료: $categoryId');
 
       // 각 멤버별 초대 처리
       for (final mateId in otherMates) {
@@ -217,10 +221,6 @@ class CategoryService {
           );
 
           if (pendingMateIds.isNotEmpty) {
-            debugPrint(
-              '⏳ $mateId: 친구가 아닌 멤버 ${pendingMateIds.length}명 - 초대 수락 필요',
-            );
-
             final inviteId = await inviteService.createOrUpdateInvite(
               category: category.copyWith(id: categoryId),
               invitedUserId: mateId,
@@ -230,33 +230,30 @@ class CategoryService {
 
             await inviteService.notificationService
                 .createCategoryInviteNotification(
-              categoryId: categoryId,
-              actorUserId: currentUserId,
-              recipientUserIds: [mateId],
-              requiresAcceptance: true,
-              categoryInviteId: inviteId,
-              pendingMemberIds: pendingMateIds,
-            );
-            debugPrint('🔔 $mateId: 수락 대기 초대 알림 전송 완료');
+                  categoryId: categoryId,
+                  actorUserId: currentUserId,
+                  recipientUserIds: [mateId],
+                  requiresAcceptance: true,
+                  categoryInviteId: inviteId,
+                  pendingMemberIds: pendingMateIds,
+                );
           } else {
-            debugPrint('✅ $mateId: 모든 멤버와 친구 - 즉시 활성화');
             await inviteService.notificationService
                 .createCategoryInviteNotification(
-              categoryId: categoryId,
-              actorUserId: currentUserId,
-              recipientUserIds: [mateId],
-              requiresAcceptance: false,
-            );
-            debugPrint('🔔 $mateId: 일반 초대 알림 전송 완료');
+                  categoryId: categoryId,
+                  actorUserId: currentUserId,
+                  recipientUserIds: [mateId],
+                  requiresAcceptance: false,
+                );
           }
         } catch (e) {
-          debugPrint('⚠️ $mateId 초대 처리 실패: $e');
+          debugPrint('$mateId 초대 처리 실패: $e');
         }
       }
 
       return AuthResult.success(categoryId);
     } catch (e) {
-      debugPrint('💥 카테고리 생성 실패: $e');
+      debugPrint('카테고리 생성 실패: $e');
       return AuthResult.failure('카테고리 생성 중 오류가 발생했습니다.');
     }
   }
@@ -380,63 +377,56 @@ class CategoryService {
   Future<AuthResult> acceptPendingInvite({
     required String inviteId,
     required String userId,
-  }) =>
-      inviteService.acceptInvite(inviteId: inviteId, userId: userId);
+  }) => inviteService.acceptInvite(inviteId: inviteId, userId: userId);
 
   Future<AuthResult> declinePendingInvite({
     required String inviteId,
     required String userId,
-  }) =>
-      inviteService.declineInvite(inviteId: inviteId, userId: userId);
+  }) => inviteService.declineInvite(inviteId: inviteId, userId: userId);
 
   // 사진 관련
   Future<AuthResult> addPhotoToCategory({
     required String categoryId,
     required File imageFile,
     String? description,
-  }) =>
-      photoService.addPhoto(
-        categoryId: categoryId,
-        imageFile: imageFile,
-        description: description,
-      );
+  }) => photoService.addPhoto(
+    categoryId: categoryId,
+    imageFile: imageFile,
+    description: description,
+  );
 
   Future<AuthResult> removePhotoFromCategory({
     required String categoryId,
     required String photoId,
     required String imageUrl,
-  }) =>
-      photoService.removePhoto(
-        categoryId: categoryId,
-        photoId: photoId,
-        imageUrl: imageUrl,
-      );
+  }) => photoService.removePhoto(
+    categoryId: categoryId,
+    photoId: photoId,
+    imageUrl: imageUrl,
+  );
 
   Future<List<Map<String, dynamic>>> getCategoryPhotos(String categoryId) =>
       photoService.getPhotos(categoryId);
 
   Stream<List<Map<String, dynamic>>> getCategoryPhotosStream(
     String categoryId,
-  ) =>
-      photoService.getPhotosStream(categoryId);
+  ) => photoService.getPhotosStream(categoryId);
 
   Future<AuthResult> updateCoverPhotoFromGallery({
     required String categoryId,
     required File imageFile,
-  }) =>
-      photoService.updateCoverPhotoFromGallery(
-        categoryId: categoryId,
-        imageFile: imageFile,
-      );
+  }) => photoService.updateCoverPhotoFromGallery(
+    categoryId: categoryId,
+    imageFile: imageFile,
+  );
 
   Future<AuthResult> updateCoverPhotoFromCategory({
     required String categoryId,
     required String photoUrl,
-  }) =>
-      photoService.updateCoverPhotoFromCategory(
-        categoryId: categoryId,
-        photoUrl: photoUrl,
-      );
+  }) => photoService.updateCoverPhotoFromCategory(
+    categoryId: categoryId,
+    photoUrl: photoUrl,
+  );
 
   Future<AuthResult> deleteCoverPhoto(String categoryId) =>
       photoService.deleteCoverPhoto(categoryId);
@@ -447,39 +437,34 @@ class CategoryService {
   Future<void> updateLastPhotoInfo({
     required String categoryId,
     required String uploadedBy,
-  }) =>
-      photoService.updateLastPhotoInfo(
-        categoryId: categoryId,
-        uploadedBy: uploadedBy,
-      );
+  }) => photoService.updateLastPhotoInfo(
+    categoryId: categoryId,
+    uploadedBy: uploadedBy,
+  );
 
   Future<void> updateUserViewTime({
     required String categoryId,
     required String userId,
-  }) =>
-      photoService.updateUserViewTime(categoryId: categoryId, userId: userId);
+  }) => photoService.updateUserViewTime(categoryId: categoryId, userId: userId);
 
   // 멤버 관련
   Future<AuthResult> addUserToCategory({
     required String categoryId,
     required String nickName,
-  }) =>
-      memberService.addUserByNickname(
-        categoryId: categoryId,
-        nickName: nickName,
-      );
+  }) => memberService.addUserByNickname(
+    categoryId: categoryId,
+    nickName: nickName,
+  );
 
   Future<AuthResult> addUidToCategory({
     required String categoryId,
     required String uid,
-  }) =>
-      memberService.addUserByUid(categoryId: categoryId, uid: uid);
+  }) => memberService.addUserByUid(categoryId: categoryId, uid: uid);
 
   Future<AuthResult> removeUidFromCategory({
     required String categoryId,
     required String uid,
-  }) =>
-      memberService.removeUser(categoryId: categoryId, uid: uid);
+  }) => memberService.removeUser(categoryId: categoryId, uid: uid);
 
   bool isUserMemberOfCategory(CategoryDataModel category, String userId) =>
       memberService.isUserMember(category, userId);
