@@ -123,7 +123,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
         final user = await _authRepository.getUser(uid);
         if (user != null) {
           final displayName =
-              user.name.isNotEmpty ? user.name : (user.id.isNotEmpty ? user.id : uid);
+              user.name.isNotEmpty
+                  ? user.name
+                  : (user.id.isNotEmpty ? user.id : uid);
           results.add(
             CategoryInviteePreview(
               id: uid,
@@ -138,11 +140,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
       }
 
       results.add(
-        CategoryInviteePreview(
-          id: uid,
-          name: uid,
-          profileImageUrl: '',
-        ),
+        CategoryInviteePreview(id: uid, name: uid, profileImageUrl: ''),
       );
     }
 
@@ -164,9 +162,9 @@ class _NotificationScreenState extends State<NotificationScreen> {
     try {
       final unknownMembers = await _notificationController
           .getUnknownCategoryMembers(
-        notification: notification,
-        currentUserId: currentUser.uid,
-      );
+            notification: notification,
+            currentUserId: currentUser.uid,
+          );
 
       if (unknownMembers.isEmpty) {
         _navigateToCategory(notification);
@@ -674,30 +672,34 @@ class _NotificationScreenState extends State<NotificationScreen> {
               children: [
                 SizedBox(height: 22.h),
                 // 알림 아이템들
-                for (int i = 0;
-                    i < _notificationController.notifications.length;
-                    i++)
+                for (
+                  int i = 0;
+                  i < _notificationController.notifications.length;
+                  i++
+                )
                   NotificationItemWidget(
                     notification: _notificationController.notifications[i],
-                    onTap: () => _onNotificationTap(
-                      _notificationController.notifications[i],
-                    ),
-                    onDelete: () => _notificationController.deleteNotification(
-                      _notificationController.notifications[i].id,
-                    ),
+                    onTap:
+                        () => _onNotificationTap(
+                          _notificationController.notifications[i],
+                        ),
+                    onDelete:
+                        () => _notificationController.deleteNotification(
+                          _notificationController.notifications[i].id,
+                        ),
                     loadUnknownMembers:
                         _notificationController.notifications[i].type ==
                                 NotificationType.categoryInvite
                             ? () => _loadUnknownMembers(
-                                  _notificationController.notifications[i],
-                                )
+                              _notificationController.notifications[i],
+                            )
                             : null,
                     onConfirm:
                         _notificationController.notifications[i].type ==
                                 NotificationType.categoryInvite
                             ? () => _handleCategoryInviteConfirm(
-                                  _notificationController.notifications[i],
-                                )
+                              _notificationController.notifications[i],
+                            )
                             : null,
                     isLast:
                         i == _notificationController.notifications.length - 1 &&
