@@ -407,6 +407,7 @@ class CategoryRepository {
   }
 
   /// 카테고리에 사용자 추가 (UID로)
+  /// 카테고리에 사용자 추가 (UID로)
   Future<void> addUidToCategory({
     required String categoryId,
     required String uid,
@@ -433,6 +434,29 @@ class CategoryRepository {
       });
     } catch (e) {
       debugPrint('Firestore 업데이트 실패: $e');
+      rethrow;
+    }
+  }
+
+  /// 카테고리에서 사용자 제거 (UID로)
+  Future<void> removeUidFromCategory({
+    required String categoryId,
+    required String uid,
+  }) async {
+    try {
+      // 카테고리가 존재하는지 확인
+      final categoryDoc =
+          await _firestore.collection('categories').doc(categoryId).get();
+      if (!categoryDoc.exists) {
+        throw Exception('카테고리가 존재하지 않습니다: $categoryId');
+      }
+
+      // arrayRemove를 사용하여 제거
+      await _firestore.collection('categories').doc(categoryId).update({
+        'mates': FieldValue.arrayRemove([uid]),
+      });
+    } catch (e) {
+      debugPrint('❌ 카테고리에서 사용자 제거 실패: $e');
       rethrow;
     }
   }

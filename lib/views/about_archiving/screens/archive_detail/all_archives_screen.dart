@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import 'package:soi/controllers/category_search_controller.dart';
 
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/category_controller.dart';
@@ -135,8 +136,8 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      body: Consumer<CategoryController>(
-        builder: (context, categoryController, child) {
+      body: Consumer2<CategorySearchController, CategoryController>(
+        builder: (context, searchController, categoryController, child) {
           // 카테고리 목록 가져오기 (검색 결과 포함)
           final categories = categoryController.userCategories;
 
@@ -167,7 +168,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
           // 데이터 없으면
           if (categories.isEmpty) {
             // 검색 중인데 결과가 없는 경우
-            if (categoryController.searchQuery.isNotEmpty) {
+            if (searchController.searchQuery.isNotEmpty) {
               return Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 40.h),
@@ -201,15 +202,15 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
 
           // 데이터가 있으면 화면을 스크롤할 수 있도록 만듭니다.
           return widget.layoutMode == ArchiveLayoutMode.grid
-              ? _buildGridView(categoryController, categories)
-              : _buildListView(categoryController, categories);
+              ? _buildGridView(searchController, categories)
+              : _buildListView(searchController, categories);
         },
       ),
     );
   }
 
   Widget _buildGridView(
-    CategoryController categoryController,
+    CategorySearchController searchController,
     List categories,
   ) {
     return SingleChildScrollView(
@@ -221,7 +222,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
           children: [
             GridView.builder(
               key: ValueKey(
-                'grid_${categories.length}_${categoryController.searchQuery}',
+                'grid_${categories.length}_${searchController.searchQuery}',
               ),
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -265,12 +266,12 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
   }
 
   Widget _buildListView(
-    CategoryController categoryController,
+    CategorySearchController searchController,
     List categories,
   ) {
     return ListView.separated(
       key: ValueKey(
-        'list_${categories.length}_${categoryController.searchQuery}',
+        'list_${categories.length}_${searchController.searchQuery}',
       ),
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.only(left: 22.w, right: 20.w, top: 8.h, bottom: 20.h),

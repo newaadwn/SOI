@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/category_controller.dart';
+import '../../../../controllers/category_search_controller.dart';
 import '../../../../theme/theme.dart';
 import '../../models/archive_layout_mode.dart';
 import '../../widgets/archive_card_widget/archive_card_widget.dart';
@@ -96,8 +97,8 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      body: Consumer<CategoryController>(
-        builder: (context, categoryController, child) {
+      body: Consumer2<CategorySearchController, CategoryController>(
+        builder: (context, searchController, categoryController, child) {
           // 사용자 카테고리 로드 (한 번만 로드)
           WidgetsBinding.instance.addPostFrameCallback((_) {
             categoryController.loadUserCategories(uID!);
@@ -136,7 +137,7 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: 40.h),
                 child: Text(
-                  categoryController.searchQuery.isNotEmpty
+                  searchController.searchQuery.isNotEmpty
                       ? '검색 결과가 없습니다.'
                       : '등록된 카테고리가 없습니다.',
                   style: TextStyle(color: Colors.white, fontSize: 16.sp),
@@ -153,15 +154,15 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
           }
 
           return widget.layoutMode == ArchiveLayoutMode.grid
-              ? _buildGridView(categoryController, userCategories)
-              : _buildListView(categoryController, userCategories);
+              ? _buildGridView(searchController, userCategories)
+              : _buildListView(searchController, userCategories);
         },
       ),
     );
   }
 
   Widget _buildGridView(
-    CategoryController categoryController,
+    CategorySearchController searchController,
     List userCategories,
   ) {
     return SingleChildScrollView(
@@ -173,7 +174,7 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
           children: [
             GridView.builder(
               key: ValueKey(
-                'my_grid_${userCategories.length}_${categoryController.searchQuery}',
+                'my_grid_${userCategories.length}_${searchController.searchQuery}',
               ),
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
@@ -217,12 +218,12 @@ class _MyArchivesScreenState extends State<MyArchivesScreen> {
   }
 
   Widget _buildListView(
-    CategoryController categoryController,
+    CategorySearchController searchController,
     List userCategories,
   ) {
     return ListView.separated(
       key: ValueKey(
-        'my_list_${userCategories.length}_${categoryController.searchQuery}',
+        'my_list_${userCategories.length}_${searchController.searchQuery}',
       ),
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.only(left: 22.w, right: 20.w, top: 8.h, bottom: 20.h),

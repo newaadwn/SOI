@@ -3,6 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/category_controller.dart';
+import '../../../../controllers/category_search_controller.dart';
 import '../../../../theme/theme.dart';
 import '../../models/archive_layout_mode.dart';
 import '../../widgets/archive_card_widget/archive_card_widget.dart';
@@ -99,8 +100,8 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      body: Consumer<CategoryController>(
-        builder: (context, categoryController, child) {
+      body: Consumer2<CategorySearchController, CategoryController>(
+        builder: (context, searchController, categoryController, child) {
           // 카테고리 목록 가져오기 (검색 결과 포함)
           final allCategories = categoryController.userCategories;
 
@@ -138,7 +139,7 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
           // 데이터 없으면
           if (sharedCategories.isEmpty) {
             // 검색 중인데 결과가 없는 경우
-            if (categoryController.searchQuery.isNotEmpty) {
+            if (searchController.searchQuery.isNotEmpty) {
               return Center(
                 child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 40.h),
@@ -172,15 +173,15 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
 
           // 데이터가 있으면 스크롤 가능한 화면으로 만들기
           return widget.layoutMode == ArchiveLayoutMode.grid
-              ? _buildGridView(categoryController, sharedCategories)
-              : _buildListView(categoryController, sharedCategories);
+              ? _buildGridView(searchController, sharedCategories)
+              : _buildListView(searchController, sharedCategories);
         },
       ),
     );
   }
 
   Widget _buildGridView(
-    CategoryController categoryController,
+    CategorySearchController searchController,
     List sharedCategories,
   ) {
     return SingleChildScrollView(
@@ -192,7 +193,7 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
           children: [
             GridView.builder(
               key: ValueKey(
-                'shared_grid_${sharedCategories.length}_${categoryController.searchQuery}',
+                'shared_grid_${sharedCategories.length}_${searchController.searchQuery}',
               ),
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
@@ -236,12 +237,12 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
   }
 
   Widget _buildListView(
-    CategoryController categoryController,
+    CategorySearchController searchController,
     List sharedCategories,
   ) {
     return ListView.separated(
       key: ValueKey(
-        'shared_list_${sharedCategories.length}_${categoryController.searchQuery}',
+        'shared_list_${sharedCategories.length}_${searchController.searchQuery}',
       ),
       physics: const AlwaysScrollableScrollPhysics(),
       padding: EdgeInsets.only(left: 22.w, right: 20.w, top: 8.h, bottom: 20.h),

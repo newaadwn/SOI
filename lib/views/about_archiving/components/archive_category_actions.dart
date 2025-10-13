@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:soi/controllers/auth_controller.dart';
 import 'package:provider/provider.dart';
+import 'package:soi/controllers/category_member_controller.dart';
 import '../../../../controllers/category_controller.dart';
 import '../../../../models/category_data_model.dart';
 
@@ -186,7 +187,7 @@ class ArchiveCategoryActions {
     }
 
     try {
-      final categoryController = Provider.of<CategoryController>(
+      final categoryController = Provider.of<CategoryMemberController>(
         context,
         listen: false,
       );

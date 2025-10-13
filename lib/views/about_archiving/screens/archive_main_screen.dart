@@ -6,6 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:soi/controllers/category_search_controller.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../controllers/category_controller.dart';
 import '../../../models/selected_friend_model.dart';
@@ -38,7 +39,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   Timer? _searchDebounceTimer;
 
   // Provider 참조를 미리 저장 (dispose에서 안전하게 사용하기 위함)
-  CategoryController? _categoryController;
+  CategorySearchController? _categoryController;
 
   // 편집 모드 상태 관리
   bool _isEditMode = false;
@@ -98,7 +99,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     super.didChangeDependencies();
 
     // Provider 참조를 안전하게 저장
-    _categoryController ??= Provider.of<CategoryController>(
+    _categoryController ??= Provider.of<CategorySearchController>(
       context,
       listen: false,
     );
@@ -110,6 +111,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
     // 300ms 지연 후 검색 실행 (타이핑 중 깜빡거림 방지)
     _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      // 검색어만 전달 (내부 카테고리 목록 사용)
       _categoryController?.searchCategories(_searchController.text);
     });
   }

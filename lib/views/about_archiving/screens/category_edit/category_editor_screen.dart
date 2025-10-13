@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:soi/controllers/category_cover_photo_controller.dart';
 import '../../../../controllers/auth_controller.dart';
 import '../../../../controllers/category_controller.dart';
 import '../../../../models/auth_model.dart';
@@ -556,9 +557,11 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
 
   /// 갤러리/카메라에서 선택한 파일로 표지사진 업데이트
   Future<void> _updateCoverPhoto(File imageFile) async {
+    final categoryPhotoController =
+        context.read<CategoryCoverPhotoController>();
     final categoryController = context.read<CategoryController>();
 
-    final success = await categoryController.updateCoverPhotoFromGallery(
+    final success = await categoryPhotoController.updateCoverPhotoFromGallery(
       categoryId: widget.category.id,
       imageFile: imageFile,
     );
@@ -592,9 +595,11 @@ class _CategoryEditorScreenState extends State<CategoryEditorScreen>
 
   /// 표지사진 삭제
   Future<void> _deleteCoverPhoto() async {
+    final categoryPhotoController =
+        context.read<CategoryCoverPhotoController>();
     final categoryController = context.read<CategoryController>();
 
-    final success = await categoryController.deleteCoverPhoto(
+    final success = await categoryPhotoController.deleteCoverPhoto(
       widget.category.id,
     );
 

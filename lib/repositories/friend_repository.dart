@@ -140,29 +140,6 @@ class FriendRepository {
       throw Exception('사용자가 로그인되어 있지 않습니다');
     }
 
-    // 내 친구 목록에서 삭제를 수행하고 상대방의 친구 목록에서 나를 삭제
-    /*try {
-      await _firestore.runTransaction((transaction) async {
-        // 1. 현재 사용자의 친구 목록에서 삭제
-        final currentUserFriendDoc = _usersCollection
-            .doc(currentUid)
-            .collection('friends')
-            .doc(friendUid);
-
-        transaction.delete(currentUserFriendDoc);
-
-        // 2. 친구의 친구 목록에서 현재 사용자 삭제
-        final friendUserFriendDoc = _usersCollection
-            .doc(friendUid)
-            .collection('friends')
-            .doc(currentUid);
-
-        // transaction.delete(friendUserFriendDoc);
-      });
-    } catch (e) {
-      throw Exception('친구 삭제 실패: $e');
-    }*/
-
     // 양방향 삭제는 하지 않고, 내 목록에서만 삭제
     try {
       await _usersCollection
@@ -564,6 +541,27 @@ class FriendRepository {
     } catch (e) {
       debugPrint('_getTargetUserFriend 에러: $e');
       return null;
+    }
+  }
+
+  /// 특정 사용자의 친구 ID 목록 조회
+  Future<Set<String>> getFriendIdsForUser(String userId) async {
+    if (userId.isEmpty) {
+      return {};
+    }
+
+    try {
+      final snapshot =
+          await _usersCollection
+              .doc(userId)
+              .collection('friends')
+              .where('status', isEqualTo: FriendStatus.active.value)
+              .get();
+
+      return snapshot.docs.map((doc) => doc.id).toSet();
+    } catch (e) {
+      debugPrint('친구 ID 목록 조회 실패 ($userId): $e');
+      return {};
     }
   }
 

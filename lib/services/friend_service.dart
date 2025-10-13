@@ -91,6 +91,16 @@ class FriendService {
     return _friendRepository.areUsersMutualFriends(userA, userB);
   }
 
+  /// 특정 사용자의 친구 ID 목록을 반환
+  Future<Set<String>> getFriendIdsForUser(String userId) async {
+    try {
+      return await _friendRepository.getFriendIdsForUser(userId);
+    } catch (e) {
+      debugPrint('FriendService.getFriendIdsForUser 에러: $e');
+      return {};
+    }
+  }
+
   /// 친구 목록 조회 (실시간)
   Stream<List<FriendModel>> getFriendsList() {
     return _friendRepository.getFriendsList();
