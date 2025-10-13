@@ -33,16 +33,13 @@ class CategoryController extends ChangeNotifier {
   // ==================== 카테고리 관리 ====================
 
   /// 사용자의 카테고리 목록을 로드합니다
-  ///
-  /// [userId] 카테고리를 로드할 사용자 ID
-  /// [forceReload] 캐시를 무시하고 강제로 새로고침할지 여부
   Future<void> loadUserCategories(
     String userId, {
     bool forceReload = false,
   }) async {
     // 유효성 검사
     if (userId.isEmpty) {
-      // debugPrint('[CategoryController] userId가 비어있음 - 로드 중단');
+      debugPrint('[CategoryController] userId가 비어있음 - 로드 중단');
       return;
     }
 
@@ -51,13 +48,11 @@ class CategoryController extends ChangeNotifier {
     final isCacheValid =
         _lastLoadTime != null && now.difference(_lastLoadTime!) < _cacheTimeout;
 
-    // 중복 로딩 방지 제거 - 동시 로딩 허용
-    // 여러 화면에서 동시에 호출할 수 있으므로 제한하지 않음
-    // debugPrint('[CategoryController] 로딩 상태: $_isLoading');
-
     // 캐시된 데이터 사용 가능 여부 확인
     if (!forceReload && _lastLoadedUserId == userId && isCacheValid) {
-      // debugPrint('[CategoryController] 캐시된 데이터 사용 - userId: $userId, 카테고리 수: ${_userCategories.length}');
+      debugPrint(
+        '[CategoryController] 캐시된 데이터 사용 - userId: $userId, 카테고리 수: ${_userCategories.length}',
+      );
       return;
     }
 
@@ -66,20 +61,13 @@ class CategoryController extends ChangeNotifier {
       _error = null;
       notifyListeners();
 
-      // debugPrint('[CategoryController] 카테고리 로드 시작 - userId: $userId');
-      // debugPrint('[CategoryController] 현재 _userCategories 수: ${_userCategories.length}');
-      // debugPrint('[CategoryController] _isLoading 상태: $_isLoading');
-
       // 서비스에서 카테고리 목록 가져오기
       final categories = await _categoryService.getUserCategories(userId);
-      // debugPrint('[CategoryController] 서비스에서 받은 카테고리 수: ${categories.length}');
 
       _userCategories = categories;
 
       // 사용자별 고정 상태에 따라 정렬
       _sortCategoriesForUser(userId);
-
-      // debugPrint('[CategoryController] _userCategories에 할당 후: ${_userCategories.length}');
 
       // 캐시 정보 업데이트
       _lastLoadedUserId = userId;
@@ -87,12 +75,8 @@ class CategoryController extends ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
-
-      // debugPrint('[CategoryController] 카테고리 로드 완료 - 최종 개수: ${_userCategories.length}');
-      // debugPrint('[CategoryController] _isLoading 최종 상태: $_isLoading');
     } catch (e) {
-      // 에러 처리
-      // debugPrint('[CategoryController] 카테고리 로드 오류: $e');
+      debugPrint('[CategoryController] 카테고리 로드 오류: $e');
       _error = '카테고리를 불러오는 중 오류가 발생했습니다.';
       _userCategories = [];
       _isLoading = false;
@@ -115,9 +99,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 새 카테고리를 생성합니다
-  ///
-  /// [name] 카테고리 이름
-  /// [mates] 멤버 목록 (UID 리스트)
   Future<void> createCategory({
     required String name,
     required List<String> mates,
@@ -153,11 +134,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 카테고리 정보를 수정합니다
-  ///
-  /// [categoryId] 수정할 카테고리 ID
-  /// [name] 새로운 카테고리 이름 (선택사항)
-  /// [mates] 새로운 멤버 목록 (선택사항)
-  /// [isPinned] 고정 상태 (선택사항)
   Future<void> updateCategory({
     required String categoryId,
     String? name,
@@ -195,7 +171,7 @@ class CategoryController extends ChangeNotifier {
     }
   }
 
-  /// 🎯 카테고리 이름만 업데이트하는 편의 메서드
+  /// 카테고리 이름만 업데이트하는 편의 메서드
   Future<void> updateCategoryName(String categoryId, String newName) async {
     await updateCategory(categoryId: categoryId, name: newName);
   }
@@ -239,10 +215,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 카테고리 고정/해제를 토글합니다 (사용자별)
-  ///
-  /// [categoryId] 토글할 카테고리 ID
-  /// [userId] 요청하는 사용자 ID
-  /// [currentPinStatus] 현재 고정 상태
   Future<void> togglePinCategory(
     String categoryId,
     String userId,
@@ -338,10 +310,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 카테고리에서 나가기를 처리합니다
-  /// 마지막 멤버인 경우 카테고리가 자동으로 삭제됩니다
-  ///
-  /// [categoryId] 나갈 카테고리 ID
-  /// [userId] 나가는 사용자 ID
   Future<void> leaveCategoryByUid(String categoryId, String userId) async {
     try {
       _isLoading = true;
@@ -372,9 +340,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 카테고리를 삭제합니다
-  ///
-  /// [categoryId] 삭제할 카테고리 ID
-  /// [userId] 요청하는 사용자 ID
   Future<void> deleteCategory(String categoryId, String userId) async {
     try {
       _isLoading = true;
@@ -451,10 +416,6 @@ class CategoryController extends ChangeNotifier {
   // ==================== 표지사진 관리 ====================
 
   /// 갤러리에서 선택한 이미지로 표지사진을 업데이트합니다
-  ///
-  /// [categoryId] 카테고리 ID
-  /// [imageFile] 업로드할 이미지 파일
-  /// Returns: 성공 여부
   Future<bool> updateCoverPhotoFromGallery({
     required String categoryId,
     required File imageFile,
@@ -488,10 +449,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 카테고리 내 사진으로 표지사진을 업데이트합니다
-  ///
-  /// [categoryId] 카테고리 ID
-  /// [photoUrl] 사용할 사진 URL
-  /// Returns: 성공 여부
   Future<bool> updateCoverPhotoFromCategory({
     required String categoryId,
     required String photoUrl,
@@ -525,9 +482,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 표지사진을 삭제합니다
-  ///
-  /// [categoryId] 카테고리 ID
-  /// Returns: 성공 여부
   Future<bool> deleteCoverPhoto(String categoryId) async {
     try {
       _isLoading = true;
@@ -565,9 +519,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 카테고리 이름을 조회합니다 (기존 호환성)
-  ///
-  /// [categoryId] 카테고리 ID
-  /// Returns: 카테고리 이름 또는 기본값
   Future<String> getCategoryName(String categoryId) async {
     try {
       final category = await getCategory(categoryId);
@@ -583,10 +534,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 사진 문서 ID를 조회합니다 (기존 호환성)
-  ///
-  /// [categoryId] 카테고리 ID
-  /// [imageUrl] 이미지 URL
-  /// Returns: 매칭되는 사진의 문서 ID
   Future<String?> getPhotoDocumentId(String categoryId, String imageUrl) async {
     try {
       final photos = await getCategoryPhotos(categoryId);
@@ -602,10 +549,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 카테고리 프로필 이미지들을 조회합니다 (기존 호환성)
-  ///
-  /// [mates] 멤버 목록
-  /// [authController] 인증 컨트롤러
-  /// Returns: 프로필 이미지 URL 목록
   Future<List<String>> getCategoryProfileImages(
     List<String> mates,
     dynamic authController,
@@ -659,7 +602,6 @@ class CategoryController extends ChangeNotifier {
         categoryMap['id'] = category.id;
 
         // 추가 상세 정보들을 여기서 로드할 수 있습니다
-        // 예: 첫 번째 사진, 사진 개수 등
         categoriesWithDetails.add(categoryMap);
       }
 
@@ -670,9 +612,6 @@ class CategoryController extends ChangeNotifier {
   // ==================== 카테고리 멤버 관리 ====================
 
   /// 카테고리에 사용자를 추가합니다 (닉네임으로)
-  ///
-  /// [categoryId] 카테고리 ID
-  /// [nickName] 추가할 사용자 닉네임
   Future<void> addUserToCategory(String categoryId, String nickName) async {
     try {
       _isLoading = true;
@@ -700,9 +639,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 카테고리에 사용자를 추가합니다 (UID로)
-  ///
-  /// [categoryId] 카테고리 ID
-  /// [uid] 추가할 사용자 UID
   Future<void> addUidToCategory(String categoryId, String uid) async {
     try {
       _isLoading = true;
@@ -730,10 +666,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 카테고리 초대 수락
-  ///
-  /// [inviteId] 초대 ID
-  /// [userId] 수락하는 사용자 UID
-  /// Returns: 성공 시 카테고리 ID, 실패 시 null
   Future<String?> acceptCategoryInvite({
     required String inviteId,
     required String userId,
@@ -770,9 +702,6 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 카테고리 초대 거절
-  ///
-  /// [inviteId] 초대 ID
-  /// [userId] 거절하는 사용자 UID
   Future<bool> declineCategoryInvite({
     required String inviteId,
     required String userId,
@@ -1078,9 +1007,7 @@ class CategoryController extends ChangeNotifier {
   }
 
   /// 사용자의 카테고리 조회 시간을 업데이트합니다
-  ///
-  /// [categoryId] 업데이트할 카테고리 ID
-  /// [userId] 사용자 ID
+
   Future<void> updateUserViewTime({
     required String categoryId,
     required String userId,
@@ -1091,8 +1018,7 @@ class CategoryController extends ChangeNotifier {
         userId: userId,
       );
     } catch (e) {
-      // debugPrint('[CategoryController] updateUserViewTime 오류: $e');
-      // 에러가 발생해도 UI에는 영향을 주지 않음 (사용자 경험을 위해)
+      debugPrint('[CategoryController] updateUserViewTime 오류: $e');
     }
   }
 }
