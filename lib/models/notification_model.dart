@@ -36,6 +36,11 @@ class NotificationModel {
   final String? actorName;
   final String? actorProfileImage; // 알림을 보낸 주체의 프로필 이미지 URL
 
+  // 카테고리 초대 수락 관련 상태
+  final bool requiresAcceptance; // 수락 대기 여부
+  final String? categoryInviteId; // categoryInvites 문서 ID
+  final List<String>? pendingCategoryMemberIds; // 친구가 아닌 기존 멤버 IDs
+
   NotificationModel({
     required this.id,
     required this.recipientUserId,
@@ -48,12 +53,13 @@ class NotificationModel {
     this.commentId,
     required this.createdAt,
     this.isRead = false,
-
     this.categoryThumbnailUrl,
     this.photoThumbnailUrl,
-
     this.actorName,
     this.actorProfileImage,
+    this.requiresAcceptance = false,
+    this.categoryInviteId,
+    this.pendingCategoryMemberIds,
   });
 
   /// Firestore 문서에서 NotificationModel 생성
@@ -81,6 +87,12 @@ class NotificationModel {
       photoThumbnailUrl: data['photoThumbnailUrl'],
       actorName: data['actorName'],
       actorProfileImage: data['actorProfileImage'],
+      requiresAcceptance: data['requiresAcceptance'] ?? false,
+      categoryInviteId: data['categoryInviteId'],
+      pendingCategoryMemberIds:
+          data['pendingCategoryMemberIds'] != null
+              ? List<String>.from(data['pendingCategoryMemberIds'] as List)
+              : null,
     );
   }
 
@@ -101,6 +113,9 @@ class NotificationModel {
       'photoThumbnailUrl': photoThumbnailUrl,
       'actorName': actorName,
       'actorProfileImage': actorProfileImage,
+      'requiresAcceptance': requiresAcceptance,
+      'categoryInviteId': categoryInviteId,
+      'pendingCategoryMemberIds': pendingCategoryMemberIds,
     };
   }
 
@@ -129,6 +144,9 @@ class NotificationModel {
     String? photoThumbnailUrl,
     String? actorName,
     String? actorProfileImage,
+    bool? requiresAcceptance,
+    String? categoryInviteId,
+    List<String>? pendingCategoryMemberIds,
   }) {
     return NotificationModel(
       id: id ?? this.id,
@@ -146,13 +164,15 @@ class NotificationModel {
       photoThumbnailUrl: photoThumbnailUrl ?? this.photoThumbnailUrl,
       actorName: actorName ?? this.actorName,
       actorProfileImage: actorProfileImage ?? this.actorProfileImage,
+      requiresAcceptance: requiresAcceptance ?? this.requiresAcceptance,
+      categoryInviteId: categoryInviteId ?? this.categoryInviteId,
+      pendingCategoryMemberIds:
+          pendingCategoryMemberIds ?? this.pendingCategoryMemberIds,
     );
   }
 
-  /// 표시할 썸네일 URL 결정 (우선순위: categoryThumbnailUrl)
-  String? get displayThumbnailUrl {
-    return categoryThumbnailUrl;
-  }
+  /// 카테고리 초대 수락이 필요한 알림인지 여부
+  bool get isCategoryInvitePending => requiresAcceptance && !isRead;
 
   /// 알림 타입별 아이콘 이름 반환
   String get typeIconName {
@@ -168,45 +188,8 @@ class NotificationModel {
     }
   }
 
-  /// 알림 타입별 색상 반환
-  String get typeColorHex {
-    switch (type) {
-      case NotificationType.categoryInvite:
-        return '#4CAF50'; // Green
-      case NotificationType.photoAdded:
-        return '#2196F3'; // Blue
-      case NotificationType.voiceCommentAdded:
-        return '#FF9800'; // Orange
-      case NotificationType.friendRequest:
-        return '#9C27B0'; // Purple
-    }
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is NotificationModel &&
-          runtimeType == other.runtimeType &&
-          id == other.id;
-
-  @override
-  int get hashCode => id.hashCode;
-
   @override
   String toString() {
     return 'NotificationModel{id: $id, type: $type, title: $title, isRead: $isRead}';
-  }
-}
-
-/// 기존 호환성을 위한 정적 메서드들 (deprecated, fromFirestore 사용 권장)
-extension NotificationModelLegacy on NotificationModel {
-  /// 기존 fromMap 메서드를 위한 정적 헬퍼
-  static NotificationModel fromMap(Map<String, dynamic> map) {
-    return NotificationModel.fromFirestore(map, map['id'] ?? '');
-  }
-
-  /// 기존 toMap 메서드 호환성
-  Map<String, dynamic> toMap() {
-    return toFirestore();
   }
 }

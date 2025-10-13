@@ -86,6 +86,11 @@ class FriendService {
     }
   }
 
+  Future<bool> areUsersMutualFriends(String userA, String userB) async {
+    if (userA.isEmpty || userB.isEmpty) return false;
+    return _friendRepository.areUsersMutualFriends(userA, userB);
+  }
+
   /// 친구 목록 조회 (실시간)
   Stream<List<FriendModel>> getFriendsList() {
     return _friendRepository.getFriendsList();

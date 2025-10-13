@@ -3,9 +3,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:soi/services/auth_service.dart';
 import '../repositories/category_repository.dart';
+import '../repositories/category_invite_repository.dart';
 import '../repositories/friend_repository.dart';
 import '../repositories/user_search_repository.dart';
 import '../models/category_data_model.dart';
+import '../models/category_invite_model.dart';
 import '../models/auth_result.dart';
 import 'notification_service.dart';
 import 'photo_service.dart';
@@ -48,6 +50,12 @@ class CategoryService {
       userSearchRepository: UserSearchRepository(),
     );
     return _friendService!;
+  }
+
+  CategoryInviteRepository? _categoryInviteRepository;
+  CategoryInviteRepository get categoryInviteRepository {
+    _categoryInviteRepository ??= CategoryInviteRepository();
+    return _categoryInviteRepository!;
   }
 
   AuthService? _authService;
@@ -499,41 +507,80 @@ class CategoryService {
     return category.mates.contains(userId);
   }
 
+  Future<List<String>> _getNonFriendMateIds({
+    required CategoryDataModel category,
+    required String invitedUserId,
+  }) async {
+    if (category.mates.isEmpty) return [];
+    final mateIds =
+        category.mates.where((mateId) => mateId != invitedUserId).toList();
+    if (mateIds.isEmpty) return [];
+
+    final results = await Future.wait(
+      mateIds.map((mateId) async {
+        final isFriend =
+            await friendService.areUsersMutualFriends(invitedUserId, mateId);
+        return isFriend ? null : mateId;
+      }),
+    );
+
+    return results.whereType<String>().toList();
+  }
+
+  Future<String> _createOrUpdateCategoryInvite({
+    required CategoryDataModel category,
+    required String invitedUserId,
+    required String inviterUserId,
+    required List<String> blockedMateIds,
+  }) async {
+    final existingInvite =
+        await categoryInviteRepository.getPendingInviteForCategory(
+      categoryId: category.id,
+      invitedUserId: invitedUserId,
+    );
+
+    if (existingInvite != null) {
+      final updatedBlockedMates = {
+        ...existingInvite.blockedMateIds,
+        ...blockedMateIds,
+      }.toList();
+
+      await categoryInviteRepository.updateInvite(existingInvite.id, {
+        'blockedMateIds': updatedBlockedMates,
+        'status': CategoryInviteStatus.pending.name,
+      });
+
+      return existingInvite.id;
+    }
+
+    final now = DateTime.now();
+    final invite = CategoryInviteModel(
+      id: '',
+      categoryId: category.id,
+      invitedUserId: invitedUserId,
+      inviterUserId: inviterUserId,
+      status: CategoryInviteStatus.pending,
+      blockedMateIds: blockedMateIds,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    return await categoryInviteRepository.createInvite(invite);
+  }
+
   /// 카테고리에 사용자 추가 (닉네임으로) - 기존 방식 유지하되 검증 추가
   Future<AuthResult> addUserToCategory({
     required String categoryId,
     required String nickName,
   }) async {
     try {
-      // TODO: 닉네임으로 UID를 찾아서 addUidToCategory 호출하도록 개선 필요
-      // 현재는 기존 방식 유지
-      await _repository.addUserToCategory(
-        categoryId: categoryId,
-        nickName: nickName,
-      );
-
-      final currentUserId = authService.currentUser?.uid;
-      if (currentUserId != null && currentUserId.isNotEmpty) {
-        try {
-          final users =
-              await userSearchRepository.searchUsersById(nickName, limit: 1);
-          if (users.isNotEmpty) {
-            final recipientUid = users.first.uid;
-            await notificationService.createCategoryInviteNotification(
-              categoryId: categoryId,
-              actorUserId: currentUserId,
-              recipientUserIds: [recipientUid],
-            );
-            debugPrint('🔔 카테고리 초대 알림 전송 완료 (닉네임 경로)');
-          } else {
-            debugPrint('⚠️ 닉네임으로 사용자를 찾지 못해 알림을 전송하지 못했습니다: $nickName');
-          }
-        } catch (e) {
-          debugPrint('⚠️ 카테고리 초대 알림 전송 실패 (닉네임 경로): $e');
-        }
+      final users =
+          await userSearchRepository.searchUsersById(nickName, limit: 1);
+      if (users.isEmpty) {
+        return AuthResult.failure('사용자를 찾을 수 없습니다.');
       }
-
-      return AuthResult.success(null);
+      final recipientUid = users.first.uid;
+      return await addUidToCategory(categoryId: categoryId, uid: recipientUid);
     } catch (e) {
       return AuthResult.failure('카테고리에 사용자 추가 실패: $e');
     }
@@ -569,11 +616,38 @@ class CategoryService {
         return AuthResult.failure('이미 카테고리 멤버입니다.');
       }
 
-      // 5. 친구 관계 확인 제거 - 차단된 사용자도 카테고리 추가 허용
-      // 차단 효과는 사진 필터링으로만 구현
-      // (차단당한 사용자는 차단 사실을 모르므로 자유롭게 추가 가능해야 함)
+      // 5. 기존 멤버 중 친구가 아닌 사용자 확인
+      final nonFriendMateIds = await _getNonFriendMateIds(
+        category: category,
+        invitedUserId: uid,
+      );
 
-      // 6. 실제 추가 실행
+      if (nonFriendMateIds.isNotEmpty) {
+        final inviteId = await _createOrUpdateCategoryInvite(
+          category: category,
+          invitedUserId: uid,
+          inviterUserId: currentUserId,
+          blockedMateIds: nonFriendMateIds,
+        );
+
+        try {
+          await notificationService.createCategoryInviteNotification(
+            categoryId: categoryId,
+            actorUserId: currentUserId,
+            recipientUserIds: [uid],
+            requiresAcceptance: true,
+            categoryInviteId: inviteId,
+            pendingMemberIds: nonFriendMateIds,
+          );
+          debugPrint('🔔 카테고리 초대 알림 전송 (수락 대기) 완료');
+        } catch (e) {
+          debugPrint('⚠️ 카테고리 초대 알림 전송 실패 (수락 대기): $e');
+        }
+
+        return AuthResult.success('초대를 보냈습니다. 상대방의 수락을 기다리고 있습니다.');
+      }
+
+      // 6. 바로 추가 가능한 경우 mates 업데이트
       await _repository.addUidToCategory(categoryId: categoryId, uid: uid);
       debugPrint('✅ 카테고리 사용자 추가 성공');
 

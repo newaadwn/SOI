@@ -328,6 +328,32 @@ class FriendRepository {
     }
   }
 
+  /// 두 사용자 ID가 서로를 친구로 가지고 있는지 확인
+  Future<bool> areUsersMutualFriends(String userA, String userB) async {
+    try {
+      final userAFriendDoc =
+          await _usersCollection.doc(userA).collection('friends').doc(userB).get();
+      if (!userAFriendDoc.exists) {
+        return false;
+      }
+      final userAFriend = FriendModel.fromFirestore(userAFriendDoc);
+      if (userAFriend.status != FriendStatus.active) {
+        return false;
+      }
+
+      final userBFriendDoc =
+          await _usersCollection.doc(userB).collection('friends').doc(userA).get();
+      if (!userBFriendDoc.exists) {
+        return false;
+      }
+      final userBFriend = FriendModel.fromFirestore(userBFriendDoc);
+      return userBFriend.status == FriendStatus.active;
+    } catch (e) {
+      debugPrint('areUsersMutualFriends 에러: $e');
+      return false;
+    }
+  }
+
   /// 친구 목록에서 검색
   ///
   /// [query] 검색 쿼리 (닉네임 또는 이름)

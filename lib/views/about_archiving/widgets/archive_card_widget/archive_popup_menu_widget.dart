@@ -156,7 +156,7 @@ class _ArchivePopupMenuWidgetState extends State<ArchivePopupMenuWidget> {
         );
         break;
       case 'leave':
-        ArchiveCategoryDialogs.showLeaveCategoryDialog(
+        ArchiveCategoryDialogs.showLeaveCategoryBottomSheet(
           context,
           widget.category,
           onConfirm: () {

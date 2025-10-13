@@ -16,6 +16,7 @@ class CategoryDataModel {
   final String? lastPhotoUploadedBy; // 마지막으로 사진을 올린 사용자 ID
   final DateTime? lastPhotoUploadedAt; // 마지막 사진 업로드 시간
   final Map<String, DateTime>? userLastViewedAt; // 사용자별 마지막 확인 시간
+  final bool isPendingForCurrentUser; // 현재 사용자에게 보류 상태인지 여부
 
   CategoryDataModel({
     required this.id,
@@ -28,6 +29,7 @@ class CategoryDataModel {
     this.lastPhotoUploadedBy,
     this.lastPhotoUploadedAt,
     this.userLastViewedAt,
+    this.isPendingForCurrentUser = false,
   });
 
   // Firestore에서 데이터를 가져올 때 사용
@@ -63,6 +65,7 @@ class CategoryDataModel {
                 ),
               )
               : null,
+      isPendingForCurrentUser: false,
     );
   }
 
@@ -83,6 +86,7 @@ class CategoryDataModel {
       'userLastViewedAt': userLastViewedAt?.map(
         (key, value) => MapEntry(key, Timestamp.fromDate(value)),
       ),
+      // isPendingForCurrentUser는 파생 필드이므로 저장하지 않음
     };
   }
 
@@ -98,6 +102,7 @@ class CategoryDataModel {
     String? lastPhotoUploadedBy,
     DateTime? lastPhotoUploadedAt,
     Map<String, DateTime>? userLastViewedAt,
+    bool? isPendingForCurrentUser,
   }) {
     return CategoryDataModel(
       id: id ?? this.id,
@@ -110,6 +115,8 @@ class CategoryDataModel {
       lastPhotoUploadedBy: lastPhotoUploadedBy ?? this.lastPhotoUploadedBy,
       lastPhotoUploadedAt: lastPhotoUploadedAt ?? this.lastPhotoUploadedAt,
       userLastViewedAt: userLastViewedAt ?? this.userLastViewedAt,
+      isPendingForCurrentUser:
+          isPendingForCurrentUser ?? this.isPendingForCurrentUser,
     );
   }
 

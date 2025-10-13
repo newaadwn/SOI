@@ -363,16 +363,40 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
             preferredSize: Size.fromHeight(60.sp),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 8.w),
-              child: Column(
-                children: [
-                  Row(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final chipWidth = constraints.maxWidth / 3;
+                  return Stack(
                     children: [
-                      Expanded(child: _buildChip('전체', 0)),
-                      Expanded(child: _buildChip('개인앨범', 1)),
-                      Expanded(child: _buildChip('공유앨범', 2)),
+                      // 애니메이션되는 인디케이터
+                      AnimatedPositioned(
+                        left: chipWidth * _selectedIndex,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        child: Container(
+                          width: chipWidth,
+                          height: 43.h,
+                          alignment: Alignment.center,
+                          child: Container(
+                            margin: EdgeInsets.symmetric(horizontal: 8.w),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF323232),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // 텍스트 레이블들
+                      Row(
+                        children: [
+                          Expanded(child: _buildChip('전체', 0)),
+                          Expanded(child: _buildChip('개인앨범', 1)),
+                          Expanded(child: _buildChip('공유앨범', 2)),
+                        ],
+                      ),
                     ],
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ),
@@ -512,43 +536,32 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   // 선택 가능한 Chip 위젯 생성
   Widget _buildChip(String label, int index) {
-    final isSelected = _selectedIndex == index;
-
-    return IntrinsicWidth(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedIndex = index;
-          });
-          // PageView도 함께 이동 - 부드러운 애니메이션으로 변경
-          _pageController.animateToPage(
-            index,
-            duration: Duration(milliseconds: 1),
-            curve: Curves.easeInOut,
-          );
-        },
-        child: AnimatedContainer(
-          duration: Duration(milliseconds: 1),
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedIndex = index;
+        });
+        // PageView도 함께 이동 - 부드러운 애니메이션으로 변경
+        _pageController.animateToPage(
+          index,
+          duration: Duration(milliseconds: 250),
           curve: Curves.easeInOut,
-          height: 43.h,
-          padding: EdgeInsets.only(top: 3.h, right: 17.w, left: 17.w),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF323232) : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+        );
+      },
+      child: Container(
+        height: 43.h,
+        color: Colors.transparent,
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16.sp,
+            fontFamily: 'Pretendard',
           ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16.sp,
-                fontFamily: 'Pretendard',
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );

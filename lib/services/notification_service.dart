@@ -49,6 +49,9 @@ class NotificationService {
     required String categoryId,
     required String actorUserId,
     required List<String> recipientUserIds,
+    bool requiresAcceptance = false,
+    String? categoryInviteId,
+    List<String>? pendingMemberIds,
   }) async {
     try {
       if (categoryId.isEmpty ||
@@ -86,6 +89,9 @@ class NotificationService {
             categoryThumbnailUrl: category.categoryPhotoUrl,
             actorName: actor.name,
             actorProfileImage: actor.profileImage,
+            requiresAcceptance: requiresAcceptance,
+            categoryInviteId: categoryInviteId,
+            pendingCategoryMemberIds: pendingMemberIds,
           );
           notificationCount++;
         }
@@ -454,6 +460,9 @@ class NotificationService {
     String? photoThumbnailUrl,
     String? actorName,
     String? actorProfileImage,
+    bool requiresAcceptance = false,
+    String? categoryInviteId,
+    List<String>? pendingCategoryMemberIds,
   }) async {
     try {
       final notification = NotificationModel(
@@ -471,6 +480,9 @@ class NotificationService {
         photoThumbnailUrl: photoThumbnailUrl,
         actorName: actorName,
         actorProfileImage: actorProfileImage,
+        requiresAcceptance: requiresAcceptance,
+        categoryInviteId: categoryInviteId,
+        pendingCategoryMemberIds: pendingCategoryMemberIds,
       );
 
       await _notificationRepository.createNotification(notification);
