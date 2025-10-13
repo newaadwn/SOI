@@ -57,6 +57,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   double get keyboardHeight => MediaQuery.of(context).viewInsets.bottom;
   bool get isKeyboardVisible => keyboardHeight > 0;
 
+  // 바텀시트를 숨겨야 하는지 판단 (caption 입력 중이고 카테고리 추가 화면이 아닐 때)
+  bool get shouldHideBottomSheet => isKeyboardVisible && !_showAddCategoryUI;
+
   // 컨트롤러들
   final _draggableScrollController = DraggableScrollableController();
   final _categoryNameController = TextEditingController();
@@ -561,7 +564,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                 ],
               ),
       bottomSheet:
-          (isKeyboardVisible)
+          (shouldHideBottomSheet)
               ? null
               : NotificationListener<DraggableScrollableNotification>(
                 onNotification: (notification) {

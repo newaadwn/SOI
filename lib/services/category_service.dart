@@ -568,6 +568,90 @@ class CategoryService {
     return await categoryInviteRepository.createInvite(invite);
   }
 
+  Future<AuthResult> acceptPendingInvite({
+    required String inviteId,
+    required String userId,
+  }) async {
+    try {
+      if (inviteId.isEmpty || userId.isEmpty) {
+        return AuthResult.failure('유효하지 않은 초대입니다.');
+      }
+
+      final invite = await categoryInviteRepository.getInvite(inviteId);
+      if (invite == null) {
+        return AuthResult.failure('초대를 찾을 수 없습니다.');
+      }
+
+      if (invite.invitedUserId != userId) {
+        return AuthResult.failure('이 초대를 수락할 수 없습니다.');
+      }
+
+      if (invite.status == CategoryInviteStatus.accepted) {
+        return AuthResult.success(invite.categoryId);
+      }
+
+      if (invite.status == CategoryInviteStatus.declined || invite.isExpired) {
+        return AuthResult.failure('만료되었거나 거절된 초대입니다.');
+      }
+
+      final category = await _repository.getCategory(invite.categoryId);
+      if (category == null) {
+        return AuthResult.failure('카테고리를 찾을 수 없습니다.');
+      }
+
+      await _repository.addUidToCategory(
+        categoryId: invite.categoryId,
+        uid: userId,
+      );
+
+      await categoryInviteRepository.updateInviteStatus(
+        invite.id,
+        CategoryInviteStatus.accepted,
+        respondedAt: DateTime.now(),
+      );
+
+      await categoryInviteRepository.deleteInvite(invite.id);
+
+      return AuthResult.success(invite.categoryId);
+    } catch (e) {
+      debugPrint('카테고리 초대 수락 실패: $e');
+      return AuthResult.failure('초대 수락 중 오류가 발생했습니다.');
+    }
+  }
+
+  Future<AuthResult> declinePendingInvite({
+    required String inviteId,
+    required String userId,
+  }) async {
+    try {
+      if (inviteId.isEmpty || userId.isEmpty) {
+        return AuthResult.failure('유효하지 않은 초대입니다.');
+      }
+
+      final invite = await categoryInviteRepository.getInvite(inviteId);
+      if (invite == null) {
+        return AuthResult.failure('초대를 찾을 수 없습니다.');
+      }
+
+      if (invite.invitedUserId != userId) {
+        return AuthResult.failure('이 초대를 거절할 수 없습니다.');
+      }
+
+      await categoryInviteRepository.updateInviteStatus(
+        invite.id,
+        CategoryInviteStatus.declined,
+        respondedAt: DateTime.now(),
+      );
+
+      await categoryInviteRepository.deleteInvite(invite.id);
+
+      return AuthResult.success();
+    } catch (e) {
+      debugPrint('카테고리 초대 거절 실패: $e');
+      return AuthResult.failure('초대 거절 중 오류가 발생했습니다.');
+    }
+  }
+
   /// 카테고리에 사용자 추가 (닉네임으로) - 기존 방식 유지하되 검증 추가
   Future<AuthResult> addUserToCategory({
     required String categoryId,

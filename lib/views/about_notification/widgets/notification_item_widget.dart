@@ -50,7 +50,12 @@ class _NotificationItemWidgetState extends State<NotificationItemWidget> {
   void _primeUnknownMembersFuture() {
     if (widget.notification.type == NotificationType.categoryInvite &&
         widget.loadUnknownMembers != null) {
-      _unknownMembersFuture = widget.loadUnknownMembers!();
+      final pending = widget.notification.pendingCategoryMemberIds;
+      if (pending != null) {
+        _unknownMembersFuture = Future.value(pending);
+      } else {
+        _unknownMembersFuture = widget.loadUnknownMembers!();
+      }
     } else {
       _unknownMembersFuture = null;
     }
@@ -116,6 +121,20 @@ class _NotificationItemWidgetState extends State<NotificationItemWidget> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInviteBubble(),
+                  if (widget.notification.requiresAcceptance)
+                    Padding(
+                      padding: EdgeInsets.only(top: 6.h),
+                      child: Text(
+                        '수락 대기 중',
+                        style: TextStyle(
+                          color: const Color(0xFF89F993),
+                          fontSize: 12.sp,
+                          fontFamily: 'Pretendard Variable',
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.25,
+                        ),
+                      ),
+                    ),
                   if (isLoading)
                     Padding(
                       padding: EdgeInsets.only(top: 12.h),
@@ -125,7 +144,8 @@ class _NotificationItemWidgetState extends State<NotificationItemWidget> {
                         child: const CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
-                  if (!isLoading && hasUnknown)
+                  if (!isLoading &&
+                      (hasUnknown || widget.notification.requiresAcceptance))
                     Padding(
                       padding: EdgeInsets.only(top: 12.h),
                       child: _buildConfirmButton(),
@@ -310,7 +330,9 @@ class _NotificationItemWidgetState extends State<NotificationItemWidget> {
   String _getNotificationText() {
     switch (widget.notification.type) {
       case NotificationType.categoryInvite:
-        return '님이 새 카테고리에 초대했습니다.';
+        return widget.notification.requiresAcceptance
+            ? '님이 새 카테고리에 초대했습니다. 수락하시겠어요?'
+            : '님이 새 카테고리에 초대했습니다.';
       case NotificationType.photoAdded:
         return '님이 "${widget.notification.categoryName}" 카테고리에 사진을 추가하였습니다.';
       case NotificationType.voiceCommentAdded:

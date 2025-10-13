@@ -42,6 +42,13 @@ Figma link: https://www.figma.com/design/rOPJ7cmvUKQUUPzBQsJGoP/%EB%89%B4%EB%8D%
 - 수락 또는 거절 이후 알림 목록과 카테고리 리스트가 즉시 갱신되도록 컨트롤러 상태를 업데이트한다.
 Figma link: https://www.figma.com/design/rOPJ7cmvUKQUUPzBQsJGoP/%EB%89%B4%EB%8D%98?node-id=8305-10407&m=dev
 
+### 구현 현황 (2024-04)
+- `lib/views/about_notification/notification_screen.dart:116`에서 초대 알림 클릭 시 수락 바텀시트를 띄우고, 수락/거절 흐름 및 친구 리스트/상세 바텀시트(`CategoryInviteFriendListSheet`, `CategoryInviteFriendDetailSheet`)를 연결.
+- `lib/views/about_notification/widgets/notification_item_widget.dart:50`과 `:100`에서 수락 대기 여부를 반영해 라벨과 확인 버튼 노출 조건을 갱신.
+- `lib/views/about_notification/widgets/category_invite_confirm_sheet.dart:5`에 Figma 시안을 토대로 1차 수락 시트와 친구 확인 시트 UI 컴포넌트를 구현.
+- `lib/controllers/notification_controller.dart:349`와 `lib/services/notification_service.dart:426`에서 초대 수락 시 알림 상태를 갱신하고 `CategoryService`의 `acceptPendingInvite`/`declinePendingInvite`와 연동.
+- `lib/services/category_service.dart:505`에 비친구 탐색 및 초대 문서 생성, 수락/거절 처리 로직을 추가하여 UI 동작과 데이터가 일치하도록 했다.
+
 ## 6. 테스트 및 QA
 - 서비스 단위 테스트: 친구/비친구 조합, 중복 수락 방지, 거절 후 재초대, 상태 전이 시나리오를 검증한다.
 - UI 테스트: 알림 → 바텀시트 → 친구 목록 → 세부 정보 흐름과 오류/타임아웃 대응을 확인한다.

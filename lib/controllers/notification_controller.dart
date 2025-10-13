@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/notification_model.dart';
+import '../models/auth_result.dart';
 import '../repositories/friend_repository.dart';
 import '../repositories/user_search_repository.dart';
 import '../services/friend_service.dart';
@@ -293,6 +294,11 @@ class NotificationController extends ChangeNotifier {
     required NotificationModel notification,
     required String currentUserId,
   }) async {
+    if (notification.pendingCategoryMemberIds != null &&
+        notification.pendingCategoryMemberIds!.isNotEmpty) {
+      return notification.pendingCategoryMemberIds!;
+    }
+
     final categoryId = notification.categoryId;
     if (categoryId == null || categoryId.isEmpty) {
       return [];
@@ -338,6 +344,37 @@ class NotificationController extends ChangeNotifier {
       debugPrint('모르는 사용자 검사 실패: $e');
       return [];
     }
+  }
+
+  Future<AuthResult> acceptCategoryInvite({
+    required NotificationModel notification,
+    required String currentUserId,
+  }) async {
+    final result = await _notificationService.acceptCategoryInvite(
+      notification: notification,
+      userId: currentUserId,
+    );
+
+    if (result.isSuccess) {
+      _notifications = _notifications.map((n) {
+        if (n.id == notification.id) {
+          return n.copyWith(
+            isRead: true,
+            requiresAcceptance: false,
+            pendingCategoryMemberIds: [],
+          );
+        }
+        return n;
+      }).toList();
+
+      if (notification.categoryId != null) {
+        _categoryUnknownMembersCache.remove(notification.categoryId!);
+      }
+
+      notifyListeners();
+    }
+
+    return result;
   }
 
   /// 백그라운드에서 자동 알림 정리 수행

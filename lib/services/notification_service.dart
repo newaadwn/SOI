@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../models/notification_model.dart';
+import '../models/auth_result.dart';
 import '../repositories/notification_repository.dart';
 import '../repositories/friend_repository.dart';
 import '../repositories/user_search_repository.dart';
@@ -421,6 +422,64 @@ class NotificationService {
   }
 
   // ==================== 내부 헬퍼 메서드들 ====================
+
+  Future<AuthResult> acceptCategoryInvite({
+    required NotificationModel notification,
+    required String userId,
+  }) async {
+    try {
+      final inviteId = notification.categoryInviteId;
+      if (inviteId == null || inviteId.isEmpty) {
+        return AuthResult.failure('초대 정보를 찾을 수 없습니다.');
+      }
+
+      final result = await categoryService.acceptPendingInvite(
+        inviteId: inviteId,
+        userId: userId,
+      );
+
+      if (result.isSuccess) {
+        await _notificationRepository.updateNotification(notification.id, {
+          'isRead': true,
+          'requiresAcceptance': false,
+          'pendingCategoryMemberIds': [],
+        });
+      }
+      return result;
+    } catch (e) {
+      debugPrint('❌ 카테고리 초대 수락 실패: $e');
+      return AuthResult.failure('초대 수락 중 오류가 발생했습니다.');
+    }
+  }
+
+  Future<AuthResult> declineCategoryInvite({
+    required NotificationModel notification,
+    required String userId,
+  }) async {
+    try {
+      final inviteId = notification.categoryInviteId;
+      if (inviteId == null || inviteId.isEmpty) {
+        return AuthResult.failure('초대 정보를 찾을 수 없습니다.');
+      }
+
+      final result = await categoryService.declinePendingInvite(
+        inviteId: inviteId,
+        userId: userId,
+      );
+
+      if (result.isSuccess) {
+        await _notificationRepository.updateNotification(notification.id, {
+          'isRead': true,
+          'requiresAcceptance': false,
+          'pendingCategoryMemberIds': [],
+        });
+      }
+      return result;
+    } catch (e) {
+      debugPrint('❌ 카테고리 초대 거절 실패: $e');
+      return AuthResult.failure('초대 거절 중 오류가 발생했습니다.');
+    }
+  }
 
   /// 차단된 사용자의 알림을 필터링하는 메서드
   Future<List<NotificationModel>> _filterNotificationsWithBlockedUsers(

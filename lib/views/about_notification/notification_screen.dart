@@ -107,6 +107,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
       return [];
     }
 
+    if (notification.pendingCategoryMemberIds != null &&
+        notification.pendingCategoryMemberIds!.isNotEmpty) {
+      return notification.pendingCategoryMemberIds!;
+    }
+
     return _notificationController.getUnknownCategoryMembers(
       notification: notification,
       currentUserId: currentUser.uid,
@@ -126,10 +131,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
               user.name.isNotEmpty
                   ? user.name
                   : (user.id.isNotEmpty ? user.id : uid);
+          final handle = user.id.isNotEmpty ? user.id : uid;
           results.add(
             CategoryInviteePreview(
-              id: uid,
-              name: displayName,
+              uid: uid,
+              displayName: displayName,
+              handle: handle,
               profileImageUrl: user.profileImage,
             ),
           );
@@ -140,7 +147,12 @@ class _NotificationScreenState extends State<NotificationScreen> {
       }
 
       results.add(
-        CategoryInviteePreview(id: uid, name: uid, profileImageUrl: ''),
+        CategoryInviteePreview(
+          uid: uid,
+          displayName: uid,
+          handle: uid,
+          profileImageUrl: '',
+        ),
       );
     }
 
@@ -160,13 +172,15 @@ class _NotificationScreenState extends State<NotificationScreen> {
     await _notificationController.onNotificationTap(notification);
 
     try {
-      final unknownMembers = await _notificationController
-          .getUnknownCategoryMembers(
-            notification: notification,
-            currentUserId: currentUser.uid,
-          );
+      final List<String> pendingMembers =
+          notification.pendingCategoryMemberIds != null
+              ? List<String>.from(notification.pendingCategoryMemberIds!)
+              : await _notificationController.getUnknownCategoryMembers(
+                notification: notification,
+                currentUserId: currentUser.uid,
+              );
 
-      if (unknownMembers.isEmpty) {
+      if (pendingMembers.isEmpty && !notification.requiresAcceptance) {
         _navigateToCategory(notification);
         return;
       }
@@ -183,7 +197,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
         return;
       }
 
-      final inviteeInfos = await _fetchInviteeInfos(unknownMembers);
+      final inviteeInfos = await _fetchInviteeInfos(pendingMembers);
 
       if (!mounted) {
         return;
@@ -198,19 +212,95 @@ class _NotificationScreenState extends State<NotificationScreen> {
             categoryName: notification.categoryName ?? category.name,
             categoryImageUrl: category.categoryPhotoUrl ?? '',
             invitees: inviteeInfos,
-            onAccept: () {
+            onAccept: () async {
               Navigator.of(sheetContext).pop();
-              _navigateToCategory(notification);
+              if (notification.requiresAcceptance) {
+                await _acceptCategoryInvite(notification, currentUser.uid);
+              } else {
+                _navigateToCategory(notification);
+              }
             },
             onCancel: () {
               Navigator.of(sheetContext).pop();
             },
+            onViewFriends: inviteeInfos.isEmpty
+                ? null
+                : () => _showInviteeListSheet(sheetContext, inviteeInfos),
           );
         },
       );
     } catch (e) {
       _showErrorSnackBar('카테고리 정보를 불러오지 못했습니다');
       debugPrint('❌ 카테고리 초대 확인 실패: $e');
+    }
+  }
+
+  Future<void> _showInviteeListSheet(
+    BuildContext context,
+    List<CategoryInviteePreview> invitees,
+  ) async {
+    if (invitees.isEmpty) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (listContext) {
+        return CategoryInviteFriendListSheet(
+          invitees: invitees,
+          onInviteeTap: (invitee) {
+            Navigator.of(listContext).pop();
+            _showInviteeDetailSheet(context, invitee);
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showInviteeDetailSheet(
+    BuildContext context,
+    CategoryInviteePreview invitee,
+  ) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => CategoryInviteFriendDetailSheet(invitee: invitee),
+    );
+  }
+
+  Future<void> _acceptCategoryInvite(
+    NotificationModel notification,
+    String currentUserId,
+  ) async {
+    if (!mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder:
+          (_) => const Center(
+            child: CircularProgressIndicator(color: Color(0xff634D45)),
+          ),
+    );
+
+    final result = await _notificationController.acceptCategoryInvite(
+      notification: notification,
+      currentUserId: currentUserId,
+    );
+
+    if (mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+
+    if (!mounted) return;
+
+    if (result.isSuccess) {
+      _showSuccessSnackBar('카테고리에 참여했습니다.');
+      await Future.delayed(const Duration(milliseconds: 200));
+      _navigateToCategory(notification);
+    } else {
+      _showErrorSnackBar(result.error ?? '초대 수락 중 문제가 발생했습니다');
     }
   }
 
@@ -221,7 +311,11 @@ class _NotificationScreenState extends State<NotificationScreen> {
     // 알림 타입별 네비게이션
     switch (notification.type) {
       case NotificationType.categoryInvite:
-        _navigateToCategory(notification);
+        if (notification.requiresAcceptance) {
+          _handleCategoryInviteConfirm(notification);
+        } else {
+          _navigateToCategory(notification);
+        }
         break;
       case NotificationType.photoAdded:
         _navigateToPhoto(notification);
@@ -387,6 +481,16 @@ class _NotificationScreenState extends State<NotificationScreen> {
         content: Text(message),
         backgroundColor: Colors.red,
         duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showSuccessSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: const Color(0xFF2ECC71),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
