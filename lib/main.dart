@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:soi/controllers/category_cover_photo_controller.dart';
+import 'package:soi/controllers/category_search_controller.dart';
+import 'controllers/category_member_controller.dart';
 import 'controllers/comment_record_controller.dart';
 import 'controllers/contact_controller.dart';
 import 'controllers/photo_controller.dart';
@@ -151,6 +154,9 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider(create: (_) => PhotoController()),
         ChangeNotifierProvider(create: (_) => ContactController()),
         ChangeNotifierProvider(create: (_) => EmojiReactionController()),
+        ChangeNotifierProvider(create: (_) => CategoryMemberController()),
+        ChangeNotifierProvider(create: (_) => CategoryCoverPhotoController()),
+        ChangeNotifierProvider(create: (_) => CategorySearchController()),
 
         // 친구 관리 관련 컨트롤러들
         ChangeNotifierProvider(
