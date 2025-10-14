@@ -22,14 +22,13 @@ class CaptionInputWidget extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: 20.w),
       child: SizedBox(
-        height: 46,
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: const Color(0xFF373737).withValues(alpha: 0.66),
             borderRadius: BorderRadius.circular(21.5),
           ),
           child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: 19),
+            padding: EdgeInsets.symmetric(horizontal: 19, vertical: 5),
             child: Row(
               children: [
                 Expanded(
