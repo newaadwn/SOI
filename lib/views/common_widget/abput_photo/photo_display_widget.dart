@@ -13,6 +13,7 @@ import '../../../utils/format_utils.dart';
 import '../../../utils/position_converter.dart';
 import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
 import '../../about_archiving/screens/archive_detail/category_photos_screen.dart';
+import '../about_text/first_line_ellipsis_text.dart';
 import '../about_voice_comment/voice_comment_list_sheet.dart';
 
 /// 사진 표시 위젯
@@ -616,12 +617,18 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                                               letterSpacing:
                                                                   -0.5,
                                                               height: 1.4,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
                                                             ),
                                                           ),
                                                         ),
                                                       )
-                                                      : Text(
-                                                        widget.photo.caption!,
+                                                      : FirstLineEllipsisText(
+                                                        text:
+                                                            widget
+                                                                .photo
+                                                                .caption!,
                                                         style: TextStyle(
                                                           color: Colors.white,
                                                           fontSize: 14.sp,
@@ -632,10 +639,6 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                                           letterSpacing: -0.5,
                                                           height: 1.4,
                                                         ),
-                                                        maxLines: 1,
-                                                        overflow:
-                                                            TextOverflow
-                                                                .ellipsis,
                                                       ),
                                             ),
                                           ],

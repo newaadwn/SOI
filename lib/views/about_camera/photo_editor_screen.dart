@@ -13,6 +13,7 @@ import '../../controllers/photo_controller.dart';
 import '../../models/selected_friend_model.dart';
 import '../home_navigator_screen.dart';
 import 'widgets/add_category_widget.dart';
+import 'widgets/audio_recorder_widget.dart';
 import 'widgets/caption_input_widget.dart';
 import 'widgets/category_list_widget.dart';
 import 'widgets/loading_popup_widget.dart';
@@ -49,6 +50,7 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   List<double>? _recordedWaveformData;
   String? _recordedAudioPath;
   bool _isCaptionEmpty = true;
+  bool _showAudioRecorder = false; // 음성 녹음 UI 표시 여부
 
   // 키보드 높이
   double get keyboardHeight => MediaQuery.of(context).viewInsets.bottom;
@@ -282,8 +284,10 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   }
 
   void _handleMicTap() {
-    // Implement the logic for microphone tap here
-    print('Microphone tapped');
+    setState(() {
+      _showAudioRecorder = true;
+    });
+    _captionFocusNode.unfocus(); // 키보드 숨김
   }
 
   Widget _buildCaptionInputBar() {
@@ -292,23 +296,49 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
       transitionBuilder:
           (child, animation) =>
               FadeTransition(opacity: animation, child: child),
-      child: FocusScope(
-        child: Focus(
-          onFocusChange: (isFocused) {
-            if (_categoryFocusNode.hasFocus) {
-              FocusScope.of(context).requestFocus(_categoryFocusNode);
-            }
-          },
-          child: CaptionInputWidget(
-            controller: _captionController,
-            isCaptionEmpty: _isCaptionEmpty,
-            onMicTap: _handleMicTap,
-            isKeyboardVisible: !_categoryFocusNode.hasFocus,
-            keyboardHeight: keyboardHeight,
-            focusNode: _captionFocusNode,
-          ),
-        ),
-      ),
+      child:
+          _showAudioRecorder
+              ? Padding(
+                key: const ValueKey('audio_recorder'),
+                padding: EdgeInsets.symmetric(horizontal: 20.w),
+                child: AudioRecorderWidget(
+                  autoStart: true,
+                  isCommentMode: false,
+                  onRecordingFinished: (audioFilePath, waveformData, duration) {
+                    setState(() {
+                      _recordedAudioPath = audioFilePath;
+                      _recordedWaveformData = waveformData;
+                    });
+                  },
+                  onRecordingCleared: () {
+                    setState(() {
+                      _showAudioRecorder = false;
+                      _recordedAudioPath = null;
+                      _recordedWaveformData = null;
+                    });
+                  },
+                  initialRecordingPath: _recordedAudioPath,
+                  initialWaveformData: _recordedWaveformData,
+                ),
+              )
+              : FocusScope(
+                key: const ValueKey('caption_input'),
+                child: Focus(
+                  onFocusChange: (isFocused) {
+                    if (_categoryFocusNode.hasFocus) {
+                      FocusScope.of(context).requestFocus(_categoryFocusNode);
+                    }
+                  },
+                  child: CaptionInputWidget(
+                    controller: _captionController,
+                    isCaptionEmpty: _isCaptionEmpty,
+                    onMicTap: _handleMicTap,
+                    isKeyboardVisible: !_categoryFocusNode.hasFocus,
+                    keyboardHeight: keyboardHeight,
+                    focusNode: _captionFocusNode,
+                  ),
+                ),
+              ),
     );
   }
 
