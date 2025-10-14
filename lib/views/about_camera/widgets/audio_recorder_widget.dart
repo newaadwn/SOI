@@ -650,116 +650,105 @@ class _AudioRecorderWidgetState extends State<AudioRecorderWidget>
       child: Stack(
         alignment: Alignment.center,
         children: [
-          Positioned.fill(
-            child: ClipRRect(
-              borderRadius: borderRadius,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 450),
-                switchInCurve: Curves.easeInOut,
-                switchOutCurve: Curves.easeInOut,
-                transitionBuilder:
-                    (child, animation) =>
-                        FadeTransition(opacity: animation, child: child),
-                child: Container(color: backgroundColor),
-              ),
+          ClipRRect(
+            borderRadius: borderRadius,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 450),
+              switchInCurve: Curves.easeInOut,
+              switchOutCurve: Curves.easeInOut,
+              transitionBuilder:
+                  (child, animation) =>
+                      FadeTransition(opacity: animation, child: child),
+              child: Container(color: backgroundColor),
             ),
           ),
-          Positioned.fill(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                SizedBox(width: 14.w),
-                // 삭제 버튼
-                GestureDetector(
-                  onTap: isRecording ? _cancelRecording : _deleteRecording,
-                  child: Image.asset(
-                    'assets/trash.png',
-                    width: 25.w,
-                    height: 25.h,
-                  ),
-                ),
-                SizedBox(width: 17.w),
-                // 파형 표시 영역
-                Expanded(
-                  child:
-                      isRecording
-                          ? AudioWaveforms(
-                            size: Size(1, 52.h),
-                            recorderController: recorderController,
-                            waveStyle: const WaveStyle(
-                              waveColor: Colors.white,
-                              extendWaveform: true,
-                              showMiddleLine: false,
-                            ),
-                          )
-                          : _buildWaveformDisplay(),
-                ),
-                SizedBox(width: 13.w),
-                // 시간 표시
-                SizedBox(
-                  width: 35.w,
-                  child:
-                      isRecording
-                          ? Text(
-                            duration ?? '00:00',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12.sp,
-                              fontFamily: 'Pretendard',
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: -0.40,
-                            ),
-                          )
-                          : StreamBuilder<int>(
-                            stream:
-                                playerController?.onCurrentDurationChanged ??
-                                const Stream.empty(),
-                            builder: (context, snapshot) {
-                              final currentDurationMs = snapshot.data ?? 0;
-                              final currentDuration = Duration(
-                                milliseconds: currentDurationMs,
-                              );
-                              final minutes = currentDuration.inMinutes;
-                              final seconds = currentDuration.inSeconds % 60;
-                              return Text(
-                                '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12.sp,
-                                  fontFamily: 'Pretendard',
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: -0.40,
-                                ),
-                              );
-                            },
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              SizedBox(width: 14.w),
+              // 삭제 버튼
+              GestureDetector(
+                onTap: isRecording ? _cancelRecording : _deleteRecording,
+                child: Image.asset('assets/trash.png', width: 25, height: 25),
+              ),
+              SizedBox(width: 17.w),
+              // 파형 표시 영역
+              Expanded(
+                child:
+                    isRecording
+                        ? AudioWaveforms(
+                          size: Size(1, 44.h),
+                          recorderController: recorderController,
+                          waveStyle: const WaveStyle(
+                            waveColor: Colors.white,
+                            extendWaveform: true,
+                            showMiddleLine: false,
                           ),
-                ),
-                // 재생/정지 버튼
-                IconButton(
-                  onPressed:
-                      isRecording ? _stopAndPreparePlayback : _togglePlayback,
-                  padding: EdgeInsets.only(bottom: 3.h),
-                  icon:
-                      isRecording
-                          ? Icon(Icons.stop, color: Colors.white, size: 35.sp)
-                          : StreamBuilder<PlayerState>(
-                            stream:
-                                playerController?.onPlayerStateChanged ??
-                                const Stream.empty(),
-                            builder: (context, snapshot) {
-                              final isPlaying =
-                                  snapshot.data?.isPlaying ?? false;
-                              return Icon(
-                                isPlaying ? Icons.pause : Icons.play_arrow,
+                        )
+                        : _buildWaveformDisplay(),
+              ),
+              SizedBox(width: 13.w),
+              // 시간 표시
+              SizedBox(
+                child:
+                    isRecording
+                        ? Text(
+                          duration ?? '00:00',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontFamily: 'Pretendard',
+                            fontWeight: FontWeight.w500,
+                            letterSpacing: -0.40,
+                          ),
+                        )
+                        : StreamBuilder<int>(
+                          stream:
+                              playerController?.onCurrentDurationChanged ??
+                              const Stream.empty(),
+                          builder: (context, snapshot) {
+                            final currentDurationMs = snapshot.data ?? 0;
+                            final currentDuration = Duration(
+                              milliseconds: currentDurationMs,
+                            );
+                            final minutes = currentDuration.inMinutes;
+                            final seconds = currentDuration.inSeconds % 60;
+                            return Text(
+                              '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                              style: TextStyle(
                                 color: Colors.white,
-                                size: 35.sp,
-                              );
-                            },
-                          ),
-                ),
-              ],
-            ),
+                                fontSize: 12,
+                                fontFamily: 'Pretendard',
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: -0.40,
+                              ),
+                            );
+                          },
+                        ),
+              ),
+              // 재생/정지 버튼
+              IconButton(
+                onPressed:
+                    isRecording ? _stopAndPreparePlayback : _togglePlayback,
+                padding: EdgeInsets.only(bottom: 0.h),
+                icon:
+                    isRecording
+                        ? Icon(Icons.stop, color: Colors.white, size: 35.sp)
+                        : StreamBuilder<PlayerState>(
+                          stream:
+                              playerController?.onPlayerStateChanged ??
+                              const Stream.empty(),
+                          builder: (context, snapshot) {
+                            final isPlaying = snapshot.data?.isPlaying ?? false;
+                            return Icon(
+                              isPlaying ? Icons.pause : Icons.play_arrow,
+                              color: Colors.white,
+                              size: 35.sp,
+                            );
+                          },
+                        ),
+              ),
+            ],
           ),
         ],
       ),

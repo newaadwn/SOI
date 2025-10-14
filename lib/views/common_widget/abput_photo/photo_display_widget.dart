@@ -13,8 +13,8 @@ import '../../../utils/format_utils.dart';
 import '../../../utils/position_converter.dart';
 import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
 import '../../about_archiving/screens/archive_detail/category_photos_screen.dart';
-import '../about_text/first_line_ellipsis_text.dart';
 import '../about_voice_comment/voice_comment_list_sheet.dart';
+import 'first_line_ellipsis_text.dart';
 
 /// 사진 표시 위젯
 ///
@@ -180,7 +180,7 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                       )
                       : Container(
                         color: Colors.grey[700],
-                        child: Icon(Icons.person, size: 20),
+                        child: Icon(Icons.person, size: 20.h),
                       ),
             );
       },
@@ -490,15 +490,15 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                               LayoutBuilder(
                                 builder: (context, constraints) {
                                   // 텍스트가 오버플로우되는지 확인
+                                  final captionStyle = TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14.sp,
+                                    fontFamily: 'Pretendard',
+                                    fontWeight: FontWeight.w400,
+                                  );
                                   final textSpan = TextSpan(
                                     text: widget.photo.caption!,
-                                    style: TextStyle(
-                                      fontSize: 14.sp,
-                                      fontFamily: 'Pretendard',
-                                      fontWeight: FontWeight.w400,
-                                      letterSpacing: -0.5,
-                                      height: 1.4,
-                                    ),
+                                    style: captionStyle,
                                   );
 
                                   final textPainter = TextPainter(
@@ -540,7 +540,6 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                       child: Padding(
                                         padding: EdgeInsets.symmetric(
                                           horizontal: 10.w,
-                                          vertical: 6.5.h,
                                         ),
                                         child: Row(
                                           crossAxisAlignment:
@@ -601,25 +600,22 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                                         child: SingleChildScrollView(
                                                           physics:
                                                               BouncingScrollPhysics(),
-                                                          child: Text(
-                                                            widget
-                                                                .photo
-                                                                .caption!,
-                                                            style: TextStyle(
-                                                              color:
-                                                                  Colors.white,
-                                                              fontSize: 14.sp,
-                                                              fontFamily:
-                                                                  'Pretendard',
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w400,
-                                                              letterSpacing:
-                                                                  -0.5,
-                                                              height: 1.4,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
+                                                          child: Padding(
+                                                            padding:
+                                                                EdgeInsets.symmetric(
+                                                              vertical: 6.h,
+                                                            ),
+                                                            child: Text(
+                                                              widget
+                                                                  .photo
+                                                                  .caption!,
+                                                              style:
+                                                                  captionStyle
+                                                                      .copyWith(
+                                                                color:
+                                                                    Colors
+                                                                        .white,
+                                                              ),
                                                             ),
                                                           ),
                                                         ),
@@ -629,16 +625,11 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                                             widget
                                                                 .photo
                                                                 .caption!,
-                                                        style: TextStyle(
-                                                          color: Colors.white,
-                                                          fontSize: 14.sp,
-                                                          fontFamily:
-                                                              'Pretendard',
-                                                          fontWeight:
-                                                              FontWeight.w400,
-                                                          letterSpacing: -0.5,
-                                                          height: 1.4,
-                                                        ),
+                                                        style: captionStyle
+                                                            .copyWith(
+                                                              color:
+                                                                  Colors.white,
+                                                            ),
                                                       ),
                                             ),
                                           ],
@@ -871,16 +862,15 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                                           ),
                                                     )
                                                     : Container(
-                                                      width: 27,
-                                                      height: 27,
+                                                      width: 27.w,
+                                                      height: 27.h,
                                                       decoration: BoxDecoration(
                                                         color: Colors.grey[700],
                                                         shape: BoxShape.circle,
                                                       ),
-                                                      child: const Icon(
+                                                      child: Icon(
                                                         Icons.person,
                                                         color: Colors.white,
-                                                        size: 18,
                                                       ),
                                                     ),
                                           ),

@@ -283,19 +283,24 @@ class PhotoRepository {
 
   /// 카테고리별 사진 목록 스트림
   Stream<List<PhotoDataModel>> getPhotosByCategoryStream(String categoryId) {
+    // 복합 쿼리 인덱스 없이도 작동하도록 수동 필터링 사용
     return _firestore
         .collection('categories')
         .doc(categoryId)
         .collection('photos')
-        .where('status', isEqualTo: PhotoStatus.active.name)
-        .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs.map((doc) {
-            final data = doc.data();
+          final allPhotos =
+              snapshot.docs.map((doc) {
+                final data = doc.data();
+                return PhotoDataModel.fromFirestore(data, doc.id);
+              }).toList();
 
-            return PhotoDataModel.fromFirestore(data, doc.id);
+          // 메모리에서 필터링 (status: active, unactive: false)
+          return allPhotos.where((photo) {
+            return photo.status == PhotoStatus.active &&
+                photo.unactive == false;
           }).toList();
         });
   }
@@ -365,7 +370,7 @@ class PhotoRepository {
 
       return true;
     } catch (e) {
-      // debugPrint('사진 삭제 오류: $e');
+      debugPrint('사진 삭제 오류: $e');
       return false;
     }
   }
@@ -489,8 +494,6 @@ class PhotoRepository {
   Stream<List<Map<String, dynamic>>> getCategoryPhotosStreamAsMap(
     String categoryId,
   ) {
-    // debugPrint('🔄 [호환성] 카테고리별 사진 Map 스트림 시작 - CategoryId: $categoryId');
-
     return _firestore
         .collection('categories')
         .doc(categoryId)
@@ -582,13 +585,10 @@ class PhotoRepository {
 
         // 이미 파형 데이터가 있으면 스킵
         if (existingWaveform != null && existingWaveform.isNotEmpty) {
-          // debugPrint('⏭️ 파형 데이터 이미 존재: ${doc.id}');
           continue;
         }
 
         if (audioUrl != null && audioUrl.isNotEmpty) {
-          // debugPrint('🌊 파형 데이터 추출 중: ${doc.id}');
-
           try {
             // 파형 데이터 추출 (외부에서 전달받은 함수 사용)
             final waveformData = await extractWaveformData(audioUrl);

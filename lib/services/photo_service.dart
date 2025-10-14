@@ -183,7 +183,7 @@ class PhotoService {
         audioUrl: audioUrl,
       );
     } catch (e) {
-      // // debugPrint('사진 업로드 서비스 오류: $e');
+      debugPrint('사진 업로드 서비스 오류: $e');
       return PhotoUploadResult.failure('사진 업로드 중 오류가 발생했습니다.');
     }
   }
@@ -611,8 +611,6 @@ class PhotoService {
     required String audioFilePath,
   }) async {
     try {
-      // // debugPrint('🌊 특정 사진에 파형 데이터 추가 시작');
-
       // 오디오 파일에서 파형 데이터 추출
       final waveformData = await _audioService.extractWaveformData(
         audioFilePath,
@@ -681,8 +679,6 @@ class PhotoService {
   /// 사용자의 삭제된 사진 목록 조회
   Future<List<PhotoDataModel>> getDeletedPhotosByUser(String userId) async {
     try {
-      debugPrint('📱 PhotoService: 삭제된 사진 조회 - userId: $userId');
-
       // 입력 검증
       if (userId.isEmpty) {
         throw Exception('사용자 ID가 필요합니다.');
@@ -693,7 +689,6 @@ class PhotoService {
         userId,
       );
 
-      debugPrint('📸 PhotoService: 조회된 삭제된 사진 수: ${deletedPhotos.length}');
       return deletedPhotos;
     } catch (e) {
       debugPrint('❌ PhotoService: 삭제된 사진 조회 실패 - $e');
@@ -708,8 +703,6 @@ class PhotoService {
     required String userId,
   }) async {
     try {
-      debugPrint('🔄 PhotoService: 사진 복원 시작 - photoId: $photoId');
-
       // 입력 검증
       if (categoryId.isEmpty || photoId.isEmpty || userId.isEmpty) {
         throw Exception('필수 매개변수가 누락되었습니다.');
@@ -747,8 +740,6 @@ class PhotoService {
       );
 
       if (success) {
-        debugPrint('✅ PhotoService: 사진 복원 완료 - photoId: $photoId');
-
         // 4. 필요시 알림 생성 (복원 알림은 선택사항)
         // await _createPhotoRestoredNotification(categoryId, photoId, userId);
 
