@@ -69,8 +69,7 @@ class IdInputPage extends StatelessWidget {
                     (errorMessage != null)
                         ? ValidationMessage(
                           message: errorMessage!,
-                          isSuccess:
-                              errorMessage == '사용 가능한 아이디입니다.',
+                          isSuccess: errorMessage == '사용 가능한 아이디입니다.',
                         )
                         : SizedBox(height: 20),
                     SizedBox(height: 130.h),

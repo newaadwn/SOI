@@ -356,16 +356,17 @@ class NotificationController extends ChangeNotifier {
     );
 
     if (result.isSuccess) {
-      _notifications = _notifications.map((n) {
-        if (n.id == notification.id) {
-          return n.copyWith(
-            isRead: true,
-            requiresAcceptance: false,
-            pendingCategoryMemberIds: [],
-          );
-        }
-        return n;
-      }).toList();
+      _notifications =
+          _notifications.map((n) {
+            if (n.id == notification.id) {
+              return n.copyWith(
+                isRead: true,
+                requiresAcceptance: false,
+                pendingCategoryMemberIds: [],
+              );
+            }
+            return n;
+          }).toList();
 
       if (notification.categoryId != null) {
         _categoryUnknownMembersCache.remove(notification.categoryId!);

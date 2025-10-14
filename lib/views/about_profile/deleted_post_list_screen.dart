@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:provider/provider.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:soi/controllers/auth_controller.dart';
 import '../../controllers/photo_controller.dart';
@@ -16,32 +16,36 @@ class DeletedPostListScreen extends StatefulWidget {
 
 class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
   List<PhotoDataModel> _deletedPosts = [];
+  List<PhotoDataModel> selectedPosts = [];
+  Map<PhotoDataModel, bool> isSelected = {};
   bool _isLoading = true;
   String? _error;
-  PhotoController? _photoController;
-  AuthController? _authController;
+
+  // Controllers 주입을 늦춰서 initState에서 초기화
+  late final PhotoController _photoController;
+  late final AuthController _authController;
 
   @override
   void initState() {
     super.initState();
+
+    // 여기서 컨트롤러들을 초기화 하여서 해당 위젯에서만 컨트롤러를 사용하도록 한다.
+    _photoController = PhotoController();
+    _authController = AuthController();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _photoController = Provider.of<PhotoController>(context, listen: false);
-      _authController = Provider.of<AuthController>(context, listen: false);
       _loadDeletedPosts();
     });
   }
 
   @override
   void dispose() {
-    _photoController?.dispose();
-    _authController?.dispose();
+    _photoController.dispose();
+    _authController.dispose();
     super.dispose();
   }
 
   Future<void> _loadDeletedPosts() async {
-    if (_photoController == null) return;
-
-    final user = _authController?.currentUser;
+    final user = _authController.currentUser;
     if (user == null) {
       setState(() {
         _error = '로그인이 필요합니다.';
@@ -57,10 +61,10 @@ class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
 
     try {
       // PhotoController를 통해 삭제된 사진 로드
-      await _photoController!.loadDeletedPhotosByUser(user.uid);
+      await _photoController.loadDeletedPhotosByUser(user.uid);
 
       setState(() {
-        _deletedPosts = _photoController!.deletedPhotos;
+        _deletedPosts = _photoController.deletedPhotos;
         _isLoading = false;
       });
     } catch (e) {
@@ -98,7 +102,45 @@ class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
           ],
         ),
       ),
-      body: _buildBody(),
+      body: Stack(
+        alignment: Alignment.center,
+        children: [
+          _buildBody(),
+          Positioned(
+            bottom: 40.h,
+
+            child: SizedBox(
+              width: 349.w,
+              height: 50.h,
+              child: ElevatedButton(
+                onPressed:
+                    selectedPosts.isNotEmpty ? _restoreSelectedPosts : () {},
+                style: ElevatedButton.styleFrom(
+                  backgroundColor:
+                      selectedPosts.isNotEmpty
+                          ? Colors.white
+                          : const Color(0xFF595959),
+
+                  disabledBackgroundColor: const Color(0xFF595959),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(26.90),
+                  ),
+                ),
+                child: Text(
+                  '게시물에 표시',
+                  style: TextStyle(
+                    color:
+                        selectedPosts.isNotEmpty ? Colors.black : Colors.white,
+                    fontSize: 18,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -186,9 +228,11 @@ class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
   }
 
   Widget _buildDeletedPostItem(PhotoDataModel photo, int index) {
+    final bool isPhotoSelected = isSelected[photo] ?? false;
+
     return GestureDetector(
       onTap: () {
-        // 삭제된 게시물 상세보기 또는 복원 기능
+        _togglePhotoSelection(photo);
       },
       child: Container(
         width: 175,
@@ -199,48 +243,137 @@ class _DeletedPostListScreenState extends State<DeletedPostListScreen> {
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: CachedNetworkImage(
-            imageUrl: photo.imageUrl,
-            fit: BoxFit.cover,
-            placeholder:
-                (context, url) => Shimmer.fromColors(
-                  baseColor: const Color(0xFF333333),
-                  highlightColor: const Color(0xFF555555),
-                  child: Container(
-                    width: 175,
-                    height: 233,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF333333),
-                      borderRadius: BorderRadius.circular(8.r),
+          child: Stack(
+            children: [
+              CachedNetworkImage(
+                imageUrl: photo.imageUrl,
+                fit: BoxFit.cover,
+                width: 175,
+                height: 233,
+                placeholder:
+                    (context, url) => Shimmer.fromColors(
+                      baseColor: const Color(0xFF333333),
+                      highlightColor: const Color(0xFF555555),
+                      child: Container(
+                        width: 175,
+                        height: 233,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF333333),
+                          borderRadius: BorderRadius.circular(8.r),
+                        ),
+                      ),
                     ),
+                errorWidget:
+                    (context, url, error) => Container(
+                      color: const Color(0xFF333333),
+                      child: Icon(
+                        Icons.broken_image,
+                        color: Colors.white54,
+                        size: 48.sp,
+                      ),
+                    ),
+              ),
+              // 선택 오버레이
+              if (isPhotoSelected)
+                Container(
+                  width: 175,
+                  height: 233,
+                  color: Colors.black.withValues(alpha: 0.3),
+                ),
+              // 체크마크
+              if (isPhotoSelected)
+                Positioned(
+                  top: 8.h,
+                  left: 8.w,
+                  child: Container(
+                    width: 24.w,
+                    height: 24.h,
+                    decoration: BoxDecoration(
+                      color: Colors.black,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.check, color: Colors.white, size: 16.sp),
                   ),
                 ),
-            errorWidget:
-                (context, url, error) => Container(
-                  color: const Color(0xFF333333),
-                  child: Icon(
-                    Icons.broken_image,
-                    color: Colors.white54,
-                    size: 48.sp,
-                  ),
-                ),
+            ],
           ),
         ),
       ),
     );
   }
 
-  /*void _restorePost(int index) {
-    // TODO: 실제 복원 로직 구현
+  void _togglePhotoSelection(PhotoDataModel photo) {
     setState(() {
-      _deletedPosts.removeAt(index);
+      final bool currentlySelected = isSelected[photo] ?? false;
+      if (currentlySelected) {
+        isSelected[photo] = false;
+        selectedPosts.remove(photo);
+      } else {
+        isSelected[photo] = true;
+        selectedPosts.add(photo);
+      }
     });
   }
 
-  void _permanentlyDeletePost(int index) {
-    // TODO: 실제 완전 삭제 로직 구현
+  Future<void> _restoreSelectedPosts() async {
+    final user = _authController.currentUser;
+    if (user == null) return;
+
+    if (selectedPosts.isEmpty) return;
+
     setState(() {
-      _deletedPosts.removeAt(index);
+      _isLoading = true;
     });
-  }*/
+
+    int successCount = 0;
+    int failCount = 0;
+
+    for (final photo in selectedPosts) {
+      try {
+        final success = await _photoController.restorePhoto(
+          categoryId: photo.categoryId,
+          photoId: photo.id,
+          userId: user.uid,
+        );
+
+        if (success) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      } catch (e) {
+        debugPrint('사진 복원 오류: $e');
+        failCount++;
+      }
+    }
+    // 선택 상태 초기화
+    setState(() {
+      selectedPosts.clear();
+      isSelected.clear();
+    });
+
+    // 삭제된 사진 목록 다시 로드
+    await _loadDeletedPosts();
+
+    // 사용자에게 결과 알림
+    if (mounted) {
+      String message;
+      if (failCount == 0) {
+        message = '${successCount}개의 게시물이 복원되었습니다';
+      } else if (successCount == 0) {
+        message = '게시물 복원에 실패했습니다';
+      } else {
+        message = '${successCount}개 복원 성공, ${failCount}개 실패';
+      }
+
+      Fluttertoast.showToast(
+        msg: message,
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.white,
+        textColor: Colors.black,
+        fontSize: 14.sp,
+      );
+    }
+  }
 }

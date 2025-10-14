@@ -1,12 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// 카테고리 초대 상태
-enum CategoryInviteStatus {
-  pending,
-  accepted,
-  declined,
-  expired,
-}
+enum CategoryInviteStatus { pending, accepted, declined, expired }
 
 /// 카테고리 초대 데이터 모델
 class CategoryInviteModel {

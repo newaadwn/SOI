@@ -14,7 +14,9 @@ class CategoryInviteRepository {
   /// 초대 생성
   Future<String> createInvite(CategoryInviteModel invite) async {
     try {
-      final docRef = await _collection.add(invite.toFirestoreWithServerTimestamps());
+      final docRef = await _collection.add(
+        invite.toFirestoreWithServerTimestamps(),
+      );
       return docRef.id;
     } catch (e) {
       debugPrint('❌ 카테고리 초대 생성 실패: $e');
@@ -47,9 +49,13 @@ class CategoryInviteRepository {
           .limit(limit)
           .snapshots()
           .map(
-            (snapshot) => snapshot.docs
-                .map((doc) => CategoryInviteModel.fromFirestore(doc.data(), doc.id))
-                .toList(),
+            (snapshot) =>
+                snapshot.docs
+                    .map(
+                      (doc) =>
+                          CategoryInviteModel.fromFirestore(doc.data(), doc.id),
+                    )
+                    .toList(),
           );
     } catch (e) {
       debugPrint('❌ 보류 초대 스트림 오류 - 사용자: $invitedUserId, 오류: $e');
@@ -63,12 +69,13 @@ class CategoryInviteRepository {
     required String invitedUserId,
   }) async {
     try {
-      final querySnapshot = await _collection
-          .where('categoryId', isEqualTo: categoryId)
-          .where('invitedUserId', isEqualTo: invitedUserId)
-          .where('status', isEqualTo: CategoryInviteStatus.pending.name)
-          .limit(1)
-          .get();
+      final querySnapshot =
+          await _collection
+              .where('categoryId', isEqualTo: categoryId)
+              .where('invitedUserId', isEqualTo: invitedUserId)
+              .where('status', isEqualTo: CategoryInviteStatus.pending.name)
+              .limit(1)
+              .get();
 
       if (querySnapshot.docs.isEmpty) return null;
       final doc = querySnapshot.docs.first;
@@ -105,9 +112,10 @@ class CategoryInviteRepository {
   }) async {
     final data = {
       'status': status.name,
-      'respondedAt': respondedAt != null
-          ? Timestamp.fromDate(respondedAt)
-          : FieldValue.serverTimestamp(),
+      'respondedAt':
+          respondedAt != null
+              ? Timestamp.fromDate(respondedAt)
+              : FieldValue.serverTimestamp(),
     };
     await updateInvite(inviteId, data);
   }
@@ -126,9 +134,8 @@ class CategoryInviteRepository {
   Future<void> deleteExpiredInvites() async {
     try {
       final now = Timestamp.fromDate(DateTime.now());
-      final querySnapshot = await _collection
-          .where('expiresAt', isLessThanOrEqualTo: now)
-          .get();
+      final querySnapshot =
+          await _collection.where('expiresAt', isLessThanOrEqualTo: now).get();
 
       if (querySnapshot.docs.isEmpty) return;
 

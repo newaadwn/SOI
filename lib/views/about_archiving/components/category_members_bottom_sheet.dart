@@ -218,8 +218,8 @@ class _CategoryMembersBottomSheetState
                       memCacheHeight: 180,
                       memCacheWidth: 180,
                       placeholder: (context, url) => _buildMemberShimmer(),
-                      errorWidget: (context, url, error) =>
-                          _buildMemberFallback(),
+                      errorWidget:
+                          (context, url, error) => _buildMemberFallback(),
                     )
                     : _buildMemberFallback(),
           ),
@@ -327,10 +327,6 @@ Widget _buildMemberFallback() {
       shape: BoxShape.circle,
       color: Color(0xFF5A5A5A),
     ),
-    child: const Icon(
-      Icons.person,
-      color: Colors.white,
-      size: 26,
-    ),
+    child: const Icon(Icons.person, color: Colors.white, size: 26),
   );
 }

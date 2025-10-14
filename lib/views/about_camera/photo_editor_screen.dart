@@ -13,7 +13,6 @@ import '../../controllers/photo_controller.dart';
 import '../../models/selected_friend_model.dart';
 import '../home_navigator_screen.dart';
 import 'widgets/add_category_widget.dart';
-import 'widgets/audio_recorder_widget.dart';
 import 'widgets/caption_input_widget.dart';
 import 'widgets/category_list_widget.dart';
 import 'widgets/loading_popup_widget.dart';
@@ -49,8 +48,6 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   // 오디오 관련 변수들
   List<double>? _recordedWaveformData;
   String? _recordedAudioPath;
-  bool _isRecorderVisible = false;
-  bool _shouldAutoStartRecording = false;
   bool _isCaptionEmpty = true;
 
   // 키보드 높이
@@ -68,6 +65,9 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
   late CategoryController _categoryController;
   late AuthController _authController;
   late PhotoController _photoController;
+
+  final FocusNode _captionFocusNode = FocusNode();
+  final FocusNode _categoryFocusNode = FocusNode();
 
   // ========== 생명주기 메서드들 ==========
   @override
@@ -281,62 +281,34 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     );
   }
 
+  void _handleMicTap() {
+    // Implement the logic for microphone tap here
+    print('Microphone tapped');
+  }
+
   Widget _buildCaptionInputBar() {
-    final bool showRecorder = _isRecorderVisible;
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 250),
       transitionBuilder:
           (child, animation) =>
               FadeTransition(opacity: animation, child: child),
-      child:
-          showRecorder
-              ? SizedBox(
-                key: const ValueKey('recorder_view'),
-                width: 354.w,
-                child: AudioRecorderWidget(
-                  key: ValueKey(
-                    'recorder_${_recordedAudioPath ?? 'new'}_${_shouldAutoStartRecording ? 'auto' : 'manual'}',
-                  ),
-                  photoId: widget.imagePath?.split('/').last ?? 'unknown',
-                  isCommentMode: false,
-                  autoStart: _shouldAutoStartRecording,
-                  initialRecordingPath: _recordedAudioPath,
-                  initialWaveformData: _recordedWaveformData,
-                  onRecordingCompleted: (
-                    String? audioPath,
-                    List<double>? waveformData,
-                  ) {
-                    if (!mounted) return;
-                    setState(() {
-                      _recordedWaveformData = waveformData;
-                      _recordedAudioPath = audioPath;
-                      _shouldAutoStartRecording = false;
-                      _isRecorderVisible = true;
-                    });
-                  },
-                  onRecordingCleared: () {
-                    if (!mounted) return;
-                    setState(() {
-                      _recordedWaveformData = null;
-                      _recordedAudioPath = null;
-                      _shouldAutoStartRecording = false;
-                      _isRecorderVisible = false;
-                    });
-                  },
-                ),
-              )
-              : CaptionInputWidget(
-                controller: _captionController,
-                isCaptionEmpty: _isCaptionEmpty,
-                onMicTap: () {
-                  setState(() {
-                    _isRecorderVisible = true;
-                    _shouldAutoStartRecording = true;
-                  });
-                },
-                isKeyboardVisible: isKeyboardVisible,
-                keyboardHeight: keyboardHeight,
-              ),
+      child: FocusScope(
+        child: Focus(
+          onFocusChange: (isFocused) {
+            if (_categoryFocusNode.hasFocus) {
+              FocusScope.of(context).requestFocus(_categoryFocusNode);
+            }
+          },
+          child: CaptionInputWidget(
+            controller: _captionController,
+            isCaptionEmpty: _isCaptionEmpty,
+            onMicTap: _handleMicTap,
+            isKeyboardVisible: !_categoryFocusNode.hasFocus,
+            keyboardHeight: keyboardHeight,
+            focusNode: _captionFocusNode,
+          ),
+        ),
+      ),
     );
   }
 
@@ -673,6 +645,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
                                                           _categoryNameController,
                                                       scrollController:
                                                           scrollController,
+                                                      focusNode:
+                                                          _categoryFocusNode,
                                                       onBackPressed: () {
                                                         setState(() {
                                                           _showAddCategoryUI =
@@ -751,6 +725,8 @@ class _PhotoEditorScreenState extends State<PhotoEditorScreen>
     _categoryNameController.dispose();
     _captionController.removeListener(_handleCaptionChanged);
     _captionController.dispose();
+    _captionFocusNode.dispose();
+    _categoryFocusNode.dispose();
     WidgetsBinding.instance.removeObserver(this);
     if (_draggableScrollController.isAttached) {
       _draggableScrollController.jumpTo(0.0);

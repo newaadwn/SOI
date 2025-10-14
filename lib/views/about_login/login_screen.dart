@@ -347,9 +347,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     // 재전송 성공 시 처리
                     ScaffoldMessenger.of(
                       context,
-                    ).showSnackBar(
-                      SnackBar(content: Text('인증번호가 재전송되었습니다.')),
-                    );
+                    ).showSnackBar(SnackBar(content: Text('인증번호가 재전송되었습니다.')));
                   }, (verificationId) {});
                 },
                 child: RichText(

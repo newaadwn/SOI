@@ -27,10 +27,7 @@ class ShareService {
       }
 
       await SharePlus.instance.share(
-        ShareParams(
-          text: shareParams,
-          sharePositionOrigin: shareOrigin,
-        ),
+        ShareParams(text: shareParams, sharePositionOrigin: shareOrigin),
       );
     } on Exception catch (e) {
       debugPrint('Error sharing link: $e');

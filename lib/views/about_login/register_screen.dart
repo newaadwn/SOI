@@ -452,13 +452,14 @@ class _AuthScreenState extends State<AuthScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => AuthFinalScreen(
-          id: id,
-          name: name,
-          phone: phoneNumber,
-          birthDate: birthDate,
-          profileImagePath: profileImagePath,
-        ),
+        builder:
+            (context) => AuthFinalScreen(
+              id: id,
+              name: name,
+              phone: phoneNumber,
+              birthDate: birthDate,
+              profileImagePath: profileImagePath,
+            ),
       ),
     );
   }

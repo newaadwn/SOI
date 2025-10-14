@@ -7,6 +7,7 @@ class CaptionInputWidget extends StatelessWidget {
   final VoidCallback onMicTap;
   final bool isKeyboardVisible;
   final double keyboardHeight;
+  final FocusNode focusNode;
 
   const CaptionInputWidget({
     super.key,
@@ -15,6 +16,7 @@ class CaptionInputWidget extends StatelessWidget {
     required this.onMicTap,
     required this.isKeyboardVisible,
     required this.keyboardHeight,
+    required this.focusNode,
   });
 
   @override
@@ -24,7 +26,7 @@ class CaptionInputWidget extends StatelessWidget {
       child: SizedBox(
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: const Color(0xFF373737).withValues(alpha: 0.66),
+            color: const Color(0xFF373737).withOpacity(0.66),
             borderRadius: BorderRadius.circular(21.5),
           ),
           child: Padding(
@@ -34,6 +36,7 @@ class CaptionInputWidget extends StatelessWidget {
                 Expanded(
                   child: TextField(
                     controller: controller,
+                    focusNode: focusNode,
                     maxLines: null,
                     style: TextStyle(
                       color: Colors.white,
