@@ -3,17 +3,17 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:soi/controllers/comment_record_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import '../../controllers/auth_controller.dart';
-import '../../controllers/audio_controller.dart';
-import '../../controllers/comment_audio_controller.dart';
-import '../../controllers/category_controller.dart';
-import '../../models/photo_data_model.dart';
-import '../../models/comment_record_model.dart';
-import '../../utils/format_utils.dart';
-import '../../utils/position_converter.dart';
-import '../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
-import '../about_archiving/screens/archive_detail/category_photos_screen.dart';
-import 'voice_comment_list_sheet.dart';
+import '../../../controllers/auth_controller.dart';
+import '../../../controllers/audio_controller.dart';
+import '../../../controllers/comment_audio_controller.dart';
+import '../../../controllers/category_controller.dart';
+import '../../../models/photo_data_model.dart';
+import '../../../models/comment_record_model.dart';
+import '../../../utils/format_utils.dart';
+import '../../../utils/position_converter.dart';
+import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
+import '../../about_archiving/screens/archive_detail/category_photos_screen.dart';
+import '../about_voice_comment/voice_comment_list_sheet.dart';
 
 /// 사진 표시 위젯
 ///

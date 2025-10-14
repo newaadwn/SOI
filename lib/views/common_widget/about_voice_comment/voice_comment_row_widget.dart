@@ -5,7 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../controllers/comment_audio_controller.dart';
 import '../../../models/comment_record_model.dart';
 import '../../../utils/format_utils.dart';
-import '../user_display_widget.dart';
+import '../abput_photo/user_display_widget.dart';
 
 class VoiceCommentRow extends StatelessWidget {
   final CommentRecordModel comment;

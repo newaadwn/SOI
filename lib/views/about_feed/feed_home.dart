@@ -7,7 +7,7 @@ import '../../controllers/photo_controller.dart';
 import '../../controllers/audio_controller.dart';
 import '../../controllers/comment_audio_controller.dart';
 import '../../models/photo_data_model.dart';
-import '../common_widget/photo_card_widget_common.dart';
+import '../common_widget/abput_photo/photo_card_widget_common.dart';
 import 'manager/feed_data_manager.dart';
 import 'manager/voice_comment_state_manager.dart';
 import 'manager/profile_cache_manager.dart';

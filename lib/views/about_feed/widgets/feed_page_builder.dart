@@ -4,7 +4,7 @@ import '../../../controllers/auth_controller.dart';
 import '../../../controllers/photo_controller.dart';
 import '../../../models/photo_data_model.dart';
 import '../../../models/comment_record_model.dart';
-import '../../common_widget/photo_card_widget_common.dart';
+import '../../common_widget/abput_photo/photo_card_widget_common.dart';
 
 // 피드 페이지 빌더
 // 사용자의 피드를 표시하는 위젯

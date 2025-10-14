@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../models/photo_data_model.dart';
-import '../../utils/format_utils.dart';
-import '../../controllers/comment_record_controller.dart';
-import 'about_like/like_button.dart';
-import 'about_more_menu/more_menu_button_widget.dart';
-import 'voice_comment_list_sheet.dart';
+import '../../../models/photo_data_model.dart';
+import '../../../utils/format_utils.dart';
+import '../../../controllers/comment_record_controller.dart';
+import '../about_like/like_button.dart';
+import '../about_more_menu/more_menu_button_widget.dart';
+import '../about_voice_comment/voice_comment_list_sheet.dart';
 import 'package:provider/provider.dart';
 
 /// 사용자 정보 표시 위젯 (아이디와 날짜)

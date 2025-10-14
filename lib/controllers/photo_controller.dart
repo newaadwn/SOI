@@ -22,7 +22,11 @@ class PhotoController extends ChangeNotifier {
   bool _hasMore = true;
   bool _isLoadingMore = false;
   String? _lastPhotoId;
-  static const int _initialLoadSize = 10; // 사용자 경험 개선을 위해 10개로 증가
+
+  // 초기에 로드하는 사진의 개수를 설정
+  static const int _initialLoadSize = 10;
+
+  // 페이지당 로드할 사진 개수
   static const int _pageSize = 10;
 
   StreamSubscription<List<PhotoDataModel>>? _photosSubscription;
@@ -69,12 +73,11 @@ class PhotoController extends ChangeNotifier {
       }
 
       if (audioFile != null && !await audioFile.exists()) {
-        // debugPrint('PhotoController: 오디오 파일이 존재하지 않습니다: ${audioFile.path}');
+        debugPrint('PhotoController: 오디오 파일이 존재하지 않습니다: ${audioFile.path}');
         // 오디오 파일은 선택사항이므로 null로 설정
         audioFile = null;
       }
 
-      // debugPrint('PhotoController: PhotoService.uploadPhoto 호출');
       final result = await _photoService.uploadPhoto(
         imageFile: imageFile,
         audioFile: audioFile,
@@ -140,10 +143,9 @@ class PhotoController extends ChangeNotifier {
       _uploadProgress = 1.0;
       notifyListeners();
 
-      // debugPrint('사진이 성공적으로 업로드되었습니다. ID: $photoId');
       return photoId.isNotEmpty;
     } catch (e) {
-      // debugPrint('사진 업로드 실패: $e');
+      debugPrint('사진 업로드 실패: $e');
       _isUploading = false;
       _error = '사진 업로드 중 오류가 발생했습니다.';
       notifyListeners();
@@ -163,8 +165,6 @@ class PhotoController extends ChangeNotifier {
       _photos.clear(); // 초기 로드이므로 기존 데이터 클리어
       notifyListeners();
 
-      // debugPrint('📱 초기 사진 로드 시작 - 카테고리: ${categoryIds.length}개');
-
       final result = await _photoService.getPhotosFromAllCategoriesPaginated(
         categoryIds: categoryIds,
         limit: _initialLoadSize,
@@ -175,10 +175,8 @@ class PhotoController extends ChangeNotifier {
       _hasMore = result.hasMore;
       _isLoading = false;
       notifyListeners();
-
-      // debugPrint('✅ 초기 사진 로드 완료: ${_photos.length}개, 더 있음: $_hasMore');
     } catch (e) {
-      // debugPrint('❌ 초기 사진 로드 오류: $e');
+      debugPrint('❌ 초기 사진 로드 오류: $e');
       _isLoading = false;
       _error = '사진을 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
@@ -188,7 +186,7 @@ class PhotoController extends ChangeNotifier {
   /// 다음 페이지 사진 로드 (무한 스크롤용)
   Future<void> loadMorePhotos(List<String> categoryIds) async {
     if (_isLoadingMore || !_hasMore) {
-      // debugPrint('⚠️ 이미 로딩 중이거나 더 이상 로드할 사진이 없습니다.');
+      debugPrint('⚠️ 이미 로딩 중이거나 더 이상 로드할 사진이 없습니다.');
       return;
     }
 
@@ -196,8 +194,6 @@ class PhotoController extends ChangeNotifier {
       _isLoadingMore = true;
       _error = null;
       notifyListeners();
-
-      // debugPrint('📱 추가 사진 로드 시작 - 마지막 ID: $_lastPhotoId');
 
       final result = await _photoService.getPhotosFromAllCategoriesPaginated(
         categoryIds: categoryIds,
@@ -212,7 +208,7 @@ class PhotoController extends ChangeNotifier {
       _isLoadingMore = false;
       notifyListeners();
     } catch (e) {
-      // debugPrint('❌ 추가 사진 로드 오류: $e');
+      debugPrint('❌ 추가 사진 로드 오류: $e');
       _isLoadingMore = false;
       _error = '추가 사진을 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
@@ -233,14 +229,14 @@ class PhotoController extends ChangeNotifier {
       notifyListeners();
 
       if (photos.isEmpty) {
-        // debugPrint('사진이 없습니다.');
+        debugPrint('사진이 없습니다.');
       }
     } catch (e) {
-      // debugPrint('카테고리별 사진 로드 오류: $e');
+      debugPrint('카테고리별 사진 로드 오류: $e');
       _isLoading = false;
       _error = '사진을 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
-      // debugPrint('사진을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('사진을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -255,7 +251,7 @@ class PhotoController extends ChangeNotifier {
             notifyListeners();
           },
           onError: (error) {
-            // debugPrint('사진 스트림 오류: $error');
+            debugPrint('사진 스트림 오류: $error');
             _error = '실시간 사진 업데이트 중 오류가 발생했습니다.';
             notifyListeners();
           },
@@ -282,14 +278,14 @@ class PhotoController extends ChangeNotifier {
       notifyListeners();
 
       if (photos.isEmpty) {
-        // debugPrint('사용자의 사진이 없습니다.');
+        debugPrint('사용자의 사진이 없습니다.');
       }
     } catch (e) {
-      // debugPrint('사용자별 사진 로드 오류: $e');
+      debugPrint('사용자별 사진 로드 오류: $e');
       _isLoading = false;
       _error = '사용자 사진을 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
-      // debugPrint('사용자 사진을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('사용자 사진을 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -315,14 +311,14 @@ class PhotoController extends ChangeNotifier {
       notifyListeners();
 
       if (photo == null) {
-        // debugPrint('사진을 찾을 수 없습니다.');
+        debugPrint('사진을 찾을 수 없습니다.');
       }
     } catch (e) {
-      // debugPrint('사진 상세 조회 오류: $e');
+      debugPrint('사진 상세 조회 오류: $e');
       _isLoading = false;
       _error = '사진 상세 정보를 불러오는 중 오류가 발생했습니다.';
       notifyListeners();
-      // debugPrint('사진 상세 정보를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('사진 상세 정보를 불러오는 중 오류가 발생했습니다. 다시 시도해주세요.');
     }
   }
 
@@ -349,24 +345,21 @@ class PhotoController extends ChangeNotifier {
       notifyListeners();
 
       if (success) {
-        // ✅ 성공 시 UI 피드백
-        // debugPrint('사진 정보가 업데이트되었습니다.');
-
         // 사진 목록 새로고침
         await loadPhotosByCategory(categoryId);
 
         return true;
       } else {
         // ❌ 실패 시 UI 피드백
-        // debugPrint('사진 정보 업데이트에 실패했습니다. 다시 시도해주세요.');
+        debugPrint('사진 정보 업데이트에 실패했습니다. 다시 시도해주세요.');
         return false;
       }
     } catch (e) {
-      // debugPrint('사진 업데이트 컨트롤러 오류: $e');
+      debugPrint('사진 업데이트 컨트롤러 오류: $e');
       _isLoading = false;
       _error = '사진 업데이트 중 오류가 발생했습니다.';
       notifyListeners();
-      // debugPrint('사진 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.');
+      debugPrint('사진 업데이트 중 오류가 발생했습니다. 다시 시도해주세요.');
       return false;
     }
   }
@@ -409,7 +402,7 @@ class PhotoController extends ChangeNotifier {
         return true;
       } else {
         // ❌ 실패 시 UI 피드백
-        // debugPrint('사진 삭제에 실패했습니다. 다시 시도해주세요.');
+        debugPrint('사진 삭제에 실패했습니다. 다시 시도해주세요.');
         return false;
       }
     } catch (e) {
@@ -525,7 +518,6 @@ class PhotoController extends ChangeNotifier {
 
   /// 카테고리별 사진 스트림 직접 반환 (StreamBuilder 용)
   Stream<List<PhotoDataModel>> getPhotosByCategoryStream(String categoryId) {
-    // debugPrint('📺 PhotoController: 사진 스트림 요청 - CategoryId: $categoryId');
     return _photoService.getPhotosByCategoryStream(categoryId);
   }
 
@@ -535,9 +527,6 @@ class PhotoController extends ChangeNotifier {
     required String photoId,
   }) async {
     try {
-      debugPrint(
-        '📷 PhotoController: 특정 사진 조회 - CategoryId: $categoryId, PhotoId: $photoId',
-      );
       return await _photoService.getPhotoById(
         categoryId: categoryId,
         photoId: photoId,
@@ -553,7 +542,6 @@ class PhotoController extends ChangeNotifier {
     String categoryId,
   ) async {
     try {
-      debugPrint('📷 PhotoController: 카테고리 사진 직접 조회 - CategoryId: $categoryId');
       return await _photoService.getPhotosByCategory(categoryId);
     } catch (e) {
       debugPrint('❌ PhotoController: 카테고리 사진 조회 실패 - $e');
