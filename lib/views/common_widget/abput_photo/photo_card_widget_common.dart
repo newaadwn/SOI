@@ -14,6 +14,8 @@ class PhotoCardWidgetCommon extends StatefulWidget {
   final bool isOwner;
   // Archive 화면 여부 (Archive에서는 상단 여백 제거)
   final bool isArchive;
+  // 카테고리 화면 여부 (카테고리에서는 하단 여백 추가)
+  final bool isCategory;
 
   // 상태 관리 관련
   final Map<String, Offset?> profileImagePositions;
@@ -45,6 +47,7 @@ class PhotoCardWidgetCommon extends StatefulWidget {
     required this.index,
     required this.isOwner,
     this.isArchive = false,
+    this.isCategory = false,
     required this.profileImagePositions,
     required this.droppedProfileImageUrls,
     required this.photoComments,
@@ -70,8 +73,17 @@ class PhotoCardWidgetCommon extends StatefulWidget {
 }
 
 class _PhotoCardWidgetCommonState extends State<PhotoCardWidgetCommon> {
+  bool _isTextFieldFocused = false;
+
   @override
   Widget build(BuildContext context) {
+    // 텍스트 필드 포커스 상태로 키보드 여부 판단
+    final isKeyboardVisible = _isTextFieldFocused;
+
+    // 키보드가 올라오면 10, 아니면 isCategory에 따라 50 또는 10
+    final bottomPadding =
+        isKeyboardVisible ? 10.0 : (widget.isCategory ? 55.0 : 10.0);
+
     return Stack(
       children: [
         SingleChildScrollView(
@@ -118,7 +130,7 @@ class _PhotoCardWidgetCommonState extends State<PhotoCardWidgetCommon> {
         Positioned(
           left: 0,
           right: 0,
-          bottom: 0,
+          bottom: bottomPadding,
           child: VoiceRecordingWidget(
             photo: widget.photo,
             voiceCommentActiveStates: widget.voiceCommentActiveStates,
@@ -132,6 +144,11 @@ class _PhotoCardWidgetCommonState extends State<PhotoCardWidgetCommon> {
             onProfileImageDragged: widget.onProfileImageDragged,
             onSaveRequested: widget.onSaveRequested,
             onSaveCompleted: widget.onSaveCompleted,
+            onTextFieldFocusChanged: (isFocused) {
+              setState(() {
+                _isTextFieldFocused = isFocused;
+              });
+            },
           ),
         ),
       ],

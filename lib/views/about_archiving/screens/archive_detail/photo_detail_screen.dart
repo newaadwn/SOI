@@ -104,6 +104,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: true, // 키보드가 올라올 때 레이아웃 조정
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Colors.white),
         backgroundColor: Colors.black,
@@ -179,6 +180,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
             index: index,
             isOwner: isOwner,
             isArchive: true,
+            isCategory: true,
             profileImagePositions: _profileImagePositions,
             droppedProfileImageUrls: _droppedProfileImageUrls,
             photoComments: _photoComments,

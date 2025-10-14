@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../models/photo_data_model.dart';
 import '../../models/comment_record_model.dart';
 import 'about_voice_comment/voice_comment_active_widget.dart';
-import 'about_voice_comment/voice_comment_inactive_widget.dart';
+import 'about_voice_comment/voice_comment_text_widget.dart';
 
 /// 음성 녹음 위젯
 ///
@@ -22,6 +21,7 @@ class VoiceRecordingWidget extends StatelessWidget {
   final Function(String, Offset) onProfileImageDragged;
   final Future<void> Function(String)? onSaveRequested; // 프로필 배치 확정 시 저장
   final Function(String)? onSaveCompleted; // 저장 완료 후 초기화 콜백
+  final Function(bool)? onTextFieldFocusChanged; // 텍스트 필드 포커스 변경 콜백
 
   const VoiceRecordingWidget({
     super.key,
@@ -37,12 +37,12 @@ class VoiceRecordingWidget extends StatelessWidget {
     required this.onProfileImageDragged,
     this.onSaveRequested,
     this.onSaveCompleted,
+    this.onTextFieldFocusChanged,
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 90.h,
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 300),
         transitionBuilder: (Widget child, Animation<double> animation) {
@@ -65,9 +65,10 @@ class VoiceRecordingWidget extends StatelessWidget {
                   onSaveRequested: onSaveRequested,
                   onSaveCompleted: onSaveCompleted,
                 )
-                : VoiceCommentInactiveWidget(
+                : VoiceCommentTextWidget(
                   photoId: photo.id,
                   onToggleVoiceComment: onToggleVoiceComment,
+                  onFocusChanged: onTextFieldFocusChanged,
                 ),
       ),
     );
