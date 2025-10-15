@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:provider/provider.dart';
+import '../../../controllers/auth_controller.dart';
+import '../../../controllers/comment_record_controller.dart';
 
 /// 음성 녹음이 비활성화된 상태의 댓글 입력 필드 위젯
 ///
@@ -8,12 +11,14 @@ class VoiceCommentTextWidget extends StatefulWidget {
   final String photoId;
   final Function(String) onToggleVoiceComment;
   final Function(bool)? onFocusChanged; // 포커스 변경 콜백 추가
+  final Function(String)? onTextCommentCreated; // 텍스트 댓글 생성 콜백
 
   const VoiceCommentTextWidget({
     super.key,
     required this.photoId,
     required this.onToggleVoiceComment,
     this.onFocusChanged,
+    this.onTextCommentCreated, // 텍스트 댓글 생성 콜백 추가
   });
 
   @override
@@ -22,6 +27,8 @@ class VoiceCommentTextWidget extends StatefulWidget {
 
 class _VoiceCommentTextWidgetState extends State<VoiceCommentTextWidget> {
   final FocusNode _focusNode = FocusNode();
+  final TextEditingController _textController = TextEditingController();
+  bool _isSending = false;
 
   @override
   void initState() {
@@ -33,11 +40,62 @@ class _VoiceCommentTextWidgetState extends State<VoiceCommentTextWidget> {
   void dispose() {
     _focusNode.removeListener(_onFocusChange);
     _focusNode.dispose();
+    _textController.dispose();
     super.dispose();
   }
 
   void _onFocusChange() {
     widget.onFocusChanged?.call(_focusNode.hasFocus);
+  }
+
+  /// 텍스트 댓글 전송
+  Future<void> _sendTextComment() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty || _isSending) return;
+
+    setState(() {
+      _isSending = true;
+    });
+
+    try {
+      final authController = context.read<AuthController>();
+      final commentController = context.read<CommentRecordController>();
+
+      final userId = authController.currentUser?.uid;
+      final profileImageUrl = await authController.getUserProfileImageUrlById(
+        userId ?? '',
+      );
+
+      if (userId == null) {
+        debugPrint('❌ 사용자 ID를 가져올 수 없습니다');
+        return;
+      }
+
+      // 텍스트 댓글 생성
+      final comment = await commentController.createTextComment(
+        text: text,
+        photoId: widget.photoId,
+        recorderUser: userId,
+        profileImageUrl: profileImageUrl,
+      );
+
+      if (comment != null && mounted) {
+        // 텍스트 입력 필드 초기화
+        _textController.clear();
+        FocusScope.of(context).unfocus();
+
+        // 텍스트 댓글 생성 콜백 호출 (프로필 드래그 모드 시작)
+        widget.onTextCommentCreated?.call(comment.id);
+      }
+    } catch (e) {
+      debugPrint('❌ 텍스트 댓글 전송 실패: $e');
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+        });
+      }
+    }
   }
 
   @override
@@ -66,6 +124,7 @@ class _VoiceCommentTextWidgetState extends State<VoiceCommentTextWidget> {
             child: Padding(
               padding: EdgeInsets.only(bottom: 11),
               child: TextField(
+                controller: _textController, // TextEditingController 연결
                 focusNode: _focusNode, // FocusNode 연결
                 onTapOutside: (event) {
                   FocusScope.of(context).unfocus();
@@ -99,8 +158,22 @@ class _VoiceCommentTextWidgetState extends State<VoiceCommentTextWidget> {
             ),
           ),
           IconButton(
-            onPressed: () {},
-            icon: Image.asset('assets/send_icon.png', width: 17, height: 17),
+            onPressed: _isSending ? null : _sendTextComment, // 전송 버튼에 핸들러 연결
+            icon:
+                _isSending
+                    ? SizedBox(
+                      width: 17,
+                      height: 17,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                    : Image.asset(
+                      'assets/send_icon.png',
+                      width: 17,
+                      height: 17,
+                    ),
           ),
         ],
       ),

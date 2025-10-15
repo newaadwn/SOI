@@ -13,11 +13,14 @@ class VoiceCommentListSheet extends StatelessWidget {
   final String photoId;
   final String? categoryId;
   final String? commentIdFilter;
+  final String? selectedCommentId; // 선택된 댓글 ID (하이라이트용)
+
   const VoiceCommentListSheet({
     super.key,
     required this.photoId,
     this.categoryId,
     this.commentIdFilter,
+    this.selectedCommentId, // 선택된 댓글 ID 추가
   });
 
   @override
@@ -168,7 +171,13 @@ class VoiceCommentListSheet extends StatelessWidget {
                             if (commentIndex >= 0 &&
                                 commentIndex < comments.length) {
                               final comment = comments[commentIndex];
-                              return VoiceCommentRow(comment: comment);
+                              final isSelected =
+                                  selectedCommentId != null &&
+                                  comment.id == selectedCommentId;
+                              return VoiceCommentRow(
+                                comment: comment,
+                                isHighlighted: isSelected, // 하이라이트 상태 전달
+                              );
                             }
                             return const SizedBox.shrink();
                           },

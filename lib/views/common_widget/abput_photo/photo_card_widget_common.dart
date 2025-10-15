@@ -75,6 +75,15 @@ class PhotoCardWidgetCommon extends StatefulWidget {
 class _PhotoCardWidgetCommonState extends State<PhotoCardWidgetCommon> {
   bool _isTextFieldFocused = false;
 
+  /// 텍스트 댓글 생성 후 프로필 배치를 위한 핸들러
+  void _handleTextCommentCreated(String commentId) {
+    // 텍스트 댓글이 생성되면 voiceCommentActiveStates를 true로 설정하여
+    // VoiceCommentWidget이 활성화되도록 함
+    // 부모 위젯에서 관리하는 상태를 직접 변경할 수 없으므로
+    // onToggleVoiceComment를 호출하여 상태 변경 요청
+    widget.onToggleVoiceComment(widget.photo.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     // 텍스트 필드 포커스 상태로 키보드 여부 판단
@@ -149,6 +158,7 @@ class _PhotoCardWidgetCommonState extends State<PhotoCardWidgetCommon> {
                 _isTextFieldFocused = isFocused;
               });
             },
+            onTextCommentCreated: _handleTextCommentCreated, // 텍스트 댓글 생성 콜백 연결
           ),
         ),
       ],

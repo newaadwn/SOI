@@ -72,6 +72,52 @@ class CommentRecordService {
     }
   }
 
+  /// 텍스트 댓글 생성
+  Future<CommentRecordModel> createTextComment({
+    required String text,
+    required String photoId,
+    required String recorderUser,
+    required String profileImageUrl,
+    Offset? relativePosition,
+  }) async {
+    // 1. 입력값 유효성 검사
+    if (text.trim().isEmpty) {
+      throw ServiceException('댓글 내용을 입력해주세요');
+    }
+    if (photoId.isEmpty) {
+      throw ServiceException('유효하지 않은 사진 ID입니다');
+    }
+    if (recorderUser.isEmpty) {
+      throw ServiceException('유효하지 않은 사용자 ID입니다');
+    }
+
+    // 2. Repository를 통해 저장
+    try {
+      final result = await _repository.createTextComment(
+        text: text,
+        photoId: photoId,
+        recorderUser: recorderUser,
+        profileImageUrl: profileImageUrl,
+        relativePosition: relativePosition,
+      );
+
+      // 3. 텍스트 댓글 알림 생성
+      try {
+        await notificationService.createVoiceCommentNotification(
+          photoId: photoId,
+          commentId: result.id,
+          actorUserId: recorderUser,
+        );
+      } catch (e) {
+        debugPrint('⚠️ 알림 생성 실패 (댓글 생성은 성공): $e');
+      }
+
+      return result;
+    } catch (e) {
+      throw ServiceException('텍스트 댓글 생성 실패', originalError: e);
+    }
+  }
+
   /// 특정 사진의 음성 댓글들 조회
   Future<List<CommentRecordModel>> getCommentRecordsByPhotoId(
     String photoId,
