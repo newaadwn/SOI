@@ -81,7 +81,9 @@ class _PhotoCardWidgetCommonState extends State<PhotoCardWidgetCommon> {
 
   /// 텍스트 댓글 생성 후 프로필 배치를 위한 핸들러
   void _handleTextCommentCreated(String text) async {
-    debugPrint('🔵 [PhotoCard] 텍스트 댓글 생성: photoId=${widget.photo.id}, text=$text');
+    debugPrint(
+      '🔵 [PhotoCard] 텍스트 댓글 생성: photoId=${widget.photo.id}, text=$text',
+    );
     // 텍스트 댓글을 임시 저장하고 음성 댓글 active 상태로 전환
     await widget.onTextCommentCompleted(widget.photo.id, text);
     debugPrint('🔵 [PhotoCard] onTextCommentCompleted 호출 완료 (await)');

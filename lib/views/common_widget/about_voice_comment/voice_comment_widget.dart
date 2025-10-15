@@ -92,7 +92,9 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
     // Placing 모드로 시작해야 하는 경우 (텍스트 댓글용)
     if (widget.startInPlacingMode) {
       _currentState = VoiceCommentState.placing;
-      debugPrint('🟢 [VoiceCommentWidget] startInPlacingMode=true, placing 모드로 시작');
+      debugPrint(
+        '🟢 [VoiceCommentWidget] startInPlacingMode=true, placing 모드로 시작',
+      );
       return; // 컨트롤러 초기화 없이 리턴
     }
 

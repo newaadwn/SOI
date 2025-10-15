@@ -80,7 +80,8 @@ class VoiceCommentActiveWidget extends StatelessWidget {
                 !shouldStartAsSaved &&
                 !hasPendingTextComment, // 텍스트 댓글이 pending 중이면 자동 시작 안 함
             startAsSaved: shouldStartAsSaved,
-            startInPlacingMode: hasPendingTextComment, // 텍스트 댓글이 pending 중이면 placing 모드로 시작
+            startInPlacingMode:
+                hasPendingTextComment, // 텍스트 댓글이 pending 중이면 placing 모드로 시작
             profileImageUrl: currentUserProfileImage, // 이미 fallback 처리된 값 사용
             enableMultipleComments: true, // 다중 댓글 활성화
             hasExistingComments: (photoComments[photo.id] ?? []).isNotEmpty,

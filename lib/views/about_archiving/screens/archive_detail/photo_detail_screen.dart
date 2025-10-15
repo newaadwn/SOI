@@ -566,25 +566,26 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       _pendingProfilePositions[photoId] = relativePosition;
 
       final controller = CommentRecordController();
-      
+
       // 텍스트 댓글인지 음성 댓글인지 확인
-      final comment = pending.type == CommentType.text
-          ? await controller.createTextComment(
-              text: pending.text ?? '',
-              photoId: photoId,
-              recorderUser: userId,
-              profileImageUrl: currentUserProfileImageUrl,
-              relativePosition: relativePosition,
-            )
-          : await controller.createCommentRecord(
-              audioFilePath: pending.audioUrl,
-              photoId: photoId,
-              recorderUser: userId,
-              waveformData: pending.waveformData,
-              duration: pending.duration,
-              profileImageUrl: currentUserProfileImageUrl,
-              relativePosition: relativePosition,
-            );
+      final comment =
+          pending.type == CommentType.text
+              ? await controller.createTextComment(
+                text: pending.text ?? '',
+                photoId: photoId,
+                recorderUser: userId,
+                profileImageUrl: currentUserProfileImageUrl,
+                relativePosition: relativePosition,
+              )
+              : await controller.createCommentRecord(
+                audioFilePath: pending.audioUrl,
+                photoId: photoId,
+                recorderUser: userId,
+                waveformData: pending.waveformData,
+                duration: pending.duration,
+                profileImageUrl: currentUserProfileImageUrl,
+                relativePosition: relativePosition,
+              );
 
       if (comment == null) {
         if (mounted) {
