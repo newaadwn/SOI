@@ -36,8 +36,6 @@ class ArchiveCardWidget extends StatefulWidget {
 }
 
 class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
-  CategoryDataModel? _cachedCategory; // 캐시된 카테고리 데이터
-  bool _hasLoadedOnce = false; // 한 번이라도 로드되었는지 추적
   late final Stream<CategoryDataModel?> _categoryStream;
 
   @override
@@ -57,46 +55,36 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
     return StreamBuilder<CategoryDataModel?>(
       stream: _categoryStream,
       builder: (context, snapshot) {
-        final loadingSkeleton =
-            widget.layoutMode == ArchiveLayoutMode.list
-                ? _buildLoadingListCard()
-                : _buildLoadingGridCard();
-        // 데이터가 있으면 캐시 업데이트
-        if (snapshot.hasData && snapshot.data != null) {
-          _cachedCategory = snapshot.data!;
-          _hasLoadedOnce = true;
+        // 로딩 중
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return widget.layoutMode == ArchiveLayoutMode.list
+              ? _buildLoadingListCard()
+              : _buildLoadingGridCard();
         }
 
-        // 스트림이 처음 연결 중이고 아직 한 번도 로드되지 않은 경우에만 Shimmer 표시
-        if (!_hasLoadedOnce &&
-            (snapshot.connectionState == ConnectionState.waiting ||
-                snapshot.connectionState == ConnectionState.none ||
-                !snapshot.hasData ||
-                snapshot.data == null)) {
-          return loadingSkeleton;
-        }
-
-        // 에러가 있거나 카테고리가 삭제된 경우
+        // 에러 발생
         if (snapshot.hasError) {
+          debugPrint('ArchiveCardWidget Error: ${snapshot.error}');
           return const SizedBox.shrink();
         }
 
-        // 캐시된 데이터가 있으면 사용, 없으면 현재 스냅샷 데이터 사용
-        final category = _cachedCategory ?? snapshot.data;
-
-        // 여전히 데이터가 없으면 로딩 카드 표시
-        if (category == null || category.name.isEmpty) {
-          return loadingSkeleton;
+        // 데이터 없음 또는 카테고리 삭제/나가기
+        if (!snapshot.hasData || snapshot.data == null) {
+          return const SizedBox.shrink();
         }
 
-        // AnimatedSwitcher로 부드러운 전환 효과 적용
-        return AnimatedSwitcher(
-          duration: const Duration(milliseconds: 300),
-          child: KeyedSubtree(
-            key: ValueKey('${widget.layoutMode}_${category.id}'),
-            child: _buildCategoryCard(context, category),
-          ),
-        );
+        final category = snapshot.data!;
+
+        // 현재 사용자가 카테고리에 없으면 표시 안 함
+        final userId = AuthController().getUserId;
+        if (userId == null ||
+            !category.mates.contains(userId) ||
+            category.name.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        // 카테고리 카드 표시
+        return _buildCategoryCard(context, category);
       },
     );
   }
