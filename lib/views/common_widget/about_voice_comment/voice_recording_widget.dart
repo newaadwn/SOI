@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../models/photo_data_model.dart';
-import '../../models/comment_record_model.dart';
-import 'about_voice_comment/voice_comment_active_widget.dart';
-import 'about_voice_comment/voice_comment_text_widget.dart';
+import '../../../models/photo_data_model.dart';
+import '../../../models/comment_record_model.dart';
+import 'voice_comment_active_widget.dart';
+import 'voice_comment_text_widget.dart';
 
 /// 음성 녹음 위젯
 ///

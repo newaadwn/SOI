@@ -32,7 +32,8 @@ class AllArchivesScreen extends StatefulWidget {
   State<AllArchivesScreen> createState() => _AllArchivesScreenState();
 }
 
-class _AllArchivesScreenState extends State<AllArchivesScreen> {
+class _AllArchivesScreenState extends State<AllArchivesScreen>
+    with AutomaticKeepAliveClientMixin {
   String? nickName;
   final Map<String, List<String>> _categoryProfileImages = {};
   AuthController? _authController; // AuthController 참조 저장
@@ -74,7 +75,6 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
   void dispose() {
     // 저장된 참조를 사용하여 리스너 제거
     _authController?.removeListener(_onAuthControllerChanged);
-    PaintingBinding.instance.imageCache.clear();
     super.dispose();
   }
 
@@ -121,6 +121,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
     if (nickName == null) {
       return Scaffold(
@@ -301,4 +302,7 @@ class _AllArchivesScreenState extends State<AllArchivesScreen> {
       itemCount: categories.length,
     );
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }

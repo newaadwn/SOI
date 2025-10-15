@@ -3,7 +3,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../../models/photo_data_model.dart';
 import '../../../models/comment_record_model.dart';
 import 'user_info_row_widget.dart';
-import '../voice_recording_widget.dart';
+import '../about_voice_comment/voice_recording_widget.dart';
 import 'photo_display_widget.dart';
 
 class PhotoCardWidgetCommon extends StatefulWidget {

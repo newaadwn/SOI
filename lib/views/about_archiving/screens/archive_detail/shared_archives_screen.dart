@@ -28,7 +28,8 @@ class SharedArchivesScreen extends StatefulWidget {
   State<SharedArchivesScreen> createState() => _SharedArchivesScreenState();
 }
 
-class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
+class _SharedArchivesScreenState extends State<SharedArchivesScreen>
+    with AutomaticKeepAliveClientMixin {
   String? nickName;
   // 카테고리별 프로필 이미지 캐시
   final Map<String, List<String>> _categoryProfileImages = {};
@@ -88,6 +89,7 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     // 만약 닉네임을 아직 못 가져왔다면 로딩 중이에요.
     if (nickName == null) {
       return Scaffold(
@@ -272,4 +274,7 @@ class _SharedArchivesScreenState extends State<SharedArchivesScreen> {
       itemCount: sharedCategories.length,
     );
   }
+
+  @override
+  bool get wantKeepAlive => true;
 }

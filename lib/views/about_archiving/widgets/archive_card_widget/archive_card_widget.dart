@@ -38,55 +38,64 @@ class ArchiveCardWidget extends StatefulWidget {
 class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
   CategoryDataModel? _cachedCategory; // 캐시된 카테고리 데이터
   bool _hasLoadedOnce = false; // 한 번이라도 로드되었는지 추적
+  late final Stream<CategoryDataModel?> _categoryStream;
+
+  @override
+  void initState() {
+    super.initState();
+    final categoryController = Provider.of<CategoryController>(
+      context,
+      listen: false,
+    );
+    _categoryStream = categoryController.streamSingleCategory(
+      widget.categoryId,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<CategoryController>(
-      builder: (context, categoryController, child) {
-        return StreamBuilder<CategoryDataModel?>(
-          stream: categoryController.streamSingleCategory(widget.categoryId),
-          builder: (context, snapshot) {
-            final loadingSkeleton =
-                widget.layoutMode == ArchiveLayoutMode.list
-                    ? _buildLoadingListCard()
-                    : _buildLoadingGridCard();
-            // 데이터가 있으면 캐시 업데이트
-            if (snapshot.hasData && snapshot.data != null) {
-              _cachedCategory = snapshot.data!;
-              _hasLoadedOnce = true;
-            }
+    return StreamBuilder<CategoryDataModel?>(
+      stream: _categoryStream,
+      builder: (context, snapshot) {
+        final loadingSkeleton =
+            widget.layoutMode == ArchiveLayoutMode.list
+                ? _buildLoadingListCard()
+                : _buildLoadingGridCard();
+        // 데이터가 있으면 캐시 업데이트
+        if (snapshot.hasData && snapshot.data != null) {
+          _cachedCategory = snapshot.data!;
+          _hasLoadedOnce = true;
+        }
 
-            // 스트림이 처음 연결 중이고 아직 한 번도 로드되지 않은 경우에만 Shimmer 표시
-            if (!_hasLoadedOnce &&
-                (snapshot.connectionState == ConnectionState.waiting ||
-                    snapshot.connectionState == ConnectionState.none ||
-                    !snapshot.hasData ||
-                    snapshot.data == null)) {
-              return loadingSkeleton;
-            }
+        // 스트림이 처음 연결 중이고 아직 한 번도 로드되지 않은 경우에만 Shimmer 표시
+        if (!_hasLoadedOnce &&
+            (snapshot.connectionState == ConnectionState.waiting ||
+                snapshot.connectionState == ConnectionState.none ||
+                !snapshot.hasData ||
+                snapshot.data == null)) {
+          return loadingSkeleton;
+        }
 
-            // 에러가 있거나 카테고리가 삭제된 경우
-            if (snapshot.hasError) {
-              return const SizedBox.shrink();
-            }
+        // 에러가 있거나 카테고리가 삭제된 경우
+        if (snapshot.hasError) {
+          return const SizedBox.shrink();
+        }
 
-            // 캐시된 데이터가 있으면 사용, 없으면 현재 스냅샷 데이터 사용
-            final category = _cachedCategory ?? snapshot.data;
+        // 캐시된 데이터가 있으면 사용, 없으면 현재 스냅샷 데이터 사용
+        final category = _cachedCategory ?? snapshot.data;
 
-            // 여전히 데이터가 없으면 로딩 카드 표시
-            if (category == null || category.name.isEmpty) {
-              return loadingSkeleton;
-            }
+        // 여전히 데이터가 없으면 로딩 카드 표시
+        if (category == null || category.name.isEmpty) {
+          return loadingSkeleton;
+        }
 
-            // AnimatedSwitcher로 부드러운 전환 효과 적용
-            return AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
-              child: KeyedSubtree(
-                key: ValueKey('${widget.layoutMode}_${category.id}'),
-                child: _buildCategoryCard(context, category),
-              ),
-            );
-          },
+        // AnimatedSwitcher로 부드러운 전환 효과 적용
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: KeyedSubtree(
+            key: ValueKey('${widget.layoutMode}_${category.id}'),
+            child: _buildCategoryCard(context, category),
+          ),
         );
       },
     );
@@ -175,6 +184,7 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
     );
   }
 
+  // 리스트 형태로 보여주는 카테고리는 일단 보여주지 않는 걸로
   /* Widget _buildListLayout(BuildContext context, CategoryDataModel category) {
     final userId = AuthController().getUserId;
     final hasNewPhoto =
@@ -361,6 +371,9 @@ class _ArchiveCardWidgetState extends State<ArchiveCardWidget> {
           ),
           imageUrl: category.categoryPhotoUrl!,
           cacheKey: '${category.id}_${category.categoryPhotoUrl}',
+          fadeInDuration: Duration.zero,
+          fadeOutDuration: Duration.zero,
+          useOldImageOnUrlChange: true,
           width: width,
           height: height,
           memCacheHeight: (height * 3).toInt(),

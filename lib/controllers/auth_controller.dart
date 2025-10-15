@@ -1,3 +1,5 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:soi/models/auth_model.dart';
@@ -32,6 +34,12 @@ class AuthController extends ChangeNotifier {
   static const int _maxCacheSize = 100;
   final Map<String, bool> _loadingStates = {}; // 로딩 상태 관리
 
+  // Stream 관리를 위한 변수들
+  final Map<String, StreamController<String>> _profileStreamControllers = {};
+  final Map<String, StreamSubscription<DocumentSnapshot>>
+  _firestoreSubscriptions = {};
+  final Map<String, int> _streamRefCounts = {};
+
   // Getters
   String get verificationId => _verificationId;
   List<String> get searchResults => _searchResults;
@@ -65,6 +73,91 @@ class AuthController extends ChangeNotifier {
   /// 프로필 이미지 URL 가져오기 (캐싱 포함)
   Future<String> getUserProfileImageUrlById(String userId) async {
     return await _authService.getUserProfileImageUrlById(userId);
+  }
+
+  /// 프로필 이미지 URL Stream 가져오기 (실시간 업데이트)
+  Stream<String> getUserProfileImageUrlStream(String userId) {
+    // 참조 카운트 증가
+    _streamRefCounts[userId] = (_streamRefCounts[userId] ?? 0) + 1;
+
+    // 이미 StreamController가 존재하면 기존 stream 반환
+    if (_profileStreamControllers.containsKey(userId)) {
+      return _profileStreamControllers[userId]!.stream;
+    }
+
+    // 새 BroadcastStreamController 생성 (여러 리스너 허용)
+    final controller = StreamController<String>.broadcast();
+    _profileStreamControllers[userId] = controller;
+
+    // 캐시된 값이 있으면 즉시 emit (빠른 초기 로딩)
+    if (_profileImageCache.containsKey(userId)) {
+      controller.add(_profileImageCache[userId]!);
+    }
+
+    // Firestore 실시간 리스너 설정
+    final subscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .listen(
+          (snapshot) {
+            if (snapshot.exists) {
+              final data = snapshot.data();
+              // 두 가지 필드명 지원 (기존 호환성)
+              final url =
+                  data?['profileImageUrl'] ?? data?['profile_image'] ?? '';
+
+              // 캐시 업데이트
+              _profileImageCache[userId] = url;
+
+              // Stream에 새 값 emit
+              if (!controller.isClosed) {
+                controller.add(url);
+              }
+            }
+          },
+          onError: (error) {
+            debugPrint('프로필 이미지 Stream 오류 - UserId: $userId, Error: $error');
+            if (!controller.isClosed) {
+              controller.add(''); // 에러 시 빈 문자열
+            }
+          },
+        );
+
+    _firestoreSubscriptions[userId] = subscription;
+    return controller.stream;
+  }
+
+  /// 프로필 이미지 Stream 참조 해제
+  void releaseProfileStream(String userId) {
+    final refCount = (_streamRefCounts[userId] ?? 1) - 1;
+
+    if (refCount <= 0) {
+      // 참조가 없으면 리소스 정리
+      _firestoreSubscriptions[userId]?.cancel();
+      _profileStreamControllers[userId]?.close();
+      _firestoreSubscriptions.remove(userId);
+      _profileStreamControllers.remove(userId);
+      _streamRefCounts.remove(userId);
+    } else {
+      _streamRefCounts[userId] = refCount;
+    }
+  }
+
+  @override
+  void dispose() {
+    // 모든 Stream 리소스 정리
+    for (final subscription in _firestoreSubscriptions.values) {
+      subscription.cancel();
+    }
+    for (final controller in _profileStreamControllers.values) {
+      controller.close();
+    }
+    _firestoreSubscriptions.clear();
+    _profileStreamControllers.clear();
+    _streamRefCounts.clear();
+
+    super.dispose();
   }
 
   /// 사용자 정보 가져오기
@@ -303,6 +396,9 @@ class AuthController extends ChangeNotifier {
         final currentUserId = getUserId;
         if (currentUserId != null) {
           _profileImageCache[currentUserId] = result.data ?? '';
+
+          // Stream 업데이트 - 이미 활성화된 Stream이 있다면 자동으로 Firestore가 업데이트할 것
+          // 하지만 즉시 반영을 위해 캐시를 업데이트
         }
 
         debugPrint('프로필 이미지 파일 업로드 성공');
@@ -337,11 +433,11 @@ class AuthController extends ChangeNotifier {
       );
 
       if (success) {
-        // 프로필 이미지 캐시 클리어 (새 이미지로 갱신)
-        _profileImageCache.remove(currentUserId);
+        // 프로필 이미지 캐시 업데이트
+        _profileImageCache[currentUserId] = newProfileImageUrl;
 
-        // UI 갱신을 위해 notifyListeners 호출
-        notifyListeners();
+        // Stream을 통해 자동으로 업데이트될 것이므로 notifyListeners는 불필요
+        // Firestore snapshot 리스너가 자동으로 새 값을 emit함
       }
     } catch (e) {
       rethrow;

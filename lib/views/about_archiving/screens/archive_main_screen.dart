@@ -40,6 +40,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   // Provider 참조를 미리 저장 (dispose에서 안전하게 사용하기 위함)
   CategorySearchController? _categoryController;
+  AuthController? _authController;
+  Future<String>? _profileImageFuture;
 
   // 편집 모드 상태 관리
   bool _isEditMode = false;
@@ -103,6 +105,16 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
       context,
       listen: false,
     );
+
+    if (_authController == null) {
+      _authController = Provider.of<AuthController>(context, listen: false);
+      final userId = _authController?.getUserId;
+      _profileImageFuture =
+          userId != null
+              ? _authController!.getUserProfileImageUrlWithCache(userId)
+              : _authController!.getUserProfileImageUrl();
+      _authController!.addListener(_handleAuthControllerUpdated);
+    }
   }
 
   void _onSearchChanged() {
@@ -113,6 +125,21 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
       // 검색어만 전달 (내부 카테고리 목록 사용)
       _categoryController?.searchCategories(_searchController.text);
+    });
+  }
+
+  void _handleAuthControllerUpdated() {
+    final controller = _authController;
+    if (!mounted || controller == null || controller.isUploading) {
+      return;
+    }
+
+    setState(() {
+      final userId = controller.getUserId;
+      _profileImageFuture =
+          userId != null
+              ? controller.getUserProfileImageUrlWithCache(userId)
+              : controller.getUserProfileImageUrl();
     });
   }
 
@@ -279,8 +306,18 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               SizedBox(width: 32.w),
               Consumer<AuthController>(
                 builder: (context, authController, _) {
+                  final currentUserId = authController.getUserId;
                   return FutureBuilder<String>(
-                    future: authController.getUserProfileImageUrl(),
+                    future:
+                        _profileImageFuture ??
+                        (
+                          currentUserId != null
+                              ? authController
+                                  .getUserProfileImageUrlWithCache(
+                                  currentUserId,
+                                )
+                              : authController.getUserProfileImageUrl()
+                        ),
                     builder: (context, imageSnapshot) {
                       final isLoadingAvatar =
                           imageSnapshot.connectionState ==
@@ -316,6 +353,8 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                               fit: BoxFit.cover,
                                               width: 34,
                                               height: 34,
+                                              fadeInDuration: Duration.zero,
+                                              fadeOutDuration: Duration.zero,
                                               memCacheHeight: 120,
                                               memCacheWidth: 120,
                                               placeholder:
@@ -983,6 +1022,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _pageController.dispose(); // PageController 정리
+    _authController?.removeListener(_handleAuthControllerUpdated);
 
     PaintingBinding.instance.imageCache.clear();
     super.dispose();

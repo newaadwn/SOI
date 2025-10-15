@@ -4,22 +4,18 @@ import 'package:soi/controllers/comment_record_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../controllers/auth_controller.dart';
-import '../../../controllers/audio_controller.dart';
 import '../../../controllers/comment_audio_controller.dart';
 import '../../../controllers/category_controller.dart';
 import '../../../models/photo_data_model.dart';
 import '../../../models/comment_record_model.dart';
-import '../../../utils/format_utils.dart';
 import '../../../utils/position_converter.dart';
-import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
 import '../../about_archiving/screens/archive_detail/category_photos_screen.dart';
 import '../about_voice_comment/voice_comment_list_sheet.dart';
 import 'first_line_ellipsis_text.dart';
+import 'category_label_widget.dart';
+import 'audio_control_widget.dart';
 
 /// 사진 표시 위젯
-///
-/// 피드에서 사진 이미지와 관련된 모든 UI를 담당합니다.
-/// 사진, 카테고리 정보, 오디오 컨트롤, 드롭된 프로필 이미지 등을 포함합니다.
 class PhotoDisplayWidget extends StatefulWidget {
   final PhotoDataModel photo;
   final String categoryName;
@@ -96,49 +92,7 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
     }
   }
 
-  /// 커스텀 파형 위젯을 빌드하는 메서드 (실시간 progress 포함)
-  Widget _buildWaveformWidgetWithProgress() {
-    if (widget.photo.audioUrl.isEmpty ||
-        widget.photo.waveformData == null ||
-        widget.photo.waveformData!.isEmpty) {
-      return Container(
-        height: 32,
-        alignment: Alignment.center,
-        child: const Text(
-          '오디오 없음',
-          style: TextStyle(color: Colors.white70, fontSize: 10),
-        ),
-      );
-    }
-
-    return Consumer<AudioController>(
-      builder: (context, audioController, child) {
-        final isCurrentAudio =
-            audioController.isPlaying &&
-            audioController.currentPlayingAudioUrl == widget.photo.audioUrl;
-
-        double progress = 0.0;
-        if (isCurrentAudio &&
-            audioController.currentDuration.inMilliseconds > 0) {
-          progress = (audioController.currentPosition.inMilliseconds /
-                  audioController.currentDuration.inMilliseconds)
-              .clamp(0.0, 1.0);
-        }
-
-        return Container(
-          alignment: Alignment.center,
-          child: CustomWaveformWidget(
-            waveformData: widget.photo.waveformData!,
-            color: (isCurrentAudio) ? Color(0xff5a5a5a) : Color(0xffffffff),
-            activeColor: Colors.white,
-            progress: progress,
-          ),
-        );
-      },
-    );
-  }
-
-  /// 사용자 프로필 이미지 위젯 빌드
+  /// 사용자 프로필 이미지 위젯 빌드 (Caption에서만 사용)
   Widget _buildUserProfileWidget(BuildContext context) {
     final userId = widget.photo.userID;
     final screenWidth = MediaQuery.of(context).size.width;
@@ -147,20 +101,26 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
     return Consumer<AuthController>(
       builder: (context, authController, child) {
         final isLoading = widget.profileLoadingStates[userId] ?? false;
-        final profileImageUrl = widget.userProfileImages[userId] ?? '';
 
-        return isLoading
-            ? CircleAvatar(
-              radius: 100,
-              backgroundColor: Colors.grey[700],
-              child: SizedBox(
-                child: const CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
+        if (isLoading) {
+          return CircleAvatar(
+            radius: 100,
+            backgroundColor: Colors.grey[700],
+            child: SizedBox(
+              child: const CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               ),
-            )
-            : ClipOval(
+            ),
+          );
+        }
+
+        return StreamBuilder<String>(
+          stream: authController.getUserProfileImageUrlStream(userId),
+          builder: (context, snapshot) {
+            final profileImageUrl = snapshot.data ?? '';
+
+            return ClipOval(
               child:
                   profileImageUrl.isNotEmpty
                       ? CachedNetworkImage(
@@ -183,6 +143,8 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                         child: Icon(Icons.person, size: 20.h),
                       ),
             );
+          },
+        );
       },
     );
   }
@@ -308,173 +270,28 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
 
                       // 카테고리 정보
                       if (!widget.isArchive)
-                        GestureDetector(
-                          onTap: () => _navigateToCategory(),
-                          child: Padding(
-                            padding: EdgeInsets.only(top: 16.h),
-                            child: IntrinsicWidth(
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.5),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                alignment: Alignment.center,
-                                child: Center(
-                                  child: Padding(
-                                    padding: EdgeInsets.only(
-                                      left: 15.w,
-                                      right: 15.w,
-                                      top: 1.h,
-                                    ),
-                                    child: Text(
-                                      widget.categoryName,
-                                      style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.9,
-                                        ),
-                                        fontSize: 16.sp,
-                                        fontWeight: FontWeight.w600,
-                                        fontFamily: "Pretendard",
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1, // 한 줄로 제한
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                        CategoryLabelWidget(
+                          categoryName: widget.categoryName,
+                          onTap: _navigateToCategory,
                         ),
 
-                      // 오디오 컨트롤 오버레이 (photo_detail처럼)
+                      // 오디오 컨트롤 오버레이
                       if (widget.photo.audioUrl.isNotEmpty)
                         Positioned(
                           left: 20.w,
                           bottom: 7.h,
-                          child: SizedBox(
-                            height: 50.h,
-                            child: Row(
-                              children: [
-                                // 오디오 영역 (고정 width)
-                                SizedBox(
-                                  width: 278.w,
-                                  child: GestureDetector(
-                                    onTap:
-                                        () =>
-                                            widget.onToggleAudio(widget.photo),
-                                    child: Container(
-                                      width: 278.w,
-                                      height: 40,
-                                      decoration: BoxDecoration(
-                                        color: Color(
-                                          0xff000000,
-                                        ).withValues(alpha: 0.4),
-                                        borderRadius: BorderRadius.circular(15),
-                                      ),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.center,
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.center,
-                                        children: [
-                                          // 왼쪽 프로필 이미지 (작은 버전)
-                                          Container(
-                                            width: 27,
-                                            height: 27,
-                                            decoration: BoxDecoration(
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: ClipOval(
-                                              child: _buildUserProfileWidget(
-                                                context,
-                                              ),
-                                            ),
-                                          ),
-                                          SizedBox(width: (17).w),
-
-                                          // 가운데 파형 (progress 포함)
-                                          SizedBox(
-                                            width: (144.62).w,
-                                            height: 32.h,
-                                            child:
-                                                _buildWaveformWidgetWithProgress(),
-                                          ),
-
-                                          SizedBox(width: (17).w),
-
-                                          // 오른쪽 재생 시간 (실시간 업데이트)
-                                          SizedBox(
-                                            width: 45.w,
-                                            child: Consumer<AudioController>(
-                                              builder: (
-                                                context,
-                                                audioController,
-                                                child,
-                                              ) {
-                                                // 현재 사진의 오디오가 재생 중인지 확인
-                                                final isCurrentAudio =
-                                                    audioController.isPlaying &&
-                                                    audioController
-                                                            .currentPlayingAudioUrl ==
-                                                        widget.photo.audioUrl;
-
-                                                // 실시간 재생 시간 사용
-                                                Duration displayDuration =
-                                                    Duration.zero;
-                                                if (isCurrentAudio) {
-                                                  displayDuration =
-                                                      audioController
-                                                          .currentPosition;
-                                                }
-
-                                                return Text(
-                                                  FormatUtils.formatDuration(
-                                                    (isCurrentAudio)
-                                                        ? displayDuration
-                                                        : widget.photo.duration,
-                                                  ),
-                                                  style: TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 12.sp,
-                                                    fontWeight: FontWeight.w500,
-                                                  ),
-                                                );
-                                              },
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ),
-
-                                // 댓글 아이콘 영역 (고정 width)
-                                SizedBox(
-                                  width: 60.w,
-                                  child:
-                                      (widget.photoComments[widget.photo.id] ??
-                                                  [])
-                                              .isNotEmpty
-                                          ? Center(
-                                            child: IconButton(
-                                              onPressed: () {
-                                                setState(() {
-                                                  _isShowingComments =
-                                                      !_isShowingComments;
-                                                });
-                                              },
-                                              icon: Image.asset(
-                                                "assets/comment_profile_icon.png",
-                                                width: 25.w,
-                                                height: 25.h,
-                                              ),
-                                            ),
-                                          )
-                                          // 댓글이 없으면 빈 컨테이너
-                                          : Container(),
-                                ),
-                              ],
-                            ),
+                          child: AudioControlWidget(
+                            photo: widget.photo,
+                            onAudioTap:
+                                () => widget.onToggleAudio(widget.photo),
+                            hasComments:
+                                (widget.photoComments[widget.photo.id] ?? [])
+                                    .isNotEmpty,
+                            onCommentIconTap: () {
+                              setState(() {
+                                _isShowingComments = !_isShowingComments;
+                              });
+                            },
                           ),
                         ),
 
@@ -603,19 +420,18 @@ class _PhotoDisplayWidgetState extends State<PhotoDisplayWidget> {
                                                           child: Padding(
                                                             padding:
                                                                 EdgeInsets.symmetric(
-                                                              vertical: 6.h,
-                                                            ),
+                                                                  vertical: 6.h,
+                                                                ),
                                                             child: Text(
                                                               widget
                                                                   .photo
                                                                   .caption!,
-                                                              style:
-                                                                  captionStyle
-                                                                      .copyWith(
-                                                                color:
-                                                                    Colors
-                                                                        .white,
-                                                              ),
+                                                              style: captionStyle
+                                                                  .copyWith(
+                                                                    color:
+                                                                        Colors
+                                                                            .white,
+                                                                  ),
                                                             ),
                                                           ),
                                                         ),

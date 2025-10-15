@@ -313,7 +313,7 @@ class PhotoRepository {
               .collectionGroup('photos')
               .where('userID', isEqualTo: userId)
               .where('status', isEqualTo: PhotoStatus.active.name)
-              .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
+              .where('unactive', isEqualTo: false)
               .orderBy('createdAt', descending: true)
               .get();
 
