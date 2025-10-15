@@ -23,6 +23,7 @@ class VoiceRecordingWidget extends StatelessWidget {
   final Function(String)? onSaveCompleted; // 저장 완료 후 초기화 콜백
   final Function(bool)? onTextFieldFocusChanged; // 텍스트 필드 포커스 변경 콜백
   final Function(String)? onTextCommentCreated; // 텍스트 댓글 생성 콜백
+  final Map<String, bool>? pendingTextComments; // Pending 텍스트 댓글 상태
 
   const VoiceRecordingWidget({
     super.key,
@@ -40,6 +41,7 @@ class VoiceRecordingWidget extends StatelessWidget {
     this.onSaveCompleted,
     this.onTextFieldFocusChanged,
     this.onTextCommentCreated, // 텍스트 댓글 생성 콜백 추가
+    this.pendingTextComments, // Pending 텍스트 댓글 상태 추가
   });
 
   @override
@@ -66,6 +68,8 @@ class VoiceRecordingWidget extends StatelessWidget {
                   onProfileImageDragged: onProfileImageDragged,
                   onSaveRequested: onSaveRequested,
                   onSaveCompleted: onSaveCompleted,
+                  pendingTextComments:
+                      pendingTextComments, // Pending 텍스트 댓글 상태 전달
                 )
                 : VoiceCommentTextWidget(
                   photoId: photo.id,

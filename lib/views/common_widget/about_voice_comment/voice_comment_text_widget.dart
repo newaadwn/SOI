@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import 'package:provider/provider.dart';
-import '../../../controllers/auth_controller.dart';
-import '../../../controllers/comment_record_controller.dart';
 
 /// 음성 녹음이 비활성화된 상태의 댓글 입력 필드 위젯
 ///
@@ -58,37 +55,17 @@ class _VoiceCommentTextWidgetState extends State<VoiceCommentTextWidget> {
     });
 
     try {
-      final authController = context.read<AuthController>();
-      final commentController = context.read<CommentRecordController>();
+      // 텍스트를 임시로 저장하고 콜백 호출
+      // 실제 Firestore 저장은 프로필 위치 지정 후 수행
+      _textController.clear();
+      FocusScope.of(context).unfocus();
 
-      final userId = authController.currentUser?.uid;
-      final profileImageUrl = await authController.getUserProfileImageUrlById(
-        userId ?? '',
-      );
+      // 콜백을 통해 pending 상태로 전환
+      widget.onTextCommentCreated?.call(text);
 
-      if (userId == null) {
-        debugPrint('❌ 사용자 ID를 가져올 수 없습니다');
-        return;
-      }
-
-      // 텍스트 댓글 생성
-      final comment = await commentController.createTextComment(
-        text: text,
-        photoId: widget.photoId,
-        recorderUser: userId,
-        profileImageUrl: profileImageUrl,
-      );
-
-      if (comment != null && mounted) {
-        // 텍스트 입력 필드 초기화
-        _textController.clear();
-        FocusScope.of(context).unfocus();
-
-        // 텍스트 댓글 생성 콜백 호출 (프로필 드래그 모드 시작)
-        widget.onTextCommentCreated?.call(comment.id);
-      }
+      debugPrint('✅ 텍스트 댓글 임시 저장 완료');
     } catch (e) {
-      debugPrint('❌ 텍스트 댓글 전송 실패: $e');
+      debugPrint('❌ 텍스트 댓글 처리 실패: $e');
     } finally {
       if (mounted) {
         setState(() {

@@ -27,11 +27,13 @@ class PhotoCardWidgetCommon extends StatefulWidget {
   final Map<String, bool> voiceCommentActiveStates;
   final Map<String, bool> voiceCommentSavedStates;
   final Map<String, String> commentProfileImageUrls;
+  final Map<String, bool>? pendingTextComments; // Pending 텍스트 댓글 상태
 
   // 콜백 함수들
   final Function(PhotoDataModel) onToggleAudio;
   final Function(String) onToggleVoiceComment;
   final Function(String, String?, List<double>?, int?) onVoiceCommentCompleted;
+  final Function(String, String) onTextCommentCompleted; // 텍스트 댓글 완료 콜백
   final Function(String) onVoiceCommentDeleted;
   final Function(String, Offset) onProfileImageDragged;
   final Future<void> Function(String) onSaveRequested; // 프로필 배치 저장 콜백
@@ -57,9 +59,11 @@ class PhotoCardWidgetCommon extends StatefulWidget {
     required this.voiceCommentActiveStates,
     required this.voiceCommentSavedStates,
     required this.commentProfileImageUrls,
+    this.pendingTextComments, // Pending 텍스트 댓글 상태 추가
     required this.onToggleAudio,
     required this.onToggleVoiceComment,
     required this.onVoiceCommentCompleted,
+    required this.onTextCommentCompleted, // 텍스트 댓글 완료 콜백 추가
     required this.onVoiceCommentDeleted,
     required this.onProfileImageDragged,
     required this.onSaveRequested,
@@ -76,12 +80,14 @@ class _PhotoCardWidgetCommonState extends State<PhotoCardWidgetCommon> {
   bool _isTextFieldFocused = false;
 
   /// 텍스트 댓글 생성 후 프로필 배치를 위한 핸들러
-  void _handleTextCommentCreated(String commentId) {
-    // 텍스트 댓글이 생성되면 voiceCommentActiveStates를 true로 설정하여
-    // VoiceCommentWidget이 활성화되도록 함
-    // 부모 위젯에서 관리하는 상태를 직접 변경할 수 없으므로
-    // onToggleVoiceComment를 호출하여 상태 변경 요청
+  void _handleTextCommentCreated(String text) async {
+    debugPrint('🔵 [PhotoCard] 텍스트 댓글 생성: photoId=${widget.photo.id}, text=$text');
+    // 텍스트 댓글을 임시 저장하고 음성 댓글 active 상태로 전환
+    await widget.onTextCommentCompleted(widget.photo.id, text);
+    debugPrint('🔵 [PhotoCard] onTextCommentCompleted 호출 완료 (await)');
+    // 음성 댓글 active 상태로 전환하여 프로필 드래그 가능하게 함
     widget.onToggleVoiceComment(widget.photo.id);
+    debugPrint('🔵 [PhotoCard] onToggleVoiceComment 호출 완료');
   }
 
   @override
@@ -153,6 +159,8 @@ class _PhotoCardWidgetCommonState extends State<PhotoCardWidgetCommon> {
             onProfileImageDragged: widget.onProfileImageDragged,
             onSaveRequested: widget.onSaveRequested,
             onSaveCompleted: widget.onSaveCompleted,
+            pendingTextComments:
+                widget.pendingTextComments, // Pending 텍스트 댓글 상태 전달
             onTextFieldFocusChanged: (isFocused) {
               setState(() {
                 _isTextFieldFocused = isFocused;

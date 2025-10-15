@@ -210,7 +210,14 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
   /// 음성 댓글 토글 - delegate to manager
   void _toggleVoiceComment(String photoId) {
+    debugPrint('🟠 [FeedHome] 음성 댓글 토글 시작: photoId=$photoId');
     _voiceCommentStateManager?.toggleVoiceComment(photoId);
+    // 명시적으로 setState 호출하여 UI 업데이트 보장
+    if (mounted) {
+      setState(() {
+        debugPrint('🟠 [FeedHome] setState 호출 완료');
+      });
+    }
   }
 
   /// 음성 댓글 녹음 완료 콜백 (임시 저장) - delegate to manager
@@ -226,6 +233,13 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       waveformData,
       duration,
     );
+  }
+
+  /// 텍스트 댓글 완료 콜백 (임시 저장) - delegate to manager
+  Future<void> _onTextCommentCompleted(String photoId, String text) async {
+    debugPrint('🟢 [FeedHome] 텍스트 댓글 완료: photoId=$photoId, text=$text');
+    await _voiceCommentStateManager?.onTextCommentCompleted(photoId, text);
+    debugPrint('🟢 [FeedHome] StateManager.onTextCommentCompleted 완료');
   }
 
   /// 실제 음성 댓글 저장 (파형 클릭 시 호출) - delegate to manager
@@ -359,9 +373,13 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                     _voiceCommentStateManager!.voiceCommentSavedStates,
                 commentProfileImageUrls:
                     _voiceCommentStateManager!.commentProfileImageUrls,
+                pendingTextComments:
+                    _voiceCommentStateManager!
+                        .pendingTextComments, // Pending 텍스트 댓글 상태 전달
                 onToggleAudio: _toggleAudio,
                 onToggleVoiceComment: _toggleVoiceComment,
                 onVoiceCommentCompleted: _onVoiceCommentCompleted,
+                onTextCommentCompleted: _onTextCommentCompleted, // 텍스트 댓글 콜백 추가
                 onVoiceCommentDeleted: _onVoiceCommentDeleted,
                 onProfileImageDragged: _onProfileImageDragged,
                 onSaveRequested: _saveVoiceComment,

@@ -9,15 +9,19 @@ import '../../../utils/position_converter.dart';
 
 /// 보류 중인 음성 댓글 정보를 담는 단순 데이터 객체
 class PendingVoiceComment {
-  final String audioPath;
-  final List<double> waveformData;
-  final int duration;
+  final String? audioPath;
+  final List<double>? waveformData;
+  final int? duration;
+  final String? text; // 텍스트 댓글용
+  final bool isTextComment; // 텍스트 댓글 여부
   final Offset? relativePosition;
 
   const PendingVoiceComment({
-    required this.audioPath,
-    required this.waveformData,
-    required this.duration,
+    this.audioPath,
+    this.waveformData,
+    this.duration,
+    this.text,
+    this.isTextComment = false,
     this.relativePosition,
   });
 
@@ -26,6 +30,8 @@ class PendingVoiceComment {
       audioPath: audioPath,
       waveformData: waveformData,
       duration: duration,
+      text: text,
+      isTextComment: isTextComment,
       relativePosition: position,
     );
   }
@@ -65,6 +71,26 @@ class VoiceCommentStateManager {
   Map<String, String> get droppedProfileImageUrls => _droppedProfileImageUrls;
   Map<String, List<CommentRecordModel>> get photoComments => _photoComments;
 
+  /// Pending 댓글이 있는지 확인
+  bool hasPendingComment(String photoId) {
+    return _pendingVoiceComments.containsKey(photoId);
+  }
+
+  /// Pending 댓글이 텍스트 댓글인지 확인
+  bool isPendingTextComment(String photoId) {
+    final pending = _pendingVoiceComments[photoId];
+    return pending?.isTextComment ?? false;
+  }
+
+  /// Pending 텍스트 댓글 맵 (photoId -> isPendingText)
+  Map<String, bool> get pendingTextComments {
+    final Map<String, bool> result = {};
+    _pendingVoiceComments.forEach((photoId, pending) {
+      result[photoId] = pending.isTextComment;
+    });
+    return result;
+  }
+
   // 콜백 함수들
   VoidCallback? _onStateChanged;
 
@@ -78,8 +104,14 @@ class VoiceCommentStateManager {
 
   /// 음성 댓글 토글
   void toggleVoiceComment(String photoId) {
+    debugPrint(
+      '🔶 [StateManager] 음성 댓글 토글: photoId=$photoId, 현재=${_voiceCommentActiveStates[photoId]}',
+    );
     _voiceCommentActiveStates[photoId] =
         !(_voiceCommentActiveStates[photoId] ?? false);
+    debugPrint(
+      '🔶 [StateManager] 음성 댓글 토글 후: ${_voiceCommentActiveStates[photoId]}',
+    );
     _notifyStateChanged();
   }
 
@@ -99,8 +131,31 @@ class VoiceCommentStateManager {
       audioPath: audioPath,
       waveformData: waveformData,
       duration: duration,
+      isTextComment: false,
     );
     _notifyStateChanged();
+  }
+
+  /// 텍스트 댓글 완료 콜백 (임시 저장)
+  Future<void> onTextCommentCompleted(String photoId, String text) async {
+    if (text.isEmpty) {
+      debugPrint('⚠️ [StateManager] 텍스트가 비어있음');
+      return;
+    }
+
+    debugPrint(
+      '🟡 [StateManager] 텍스트 댓글 pending 저장: photoId=$photoId, text=$text',
+    );
+    // 임시 저장 (프로필 위치 지정 후 실제 저장)
+    _pendingVoiceComments[photoId] = PendingVoiceComment(
+      text: text,
+      isTextComment: true,
+    );
+    debugPrint(
+      '🟡 [StateManager] pendingTextComments: ${_pendingVoiceComments.keys.toList()}',
+    );
+    _notifyStateChanged();
+    debugPrint('🟡 [StateManager] State 변경 알림 완료');
   }
 
   /// 실제 음성 댓글 저장 (파형 클릭 시 호출)
@@ -133,21 +188,42 @@ class VoiceCommentStateManager {
         throw StateError('음성 댓글 저장 위치를 찾을 수 없습니다. photoId: $photoId');
       }
 
-      final commentRecord = await commentRecordController.createCommentRecord(
-        audioFilePath: pendingComment.audioPath,
-        photoId: photoId,
-        recorderUser: currentUserId,
-        waveformData: pendingComment.waveformData,
-        duration: pendingComment.duration,
-        profileImageUrl: profileImageUrl,
-        relativePosition: currentProfilePosition,
-      );
+      CommentRecordModel? commentRecord;
+
+      // 텍스트 댓글과 음성 댓글 구분하여 저장
+      if (pendingComment.isTextComment) {
+        if (pendingComment.text == null || pendingComment.text!.isEmpty) {
+          throw Exception('텍스트 댓글 내용이 비어있습니다.');
+        }
+        commentRecord = await commentRecordController.createTextComment(
+          text: pendingComment.text!,
+          photoId: photoId,
+          recorderUser: currentUserId,
+          profileImageUrl: profileImageUrl,
+          relativePosition: currentProfilePosition,
+        );
+      } else {
+        if (pendingComment.audioPath == null ||
+            pendingComment.waveformData == null ||
+            pendingComment.duration == null) {
+          throw Exception('음성 댓글 데이터가 유효하지 않습니다.');
+        }
+        commentRecord = await commentRecordController.createCommentRecord(
+          audioFilePath: pendingComment.audioPath!,
+          photoId: photoId,
+          recorderUser: currentUserId,
+          waveformData: pendingComment.waveformData!,
+          duration: pendingComment.duration!,
+          profileImageUrl: profileImageUrl,
+          relativePosition: currentProfilePosition,
+        );
+      }
 
       if (commentRecord == null) {
         if (context.mounted) {
           commentRecordController.showErrorToUser(context);
         }
-        throw Exception('음성 댓글 저장에 실패했습니다. photoId: $photoId');
+        throw Exception('댓글 저장에 실패했습니다. photoId: $photoId');
       }
 
       _voiceCommentSavedStates[photoId] = true;
@@ -170,7 +246,7 @@ class VoiceCommentStateManager {
 
       _notifyStateChanged();
     } catch (e) {
-      debugPrint("음성 댓글 저장 중 오류 발생: $e");
+      debugPrint("댓글 저장 중 오류 발생: $e");
       rethrow;
     }
   }

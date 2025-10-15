@@ -30,6 +30,7 @@ class VoiceCommentWidget extends StatefulWidget {
   final VoidCallback? onSaveCompleted; // 저장 완료 후 위젯 초기화 콜백
   final String? profileImageUrl; // 프로필 이미지 URL 추가
   final bool startAsSaved; // 저장된 상태로 시작할지 여부
+  final bool startInPlacingMode; // placing 모드로 시작할지 여부 (텍스트 댓글용)
   final Function(Offset)? onProfileImageDragged; // 프로필 이미지 드래그 콜백
   final bool enableMultipleComments; // 여러 댓글 지원 여부
   final bool hasExistingComments; // 기존 댓글 존재 여부
@@ -44,6 +45,7 @@ class VoiceCommentWidget extends StatefulWidget {
     this.onSaveCompleted, // 저장 완료 후 위젯 초기화 콜백 추가
     this.profileImageUrl, // 프로필 이미지 URL 추가
     this.startAsSaved = false, // 기본값은 false
+    this.startInPlacingMode = false, // 기본값은 false
     this.onProfileImageDragged, // 드래그 콜백 추가
     this.enableMultipleComments = false, // 여러 댓글 지원 기본값 false
     this.hasExistingComments = false, // 기존 댓글 존재 기본값 false
@@ -87,9 +89,16 @@ class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
       return; // 컨트롤러 초기화 없이 리턴
     }
 
+    // Placing 모드로 시작해야 하는 경우 (텍스트 댓글용)
+    if (widget.startInPlacingMode) {
+      _currentState = VoiceCommentState.placing;
+      debugPrint('🟢 [VoiceCommentWidget] startInPlacingMode=true, placing 모드로 시작');
+      return; // 컨트롤러 초기화 없이 리턴
+    }
+
     _initializeControllers();
 
-    // autoStart는 saved 상태가 아닐 때만 적용
+    // autoStart는 saved/placing 상태가 아닐 때만 적용
     if (widget.autoStart && _currentState != VoiceCommentState.saved) {
       _currentState = VoiceCommentState.recording;
       WidgetsBinding.instance.addPostFrameCallback((_) {

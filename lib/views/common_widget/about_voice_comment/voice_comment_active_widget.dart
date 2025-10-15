@@ -19,6 +19,7 @@ class VoiceCommentActiveWidget extends StatelessWidget {
   final Function(String, Offset) onProfileImageDragged;
   final Future<void> Function(String)? onSaveRequested;
   final Function(String)? onSaveCompleted;
+  final Map<String, bool>? pendingTextComments; // Pending 텍스트 댓글 상태
 
   const VoiceCommentActiveWidget({
     super.key,
@@ -32,6 +33,7 @@ class VoiceCommentActiveWidget extends StatelessWidget {
     required this.onProfileImageDragged,
     this.onSaveRequested,
     this.onSaveCompleted,
+    this.pendingTextComments, // Pending 텍스트 댓글 상태 추가
   });
 
   @override
@@ -61,11 +63,24 @@ class VoiceCommentActiveWidget extends StatelessWidget {
           final shouldStartAsSaved =
               hasRealTimeComment && voiceCommentActiveStates[photo.id] != true;
 
+          // Pending 텍스트 댓글이 있는 경우 자동 녹음 시작하지 않음
+          final hasPendingTextComment = pendingTextComments?[photo.id] ?? false;
+
+          debugPrint(
+            '🔴 [ActiveWidget] photoId=${photo.id}, shouldStartAsSaved=$shouldStartAsSaved, hasPendingTextComment=$hasPendingTextComment',
+          );
+          debugPrint(
+            '🔴 [ActiveWidget] pendingTextComments=$pendingTextComments',
+          );
+
           // 다중 댓글 기능을 위해 항상 VoiceCommentWidget을 표시
           // 댓글이 없으면 VoiceCommentWidget 표시
           return VoiceCommentWidget(
-            autoStart: !shouldStartAsSaved, // 저장된 상태가 아닐 때만 자동 시작
+            autoStart:
+                !shouldStartAsSaved &&
+                !hasPendingTextComment, // 텍스트 댓글이 pending 중이면 자동 시작 안 함
             startAsSaved: shouldStartAsSaved,
+            startInPlacingMode: hasPendingTextComment, // 텍스트 댓글이 pending 중이면 placing 모드로 시작
             profileImageUrl: currentUserProfileImage, // 이미 fallback 처리된 값 사용
             enableMultipleComments: true, // 다중 댓글 활성화
             hasExistingComments: (photoComments[photo.id] ?? []).isNotEmpty,

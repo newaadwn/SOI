@@ -55,6 +55,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   final Map<String, String> _userNames = {};
   final Map<String, CommentRecordModel> _pendingVoiceComments = {};
   final Map<String, Offset> _pendingProfilePositions = {};
+  final Map<String, bool> _pendingTextComments = {}; // 텍스트 댓글 pending 상태
   final Map<String, List<String>> _savedCommentIds = {};
   final Map<String, Offset> _commentPositions = {};
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
@@ -190,6 +191,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
             voiceCommentActiveStates: _voiceCommentActiveStates,
             voiceCommentSavedStates: _voiceCommentSavedStates,
             commentProfileImageUrls: _commentProfileImageUrls,
+            pendingTextComments: _pendingTextComments, // 텍스트 댓글 pending 상태 전달
             onToggleAudio: _toggleAudio,
             onToggleVoiceComment: _toggleVoiceComment,
             onVoiceCommentCompleted: (
@@ -208,6 +210,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                   duration,
                 );
               }
+            },
+            onTextCommentCompleted: (photoId, text) async {
+              // 텍스트 댓글을 pending 상태로 저장
+              await _onTextCommentCreated(photoId, text);
             },
             onVoiceCommentDeleted: (photoId) {
               setState(() {
@@ -454,6 +460,47 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     });
   }
 
+  Future<void> _onTextCommentCreated(String photoId, String text) async {
+    try {
+      final userId = _authController?.currentUser?.uid;
+      if (userId == null) return;
+
+      // 1. 텍스트 댓글을 pending 상태로 저장
+      final autoPosition = _generateAutoProfilePosition(photoId);
+      final currentUserProfileImageUrl = await _authController!
+          .getUserProfileImageUrlWithCache(userId);
+
+      _pendingVoiceComments[photoId] = CommentRecordModel(
+        id: 'pending_text',
+        text: text,
+        type: CommentType.text,
+        audioUrl: '', // 텍스트 댓글은 오디오 없음
+        waveformData: [], // 텍스트 댓글은 파형 데이터 없음
+        duration: 0, // 텍스트 댓글은 duration 없음
+        recorderUser: userId,
+        photoId: photoId,
+        profileImageUrl: currentUserProfileImageUrl,
+        createdAt: DateTime.now(),
+        relativePosition: autoPosition,
+      );
+      _pendingProfilePositions[photoId] = autoPosition;
+
+      debugPrint('✅ 텍스트 댓글 임시 저장 완료');
+
+      // 2. pending 상태 업데이트
+      if (mounted) {
+        setState(() {
+          _pendingTextComments[photoId] = true;
+          _voiceCommentSavedStates[photoId] = false;
+          _profileImagePositions[photoId] = autoPosition;
+          _commentProfileImageUrls[photoId] = currentUserProfileImageUrl;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ 텍스트 댓글 임시 저장 실패: $e');
+    }
+  }
+
   Future<void> _onVoiceCommentRecordingFinished(
     String photoId,
     String audioPath,
@@ -499,7 +546,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   Future<void> _onSaveRequested(String photoId) async {
     final pending = _pendingVoiceComments[photoId];
     if (pending == null) {
-      throw StateError('임시 음성 댓글이 없습니다. photoId: $photoId');
+      throw StateError('임시 댓글이 없습니다. photoId: $photoId');
     }
 
     try {
@@ -519,21 +566,31 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
       _pendingProfilePositions[photoId] = relativePosition;
 
       final controller = CommentRecordController();
-      final comment = await controller.createCommentRecord(
-        audioFilePath: pending.audioUrl,
-        photoId: photoId,
-        recorderUser: userId,
-        waveformData: pending.waveformData,
-        duration: pending.duration,
-        profileImageUrl: currentUserProfileImageUrl,
-        relativePosition: relativePosition,
-      );
+      
+      // 텍스트 댓글인지 음성 댓글인지 확인
+      final comment = pending.type == CommentType.text
+          ? await controller.createTextComment(
+              text: pending.text ?? '',
+              photoId: photoId,
+              recorderUser: userId,
+              profileImageUrl: currentUserProfileImageUrl,
+              relativePosition: relativePosition,
+            )
+          : await controller.createCommentRecord(
+              audioFilePath: pending.audioUrl,
+              photoId: photoId,
+              recorderUser: userId,
+              waveformData: pending.waveformData,
+              duration: pending.duration,
+              profileImageUrl: currentUserProfileImageUrl,
+              relativePosition: relativePosition,
+            );
 
       if (comment == null) {
         if (mounted) {
           controller.showErrorToUser(context);
         }
-        throw Exception('음성 댓글 저장에 실패했습니다. photoId: $photoId');
+        throw Exception('댓글 저장에 실패했습니다. photoId: $photoId');
       }
 
       _commentPositions[comment.id] =
@@ -553,6 +610,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         _profileImagePositions.remove(photoId);
         _pendingProfilePositions.remove(photoId);
         _pendingVoiceComments.remove(photoId);
+        _pendingTextComments.remove(photoId); // 텍스트 댓글 pending 상태 제거
 
         /// 추가: 저장 직후 다시 아이콘 모드로 돌려주기
         _voiceCommentActiveStates[photoId] = false;
@@ -566,7 +624,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
 
       unawaited(_loadCommentsForPhoto(photoId));
     } catch (e) {
-      debugPrint('❌ 음성 댓글 저장 실패(사용자 요청): $e');
+      debugPrint('❌ 댓글 저장 실패(사용자 요청): $e');
       rethrow;
     }
   }
@@ -576,6 +634,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     setState(() {
       _voiceCommentActiveStates[photoId] = false;
       _pendingVoiceComments.remove(photoId);
+      _pendingTextComments.remove(photoId); // 텍스트 댓글 pending 상태 제거
       _pendingProfilePositions.remove(photoId);
       _profileImagePositions.remove(photoId);
     });
