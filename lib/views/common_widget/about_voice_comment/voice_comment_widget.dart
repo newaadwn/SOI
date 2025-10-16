@@ -1,165 +1,576 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'dart:async';
+import 'dart:ui' show PointerDeviceKind;
 import 'package:flutter/material.dart';
+import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
-import '../../../controllers/comment_audio_controller.dart';
-import '../../../controllers/comment_record_controller.dart';
-import '../../../models/comment_record_model.dart';
-import '../../../utils/format_utils.dart';
-import '../user_display_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../controllers/audio_controller.dart';
+import '../../about_archiving/widgets/wave_form_widget/custom_waveform_widget.dart';
 
-class VoiceCommentRow extends StatelessWidget {
-  final CommentRecordModel comment;
-  const VoiceCommentRow({super.key, required this.comment});
-
-  @override
-  Widget build(BuildContext context) {
-    return Consumer2<CommentAudioController, CommentRecordController>(
-      builder: (context, audioController, recordController, child) {
-        final isPlaying = audioController.isCommentPlaying(comment.id);
-        final progress = audioController.getCommentProgress(comment.id);
-        final position = audioController.getCommentPosition(comment.id);
-        final duration = audioController.getCommentDuration(comment.id);
-        return Column(
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-
-              children: [
-                // 프로필 이미지
-                ClipOval(
-                  child:
-                      comment.profileImageUrl.isNotEmpty
-                          ? CachedNetworkImage(
-                            imageUrl: comment.profileImageUrl,
-                            width: 38.w,
-                            height: 38.w,
-                            fit: BoxFit.cover,
-                          )
-                          : Container(
-                            width: 38.w,
-                            height: 38.w,
-                            color: const Color(0xFF4E4E4E),
-                            child: const Icon(
-                              Icons.person,
-                              color: Colors.white,
-                            ),
-                          ),
-                ),
-                SizedBox(width: 12.w),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      UserDisplayName(userId: comment.recorderUser),
-                      SizedBox(height: 6.h),
-                      _WaveformPlaybackBar(
-                        isPlaying: isPlaying,
-                        progress: progress,
-                        onPlayPause: () async {
-                          if (isPlaying) {
-                            await audioController.pauseComment(comment.id);
-                          } else {
-                            await audioController.playComment(
-                              comment.id,
-                              comment.audioUrl,
-                            );
-                          }
-                        },
-                        position: position,
-                        duration: duration,
-                        waveformData: comment.waveformData, // 실제 파형 데이터 전달
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(width: 10.w),
-              ],
-            ),
-            SizedBox(height: 12.h),
-            Row(
-              children: [
-                Spacer(),
-                Text(
-                  FormatUtils.formatRelativeTime(comment.createdAt),
-                  style: TextStyle(
-                    color: const Color(0xFFB5B5B5),
-                    fontSize: 12.sp,
-                    fontFamily: 'Pretendard',
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                SizedBox(width: 12.w),
-              ],
-            ),
-          ],
-        );
-      },
-    );
-  }
+/// 음성 댓글 전용 위젯
+///
+/// 피드 화면에서 음성 댓글을 녹음하고 재생하는 기능을 제공합니다.
+/// AudioRecorderWidget보다 단순하고 음성 댓글에 최적화되어 있습니다.
+enum VoiceCommentState {
+  idle, // 초기 상태 (녹음 버튼 표시)
+  recording, // 녹음 중
+  recorded, // 녹음 완료 (재생 가능)
+  placing, // 프로필 배치 중 (드래그 가능)
+  saved, // 저장 완료 (프로필 이미지 표시)
 }
 
-class _WaveformPlaybackBar extends StatelessWidget {
-  final bool isPlaying;
-  final double progress; // 0~1
-  final Future<void> Function() onPlayPause;
-  final Duration position;
-  final Duration duration;
-  final List<double> waveformData; // 실제 파형 데이터 추가
-  const _WaveformPlaybackBar({
-    required this.isPlaying,
-    required this.progress,
-    required this.onPlayPause,
-    required this.position,
-    required this.duration,
-    required this.waveformData, // 필수 파라미터로 추가
+class VoiceCommentWidget extends StatefulWidget {
+  final bool autoStart; // 자동 녹음 시작 여부
+  final Function(String?, List<double>?, int?)?
+  onRecordingCompleted; // 녹음 완료 콜백 (duration 추가)
+  final VoidCallback? onRecordingDeleted; // 녹음 삭제 콜백
+  final VoidCallback? onSaved; // 저장 완료 콜백 추가
+  final Future<void> Function()? onSaveRequested; // 저장 요청 콜백 (파형 배치 확정 시)
+  final VoidCallback? onSaveCompleted; // 저장 완료 후 위젯 초기화 콜백
+  final String? profileImageUrl; // 프로필 이미지 URL 추가
+  final bool startAsSaved; // 저장된 상태로 시작할지 여부
+  final bool startInPlacingMode; // placing 모드로 시작할지 여부 (텍스트 댓글용)
+  final Function(Offset)? onProfileImageDragged; // 프로필 이미지 드래그 콜백
+  final bool enableMultipleComments; // 여러 댓글 지원 여부
+  final bool hasExistingComments; // 기존 댓글 존재 여부
+
+  const VoiceCommentWidget({
+    super.key,
+    this.autoStart = false,
+    this.onRecordingCompleted,
+    this.onRecordingDeleted,
+    this.onSaved,
+    this.onSaveRequested, // 저장 요청 콜백 추가
+    this.onSaveCompleted, // 저장 완료 후 위젯 초기화 콜백 추가
+    this.profileImageUrl, // 프로필 이미지 URL 추가
+    this.startAsSaved = false, // 기본값은 false
+    this.startInPlacingMode = false, // 기본값은 false
+    this.onProfileImageDragged, // 드래그 콜백 추가
+    this.enableMultipleComments = false, // 여러 댓글 지원 기본값 false
+    this.hasExistingComments = false, // 기존 댓글 존재 기본값 false
   });
 
   @override
-  Widget build(BuildContext context) {
-    final totalMs =
-        duration.inMilliseconds == 0 ? 1 : duration.inMilliseconds; // div 0 방지
-    final playedMs = position.inMilliseconds;
-    final barProgress = (playedMs / totalMs).clamp(0.0, 1.0);
+  State<VoiceCommentWidget> createState() => _VoiceCommentWidgetState();
+}
 
+class _VoiceCommentWidgetState extends State<VoiceCommentWidget> {
+  late AudioController _audioController;
+  late RecorderController _recorderController;
+  PlayerController? _playerController;
+
+  VoiceCommentState _currentState = VoiceCommentState.idle;
+  List<double>? _waveformData;
+  DateTime? _recordingStartTime; // 녹음 시작 시간 추가
+
+  bool _isFinalizingPlacement = false; // 중복 저장 방지
+  final GlobalKey _profileDraggableKey = GlobalKey();
+  TapDownDetails? _pendingTapDownDetails;
+
+  /// 이전 녹음 상태 (애니메이션 제어용)
+  VoiceCommentState? _lastState;
+
+  /// 외부에서 저장 완료를 알리는 메서드
+  void markAsSaved() {
+    if (mounted) {
+      _markAsSaved();
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+
+    // 저장된 상태로 시작해야 하는 경우
+    if (widget.startAsSaved) {
+      _currentState = VoiceCommentState.saved;
+
+      return; // 컨트롤러 초기화 없이 리턴
+    }
+
+    // Placing 모드로 시작해야 하는 경우 (텍스트 댓글용)
+    if (widget.startInPlacingMode) {
+      _currentState = VoiceCommentState.placing;
+      debugPrint(
+        '🟢 [VoiceCommentWidget] startInPlacingMode=true, placing 모드로 시작',
+      );
+      return; // 컨트롤러 초기화 없이 리턴
+    }
+
+    _initializeControllers();
+
+    // autoStart는 saved/placing 상태가 아닐 때만 적용
+    if (widget.autoStart && _currentState != VoiceCommentState.saved) {
+      _currentState = VoiceCommentState.recording;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _startRecording();
+      });
+    }
+  }
+
+  void _initializeControllers() {
+    _audioController = Provider.of<AudioController>(context, listen: false);
+
+    _recorderController =
+        RecorderController()
+          ..androidEncoder = AndroidEncoder.aac
+          ..androidOutputFormat = AndroidOutputFormat.mpeg4
+          ..iosEncoder = IosEncoder.kAudioFormatMPEG4AAC
+          ..sampleRate = 44100;
+
+    _playerController = PlayerController();
+  }
+
+  @override
+  void dispose() {
+    // 저장된 상태가 아닌 경우에만 컨트롤러 해제
+    if (_currentState != VoiceCommentState.saved) {
+      _recorderController.dispose();
+      _playerController?.dispose();
+    }
+    super.dispose();
+  }
+
+  /// 녹음 시작
+  Future<void> _startRecording() async {
+    try {
+      // 녹음 시작 시간 기록
+      _recordingStartTime = DateTime.now();
+
+      await _recorderController.record();
+      await _audioController.startRecording();
+
+      setState(() {
+        _lastState = _currentState;
+        _currentState = VoiceCommentState.recording;
+      });
+    } catch (e) {
+      setState(() {
+        _lastState = _currentState;
+        _currentState = VoiceCommentState.idle;
+      });
+    }
+  }
+
+  /// 녹음 중지 및 재생 준비
+  Future<void> _stopAndPreparePlayback() async {
+    try {
+      // 파형 데이터 추출
+      List<double> waveformData = List<double>.from(
+        _recorderController.waveData,
+      );
+      if (waveformData.isNotEmpty) {
+        waveformData = waveformData.map((value) => value.abs()).toList();
+      }
+
+      // 녹음 중지
+      await _recorderController.stop();
+      await _audioController.stopRecordingSimple();
+
+      final filePath = _audioController.currentRecordingPath;
+      if (filePath != null && filePath.isNotEmpty) {
+        // 녹음 시간 계산
+        final recordingDuration =
+            _recordingStartTime != null
+                ? DateTime.now().difference(_recordingStartTime!).inMilliseconds
+                : 0;
+
+        // 재생 준비
+        await _playerController?.preparePlayer(
+          path: filePath,
+          shouldExtractWaveform: true,
+        );
+
+        setState(() {
+          _lastState = _currentState;
+          _currentState = VoiceCommentState.recorded;
+          _waveformData = waveformData;
+        });
+
+        // 콜백 호출 (duration 포함)
+        widget.onRecordingCompleted?.call(
+          filePath,
+          waveformData,
+          recordingDuration,
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ 녹음 중지 오류: $e');
+    }
+  }
+
+  /// 녹음 취소 (쓰레기통 클릭)
+  void _deleteRecording() {
+    try {
+      // 재생 중이면 중지
+      if (_playerController?.playerState.isPlaying == true) {
+        _playerController?.stopPlayer();
+      }
+
+      // 상태 초기화
+      setState(() {
+        _lastState = _currentState;
+        _currentState = VoiceCommentState.idle;
+        _waveformData = null;
+      });
+
+      // 삭제 콜백 호출
+      widget.onRecordingDeleted?.call();
+    } catch (e) {
+      debugPrint('녹음 삭제 오류: $e');
+    }
+  }
+
+  /// 재생/일시정지 토글
+  Future<void> _togglePlayback() async {
+    // null 체크와 mounted 체크 추가
+    if (!mounted || _playerController == null) {
+      return;
+    }
+
+    try {
+      if (_playerController!.playerState.isPlaying) {
+        await _playerController!.pausePlayer();
+        // debugPrint('재생 일시정지');
+      } else {
+        // 재생이 끝났다면 처음부터 다시 시작
+        if (_playerController!.playerState.isStopped) {
+          await _playerController!.startPlayer();
+          // debugPrint('재생 시작 (처음부터)');
+        } else {
+          await _playerController!.startPlayer();
+          // debugPrint('재생 시작');
+        }
+      }
+      if (mounted) {
+        setState(() {}); // UI 갱신
+      }
+    } catch (e) {
+      // debugPrint('재생/일시정지 오류: $e');
+    }
+  }
+
+  /// 프로필 배치 모드 진입
+  void _enterPlacementMode(TapDownDetails details) {
+    if (_waveformData == null || _waveformData!.isEmpty) {
+      return;
+    }
+
+    setState(() {
+      _lastState = _currentState;
+      _currentState = VoiceCommentState.placing;
+    });
+    _pendingTapDownDetails = details;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        return;
+      }
+      final tapDetails = _pendingTapDownDetails;
+      final draggableState = _profileDraggableKey.currentState;
+      if (tapDetails == null || draggableState == null) {
+        return;
+      }
+
+      _pendingTapDownDetails = null;
+      final PointerDeviceKind deviceKind =
+          tapDetails.kind ?? PointerDeviceKind.touch;
+      final dynamic draggable = draggableState;
+      final startDrag = draggable.startDrag;
+
+      try {
+        Function.apply(startDrag, [tapDetails.globalPosition, deviceKind]);
+      } catch (_) {
+        try {
+          Function.apply(startDrag, [tapDetails.globalPosition]);
+        } catch (_) {}
+      }
+    });
+  }
+
+  /// 프로필 배치 완료 처리
+  Future<void> _finalizePlacement() async {
+    if (_isFinalizingPlacement) {
+      return;
+    }
+
+    _isFinalizingPlacement = true;
+
+    try {
+      if (widget.onSaveRequested != null) {
+        await widget.onSaveRequested!.call();
+      }
+
+      if (!mounted) {
+        return;
+      }
+
+      _markAsSaved();
+      widget.onSaveCompleted?.call();
+    } catch (e) {
+      if (mounted) {
+        // 저장 실패 시 다시 파형 모드로 복귀
+        setState(() {
+          _lastState = _currentState;
+          _currentState = VoiceCommentState.recorded;
+        });
+      }
+    } finally {
+      _isFinalizingPlacement = false;
+    }
+  }
+
+  /// 프로필 배치 취소 처리
+  void _cancelPlacement() {
+    if (!mounted) {
+      return;
+    }
+
+    setState(() {
+      _lastState = _currentState;
+      _currentState = VoiceCommentState.recorded;
+    });
+  }
+
+  /// 녹음 중 UI (AudioRecorderWidget과 동일)
+  Widget _buildRecordingUI(String duration) {
     return Container(
-      height: 56.h,
+      width: 353, // 텍스트 필드와 동일한 너비
+      height: 46, // 텍스트 필드와 동일한 높이
       decoration: BoxDecoration(
-        color: const Color(0xFF151515),
-        borderRadius: BorderRadius.circular(16.r),
+        color: const Color(0xffd9d9d9).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(21.5),
+        border: Border.all(
+          color: const Color(0x66D9D9D9).withValues(alpha: 0.4),
+          width: 1,
+        ),
       ),
-      padding: EdgeInsets.symmetric(horizontal: 14.w),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          IconButton(
-            onPressed: onPlayPause,
-            icon: Icon(
-              isPlaying ? Icons.pause : Icons.play_arrow,
-              color: Colors.white,
-              size: 25.sp,
+          SizedBox(width: 15.w),
+          // 쓰레기통 아이콘 (녹음 취소)
+          GestureDetector(
+            onTap: _deleteRecording,
+            child: Image.asset('assets/trash.png', width: 25, height: 25),
+          ),
+          SizedBox(width: 18.w),
+          // 실시간 파형
+          Expanded(
+            child: AudioWaveforms(
+              size: Size(1, 46),
+              recorderController: _recorderController,
+              waveStyle: const WaveStyle(
+                waveColor: Colors.white,
+                extendWaveform: true,
+                showMiddleLine: false,
+              ),
             ),
           ),
-          //  SizedBox(width: 16.w),
-          Expanded(
-            child: Stack(
-              alignment: Alignment.centerLeft,
-              children: [
-                // 회색 배경 파형 (기본 흰색이지만 재생 시 회색으로)
-                GestureDetector(
-                  onTap: onPlayPause,
-                  child: _buildWaveformBase(
-                    color: isPlaying ? const Color(0xFF4A4A4A) : Colors.white,
+
+          // 녹음 시간
+          Text(
+            duration,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontFamily: 'Pretendard Variable',
+              fontWeight: FontWeight.w500,
+              letterSpacing: -0.40,
+            ),
+          ),
+          // 중지 버튼
+          IconButton(
+            onPressed: _stopAndPreparePlayback,
+            padding: EdgeInsets.only(bottom: 3.h),
+            icon: Icon(Icons.stop, color: Colors.white, size: 35.sp),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 재생 UI (AudioRecorderWidget과 동일)
+  Widget _buildPlaybackUI() {
+    final borderRadius = BorderRadius.circular(21.5);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+      width: 353,
+      height: 46,
+      decoration: BoxDecoration(borderRadius: borderRadius),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Positioned.fill(
+            child: ClipRRect(
+              borderRadius: borderRadius,
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 450),
+                transitionBuilder:
+                    (child, animation) =>
+                        FadeTransition(opacity: animation, child: child),
+
+                child: Container(
+                  key: ValueKey('playback_bg'),
+                  decoration: BoxDecoration(
+                    color: const Color(0xffd9d9d9).withValues(alpha: 0.1),
+                    border: Border.all(
+                      color: const Color(0x66D9D9D9).withValues(alpha: 0.4),
+                      width: 1,
+                    ),
+                    borderRadius: borderRadius,
                   ),
                 ),
-                // 흰색 진행 파형 (재생 중에만 표시)
-                if (isPlaying)
-                  ClipRect(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      widthFactor: barProgress,
-                      child: _buildWaveformBase(color: Colors.white),
-                    ),
+              ),
+            ),
+          ),
+          Positioned.fill(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(width: 15.w),
+                // 쓰레기통 아이콘 (삭제)
+                GestureDetector(
+                  onTap: _deleteRecording,
+                  child: Image.asset('assets/trash.png', width: 25, height: 25),
+                ),
+                SizedBox(width: 18.w),
+                // 재생 파형 - 클릭 시 저장
+                Expanded(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: (details) {
+                      // 파형 클릭 시 프로필 배치 모드로 전환 후 즉시 드래그 시작
+                      _enterPlacementMode(details);
+                    },
+                    child:
+                        _waveformData != null && _waveformData!.isNotEmpty
+                            ? StreamBuilder<int>(
+                              stream:
+                                  _playerController?.onCurrentDurationChanged ??
+                                  const Stream.empty(),
+                              builder: (context, positionSnapshot) {
+                                // mounted와 _playerController null 체크 추가
+                                if (!mounted || _playerController == null) {
+                                  return Container();
+                                }
+
+                                final currentPosition =
+                                    positionSnapshot.data ?? 0;
+                                final totalDuration =
+                                    _playerController?.maxDuration ?? 1;
+                                final progress =
+                                    totalDuration > 0
+                                        ? (currentPosition / totalDuration)
+                                            .clamp(0.0, 1.0)
+                                        : 0.0;
+
+                                // _waveformData가 여전히 null이 아닌지 다시 확인
+                                if (_waveformData == null ||
+                                    _waveformData!.isEmpty) {
+                                  return Container();
+                                }
+
+                                return CustomWaveformWidget(
+                                  waveformData: _waveformData!,
+                                  color: Colors.grey,
+                                  activeColor: Colors.white,
+                                  progress: progress,
+                                );
+                              },
+                            )
+                            : Container(
+                              height: 46,
+                              decoration: BoxDecoration(
+                                color: Colors.grey.shade700,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Center(
+                                child: Text(
+                                  '파형 없음',
+                                  style: TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 14.sp,
+                                    fontFamily: "Pretendard",
+                                  ),
+                                ),
+                              ),
+                            ),
                   ),
+                ),
+                // 재생 시간
+                StreamBuilder<int>(
+                  stream:
+                      _playerController?.onCurrentDurationChanged ??
+                      const Stream.empty(),
+                  builder: (context, snapshot) {
+                    // mounted와 _playerController null 체크 추가
+                    if (!mounted || _playerController == null) {
+                      return Text(
+                        '00:00',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontFamily: 'Pretendard Variable',
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: -0.40,
+                        ),
+                      );
+                    }
+
+                    final currentDurationMs = snapshot.data ?? 0;
+                    final currentDuration = Duration(
+                      milliseconds: currentDurationMs,
+                    );
+                    final minutes = currentDuration.inMinutes;
+                    final seconds = currentDuration.inSeconds % 60;
+                    return Text(
+                      '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontFamily: 'Pretendard Variable',
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.40,
+                      ),
+                    );
+                  },
+                ),
+                // 재생/일시정지 버튼
+                StreamBuilder<PlayerState>(
+                  stream:
+                      _playerController?.onPlayerStateChanged ??
+                      const Stream.empty(),
+                  builder: (context, snapshot) {
+                    // mounted와 _playerController null 체크 추가
+                    if (!mounted || _playerController == null) {
+                      return IconButton(
+                        onPressed: null,
+                        icon: Icon(
+                          Icons.play_arrow,
+                          color: Colors.white54,
+                          size: 35.sp,
+                        ),
+                      );
+                    }
+
+                    final playerState = snapshot.data;
+                    final isPlaying = playerState?.isPlaying ?? false;
+
+                    return IconButton(
+                      onPressed: _togglePlayback,
+                      padding: EdgeInsets.only(bottom: 3.h),
+                      icon: Icon(
+                        isPlaying ? Icons.pause : Icons.play_arrow,
+                        color: Colors.white,
+                        size: 35.sp,
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),
@@ -168,77 +579,203 @@ class _WaveformPlaybackBar extends StatelessWidget {
     );
   }
 
-  Widget _buildWaveformBase({required Color color}) {
-    // 실제 waveformData 기반 파형 표현
-    if (waveformData.isEmpty) {
-      // 데이터가 없으면 기본 패턴 사용
-      return Row(
-        mainAxisSize: MainAxisSize.max,
-        children: List.generate(30, (i) {
-          final h = (i % 5 + 4) * 3.0;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 1.2),
-            child: Container(
-              width: 3,
-              height: h,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(2),
+  /// 저장 완료 상태로 변경
+  void _markAsSaved() {
+    // 애니메이션을 위해 _lastState 설정
+    setState(() {
+      _lastState = _currentState;
+      _currentState = VoiceCommentState.saved;
+    });
+
+    // 상태 변경 후 컨트롤러들을 정리 (애니메이션 후에)
+    Future.delayed(Duration(milliseconds: 400), () {
+      if (mounted) {
+        _cleanupControllers();
+        setState(() {
+          // 파형 데이터 정리
+          _waveformData = null;
+        });
+      }
+    });
+
+    // 저장 완료 콜백 호출
+    widget.onSaved?.call();
+  }
+
+  /// 컨트롤러들을 정리하는 메서드
+  void _cleanupControllers() {
+    try {
+      // 재생 중이면 중지
+      if (_playerController?.playerState.isPlaying == true) {
+        _playerController?.stopPlayer();
+      }
+
+      // 녹음 중이면 중지
+      if (_recorderController.isRecording) {
+        _recorderController.stop();
+      }
+
+      // 컨트롤러들 해제
+      _playerController?.dispose();
+      _playerController = null;
+    } catch (e) {
+      debugPrint('❌ 컨트롤러 정리 중 오류: $e');
+    }
+  }
+
+  /// 프로필 이미지 드래그 UI (배치/저장 공통)
+  Widget _buildProfileDraggable({required bool isPlacementMode}) {
+    final profileWidget = Container(
+      width: 54,
+      height: 54,
+      decoration: const BoxDecoration(shape: BoxShape.circle),
+      child:
+          widget.profileImageUrl != null && widget.profileImageUrl!.isNotEmpty
+              ? ClipOval(
+                child: CachedNetworkImage(
+                  imageUrl: widget.profileImageUrl!,
+                  width: 54,
+                  height: 54,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.grey[700],
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.person,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                    );
+                  },
+                  errorWidget: (context, url, error) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.red[700],
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.error,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                    );
+                  },
+                ),
+              )
+              : Container(
+                decoration: BoxDecoration(
+                  color: Colors.orange[700],
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.person, color: Colors.white, size: 14),
               ),
-            ),
-          );
-        }),
-      );
+    );
+
+    if (widget.onProfileImageDragged == null) {
+      return profileWidget;
     }
 
-    // 실제 waveformData 사용
-    const maxBars = 30; // 최대 막대 수
-    const minHeight = 4.0;
-    const maxHeight = 20.0;
+    return Draggable<String>(
+      key: isPlacementMode ? _profileDraggableKey : null,
+      data: 'profile_image',
+      dragAnchorStrategy: pointerDragAnchorStrategy,
+      feedback: Transform.scale(
+        scale: 1.2,
+        child: Opacity(opacity: 0.8, child: profileWidget),
+      ),
+      childWhenDragging: Opacity(opacity: 0.3, child: profileWidget),
+      onDragEnd: (details) {
+        if (!isPlacementMode) {
+          return;
+        }
 
-    // 데이터 샘플링 (너무 많으면 일정 간격으로 추출)
-    final sampledData = _sampleWaveformData(waveformData, maxBars);
-
-    return Row(
-      mainAxisSize: MainAxisSize.max,
-      children:
-          sampledData.asMap().entries.map((entry) {
-            final value = entry.value;
-            // 0~1 범위의 값을 minHeight~maxHeight로 매핑
-            final barHeight = minHeight + (value * (maxHeight - minHeight));
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 1.2),
-              child: Container(
-                width: 3,
-                height: barHeight,
-                decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            );
-          }).toList(),
+        if (details.wasAccepted) {
+          _finalizePlacement();
+        } else {
+          _cancelPlacement();
+        }
+      },
+      child: profileWidget,
     );
   }
 
-  /// waveformData를 지정된 수만큼 샘플링
-  List<double> _sampleWaveformData(List<double> data, int targetCount) {
-    if (data.length <= targetCount) {
-      return data; // 이미 적거나 같으면 그대로 반환
+  @override
+  Widget build(BuildContext context) {
+    // recording에서 recorded로 바뀔 때만 애니메이션 비활성화
+    // recorded에서 saved로 바뀔 때는 애니메이션 활성화
+    bool shouldAnimate =
+        !(_lastState == VoiceCommentState.recording &&
+            _currentState == VoiceCommentState.recorded);
+
+    if (!shouldAnimate) {
+      // 애니메이션 없이 즉시 전환 (recording → recorded만)
+      return _buildCurrentStateWidget();
     }
 
-    final step = data.length / targetCount;
-    final sampled = <double>[];
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      transitionBuilder: (Widget child, Animation<double> animation) {
+        return ScaleTransition(
+          scale: animation,
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+      child: _buildCurrentStateWidget(),
+    );
+  }
 
-    for (int i = 0; i < targetCount; i++) {
-      final index = (i * step).floor();
-      if (index < data.length) {
-        // 절댓값 사용하여 양수로 변환 (음성 데이터는 음수도 포함)
-        sampled.add(data[index].abs().clamp(0.0, 1.0));
-      }
+  /// 현재 상태에 맞는 위젯을 반환
+  Widget _buildCurrentStateWidget() {
+    // recording에서 recorded로 전환할 때 같은 키를 사용하여 애니메이션 방지
+    String widgetKey;
+    if (_lastState == VoiceCommentState.recording &&
+        _currentState == VoiceCommentState.recorded) {
+      widgetKey = 'audio-ui-no-animation';
+    } else if (_currentState == VoiceCommentState.placing) {
+      widgetKey = 'profile-placement';
+    } else if (_currentState == VoiceCommentState.saved) {
+      widgetKey = 'profile-mode';
+    } else {
+      widgetKey = _currentState.toString();
     }
 
-    return sampled;
+    switch (_currentState) {
+      case VoiceCommentState.idle:
+        // comment.png 표시 (기존 feed_home.dart에서 처리)
+        return Container(
+          key: ValueKey(widgetKey),
+          height: 52.h, // 녹음 UI와 동일한 높이
+          alignment: Alignment.center, // 중앙 정렬
+          child: const SizedBox.shrink(),
+        );
+
+      case VoiceCommentState.recording:
+        return Selector<AudioController, String>(
+          key: ValueKey(widgetKey),
+          selector:
+              (context, controller) => controller.formattedRecordingDuration,
+          builder: (context, duration, child) {
+            return _buildRecordingUI(duration);
+          },
+        );
+
+      case VoiceCommentState.recorded:
+        return Container(key: ValueKey(widgetKey), child: _buildPlaybackUI());
+
+      case VoiceCommentState.placing:
+        return Container(
+          key: ValueKey(widgetKey),
+          child: _buildProfileDraggable(isPlacementMode: true),
+        );
+
+      case VoiceCommentState.saved:
+        return Container(
+          key: ValueKey(widgetKey),
+          child: _buildProfileDraggable(isPlacementMode: false),
+        );
+    }
   }
 }

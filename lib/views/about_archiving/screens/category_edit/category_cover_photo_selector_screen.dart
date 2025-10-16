@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-
-import '../../../../controllers/category_controller.dart';
+import 'package:soi/controllers/category_cover_photo_controller.dart';
 import '../../../../controllers/photo_controller.dart';
 import '../../../../models/category_data_model.dart';
 
@@ -233,9 +232,10 @@ class _CategoryCoverPhotoSelectorScreenState
   void _updateCoverPhoto() async {
     if (selectedPhotoUrl == null) return;
 
-    final categoryController = context.read<CategoryController>();
+    final categoryPhotoController =
+        context.read<CategoryCoverPhotoController>();
 
-    final success = await categoryController.updateCoverPhotoFromCategory(
+    final success = await categoryPhotoController.updateCoverPhotoFromCategory(
       categoryId: widget.category.id,
       photoUrl: selectedPhotoUrl!,
     );
@@ -251,7 +251,7 @@ class _CategoryCoverPhotoSelectorScreenState
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(categoryController.error ?? '표지사진 변경에 실패했습니다.'),
+          content: Text(categoryPhotoController.error ?? '표지사진 변경에 실패했습니다.'),
           backgroundColor: const Color(0xFF5a5a5a),
         ),
       );

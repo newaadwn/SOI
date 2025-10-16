@@ -5,12 +5,15 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
+import 'package:soi/controllers/category_search_controller.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../controllers/category_controller.dart';
 import '../../../models/selected_friend_model.dart';
 import '../../../theme/theme.dart';
 import '../../about_friends/friend_list_add_screen.dart';
 import '../components/overlapping_profiles_widget.dart';
+import '../models/archive_layout_mode.dart';
 import 'archive_detail/all_archives_screen.dart';
 import 'archive_detail/my_archives_screen.dart';
 import 'archive_detail/shared_archives_screen.dart';
@@ -25,6 +28,7 @@ class ArchiveMainScreen extends StatefulWidget {
 
 class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   int _selectedIndex = 0;
+  ArchiveLayoutMode _layoutMode = ArchiveLayoutMode.grid;
 
   // 컨트롤러들
   final _categoryNameController = TextEditingController();
@@ -35,7 +39,9 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   Timer? _searchDebounceTimer;
 
   // Provider 참조를 미리 저장 (dispose에서 안전하게 사용하기 위함)
-  CategoryController? _categoryController;
+  CategorySearchController? _categoryController;
+  AuthController? _authController;
+  Future<String>? _profileImageFuture;
 
   // 편집 모드 상태 관리
   bool _isEditMode = false;
@@ -52,18 +58,21 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
   // 탭 화면 목록을 동적으로 생성하는 메서드
   List<Widget> get _screens => [
     AllArchivesScreen(
+      layoutMode: _layoutMode,
       isEditMode: _isEditMode,
       editingCategoryId: _editingCategoryId,
       editingController: _editingNameController,
       onStartEdit: startEditMode,
     ),
     MyArchivesScreen(
+      layoutMode: _layoutMode,
       isEditMode: _isEditMode,
       editingCategoryId: _editingCategoryId,
       editingController: _editingNameController,
       onStartEdit: startEditMode,
     ),
     SharedArchivesScreen(
+      layoutMode: _layoutMode,
       isEditMode: _isEditMode,
       editingCategoryId: _editingCategoryId,
       editingController: _editingNameController,
@@ -78,7 +87,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     // 검색 기능 설정
     _searchController.addListener(_onSearchChanged);
 
-    // ✅ 최적화: 초기화 작업을 지연시켜 UI 블로킹 방지
+    // 최적화: 초기화 작업을 지연시켜 UI 블로킹 방지
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // 다음 프레임에서 실행하여 UI 렌더링을 먼저 완료
       Future.delayed(Duration.zero, () {
@@ -92,10 +101,20 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     super.didChangeDependencies();
 
     // Provider 참조를 안전하게 저장
-    _categoryController ??= Provider.of<CategoryController>(
+    _categoryController ??= Provider.of<CategorySearchController>(
       context,
       listen: false,
     );
+
+    if (_authController == null) {
+      _authController = Provider.of<AuthController>(context, listen: false);
+      final userId = _authController?.getUserId;
+      _profileImageFuture =
+          userId != null
+              ? _authController!.getUserProfileImageUrlWithCache(userId)
+              : _authController!.getUserProfileImageUrl();
+      _authController!.addListener(_handleAuthControllerUpdated);
+    }
   }
 
   void _onSearchChanged() {
@@ -104,7 +123,23 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
     // 300ms 지연 후 검색 실행 (타이핑 중 깜빡거림 방지)
     _searchDebounceTimer = Timer(const Duration(milliseconds: 300), () {
+      // 검색어만 전달 (내부 카테고리 목록 사용)
       _categoryController?.searchCategories(_searchController.text);
+    });
+  }
+
+  void _handleAuthControllerUpdated() {
+    final controller = _authController;
+    if (!mounted || controller == null || controller.isUploading) {
+      return;
+    }
+
+    setState(() {
+      final userId = controller.getUserId;
+      _profileImageFuture =
+          userId != null
+              ? controller.getUserProfileImageUrlWithCache(userId)
+              : controller.getUserProfileImageUrl();
     });
   }
 
@@ -247,7 +282,6 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
       child: Scaffold(
         backgroundColor: AppTheme.lightTheme.colorScheme.surface,
         resizeToAvoidBottomInset: true,
-
         appBar: AppBar(
           centerTitle: true,
           leadingWidth: 90.w,
@@ -272,10 +306,23 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               SizedBox(width: 32.w),
               Consumer<AuthController>(
                 builder: (context, authController, _) {
-                  return FutureBuilder(
-                    future: authController.getUserProfileImageUrl(),
+                  final currentUserId = authController.getUserId;
+                  return FutureBuilder<String>(
+                    future:
+                        _profileImageFuture ??
+                        (
+                          currentUserId != null
+                              ? authController
+                                  .getUserProfileImageUrlWithCache(
+                                  currentUserId,
+                                )
+                              : authController.getUserProfileImageUrl()
+                        ),
                     builder: (context, imageSnapshot) {
-                      String profileImageUrl = imageSnapshot.data ?? '';
+                      final isLoadingAvatar =
+                          imageSnapshot.connectionState ==
+                          ConnectionState.waiting;
+                      final profileImageUrl = imageSnapshot.data ?? '';
 
                       return Padding(
                         padding: EdgeInsets.symmetric(
@@ -285,63 +332,52 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                         child: Container(
                           decoration: BoxDecoration(shape: BoxShape.circle),
                           child: Builder(
-                            builder:
-                                (context) =>
-                                    profileImageUrl.isNotEmpty
-                                        ? InkWell(
-                                          onTap: () {
-                                            Navigator.pushNamed(
-                                              context,
-                                              '/profile_screen',
-                                            );
-                                          },
-                                          child: SizedBox(
-                                            width: 34.w,
-                                            height: 34.h,
-                                            child: CircleAvatar(
-                                              backgroundImage:
-                                                  CachedNetworkImageProvider(
-                                                    profileImageUrl,
-                                                  ),
-                                              onBackgroundImageError: (
-                                                exception,
-                                                stackTrace,
+                            builder: (context) {
+                              return InkWell(
+                                onTap: () {
+                                  Navigator.pushNamed(
+                                    context,
+                                    '/profile_screen',
+                                  );
+                                },
+                                child: SizedBox(
+                                  width: 34,
+                                  height: 34,
+                                  child: ClipOval(
+                                    child:
+                                        isLoadingAvatar
+                                            ? _buildAvatarShimmer()
+                                            : profileImageUrl.isNotEmpty
+                                            ? CachedNetworkImage(
+                                              imageUrl: profileImageUrl,
+                                              fit: BoxFit.cover,
+                                              width: 34,
+                                              height: 34,
+                                              fadeInDuration: Duration.zero,
+                                              fadeOutDuration: Duration.zero,
+                                              memCacheHeight: 120,
+                                              memCacheWidth: 120,
+                                              placeholder:
+                                                  (context, url) =>
+                                                      _buildAvatarShimmer(),
+                                              errorWidget: (
+                                                context,
+                                                url,
+                                                error,
                                               ) {
                                                 Future.microtask(
                                                   () =>
                                                       authController
                                                           .cleanInvalidProfileImageUrl(),
                                                 );
+                                                return _buildAvatarFallback();
                                               },
-                                              child:
-                                                  profileImageUrl.isEmpty
-                                                      ? Icon(
-                                                        Icons.person,
-                                                        color: Colors.white,
-                                                      )
-                                                      : null,
-                                            ),
-                                          ),
-                                        )
-                                        : InkWell(
-                                          onTap: () {
-                                            Navigator.pushNamed(
-                                              context,
-                                              '/profile_screen',
-                                            );
-                                          },
-                                          child: SizedBox(
-                                            width: 34.w,
-                                            height: 34.h,
-                                            child: CircleAvatar(
-                                              backgroundColor: Colors.grey,
-                                              child: Icon(
-                                                Icons.person,
-                                                color: Colors.white,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+                                            )
+                                            : _buildAvatarFallback(),
+                                  ),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       );
@@ -356,8 +392,10 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
               padding: EdgeInsets.only(right: 32.w),
               child: IconButton(
                 onPressed: _showCategoryBottomSheet,
-                icon: SizedBox(
-                  child: Icon(Icons.add, color: Colors.white, size: 33.sp),
+                icon: Image.asset(
+                  "assets/create_category_icon.png",
+                  width: 30.w,
+                  height: 30.h,
                 ),
               ),
             ),
@@ -366,16 +404,40 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
             preferredSize: Size.fromHeight(60.sp),
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 16.h, vertical: 8.w),
-              child: Column(
-                children: [
-                  Row(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final chipWidth = constraints.maxWidth / 3;
+                  return Stack(
                     children: [
-                      Expanded(child: _buildChip('전체', 0)),
-                      Expanded(child: _buildChip('개인앨범', 1)),
-                      Expanded(child: _buildChip('공유앨범', 2)),
+                      // 애니메이션되는 인디케이터
+                      AnimatedPositioned(
+                        left: chipWidth * _selectedIndex,
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOut,
+                        child: Container(
+                          width: chipWidth,
+                          height: 43.h,
+                          alignment: Alignment.center,
+                          child: Container(
+                            margin: EdgeInsets.symmetric(horizontal: 8.w),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF323232),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                        ),
+                      ),
+                      // 텍스트 레이블들
+                      Row(
+                        children: [
+                          Expanded(child: _buildChip('전체', 0)),
+                          Expanded(child: _buildChip('개인앨범', 1)),
+                          Expanded(child: _buildChip('공유앨범', 2)),
+                        ],
+                      ),
                     ],
-                  ),
-                ],
+                  );
+                },
               ),
             ),
           ),
@@ -388,7 +450,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                 left: 20.w,
                 right: 20.w,
                 top: 15.h,
-                bottom: 15.h,
+                bottom: 5.h,
               ),
               child: Container(
                 height: 41.h,
@@ -428,6 +490,35 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                   ],
                 ),
               ),
+            ),
+            SizedBox(height: 25.h),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                /* IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _layoutMode =
+                          _layoutMode == ArchiveLayoutMode.grid
+                              ? ArchiveLayoutMode.list
+                              : ArchiveLayoutMode.grid;
+                    });
+                  },
+                 icon:
+                      _layoutMode == ArchiveLayoutMode.grid
+                          ? Image.asset(
+                            "assets/list_icon.png",
+                            width: (16.92).w,
+                            height: (17.27).h,
+                          )
+                          : Image.asset(
+                            "assets/grid_icon.png",
+                            width: (17.36).w,
+                            height: (17.36).h,
+                          ),
+                ),*/
+                SizedBox(width: (10).w),
+              ],
             ),
             Expanded(
               child: PageView(
@@ -486,43 +577,32 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
 
   // 선택 가능한 Chip 위젯 생성
   Widget _buildChip(String label, int index) {
-    final isSelected = _selectedIndex == index;
-
-    return IntrinsicWidth(
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedIndex = index;
-          });
-          // PageView도 함께 이동 - 부드러운 애니메이션으로 변경
-          _pageController.animateToPage(
-            index,
-            duration: Duration(milliseconds: 1),
-            curve: Curves.easeInOut,
-          );
-        },
-        child: AnimatedContainer(
-          duration: Duration(milliseconds: 1),
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedIndex = index;
+        });
+        // PageView도 함께 이동 - 부드러운 애니메이션으로 변경
+        _pageController.animateToPage(
+          index,
+          duration: Duration(milliseconds: 250),
           curve: Curves.easeInOut,
-          height: 43.h,
-          padding: EdgeInsets.only(top: 3.h, right: 17.w, left: 17.w),
-          decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF323232) : Colors.transparent,
-            borderRadius: BorderRadius.circular(20),
+        );
+      },
+      child: Container(
+        height: 43.h,
+        color: Colors.transparent,
+        alignment: Alignment.center,
+        child: Text(
+          label,
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 16.sp,
+            fontFamily: 'Pretendard',
           ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16.sp,
-                fontFamily: 'Pretendard',
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
     );
@@ -651,8 +731,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                           _selectedFriends
                                               .map((friend) => friend.uid)
                                               .toList(),
-                                      allowDeselection:
-                                          true, // 새 카테고리 만들기이므로 해제 허용
+                                      allowDeselection: true,
                                     ),
                               ),
                             );
@@ -736,7 +815,7 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
                                 }
                               }
                             },
-                            showAddButton: true, // + 버튼 표시
+                            showAddButton: true,
                           ),
                         ),
 
@@ -841,6 +920,13 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         return;
       }
 
+      print('[ArchiveMainScreen] 카테고리 생성 시작');
+      print(
+        '[ArchiveMainScreen] 카테고리 이름: ${_categoryNameController.text.trim()}',
+      );
+      print('[ArchiveMainScreen] 현재 사용자 ID: $userId');
+      print('[ArchiveMainScreen] 선택된 친구 수: ${_selectedFriends.length}');
+
       // 메이트 리스트 준비 (현재 사용자 + 선택된 친구들)
       // 중요: mates 필드에는 Firebase Auth UID를 사용해야 함
       List<String> mates = [userId];
@@ -852,11 +938,15 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         }
       }
 
+      print('[ArchiveMainScreen] 최종 멤버 목록: $mates');
+
       // 카테고리 생성
       await categoryController.createCategory(
         name: _categoryNameController.text.trim(),
         mates: mates,
       );
+
+      print('[ArchiveMainScreen] 카테고리 생성 완료');
 
       // bottom sheet 닫기
       Navigator.pop(context);
@@ -867,12 +957,17 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
         _selectedFriends = [];
       });
 
+      print('[ArchiveMainScreen] UI 상태 초기화 완료');
+
       // 성공 메시지 표시
       ScaffoldMessenger.of(context).showSnackBar(_showSuccessSnackBar());
+
+      print('[ArchiveMainScreen] 성공 메시지 표시 완료');
     } catch (e) {
+      print('[ArchiveMainScreen] 카테고리 생성 오류: $e');
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(_snackBarComponenet('카테고리 생성 중 오류가 발생했습니다'));
+      ).showSnackBar(_snackBarComponenet('카테고리 생성에 실패했습니다'));
     }
   }
 
@@ -927,8 +1022,29 @@ class _ArchiveMainScreenState extends State<ArchiveMainScreen> {
     _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     _pageController.dispose(); // PageController 정리
+    _authController?.removeListener(_handleAuthControllerUpdated);
 
     PaintingBinding.instance.imageCache.clear();
     super.dispose();
   }
+}
+
+Widget _buildAvatarShimmer() {
+  return Shimmer.fromColors(
+    baseColor: Colors.grey.shade600,
+    highlightColor: Colors.grey.shade400,
+    child: Container(
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+      ),
+    ),
+  );
+}
+
+Widget _buildAvatarFallback() {
+  return Container(
+    color: Colors.grey.shade700,
+    child: const Icon(Icons.person, color: Colors.white),
+  );
 }

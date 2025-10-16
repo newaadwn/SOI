@@ -1,10 +1,7 @@
 import 'package:flutter/material.dart';
 
 class PermissionSettingsDialog {
-  static void show(
-    BuildContext context,
-    VoidCallback onOpenSettings,
-  ) {
+  static void show(BuildContext context, VoidCallback onOpenSettings) {
     showDialog(
       context: context,
       builder: (BuildContext context) {

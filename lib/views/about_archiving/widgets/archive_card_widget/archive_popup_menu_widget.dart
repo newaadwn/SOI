@@ -92,13 +92,13 @@ class _ArchivePopupMenuWidgetState extends State<ArchivePopupMenuWidget> {
       _buildCustomMenuItem(
         icon: 'assets/category_delete.png',
         text: '나가기',
-        textColor: Colors.red,
+        textColor: Color(0xFFFF0000),
         onPressed: () => _handleMenuAction('leave'),
       ),
     ];
   }
 
-  /// 🔧 커스텀 메뉴 아이템 생성
+  /// 커스텀 메뉴 아이템 생성
   Widget _buildCustomMenuItem({
     required String icon,
     required String text,
@@ -136,7 +136,7 @@ class _ArchivePopupMenuWidgetState extends State<ArchivePopupMenuWidget> {
     );
   }
 
-  /// ⚡ 메뉴 액션 처리
+  /// 메뉴 액션 처리
   void _handleMenuAction(String action) {
     // 메뉴 먼저 닫기
     _menuController.close();
@@ -156,7 +156,7 @@ class _ArchivePopupMenuWidgetState extends State<ArchivePopupMenuWidget> {
         );
         break;
       case 'leave':
-        ArchiveCategoryDialogs.showLeaveCategoryDialog(
+        ArchiveCategoryDialogs.showLeaveCategoryBottomSheet(
           context,
           widget.category,
           onConfirm: () {

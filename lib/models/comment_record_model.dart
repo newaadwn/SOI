@@ -1,6 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/painting.dart'; // Offset를 위한 import
 
+/// 댓글 타입 열거형
+enum CommentType {
+  audio, // 음성 댓글
+  text, // 텍스트 댓글
+}
+
 class CommentRecordModel {
   final String id;
   final String audioUrl;
@@ -12,6 +18,8 @@ class CommentRecordModel {
   final String profileImageUrl; // 프로필 이미지 URL
   final Offset? relativePosition; // 프로필 이미지 위치 (상대 좌표 0.0~1.0)
   final bool isDeleted;
+  final CommentType type; // 댓글 타입 (audio, text)
+  final String? text; // 텍스트 댓글 내용
 
   CommentRecordModel({
     required this.id,
@@ -24,6 +32,8 @@ class CommentRecordModel {
     required this.profileImageUrl,
     this.relativePosition, // 선택적 필드 (새로운 상대 좌표)
     this.isDeleted = false,
+    this.type = CommentType.audio, // 기본값은 audio (하위 호환성)
+    this.text, // 텍스트 댓글 내용
   });
 
   /// Firestore 문서에서 CommentRecordModel 객체 생성
@@ -40,6 +50,13 @@ class CommentRecordModel {
       );
     }
 
+    // CommentType 파싱
+    CommentType commentType = CommentType.audio;
+    if (data['type'] != null) {
+      final typeStr = data['type'] as String;
+      commentType = typeStr == 'text' ? CommentType.text : CommentType.audio;
+    }
+
     return CommentRecordModel(
       id: doc.id,
       audioUrl: data['audioUrl'] ?? '',
@@ -51,6 +68,8 @@ class CommentRecordModel {
       isDeleted: data['isDeleted'] ?? false,
       profileImageUrl: data['profileImageUrl'] ?? '',
       relativePosition: relativePosition,
+      type: commentType,
+      text: data['text'], // 텍스트 댓글 내용
     );
   }
 
@@ -65,7 +84,13 @@ class CommentRecordModel {
       'duration': duration,
       'isDeleted': isDeleted,
       'profileImageUrl': profileImageUrl,
+      'type': type == CommentType.text ? 'text' : 'audio',
     };
+
+    // text가 있는 경우만 추가
+    if (text != null) {
+      result['text'] = text!;
+    }
 
     // relativePosition이 있는 경우만 추가 (새로운 상대 좌표)
     if (relativePosition != null) {
@@ -91,6 +116,8 @@ class CommentRecordModel {
     String? profileImageUrl,
     Offset? profilePosition,
     Offset? relativePosition,
+    CommentType? type,
+    String? text,
   }) {
     return CommentRecordModel(
       id: id ?? this.id,
@@ -104,6 +131,8 @@ class CommentRecordModel {
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
 
       relativePosition: relativePosition ?? this.relativePosition,
+      type: type ?? this.type,
+      text: text ?? this.text,
     );
   }
 }

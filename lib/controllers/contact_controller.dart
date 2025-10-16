@@ -11,6 +11,7 @@ class ContactController extends ChangeNotifier {
   bool _isLoading = false;
   bool _isInitialized = false;
   bool _isSyncPaused = false;
+  bool _disposed = false; // dispose 상태 추가
 
   // Getters
   bool get contactSyncEnabled => _contactSyncEnabled;
@@ -26,7 +27,7 @@ class ContactController extends ChangeNotifier {
       await _contactService.initialize();
       _contactSyncEnabled = _contactService.contactSyncEnabled;
       _isInitialized = true;
-      notifyListeners();
+      _safeNotifyListeners();
     } catch (e) {
       // debugPrint('ContactController 초기화 실패: $e');
     }
@@ -35,7 +36,7 @@ class ContactController extends ChangeNotifier {
   /// 페이지 진입 시 연락처 권한 자동 요청 및 설정 로드
   Future<ContactInitResult> initializeContactPermission() async {
     _setLoading(true);
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final result = await _contactService.initializeContactPermission();
@@ -43,12 +44,12 @@ class ContactController extends ChangeNotifier {
       // 상태 업데이트
       _contactSyncEnabled = result.isEnabled;
       _setLoading(false);
-      notifyListeners();
+      _safeNotifyListeners();
 
       return result;
     } catch (e) {
       _setLoading(false);
-      notifyListeners();
+      _safeNotifyListeners();
 
       return ContactInitResult.error(
         message: '초기화 중 오류가 발생했습니다: $e',
@@ -64,7 +65,7 @@ class ContactController extends ChangeNotifier {
     // 성공한 경우에만 상태 업데이트
     if (result.type == ContactToggleResultType.success) {
       _contactSyncEnabled = result.isEnabled;
-      notifyListeners();
+      _safeNotifyListeners();
     }
 
     return result;
@@ -73,7 +74,7 @@ class ContactController extends ChangeNotifier {
   /// 설정에서 돌아온 후 권한 상태 재확인
   Future<ContactToggleResult> checkPermissionAfterSettings() async {
     _setLoading(true);
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       final result = await _contactService.checkPermissionAfterSettings();
@@ -81,12 +82,12 @@ class ContactController extends ChangeNotifier {
       // 상태 업데이트
       _contactSyncEnabled = result.isEnabled;
       _setLoading(false);
-      notifyListeners();
+      _safeNotifyListeners();
 
       return result;
     } catch (e) {
       _setLoading(false);
-      notifyListeners();
+      _safeNotifyListeners();
 
       return ContactToggleResult.error(
         message: '권한 확인 중 오류가 발생했습니다: $e',
@@ -121,7 +122,7 @@ class ContactController extends ChangeNotifier {
   void pauseSync() {
     if (_contactSyncEnabled && !_isSyncPaused) {
       _isSyncPaused = true;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -129,10 +130,23 @@ class ContactController extends ChangeNotifier {
   void resumeSync() {
     if (_contactSyncEnabled && _isSyncPaused) {
       _isSyncPaused = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
   /// 동기화가 활성 상태인지 확인 (일시중지가 아닌 경우)
   bool get isActivelySyncing => _contactSyncEnabled && !_isSyncPaused;
+
+  /// 안전한 notifyListeners 호출
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
 }

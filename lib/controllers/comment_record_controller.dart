@@ -59,6 +59,39 @@ class CommentRecordController extends ChangeNotifier {
     }
   }
 
+  /// 텍스트 댓글 생성
+  Future<CommentRecordModel?> createTextComment({
+    required String text,
+    required String photoId,
+    required String recorderUser,
+    required String profileImageUrl,
+    Offset? relativePosition,
+  }) async {
+    try {
+      _setLoading(true);
+      _clearError();
+
+      final commentRecord = await _service.createTextComment(
+        text: text,
+        photoId: photoId,
+        recorderUser: recorderUser,
+        profileImageUrl: profileImageUrl,
+        relativePosition: relativePosition,
+      );
+
+      // 캐시 업데이트
+      _updateCache(photoId, commentRecord);
+
+      notifyListeners();
+      return commentRecord;
+    } catch (e) {
+      _setError('텍스트 댓글을 저장할 수 없습니다: $e');
+      return null;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   /// 음성 댓글의 프로필 이미지 위치 업데이트 (상대 좌표)
   Future<bool> updateRelativeProfilePosition({
     required String commentId,

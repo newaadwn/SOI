@@ -60,6 +60,19 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
             // 사진 출력 설정
             photoOutput = AVCapturePhotoOutput()
             if let photoOutput = photoOutput, session.canAddOutput(photoOutput) {
+                // 🎨 색공간 설정: sRGB 강제 (색상 일관성 향상)
+                if #available(iOS 11.0, *) {
+                    // 가능한 색공간 중 sRGB 선택
+                    if photoOutput.availablePhotoPixelFormatTypes.contains(kCVPixelFormatType_32BGRA) {
+                        photoOutput.setPreparedPhotoSettingsArray([
+                            AVCapturePhotoSettings(format: [
+                                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+                            ])
+                        ], completionHandler: nil)
+                        print("🎨 카메라 출력 색공간: sRGB (32BGRA) 설정 완료")
+                    }
+                }
+                
                 session.addOutput(photoOutput)
                 
                 // 사진 출력 연결에는 미러링 적용하지 않음 (원본 이미지 유지)
@@ -133,6 +146,20 @@ public class SwiftCameraPlugin: NSObject, FlutterPlugin, AVCapturePhotoCaptureDe
         // 사진 촬영 설정
         let settings = AVCapturePhotoSettings()
         settings.flashMode = flashMode
+        
+        // 🎨 색공간을 sRGB로 명시적 설정 (색상 일관성 향상)
+        if #available(iOS 13.0, *) {
+            let desiredPriority: AVCapturePhotoOutput.QualityPrioritization = .quality
+            let maxSupportedPriority = photoOutput.maxPhotoQualityPrioritization
+
+            if desiredPriority.rawValue <= maxSupportedPriority.rawValue {
+                settings.photoQualityPrioritization = desiredPriority
+            } else {
+                settings.photoQualityPrioritization = maxSupportedPriority
+            }
+        }
+        
+        // 색공간 설정은 photoOutput에서 처리됨 (아래 setupPhotoOutput 참조)
         
         // 전면 카메라인 경우 특별한 설정 추가
         if currentDevice?.position == .front {

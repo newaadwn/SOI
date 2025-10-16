@@ -10,7 +10,7 @@ import '../../../../models/comment_record_model.dart';
 import '../../../../models/photo_data_model.dart';
 import '../../../../utils/position_converter.dart';
 import '../../../about_share/share_screen.dart';
-import '../../../common_widget/photo_card_widget_common.dart';
+import '../../../common_widget/abput_photo/photo_card_widget_common.dart';
 
 class PhotoDetailScreen extends StatefulWidget {
   final List<PhotoDataModel> photos;
@@ -55,9 +55,25 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   final Map<String, String> _userNames = {};
   final Map<String, CommentRecordModel> _pendingVoiceComments = {};
   final Map<String, Offset> _pendingProfilePositions = {};
-  final Map<String, String> _savedCommentIds = {};
+  final Map<String, bool> _pendingTextComments = {}; // 텍스트 댓글 pending 상태
+  final Map<String, List<String>> _savedCommentIds = {};
+  final Map<String, Offset> _commentPositions = {};
   final Map<String, StreamSubscription<List<CommentRecordModel>>>
   _commentStreams = {};
+
+  static const List<Offset> _autoPlacementPattern = [
+    Offset(0.5, 0.5),
+    Offset(0.62, 0.5),
+    Offset(0.38, 0.5),
+    Offset(0.5, 0.62),
+    Offset(0.5, 0.38),
+    Offset(0.62, 0.62),
+    Offset(0.38, 0.62),
+    Offset(0.62, 0.38),
+    Offset(0.38, 0.38),
+  ];
+
+  final Map<String, int> _autoPlacementIndices = {};
 
   @override
   void initState() {
@@ -89,6 +105,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: true, // 키보드가 올라올 때 레이아웃 조정
       appBar: AppBar(
         iconTheme: const IconThemeData(color: Colors.white),
         backgroundColor: Colors.black,
@@ -164,6 +181,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
             index: index,
             isOwner: isOwner,
             isArchive: true,
+            isCategory: true,
             profileImagePositions: _profileImagePositions,
             droppedProfileImageUrls: _droppedProfileImageUrls,
             photoComments: _photoComments,
@@ -173,6 +191,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
             voiceCommentActiveStates: _voiceCommentActiveStates,
             voiceCommentSavedStates: _voiceCommentSavedStates,
             commentProfileImageUrls: _commentProfileImageUrls,
+            pendingTextComments: _pendingTextComments, // 텍스트 댓글 pending 상태 전달
             onToggleAudio: _toggleAudio,
             onToggleVoiceComment: _toggleVoiceComment,
             onVoiceCommentCompleted: (
@@ -192,6 +211,10 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
                 );
               }
             },
+            onTextCommentCompleted: (photoId, text) async {
+              // 텍스트 댓글을 pending 상태로 저장
+              await _onTextCommentCreated(photoId, text);
+            },
             onVoiceCommentDeleted: (photoId) {
               setState(() {
                 _voiceCommentActiveStates[photoId] = false;
@@ -200,27 +223,28 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
               });
             },
             onProfileImageDragged: (photoId, absolutePosition) {
-              CommentRecordModel? userComment;
+              String? latestCommentId;
               final list = _photoComments[photoId];
               if (list != null) {
-                for (final c in list) {
-                  if (c.recorderUser == currentUserId) {
-                    userComment = c;
-                    break;
-                  }
+                final userComments =
+                    list
+                        .where(
+                          (comment) => comment.recorderUser == currentUserId,
+                        )
+                        .toList();
+                if (userComments.isNotEmpty) {
+                  latestCommentId = userComments.last.id;
                 }
               }
-              if (userComment != null) {
-                _onProfileImageDragged(
-                  photoId,
-                  userComment.id,
-                  absolutePosition,
-                );
-              }
+              _onProfileImageDragged(
+                photoId,
+                absolutePosition,
+                commentId: latestCommentId,
+              );
             },
             onSaveRequested: _onSaveRequested,
             onSaveCompleted: _onSaveCompleted,
-            onDeletePressed: () => _showDeleteDialog(photo),
+            onDeletePressed: () => _deletePhoto(photo),
             onLikePressed: _onLikePressed,
           );
         },
@@ -314,82 +338,107 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     List<CommentRecordModel> comments,
   ) {
     if (!mounted) return;
+
+    final userComments =
+        comments
+            .where((comment) => comment.recorderUser == currentUserId)
+            .toList();
+
     setState(() {
       _photoComments[photoId] = comments;
-    });
-    CommentRecordModel? userComment;
-    for (final c in comments) {
-      if (c.recorderUser == currentUserId) {
-        userComment = c;
-        break;
-      }
-    }
-    if (userComment != null) {
-      final uc = userComment; // non-null local
-      setState(() {
+
+      if (userComments.isNotEmpty) {
         _voiceCommentSavedStates[photoId] = true;
-        _savedCommentIds[photoId] = uc.id;
-        if (uc.profileImageUrl.isNotEmpty) {
-          _commentProfileImageUrls[photoId] = uc.profileImageUrl;
+
+        final updatedIds = userComments.map((c) => c.id).toList();
+        _savedCommentIds[photoId] = updatedIds;
+
+        for (final comment in userComments) {
+          final relative = _extractRelativeOffset(comment.relativePosition);
+          if (relative != null) {
+            _commentPositions[comment.id] = relative;
+          }
+          if (comment.profileImageUrl.isNotEmpty) {
+            _commentProfileImageUrls[photoId] = comment.profileImageUrl;
+          }
         }
-        final dynamic rp = uc.relativePosition;
-        if (rp is Map<String, dynamic>) {
-          final rel = PositionConverter.mapToRelativePosition(rp);
-          _profileImagePositions[photoId] = rel;
-          _droppedProfileImageUrls[photoId] = uc.profileImageUrl;
-        } else if (rp is Offset) {
-          _profileImagePositions[photoId] = rp;
-          _droppedProfileImageUrls[photoId] = uc.profileImageUrl;
+
+        final lastComment = userComments.last;
+        final lastPosition = _extractRelativeOffset(
+          lastComment.relativePosition,
+        );
+        if (lastComment.profileImageUrl.isNotEmpty) {
+          _droppedProfileImageUrls[photoId] = lastComment.profileImageUrl;
         }
-      });
-    } else {
-      setState(() {
+        if (lastPosition != null) {
+          _profileImagePositions[photoId] = lastPosition;
+        }
+      } else {
         _voiceCommentSavedStates[photoId] = false;
+        final previousIds = _savedCommentIds[photoId] ?? const <String>[];
         _savedCommentIds.remove(photoId);
-        _profileImagePositions[photoId] = null;
+        _profileImagePositions.remove(photoId);
         _commentProfileImageUrls.remove(photoId);
         _droppedProfileImageUrls.remove(photoId);
-      });
-    }
+        _pendingProfilePositions.remove(photoId);
+        _autoPlacementIndices.remove(photoId);
+        for (final commentId in previousIds) {
+          _commentPositions.remove(commentId);
+        }
+      }
+    });
   }
 
   void _onProfileImageDragged(
     String photoId,
-    String commentId,
-    Offset absolutePosition,
-  ) {
+    Offset absolutePosition, {
+    String? commentId,
+  }) {
     final imageSize = Size(354.w, 500.h);
     final relativePosition = PositionConverter.toRelativePosition(
       absolutePosition,
       imageSize,
     );
+
     if (mounted) {
       setState(() {
         _profileImagePositions[photoId] = relativePosition;
       });
     }
-    if (commentId.isNotEmpty) {
-      _updateProfilePositionInFirestore(photoId, commentId, absolutePosition);
+
+    _pendingProfilePositions[photoId] = relativePosition;
+
+    final pending = _pendingVoiceComments[photoId];
+    if (pending != null) {
+      _pendingVoiceComments[photoId] = pending.copyWith(
+        relativePosition: relativePosition,
+      );
+    }
+
+    if (commentId != null && commentId.isNotEmpty) {
+      _updateProfilePositionInFirestore(photoId, commentId, relativePosition);
     }
   }
 
   Future<void> _updateProfilePositionInFirestore(
     String photoId,
     String commentId,
-    Offset absolutePosition,
+    Offset relativePosition,
   ) async {
     try {
       if (commentId.isEmpty) return;
-      final imageSize = Size(354.w, 500.h);
-      final relativePosition = PositionConverter.toRelativePosition(
-        absolutePosition,
-        imageSize,
-      );
       await CommentRecordController().updateRelativeProfilePosition(
         commentId: commentId,
         photoId: photoId,
         relativePosition: relativePosition,
       );
+      if (mounted) {
+        setState(() {
+          _commentPositions[commentId] = relativePosition;
+        });
+      } else {
+        _commentPositions[commentId] = relativePosition;
+      }
     } catch (e) {
       debugPrint('❌ 프로필 위치 업데이트 실패: $e');
     }
@@ -411,6 +460,47 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     });
   }
 
+  Future<void> _onTextCommentCreated(String photoId, String text) async {
+    try {
+      final userId = _authController?.currentUser?.uid;
+      if (userId == null) return;
+
+      // 1. 텍스트 댓글을 pending 상태로 저장
+      final autoPosition = _generateAutoProfilePosition(photoId);
+      final currentUserProfileImageUrl = await _authController!
+          .getUserProfileImageUrlWithCache(userId);
+
+      _pendingVoiceComments[photoId] = CommentRecordModel(
+        id: 'pending_text',
+        text: text,
+        type: CommentType.text,
+        audioUrl: '', // 텍스트 댓글은 오디오 없음
+        waveformData: [], // 텍스트 댓글은 파형 데이터 없음
+        duration: 0, // 텍스트 댓글은 duration 없음
+        recorderUser: userId,
+        photoId: photoId,
+        profileImageUrl: currentUserProfileImageUrl,
+        createdAt: DateTime.now(),
+        relativePosition: autoPosition,
+      );
+      _pendingProfilePositions[photoId] = autoPosition;
+
+      debugPrint('✅ 텍스트 댓글 임시 저장 완료');
+
+      // 2. pending 상태 업데이트
+      if (mounted) {
+        setState(() {
+          _pendingTextComments[photoId] = true;
+          _voiceCommentSavedStates[photoId] = false;
+          _profileImagePositions[photoId] = autoPosition;
+          _commentProfileImageUrls[photoId] = currentUserProfileImageUrl;
+        });
+      }
+    } catch (e) {
+      debugPrint('❌ 텍스트 댓글 임시 저장 실패: $e');
+    }
+  }
+
   Future<void> _onVoiceCommentRecordingFinished(
     String photoId,
     String audioPath,
@@ -421,58 +511,122 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     try {
       final userId = _authController?.currentUser?.uid;
       if (userId == null) return;
-      // 임시 상태 저장 (사용자가 저장하기 전까지 active 상태 유지)
-      // relativePosition은 저장 시점에 초기(center)로 부여.
+
+      // 현재 로그인한 사용자의 프로필 이미지 URL 가져오기
+      final currentUserProfileImageUrl = await _authController!
+          .getUserProfileImageUrlWithCache(userId);
+
+      final autoPosition = _generateAutoProfilePosition(photoId);
+
       _pendingVoiceComments[photoId] = CommentRecordModel(
         id: 'pending',
-        audioUrl: audioPath, // 로컬 경로 (저장 시 업로드 처리될 것으로 가정)
+        audioUrl: audioPath,
         recorderUser: userId,
         photoId: photoId,
         waveformData: waveformData,
         duration: duration,
-        profileImageUrl: _userProfileImageUrl,
+        profileImageUrl: currentUserProfileImageUrl, // 현재 사용자 프로필 이미지 사용
         createdAt: DateTime.now(),
-        relativePosition: const Offset(0.5, 0.5),
+        relativePosition: autoPosition,
       );
+      _pendingProfilePositions[photoId] = autoPosition;
       if (mounted) {
         setState(() {
           _voiceCommentSavedStates[photoId] = false;
           _voiceCommentActiveStates[photoId] = true; // 위젯 유지
+          _profileImagePositions[photoId] = autoPosition;
+          _commentProfileImageUrls[photoId] = currentUserProfileImageUrl;
         });
       }
     } catch (e) {
-      debugPrint('❌ 음성 댓글 임시 저장 준비 실패: $e');
+      debugPrint('음성 댓글 임시 저장 준비 실패: $e');
     }
   }
 
-  void _onSaveRequested(String photoId) async {
-    // 사용자가 파형을 눌러 저장하려 할 때 호출. pending 있으면 실제 저장.
+  Future<void> _onSaveRequested(String photoId) async {
     final pending = _pendingVoiceComments[photoId];
-    if (pending == null) return;
+    if (pending == null) {
+      throw StateError('임시 댓글이 없습니다. photoId: $photoId');
+    }
+
     try {
       final userId = _authController?.currentUser?.uid;
-      if (userId == null) return;
-      final controller = CommentRecordController();
-      final comment = await controller.createCommentRecord(
-        audioFilePath: pending.audioUrl,
-        photoId: photoId,
-        recorderUser: userId,
-        waveformData: pending.waveformData,
-        duration: pending.duration,
-        profileImageUrl: pending.profileImageUrl,
-        relativePosition: pending.relativePosition,
-      );
-      if (comment != null && mounted) {
-        setState(() {
-          _voiceCommentSavedStates[photoId] = true;
-          _savedCommentIds[photoId] = comment.id;
-          _commentProfileImageUrls[photoId] = comment.profileImageUrl;
-          _profileImagePositions[photoId] = pending.relativePosition;
-          _droppedProfileImageUrls[photoId] = comment.profileImageUrl;
-        });
+      if (userId == null) {
+        throw StateError('로그인된 사용자를 찾을 수 없습니다.');
       }
+
+      final currentUserProfileImageUrl = await _authController!
+          .getUserProfileImageUrlWithCache(userId);
+
+      final relativePosition =
+          _pendingProfilePositions[photoId] ??
+          pending.relativePosition ??
+          _generateAutoProfilePosition(photoId);
+
+      _pendingProfilePositions[photoId] = relativePosition;
+
+      final controller = CommentRecordController();
+
+      // 텍스트 댓글인지 음성 댓글인지 확인
+      final comment =
+          pending.type == CommentType.text
+              ? await controller.createTextComment(
+                text: pending.text ?? '',
+                photoId: photoId,
+                recorderUser: userId,
+                profileImageUrl: currentUserProfileImageUrl,
+                relativePosition: relativePosition,
+              )
+              : await controller.createCommentRecord(
+                audioFilePath: pending.audioUrl,
+                photoId: photoId,
+                recorderUser: userId,
+                waveformData: pending.waveformData,
+                duration: pending.duration,
+                profileImageUrl: currentUserProfileImageUrl,
+                relativePosition: relativePosition,
+              );
+
+      if (comment == null) {
+        if (mounted) {
+          controller.showErrorToUser(context);
+        }
+        throw Exception('댓글 저장에 실패했습니다. photoId: $photoId');
+      }
+
+      _commentPositions[comment.id] =
+          comment.relativePosition ?? relativePosition;
+      _voiceCommentSavedStates[photoId] = true;
+
+      final existingIds = _savedCommentIds[photoId] ?? const <String>[];
+      final updatedIds = <String>[
+        ...existingIds.where((id) => id != comment.id),
+        comment.id,
+      ];
+
+      void applyUpdates() {
+        _savedCommentIds[photoId] = updatedIds;
+        _commentProfileImageUrls[photoId] = comment.profileImageUrl;
+        _droppedProfileImageUrls[photoId] = comment.profileImageUrl;
+        _profileImagePositions.remove(photoId);
+        _pendingProfilePositions.remove(photoId);
+        _pendingVoiceComments.remove(photoId);
+        _pendingTextComments.remove(photoId); // 텍스트 댓글 pending 상태 제거
+
+        /// 추가: 저장 직후 다시 아이콘 모드로 돌려주기
+        _voiceCommentActiveStates[photoId] = false;
+      }
+
+      if (mounted) {
+        setState(applyUpdates);
+      } else {
+        applyUpdates();
+      }
+
+      unawaited(_loadCommentsForPhoto(photoId));
     } catch (e) {
-      debugPrint('❌ 음성 댓글 저장 실패(사용자 요청): $e');
+      debugPrint('❌ 댓글 저장 실패(사용자 요청): $e');
+      rethrow;
     }
   }
 
@@ -481,100 +635,112 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
     setState(() {
       _voiceCommentActiveStates[photoId] = false;
       _pendingVoiceComments.remove(photoId);
+      _pendingTextComments.remove(photoId); // 텍스트 댓글 pending 상태 제거
+      _pendingProfilePositions.remove(photoId);
+      _profileImagePositions.remove(photoId);
     });
   }
 
-  void _onLikePressed() {}
+  Offset? _extractRelativeOffset(dynamic relativePosition) {
+    if (relativePosition == null) {
+      return null;
+    }
+    if (relativePosition is Offset) {
+      return relativePosition;
+    }
+    if (relativePosition is Map<String, dynamic>) {
+      return PositionConverter.mapToRelativePosition(relativePosition);
+    }
+    return null;
+  }
 
-  void _showDeleteDialog(PhotoDataModel photo) {
-    showDialog(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            backgroundColor: const Color(0xff323232),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(height: 17.h),
-                Text(
-                  '사진 삭제',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontFamily: 'Pretendard',
-                    fontWeight: FontWeight.w500,
-                    fontSize: 19.8.sp,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 12.h),
-                Text(
-                  '사진 삭제하면 더 이상 해당 카테고리에서 확인할 수 없으며 삭제 후 복구가 \n불가능합니다.',
-                  style: TextStyle(
-                    color: const Color(0xfff9f9f9),
-                    fontFamily: 'Pretendard',
-                    fontSize: 15.8.sp,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: 12.h),
-                SizedBox(
-                  width: 185.5.w,
-                  height: 38.h,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      _deletePhoto(photo);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xfff5f5f5),
-                      foregroundColor: Colors.black,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14.2),
-                      ),
-                    ),
-                    child: Text(
-                      '삭제',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w600,
-                        fontSize: 17.8.sp,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 13.h),
-                SizedBox(
-                  width: 185.5.w,
-                  height: 38.h,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xff5a5a5a),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14.2),
-                      ),
-                    ),
-                    child: Text(
-                      '취소',
-                      style: TextStyle(
-                        fontFamily: 'Pretendard',
-                        fontWeight: FontWeight.w500,
-                        fontSize: 17.8.sp,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 14.h),
-              ],
-            ),
-          ),
+  Offset _generateAutoProfilePosition(String photoId) {
+    final occupiedPositions = <Offset>[];
+
+    final comments = _photoComments[photoId] ?? const <CommentRecordModel>[];
+    for (final comment in comments) {
+      final position = _extractRelativeOffset(comment.relativePosition);
+      if (position != null) {
+        occupiedPositions.add(position);
+      }
+    }
+
+    final savedCommentIds = _savedCommentIds[photoId] ?? const <String>[];
+    for (final commentId in savedCommentIds) {
+      final cachedPosition = _commentPositions[commentId];
+      if (cachedPosition != null) {
+        occupiedPositions.add(cachedPosition);
+      }
+    }
+
+    final previewPosition = _profileImagePositions[photoId];
+    if (previewPosition != null) {
+      occupiedPositions.add(previewPosition);
+    }
+
+    final pendingPosition = _pendingProfilePositions[photoId];
+    if (pendingPosition != null) {
+      occupiedPositions.add(pendingPosition);
+    }
+
+    const maxAttempts = 30;
+    final patternLength = _autoPlacementPattern.length;
+    final startingIndex = _autoPlacementIndices[photoId] ?? 0;
+
+    for (int attempt = 0; attempt < maxAttempts; attempt++) {
+      final rawIndex = startingIndex + attempt;
+      final baseOffset = _autoPlacementPattern[rawIndex % patternLength];
+      final loop = rawIndex ~/ patternLength;
+      final candidate = _applyJitter(baseOffset, loop, attempt);
+
+      if (!_isPositionTooClose(candidate, occupiedPositions)) {
+        _autoPlacementIndices[photoId] = rawIndex + 1;
+        return candidate;
+      }
+    }
+
+    _autoPlacementIndices[photoId] = startingIndex + 1;
+    return const Offset(0.5, 0.5);
+  }
+
+  Offset _applyJitter(Offset base, int loop, int attempt) {
+    if (loop <= 0) {
+      return _clampOffset(base);
+    }
+
+    final double step = (0.02 * loop).clamp(0.02, 0.08).toDouble();
+    final double dxDirection = (attempt % 2 == 0) ? 1 : -1;
+    final double dyDirection = ((attempt ~/ 2) % 2 == 0) ? 1 : -1;
+
+    final offsetWithJitter = Offset(
+      base.dx + (step * dxDirection),
+      base.dy + (step * dyDirection),
+    );
+
+    return _clampOffset(offsetWithJitter);
+  }
+
+  Offset _clampOffset(Offset offset) {
+    const double min = 0.05;
+    const double max = 0.95;
+    return Offset(
+      offset.dx.clamp(min, max).toDouble(),
+      offset.dy.clamp(min, max).toDouble(),
     );
   }
+
+  bool _isPositionTooClose(Offset candidate, List<Offset> occupied) {
+    const double threshold = 0.04;
+    for (final existing in occupied) {
+      if ((candidate.dx - existing.dx).abs() < threshold &&
+          (candidate.dy - existing.dy).abs() < threshold) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void _onLikePressed() {}
 
   Future<void> _deletePhoto(PhotoDataModel photo) async {
     try {
@@ -588,7 +754,7 @@ class _PhotoDetailScreenState extends State<PhotoDetailScreen> {
         categoryId: widget.categoryId,
         photoId: photo.id,
         userId: currentUserId,
-        permanentDelete: true,
+        permanentDelete: false, // 소프트 삭제로 변경
       );
       if (!mounted) return;
       if (success) {

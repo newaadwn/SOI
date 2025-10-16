@@ -1,12 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/friend_request_model.dart';
+import '../services/notification_service.dart';
 
 /// 친구 요청 Repository 클래스
 /// Firestore의 friend_requests 컬렉션과 상호작용
 class FriendRequestRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  final NotificationService _notificationService = NotificationService();
 
   /// friend_requests 컬렉션 참조
   CollectionReference<Map<String, dynamic>> get _friendRequestsCollection =>
@@ -67,6 +69,13 @@ class FriendRequestRepository {
       final docRef = await _friendRequestsCollection.add(
         friendRequest.toJson(),
       );
+
+      // 친구 요청 알림 생성
+      await _notificationService.createFriendRequestNotification(
+        actorUserId: currentUid,
+        recipientUserId: receiverUid,
+      );
+
       return docRef.id;
     } catch (e) {
       throw Exception('친구 요청 전송 실패: $e');

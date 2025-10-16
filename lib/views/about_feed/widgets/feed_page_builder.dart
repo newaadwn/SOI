@@ -4,7 +4,7 @@ import '../../../controllers/auth_controller.dart';
 import '../../../controllers/photo_controller.dart';
 import '../../../models/photo_data_model.dart';
 import '../../../models/comment_record_model.dart';
-import '../../common_widget/photo_card_widget_common.dart';
+import '../../common_widget/abput_photo/photo_card_widget_common.dart';
 
 // 피드 페이지 빌더
 // 사용자의 피드를 표시하는 위젯
@@ -26,9 +26,10 @@ class FeedPageBuilder extends StatelessWidget {
   final Function(PhotoDataModel) onToggleAudio;
   final Function(String) onToggleVoiceComment;
   final Function(String, String?, List<double>?, int?) onVoiceCommentCompleted;
+  final Function(String, String) onTextCommentCompleted; // 텍스트 댓글 완료 콜백
   final Function(String) onVoiceCommentDeleted;
   final Function(String, Offset) onProfileImageDragged;
-  final Function(String) onSaveRequested;
+  final Future<void> Function(String) onSaveRequested; // 프로필 배치 저장
   final Function(String) onSaveCompleted;
   final Function(int) onDeletePhoto;
   final VoidCallback onLikePressed;
@@ -52,6 +53,7 @@ class FeedPageBuilder extends StatelessWidget {
     required this.onToggleAudio,
     required this.onToggleVoiceComment,
     required this.onVoiceCommentCompleted,
+    required this.onTextCommentCompleted, // 텍스트 댓글 완료 콜백 추가
     required this.onVoiceCommentDeleted,
     required this.onProfileImageDragged,
     required this.onSaveRequested,
@@ -107,6 +109,7 @@ class FeedPageBuilder extends StatelessWidget {
           onToggleAudio: onToggleAudio,
           onToggleVoiceComment: onToggleVoiceComment,
           onVoiceCommentCompleted: onVoiceCommentCompleted,
+          onTextCommentCompleted: onTextCommentCompleted, // 텍스트 댓글 콜백 전달
           onVoiceCommentDeleted: onVoiceCommentDeleted,
           onProfileImageDragged: onProfileImageDragged,
           onSaveRequested: onSaveRequested,

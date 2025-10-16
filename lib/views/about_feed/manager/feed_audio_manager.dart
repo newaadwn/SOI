@@ -42,9 +42,4 @@ class FeedAudioManager {
     );
     commentAudioController.stopAllComments();
   }
-
-  /// 리소스 정리
-  void dispose() {
-    // 현재는 특별한 정리 작업 없음
-  }
 }

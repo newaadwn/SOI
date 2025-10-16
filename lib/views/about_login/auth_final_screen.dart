@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../theme/theme.dart';
-import '../../controllers/auth_controller.dart';
 
 class AuthFinalScreen extends StatelessWidget {
   final String? id;
   final String? name;
   final String? phone;
   final String? birthDate;
+  final String? profileImagePath; // 프로필 이미지 경로 추가
 
   const AuthFinalScreen({
     super.key,
@@ -16,91 +15,113 @@ class AuthFinalScreen extends StatelessWidget {
     this.name,
     this.phone,
     this.birthDate,
+    this.profileImagePath,
   });
 
   @override
   Widget build(BuildContext context) {
-    double screenWidth = MediaQuery.of(context).size.width;
-    double screenHeight = MediaQuery.of(context).size.height;
-    AuthController authViewModel = Provider.of<AuthController>(
-      context,
-      listen: false,
-    );
-
     // ✅ Navigator arguments에서 사용자 정보 가져오기
     final arguments =
-        ModalRoute.of(context)?.settings.arguments as Map<String, String>?;
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
     // 생성자 파라미터 또는 arguments에서 사용자 정보 결정
     final String finalId = id ?? arguments?['id'] ?? '';
     final String finalName = name ?? arguments?['name'] ?? '';
     final String finalPhone = phone ?? arguments?['phone'] ?? '';
     final String finalBirthDate = birthDate ?? arguments?['birthDate'] ?? '';
+    final String? finalProfileImagePath =
+        profileImagePath ?? (arguments?['profileImagePath'] as String?);
     return Scaffold(
       backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            Image.asset(
-              'assets/auth_final.png',
-              width: (349 / 393) * screenWidth,
-              height: (66 / 852) * screenHeight,
+
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: <Widget>[
+                  Text(
+                    '회원가입이 완료되었습니다. ',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: const Color(0xFFF8F8F8),
+                      fontSize: 20,
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  SizedBox(height: 17.9.h),
+                  Text(
+                    '이제부터 SOI의 모든 기능을 자유롭게 \n이용하실 수 있습니다.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: const Color(0xFFF8F8F8),
+                      fontSize: 16,
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w600,
+                      height: 1.61,
+                      letterSpacing: 0.32,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            SizedBox(height: (406 / 852) * screenHeight),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  await authViewModel.createUserInFirestore(
-                    authViewModel.currentUser!,
-                    finalId,
-                    finalName,
-                    finalPhone,
-                    finalBirthDate,
-                  );
-
-                  // ✅ 회원가입 완료 후 로그인 상태 저장 확인
-                  final currentUser = authViewModel.currentUser;
-                  if (currentUser != null) {
-                    await authViewModel.saveLoginState(
-                      userId: currentUser.uid,
-                      phoneNumber: finalPhone,
-                    );
-                    // debugPrint('✅ 회원가입 완료 후 로그인 상태 저장 완료');
-                  }
-
-                  Navigator.pushNamedAndRemoveUntil(
-                    context,
-                    '/home_navigation_screen',
-                    (route) => false,
-                  );
-                } catch (e) {
-                  // debugPrint('Error creating user in Firestore: $e');
-                }
+          ),
+          // 버튼을 하단에 고정 위치
+          Padding(
+            padding: EdgeInsets.only(
+              bottom:
+                  MediaQuery.of(context).viewInsets.bottom > 0
+                      ? MediaQuery.of(context).viewInsets.bottom + 20.h
+                      : 30.h,
+              left: 22.w,
+              right: 22.w,
+            ),
+            child: ElevatedButton(
+              onPressed: () {
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/onboarding',
+                  (route) => false,
+                  arguments: {
+                    'id': finalId,
+                    'name': finalName,
+                    'phone': finalPhone,
+                    'birthDate': finalBirthDate,
+                    'profileImagePath': finalProfileImagePath,
+                  },
+                );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color(0xff323232),
+                backgroundColor: Color(0xffffffff),
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(26.90),
                 ),
               ),
               child: Container(
-                width: (239 / 393) * screenWidth,
-                height: (59 / 852) * screenHeight,
+                width: 349.w,
+                height: 59.h,
                 alignment: Alignment.center,
                 child: Text(
-                  '내 기록 시작하기',
+                  '계속하기',
                   style: TextStyle(
-                    color: AppTheme.lightTheme.colorScheme.secondary,
-                    fontSize: (24 / 852) * screenHeight,
-                    fontWeight: FontWeight.w500,
+                    color: Colors.black,
+                    fontSize: 20.sp,
+                    fontFamily: 'Pretendard',
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

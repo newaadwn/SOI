@@ -3,8 +3,8 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-
 import '../../../controllers/auth_controller.dart';
+import '../../../controllers/audio_controller.dart';
 import '../../../models/photo_data_model.dart';
 import '../screens/archive_detail/photo_detail_screen.dart';
 import '../widgets/wave_form_widget/custom_waveform_widget.dart';
@@ -29,8 +29,7 @@ class PhotoGridItem extends StatefulWidget {
   _PhotoGridItemState createState() => _PhotoGridItemState();
 }
 
-class _PhotoGridItemState extends State<PhotoGridItem>
-    with AutomaticKeepAliveClientMixin {
+class _PhotoGridItemState extends State<PhotoGridItem> {
   String _userProfileImageUrl = '';
   bool _isLoadingProfile = true;
   bool _hasLoadedOnce = false; // 한 번 로드했는지 추적
@@ -38,16 +37,28 @@ class _PhotoGridItemState extends State<PhotoGridItem>
   // AuthController 참조 저장용
   AuthController? _authController;
 
-  // 메모리 캐시 추가 (최대 100개 유저로 제한)
+  // 메모리 최적화: static 캐시 크기 대폭 축소
   static final Map<String, String> _profileImageCache = {};
-  static const int _maxCacheSize = 100;
+  static const int _maxCacheSize = 20; // ❌ 100 -> ✅ 20으로 대폭 축소
 
   // 오디오 관련 상태
   bool _hasAudio = false;
   List<double>? _waveformData;
 
-  @override
-  bool get wantKeepAlive => true;
+  // 메모리 최적화된 프로필 이미지 캐시 관리
+  static String? _getCachedProfileImage(String userId) {
+    return _profileImageCache[userId];
+  }
+
+  static void _setCachedProfileImage(String userId, String imageUrl) {
+    // LRU 방식: 캐시가 가득 차면 가장 오래된 항목 제거
+    if (_profileImageCache.length >= _maxCacheSize) {
+      String oldestKey = _profileImageCache.keys.first;
+      _profileImageCache.remove(oldestKey);
+      debugPrint('Profile cache cleaned - removed: $oldestKey');
+    }
+    _profileImageCache[userId] = imageUrl;
+  }
 
   @override
   void initState() {
@@ -81,7 +92,7 @@ class _PhotoGridItemState extends State<PhotoGridItem>
 
   /// AuthController 변경 감지 시 프로필 이미지 캐시 무효화
   void _onAuthControllerChanged() async {
-    // 정적 캐시에서 해당 사용자 제거
+    // 개선된 캐시에서 해당 사용자 제거
     _profileImageCache.remove(widget.photo.userID);
 
     // 프로필 이미지 다시 로드
@@ -116,9 +127,14 @@ class _PhotoGridItemState extends State<PhotoGridItem>
   }
 
   Future<void> _loadUserProfileImage() async {
-    // 캐시 크기 관리
-    if (_profileImageCache.length > _maxCacheSize) {
-      _profileImageCache.clear();
+    // 먼저 캐시 확인
+    String? cachedUrl = _getCachedProfileImage(widget.photo.userID);
+    if (cachedUrl != null) {
+      setState(() {
+        _userProfileImageUrl = cachedUrl;
+        _isLoadingProfile = false;
+      });
+      return;
     }
 
     try {
@@ -131,15 +147,15 @@ class _PhotoGridItemState extends State<PhotoGridItem>
       final profileImageUrl = await authController
           .getUserProfileImageUrlWithCache(widget.photo.userID);
 
-      // 로컬 캐시에도 저장
-      _profileImageCache[widget.photo.userID] = profileImageUrl;
+      // 개선된 캐시에 저장
+      _setCachedProfileImage(widget.photo.userID, profileImageUrl);
 
       if (mounted) {
         setState(() {
           _userProfileImageUrl = profileImageUrl;
           _isLoadingProfile = false;
         });
-      } else {}
+      }
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -151,8 +167,6 @@ class _PhotoGridItemState extends State<PhotoGridItem>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
-
     return GestureDetector(
       onTap: () {
         Navigator.push(
@@ -172,12 +186,16 @@ class _PhotoGridItemState extends State<PhotoGridItem>
         alignment: Alignment.bottomCenter,
         children: [
           SizedBox(
-            width: 175, // 반응형 너비
-            height: 232, // 반응형 높이
+            width: 175,
+            height: 232,
             child: ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: CachedNetworkImage(
                 imageUrl: widget.photo.imageUrl,
+                memCacheHeight: (232.h * 2).toInt(),
+                memCacheWidth: (175.w * 2).toInt(),
+                maxHeightDiskCache: 600,
+                maxWidthDiskCache: 450,
                 fit: BoxFit.cover,
                 placeholder:
                     (context, url) => Shimmer.fromColors(
@@ -206,7 +224,7 @@ class _PhotoGridItemState extends State<PhotoGridItem>
             children: [
               Row(
                 children: [
-                  SizedBox(width: 8.w), // 반응형 간격
+                  SizedBox(width: 8.w),
                   Container(
                     width: 28.w,
                     height: 28.h,
@@ -244,6 +262,8 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                                     'profile_${widget.photo.userID}_${_userProfileImageUrl.hashCode}',
                                   ),
                                   imageUrl: _userProfileImageUrl,
+                                  memCacheHeight: ((28.w) * 1).toInt(),
+                                  memCacheWidth: ((28.h) * 1).toInt(),
                                   imageBuilder:
                                       (context, imageProvider) => CircleAvatar(
                                         radius: 16,
@@ -291,14 +311,19 @@ class _PhotoGridItemState extends State<PhotoGridItem>
                                 _waveformData == null ||
                                 _waveformData!.isEmpty)
                             ? Container()
-                            : Container(
-                              width: 140.w,
-                              height: 21.h,
-                              decoration: BoxDecoration(
-                                color: Color(0xff171717).withValues(alpha: 0.5),
-                                borderRadius: BorderRadius.circular(15),
+                            : GestureDetector(
+                              onTap: () => _toggleAudioPlayback(),
+                              child: Container(
+                                width: 140.w,
+                                height: 21.h,
+                                decoration: BoxDecoration(
+                                  color: Color(
+                                    0xff171717,
+                                  ).withValues(alpha: 0.5),
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                child: _buildWaveformWidget(),
                               ),
-                              child: _buildWaveformWidget(),
                             ),
                   ),
                   SizedBox(width: 5.w),
@@ -312,17 +337,45 @@ class _PhotoGridItemState extends State<PhotoGridItem>
     );
   }
 
+  /// 오디오 재생/일시정지 토글 메서드
+  void _toggleAudioPlayback() async {
+    if (!_hasAudio || widget.photo.audioUrl.isEmpty) return;
+
+    final audioController = Provider.of<AudioController>(
+      context,
+      listen: false,
+    );
+
+    audioController.toggleAudio(widget.photo.audioUrl);
+  }
+
   /// 커스텀 파형 위젯을 빌드하는 메서드
   Widget _buildWaveformWidget() {
-    // 커스텀 파형 표시
-    return Container(
-      height: 21,
-      padding: EdgeInsets.symmetric(horizontal: 10.w),
-      child: CustomWaveformWidget(
-        waveformData: _waveformData!,
-        color: Colors.white,
-        activeColor: Colors.blueAccent,
-      ),
+    return Consumer<AudioController>(
+      builder: (context, audioController, child) {
+        final isCurrentAudio =
+            audioController.isPlaying &&
+            audioController.currentPlayingAudioUrl == widget.photo.audioUrl;
+
+        double progress = 0.0;
+        if (isCurrentAudio &&
+            audioController.currentDuration.inMilliseconds > 0) {
+          progress = (audioController.currentPosition.inMilliseconds /
+                  audioController.currentDuration.inMilliseconds)
+              .clamp(0.0, 1.0);
+        }
+
+        return Container(
+          height: 21,
+          padding: EdgeInsets.symmetric(horizontal: 10.w),
+          child: CustomWaveformWidget(
+            waveformData: _waveformData!,
+            color: (isCurrentAudio) ? Color(0xff5a5a5a) : Color(0xffffffff),
+            activeColor: Colors.white,
+            progress: progress,
+          ),
+        );
+      },
     );
   }
 }

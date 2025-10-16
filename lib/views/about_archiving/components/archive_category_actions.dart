@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:soi/controllers/auth_controller.dart';
 import 'package:provider/provider.dart';
+import 'package:soi/controllers/category_member_controller.dart';
 import '../../../../controllers/category_controller.dart';
 import '../../../../models/category_data_model.dart';
 
@@ -174,19 +175,19 @@ class ArchiveCategoryActions {
     }
   }
 
-  /// 🚪 카테고리 나가기 실행
+  /// 카테고리 나가기 실행
   static Future<void> leaveCategoryConfirmed(
     BuildContext context,
     CategoryDataModel category,
   ) async {
-    // 🔧 위젯이 여전히 활성 상태인지 확인
+    // 위젯이 여전히 활성 상태인지 확인
     if (!context.mounted) {
       // 위젯이 이미 dispose되어 카테고리 나가기 중단
       return;
     }
 
     try {
-      final categoryController = Provider.of<CategoryController>(
+      final categoryController = Provider.of<CategoryMemberController>(
         context,
         listen: false,
       );
@@ -208,12 +209,12 @@ class ArchiveCategoryActions {
         return;
       }
 
-      // 🔧 비동기 작업 전에 mounted 체크
+      // 비동기 작업 전에 mounted 체크
       if (!context.mounted) return;
 
       await categoryController.leaveCategoryByUid(category.id, currentUserId);
 
-      // 🔧 비동기 작업 후에도 mounted 체크
+      // 비동기 작업 후에도 mounted 체크
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -226,7 +227,7 @@ class ArchiveCategoryActions {
     } catch (e) {
       // 카테고리 나가기 실패
 
-      // 🔧 에러 처리 시에도 mounted 체크
+      // 에러 처리 시에도 mounted 체크
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

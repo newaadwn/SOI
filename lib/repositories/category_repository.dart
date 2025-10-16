@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/category_data_model.dart';
 
 /// Firebase에서 category 관련 데이터를 가져오고, 저장하고, 업데이트하고 삭제하는 등의 로직들
@@ -33,6 +34,7 @@ class CategoryRepository {
                       .collection('categories')
                       .doc(doc.id)
                       .collection('photos')
+                      .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
                       .orderBy('createdAt', descending: true)
                       .limit(1)
                       .get();
@@ -76,6 +78,7 @@ class CategoryRepository {
                     .collection('categories')
                     .doc(categoryId)
                     .collection('photos')
+                    .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
                     .orderBy('createdAt', descending: true)
                     .limit(1)
                     .get();
@@ -133,13 +136,13 @@ class CategoryRepository {
             }
           } else {
             // 닉네임이 없거나 비어있는 경우
+            debugPrint('사용자 닉네임이 없습니다.');
           }
         }
       } catch (e) {
         // 사용자 문서가 없거나 닉네임을 찾을 수 없는 경우
+        debugPrint('사용자 닉네임을 가져오는 중 오류 발생: $e');
       }
-    } else {
-      // 닉네임 검색은 생략
     }
 
     final categories = <CategoryDataModel>[];
@@ -157,6 +160,7 @@ class CategoryRepository {
                 .collection('categories')
                 .doc(doc.id)
                 .collection('photos')
+                .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
                 .orderBy('createdAt', descending: true)
                 .limit(1)
                 .get();
@@ -251,6 +255,7 @@ class CategoryRepository {
             .collection('categories')
             .doc(categoryId)
             .collection('photos')
+            .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
             .orderBy('createdAt', descending: true)
             .limit(1)
             .get();
@@ -359,19 +364,16 @@ class CategoryRepository {
 
   /// 표지사진용 이미지 업로드
   Future<String> uploadCoverImage(String categoryId, File imageFile) async {
+    final supabase = Supabase.instance.client;
     final fileName =
         'cover_${categoryId}_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final ref = _storage
-        .ref()
-        .child('categories')
-        .child(categoryId)
-        .child('covers')
-        .child(fileName);
+    // supabase storage에 커버 이미지 업로드
+    await supabase.storage.from('covers').upload(fileName, imageFile);
 
-    final uploadTask = ref.putFile(imageFile);
-    final snapshot = await uploadTask.whenComplete(() => null);
+    // 즉시 공개 URL 생성 (다운로드 API 호출 없음)
+    final publicUrl = supabase.storage.from('covers').getPublicUrl(fileName);
 
-    return await snapshot.ref.getDownloadURL();
+    return publicUrl;
   }
 
   /// 카테고리 사진 스트림 (Map 형태로 반환)
@@ -405,14 +407,11 @@ class CategoryRepository {
   }
 
   /// 카테고리에 사용자 추가 (UID로)
+  /// 카테고리에 사용자 추가 (UID로)
   Future<void> addUidToCategory({
     required String categoryId,
     required String uid,
   }) async {
-    debugPrint('CategoryRepository.addUidToCategory 호출');
-    debugPrint('- categoryId: $categoryId');
-    debugPrint('- uid: $uid');
-
     try {
       // 먼저 카테고리가 존재하는지 확인
       final categoryDoc =
@@ -426,7 +425,6 @@ class CategoryRepository {
       final currentMates = (data?['mates'] as List?)?.cast<String>() ?? [];
 
       if (currentMates.contains(uid)) {
-        debugPrint('이미 카테고리에 포함된 사용자입니다: $uid');
         return; // 이미 포함되어 있으면 아무 작업하지 않음
       }
 
@@ -434,9 +432,31 @@ class CategoryRepository {
       await _firestore.collection('categories').doc(categoryId).update({
         'mates': FieldValue.arrayUnion([uid]),
       });
-      debugPrint('Firestore 업데이트 성공 - 사용자 추가됨: $uid');
     } catch (e) {
       debugPrint('Firestore 업데이트 실패: $e');
+      rethrow;
+    }
+  }
+
+  /// 카테고리에서 사용자 제거 (UID로)
+  Future<void> removeUidFromCategory({
+    required String categoryId,
+    required String uid,
+  }) async {
+    try {
+      // 카테고리가 존재하는지 확인
+      final categoryDoc =
+          await _firestore.collection('categories').doc(categoryId).get();
+      if (!categoryDoc.exists) {
+        throw Exception('카테고리가 존재하지 않습니다: $categoryId');
+      }
+
+      // arrayRemove를 사용하여 제거
+      await _firestore.collection('categories').doc(categoryId).update({
+        'mates': FieldValue.arrayRemove([uid]),
+      });
+    } catch (e) {
+      debugPrint('❌ 카테고리에서 사용자 제거 실패: $e');
       rethrow;
     }
   }

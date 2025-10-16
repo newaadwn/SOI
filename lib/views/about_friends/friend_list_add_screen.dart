@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import 'package:soi/controllers/category_member_controller.dart';
 import '../../controllers/friend_controller.dart';
 import '../../controllers/category_controller.dart';
 import '../../controllers/auth_controller.dart';
@@ -92,11 +93,13 @@ class _FriendListAddScreenState extends State<FriendListAddScreen> {
     if (widget.categoryId != null) {
       // 카테고리에 친구들 추가
       try {
+        final categoryMemberController =
+            context.read<CategoryMemberController>();
         final categoryController = context.read<CategoryController>();
 
         // 선택된 각 친구의 UID를 카테고리 mates에 추가
         for (final friendUid in _selectedFriendUids) {
-          await categoryController.addUidToCategory(
+          await categoryMemberController.addUidToCategory(
             widget.categoryId!,
             friendUid,
           );

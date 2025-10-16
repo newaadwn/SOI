@@ -4,6 +4,8 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:audio_waveforms/audio_waveforms.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/material.dart';
 import '../models/audio_data_model.dart';
 
 /// Firebase에서 오디오 관련 데이터를 가져오고, 저장하고, 업데이트하고 삭제하는 등의 로직들
@@ -20,10 +22,10 @@ class AudioRepository {
       final bool hasPermission = await _channel.invokeMethod(
         'checkMicrophonePermission',
       );
-      // debugPrint('🔍 네이티브 마이크 권한 상태: $hasPermission');
+
       return hasPermission;
     } catch (e) {
-      // debugPrint('❌ 네이티브 마이크 권한 확인 오류: $e');
+      debugPrint('네이티브 마이크 권한 확인 오류: $e');
       return false;
     }
   }
@@ -37,38 +39,18 @@ class AudioRepository {
       );
 
       if (granted) {
-        // debugPrint('✅ 네이티브 마이크 권한이 허용되었습니다.');
         return true;
       } else {
-        // debugPrint('❌ 네이티브 마이크 권한이 거부되었습니다.');
+        debugPrint('네이티브 마이크 권한이 거부되었습니다.');
         return false;
       }
     } catch (e) {
-      // debugPrint('❌ 네이티브 마이크 권한 요청 중 오류: $e');
+      debugPrint('네이티브 마이크 권한 요청 중 오류: $e');
       return false;
     }
   }
 
-  /// 저장소 권한 요청 (네이티브에서 처리하지 않음)
-  Future<bool> requestStoragePermission() async {
-    // 저장소 권한은 현재 사용하지 않음 (Firebase Storage 사용)
-    // debugPrint('저장소 권한은 Firebase Storage 사용으로 불필요');
-    return true;
-  }
-
   // ==================== 네이티브 녹음 관리 ====================
-
-  /// 레코더 초기화 (네이티브만 사용)
-  Future<void> initializeRecorder() async {
-    // 네이티브 녹음만 사용하므로 초기화 불필요
-    // debugPrint('네이티브 녹음 초기화 완료');
-  }
-
-  /// 레코더 종료
-  Future<void> disposeRecorder() async {
-    // 네이티브 녹음만 사용하므로 종료 작업 불필요
-    // debugPrint('네이티브 녹음 종료 완료');
-  }
 
   /// 네이티브 녹음 시작 (메인)
   /// Returns: 생성된 파일 경로
@@ -83,10 +65,9 @@ class AudioRepository {
         'filePath': filePath,
       });
 
-      // debugPrint('🎤 네이티브 녹음 시작: $startedPath');
       return startedPath; // 실제 생성된 파일 경로 반환
     } catch (e) {
-      // debugPrint('❌ 네이티브 녹음 시작 오류: $e');
+      debugPrint('네이티브 녹음 시작 오류: $e');
       return '';
     }
   }
@@ -96,10 +77,10 @@ class AudioRepository {
   static Future<String?> stopRecording() async {
     try {
       final String? filePath = await _channel.invokeMethod('stopRecording');
-      // debugPrint('🎤 네이티브 녹음 중지: $filePath');
+
       return filePath;
     } catch (e) {
-      // debugPrint('❌ 네이티브 녹음 중지 오류: $e');
+      debugPrint('네이티브 녹음 중지 오류: $e');
       return null;
     }
   }
@@ -110,52 +91,9 @@ class AudioRepository {
       final bool recording = await _channel.invokeMethod('isRecording');
       return recording;
     } catch (e) {
-      // debugPrint('❌ 네이티브 녹음 상태 확인 오류: $e');
+      debugPrint('네이티브 녹음 상태 확인 오류: $e');
       return false;
     }
-  }
-
-  // 네이티브 녹음에서는 레벨 스트림 제공하지 않음
-
-  // ==================== 재생 관리 (네이티브) ====================
-
-  /// 플레이어 초기화 (audioplayers 패키지 사용)
-  Future<void> initializePlayer() async {
-    // debugPrint('네이티브 플레이어 초기화 완료');
-  }
-
-  /// 플레이어 종료
-  Future<void> disposePlayer() async {
-    // debugPrint('네이티브 플레이어 종료 완료');
-  }
-
-  /// 오디오 재생 (URL) - audioplayers 사용
-  Future<void> playFromUrl(String url) async {
-    // audioplayers 패키지를 사용하여 재생
-    // 실제 구현은 AudioController에서 처리
-    // debugPrint('URL 재생: $url');
-  }
-
-  /// 오디오 재생 (로컬 파일) - audioplayers 사용
-  Future<void> playFromFile(String filePath) async {
-    // audioplayers 패키지를 사용하여 로컬 파일 재생
-    // 실제 구현은 AudioController에서 처리
-    // debugPrint('로컬 파일 재생: $filePath');
-  }
-
-  /// 재생 중지
-  Future<void> stopPlaying() async {
-    // debugPrint('재생 중지');
-  }
-
-  /// 재생 일시정지
-  Future<void> pausePlaying() async {
-    // debugPrint('재생 일시정지');
-  }
-
-  /// 재생 재개
-  Future<void> resumePlaying() async {
-    // debugPrint('재생 재개');
   }
 
   /// 재생 상태 확인 (기본값 false)
@@ -290,6 +228,49 @@ class AudioRepository {
                   )
                   .toList(),
         );
+  }
+
+  // ==================== Supabase Storage 관리 ====================
+
+  /// 오디오 파일을 Supabase Storage에 업로드
+  Future<String?> uploadAudioToSupabaseStorage({
+    required File audioFile,
+    required String categoryId,
+    required String userId,
+    String? customFileName,
+  }) async {
+    final supabase = Supabase.instance.client;
+    try {
+      // 파일 존재 확인
+      if (!await audioFile.exists()) {
+        debugPrint('오디오 파일이 존재하지 않습니다: ${audioFile.path}');
+        return null;
+      }
+
+      // 파일 크기 확인
+      final fileSize = await audioFile.length();
+      if (fileSize == 0) {
+        debugPrint('오디오 파일 크기가 0입니다');
+        return null;
+      }
+
+      // 파일명 생성
+      final fileName =
+          customFileName ??
+          '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.m4a';
+
+      // supabase storage에 오디오 업로드
+      await supabase.storage.from('audio').upload(fileName, audioFile);
+
+      // 즉시 공개 URL 생성
+      final publicUrl = supabase.storage.from('audio').getPublicUrl(fileName);
+
+      debugPrint('AudioRepository: 오디오 업로드 성공 - $publicUrl');
+      return publicUrl;
+    } catch (e) {
+      debugPrint('AudioRepository: 오디오 업로드 오류 - $e');
+      return null;
+    }
   }
 
   // ==================== Firebase Storage 관리 ====================

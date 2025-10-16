@@ -56,6 +56,43 @@ class CommentRecordRepository {
     }
   }
 
+  /// 텍스트 댓글을 Firestore에 저장
+  Future<CommentRecordModel> createTextComment({
+    required String text,
+    required String photoId,
+    required String recorderUser,
+    required String profileImageUrl,
+    Offset? relativePosition,
+  }) async {
+    try {
+      // CommentRecord 객체 생성 (텍스트 댓글)
+      final commentRecord = CommentRecordModel(
+        id: '', // Firestore에서 자동 생성됨
+        audioUrl: '', // 텍스트 댓글은 오디오 없음
+        photoId: photoId,
+        recorderUser: recorderUser,
+        createdAt: DateTime.now(),
+        waveformData: [], // 텍스트 댓글은 파형 데이터 없음
+        duration: 0, // 텍스트 댓글은 재생 시간 없음
+        isDeleted: false,
+        profileImageUrl: profileImageUrl,
+        relativePosition: relativePosition,
+        type: CommentType.text, // 텍스트 댓글 타입 지정
+        text: text, // 텍스트 내용
+      );
+
+      // Firestore에 저장
+      final docRef = await _firestore
+          .collection(_collectionName)
+          .add(commentRecord.toFirestore());
+
+      // ID가 포함된 객체 반환
+      return commentRecord.copyWith(id: docRef.id);
+    } catch (e) {
+      throw Exception('텍스트 댓글 저장 실패: $e');
+    }
+  }
+
   /// Firebase Storage에 오디오 파일 업로드
   Future<String> _uploadAudioFile(
     String filePath,

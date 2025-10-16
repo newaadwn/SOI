@@ -1,11 +1,18 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:solar_icons/solar_icons.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../theme/theme.dart';
+import 'package:soi/views/about_login/widgets/pages/agreement_page.dart';
 import '../../controllers/auth_controller.dart';
 import 'auth_final_screen.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'widgets/common/continue_button.dart';
+import 'widgets/pages/friend_add_and_share_page.dart';
+import 'widgets/pages/name_input_page.dart';
+import 'widgets/pages/birth_date_page.dart';
+import 'widgets/pages/phone_input_page.dart';
+import 'widgets/pages/select_profile_image_page.dart';
+import 'widgets/pages/sms_code_page.dart';
+import 'widgets/pages/id_input_page.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -16,7 +23,15 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   final PageController _pageController = PageController();
-  late AuthController _authViewModel;
+  late AuthController _authController;
+
+  // 자동 인증을 위한 Timer
+  Timer? _autoVerifyTimer;
+
+  // 사용자가 존재하는지 여부 및 상태 관리
+  bool userExists = false;
+  bool isVerified = false;
+  bool isCheckingUser = false;
 
   // 입력 데이터
   String phoneNumber = '';
@@ -24,6 +39,7 @@ class _AuthScreenState extends State<AuthScreen> {
   String name = '';
   String birthDate = '';
   String id = '';
+  String? profileImagePath; // 프로필 이미지 경로 추가
 
   // 현재 페이지 인덱스
   int currentPage = 0;
@@ -33,17 +49,85 @@ class _AuthScreenState extends State<AuthScreen> {
   String? selectedMonth;
   String? selectedDay;
 
+  // 페이지별 입력 완료 여부
+  late List<ValueNotifier<bool>> pageReady;
+  // 공통 컨트롤러
+  late TextEditingController nameController;
+  late TextEditingController monthController;
+  late TextEditingController dayController;
+  late TextEditingController yearController;
+  late TextEditingController phoneController;
+  late TextEditingController smsController;
+  late TextEditingController idController;
+
+  // 중복 아이디 체크를 위한 변수
+  String? idErrorMessage;
+  Timer? debounceTimer;
+
+  // 약관 동의 상태 변수들
+  bool agreeAll = false;
+  bool agreeServiceTerms = false;
+  bool agreePrivacyTerms = false;
+  bool agreeMarketingInfo = false;
+
+  // Note: Continue button visibility is controlled by currentPage (hide on SMS page)
+
   @override
   void initState() {
     super.initState();
+    // 컨트롤러 및 상태 초기화
+    nameController = TextEditingController();
+    monthController = TextEditingController();
+    dayController = TextEditingController();
+    yearController = TextEditingController();
+    phoneController = TextEditingController();
+    smsController = TextEditingController();
+    idController = TextEditingController();
+    pageReady = List.generate(8, (_) => ValueNotifier<bool>(false));
+
     // Provider에서 AuthViewModel을 가져오거나 widget에서 전달된 것을 사용
     WidgetsBinding.instance.addPostFrameCallback((_) {
       setState(() {
-        _authViewModel = Provider.of<AuthController>(context, listen: false);
+        _authController = Provider.of<AuthController>(context, listen: false);
       });
     });
 
-    // debugPrint('AuthViewModel 초기화 완료');
+    // ID 컨트롤러 리스너 추가
+    idController.addListener(() {
+      if (debounceTimer?.isActive ?? false) debounceTimer!.cancel();
+      debounceTimer = Timer(const Duration(milliseconds: 300), () async {
+        final id = idController.text.trim();
+        if (id.isNotEmpty) {
+          final isDuplicate = await _authController.checkIdDuplicate(id);
+          setState(() {
+            idErrorMessage =
+                isDuplicate ? '이미 사용 중인 아이디입니다.' : '사용 가능한 아이디입니다.';
+          });
+        } else {
+          setState(() {
+            idErrorMessage = null;
+          });
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    // Dispose controllers and notifiers
+    nameController.dispose();
+    monthController.dispose();
+    dayController.dispose();
+    yearController.dispose();
+    phoneController.dispose();
+    smsController.dispose();
+    idController.dispose();
+    for (var notifier in pageReady) {
+      notifier.dispose();
+    }
+    _autoVerifyTimer?.cancel();
+    debounceTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -51,606 +135,332 @@ class _AuthScreenState extends State<AuthScreen> {
     // 화면 크기 정보
     final double screenHeight = MediaQuery.of(context).size.height;
 
-    // Provider에서 AuthViewModel을 가져옴
-    if (!mounted) return Container(); // 안전 검사
-
     return Scaffold(
-      backgroundColor: AppTheme.lightTheme.colorScheme.surface,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        automaticallyImplyLeading: false,
-        iconTheme: IconThemeData(color: Colors.white),
-        elevation: 0,
-        leading:
-            currentPage > 0
-                ? IconButton(
-                  icon: Icon(Icons.arrow_back_ios),
-                  onPressed: _goToPreviousPage,
-                )
-                : null,
-        actions: [
-          // 다음 버튼을 상단 우측에 배치
-          if (currentPage < 4 && currentPage != 2) // 마지막 페이지가 아닐 때만 다음 버튼 표시
-            Padding(
-              padding: EdgeInsets.only(right: 16.w),
-              child: TextButton(
-                onPressed: () {
-                  _handleNextButtonPressed();
-                },
-                child: Row(
-                  children: [
-                    Text(
-                      "다음",
-                      style: TextStyle(
-                        fontSize: 16.sp,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Icon(Icons.arrow_forward_ios, color: Colors.white),
-                  ],
-                ),
-              ),
-            ),
-        ],
-        // 상단 중앙에 단계 표시 점들 배치
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(5, (index) {
-            return Container(
-              width: 8.w,
-              height: 8.h,
-              margin: EdgeInsets.symmetric(horizontal: 3.w),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color:
-                    index == currentPage
-                        ? Color(0xff323232)
-                        : Color(0xffd9d9d9),
-              ),
-            );
-          }),
-        ),
-        centerTitle: true,
-      ),
-      body: PageView(
-        controller: _pageController,
-        physics:
-            (currentPage != 2)
-                ? ScrollPhysics()
-                : NeverScrollableScrollPhysics(),
-        onPageChanged: (index) {
-          setState(() {
-            currentPage = index;
-          });
-        },
-        children: [
-          // 1. 이름 입력 페이지
-          _buildNamePage(screenHeight),
-          // 2. 생년월일 입력 페이지
-          _buildBirthDatePage(screenHeight),
-          // 3. 전화번호 입력 페이지
-          _buildPhoneNumberPage(screenHeight),
-          //     인증번호 입력 페이지
-          _buildSmsCodePage(screenHeight),
-          // 4. 닉네임 입력 페이지
-          _buildIdPage(screenHeight),
-        ],
-      ),
-    );
-  }
+      backgroundColor: Colors.black,
+      resizeToAvoidBottomInset: false,
 
-  // -------------------------
-  // 1. 전화번호 입력 페이지
-  // -------------------------
-  Widget _buildPhoneNumberPage(double screenHeight) {
-    final controller = TextEditingController();
-    // 전화번호 입력 여부를 확인하는 상태 변수
-    final ValueNotifier<bool> hasPhone = ValueNotifier<bool>(false);
-
-    return _buildScrollContainer(
-      screenHeight,
-      Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      body: Stack(
         children: [
-          Text(
-            'SOI 접속을 위해 전화번호를 입력해주세요.',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.lightTheme.colorScheme.onSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 24.h),
-          Container(
-            width: 239.w,
-            height: 44.h,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                SizedBox(width: 17.w),
-                Icon(
-                  SolarIconsOutline.phone,
-                  color: Color(0xffC0C0C0),
-                  size: 24.sp,
-                ),
-                SizedBox(width: 10.w),
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    keyboardType: TextInputType.phone,
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      hintText: '전화번호',
-                      hintStyle: TextStyle(
-                        fontSize: 16.sp,
-                        color: Color(0xffC0C0C0),
-                      ),
-                      contentPadding: EdgeInsets.only(bottom: 6),
-                    ),
-                    onChanged: (value) {
-                      // 전화번호 입력 여부에 따라 버튼 표시 상태 변경
-                      hasPhone.value = value.isNotEmpty;
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 24),
-          // 전화번호가 입력되면 버튼 표시
-          ValueListenableBuilder<bool>(
-            valueListenable: hasPhone,
-            builder: (context, hasPhoneValue, child) {
-              return hasPhoneValue
-                  ? ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xff323232),
-                      minimumSize: Size(239, 44),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () {
-                      // 전화번호 저장
-                      phoneNumber = controller.text;
-                      // 인증번호 받기 로직 실행
-                      _authViewModel.verifyPhoneNumber(
-                        phoneNumber,
-                        (verificationId, resendToken) {
-                          // 성공적으로 인증번호 전송되면 다음 페이지로
-                          _goToNextPage();
-                        },
-                        (verificationId) {
-                          // 타임아웃 등 처리
-                        },
-                      );
-                    },
-                    child: Text(
-                      '인증번호 받기',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  )
-                  : SizedBox.shrink();
+          PageView(
+            controller: _pageController,
+            physics: NeverScrollableScrollPhysics(),
+            onPageChanged: (index) {
+              setState(() {
+                currentPage = index;
+                if (index == 7) {
+                  pageReady[7].value = true;
+                }
+              });
             },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // -------------------------
-  // 2. 인증번호 입력 페이지
-  // -------------------------
-  Widget _buildSmsCodePage(double screenHeight) {
-    final ValueNotifier<bool> hasCode = ValueNotifier<bool>(false);
-    final controller = TextEditingController();
-    return _buildScrollContainer(
-      screenHeight,
-      Column(
-        children: [
-          Text(
-            '인증번호를 입력해주세요.',
-            style: TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.lightTheme.colorScheme.onSecondary,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 24),
-          Container(
-            width: 239,
-            height: 44,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                SizedBox(width: 17),
-                Icon(SolarIconsOutline.key, color: Color(0xffC0C0C0), size: 24),
-                SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: controller,
-                    keyboardType: TextInputType.number,
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      hintText: '인증번호',
-                      hintStyle: TextStyle(
-                        fontSize: 16,
-                        color: Color(0xffC0C0C0),
-                      ),
-                      contentPadding: EdgeInsets.only(bottom: 6),
-                    ),
-                    onChanged: (value) {
-                      // 인증번호 입력 여부에 따라 버튼 표시 상태 변경
-                      hasCode.value = value.isNotEmpty;
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-          SizedBox(height: 24),
-          ValueListenableBuilder<bool>(
-            valueListenable: hasCode,
-            builder: (context, hasCodeValue, child) {
-              return hasCodeValue
-                  ? ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xff323232),
-                      minimumSize: Size(239, 44),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    onPressed: () {
-                      // ✅ 회원가입 시에도 로그인 상태 저장
-                      _authViewModel.signInWithSmsCodeAndSave(
-                        controller.text,
-                        phoneNumber, // 전화번호도 함께 전달
-                        () {
-                          // 인증 완료 후 다음 페이지로
-                          _goToNextPage();
-                        },
-                      );
-                    },
-                    child: Text(
-                      '인증하기',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  )
-                  : SizedBox.shrink();
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  // -------------------------
-  // 3. 이름 입력 페이지
-  // -------------------------
-  Widget _buildNamePage(double screenHeight) {
-    return _buildScrollContainer(
-      screenHeight,
-      _buildInputPage(
-        title: '당신의 이름을 알려주세요.',
-        hintText: '입력',
-        keyboardType: TextInputType.text,
-        buttonText: '다음',
-        onNext: (value) {
-          name = value;
-          _goToNextPage();
-        },
-      ),
-    );
-  }
-
-  // -------------------------
-  // 4. 생년월일 입력 페이지
-  // -------------------------
-  Widget _buildBirthDatePage(double screenHeight) {
-    birthDate = "$selectedYear년 $selectedMonth월 $selectedDay일";
-    return _buildScrollContainer(screenHeight, _buildBirthDateContent());
-  }
-
-  Widget _buildBirthDateContent() {
-    return Column(
-      children: [
-        Text(
-          '생년월일을 입력해주세요.',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            fontFamily: GoogleFonts.inter().fontFamily,
-            color: AppTheme.lightTheme.colorScheme.onSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        SizedBox(height: 24),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // 월 선택 Dropdown
-            _buildDropdownContainer(
-              width: 91,
-              selectedValue: selectedMonth,
-              hintText: 'MM',
-              items: List.generate(12, (index) {
-                final month = index + 1;
-                return DropdownMenuItem(
-                  value: '$month',
-                  child: Text('$month월'),
-                );
-              }),
-              onChanged: (value) {
-                setState(() {
-                  selectedMonth = value;
-                });
-              },
-              iconLeftPadding: 20,
-            ),
-            SizedBox(width: 22),
-            // 일 선택 Dropdown
-            _buildDropdownContainer(
-              width: 91,
-              selectedValue: selectedDay,
-              hintText: 'DD',
-              items: List.generate(31, (index) {
-                final day = index + 1;
-                return DropdownMenuItem(value: '$day', child: Text('$day일'));
-              }),
-              onChanged: (value) {
-                setState(() {
-                  selectedDay = value;
-                });
-              },
-              iconLeftPadding: 18,
-            ),
-            SizedBox(width: 22),
-            // 년도 선택 Dropdown
-            _buildDropdownContainer(
-              width: 100,
-              selectedValue: selectedYear,
-              hintText: 'YYYY',
-              items: List.generate(100, (index) {
-                final year = DateTime.now().year - index;
-                return DropdownMenuItem(value: '$year', child: Text('$year년'));
-              }),
-              onChanged: (value) {
-                setState(() {
-                  selectedYear = value;
-                });
-              },
-              iconLeftPadding: 5,
-            ),
-          ],
-        ),
-        SizedBox(height: 24),
-      ],
-    );
-  }
-
-  // -------------------------
-  // 5. 닉네임 입력 페이지
-  // -------------------------
-  Widget _buildIdPage(double screenHeight) {
-    return _buildScrollContainer(
-      screenHeight,
-      _buildInputPage(
-        title: '사용하실 아이디를 입력해주세요.',
-        hintText: '',
-        keyboardType: TextInputType.text,
-        buttonText: '다음',
-        onNext: (value) {
-          id = value;
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (context) => AuthFinalScreen(
-                    id: id,
-                    name: name,
-                    phone: phoneNumber,
-                    birthDate: birthDate,
-                  ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // -------------------------
-  // 공통으로 사용하는 입력 페이지 위젯
-  // -------------------------
-  Widget _buildInputPage({
-    required String title,
-    required String hintText,
-    required TextInputType keyboardType,
-    required String buttonText,
-    required Function(String) onNext,
-    Icon? icon,
-  }) {
-    final controller = TextEditingController();
-
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: AppTheme.lightTheme.colorScheme.onSecondary,
-          ),
-          textAlign: TextAlign.center,
-        ),
-        SizedBox(height: 24),
-        Container(
-          width: 239,
-          height: 44,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
             children: [
-              if (icon != null) ...[
-                SizedBox(width: 17),
-                icon,
-                SizedBox(width: 10),
-              ],
-              SizedBox(width: 10),
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  keyboardType: keyboardType,
-                  decoration: InputDecoration(
-                    border: InputBorder.none,
-                    hintText: hintText,
-                    hintStyle: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xffC0C0C0),
-                    ),
-                    contentPadding: EdgeInsets.only(bottom: 6),
-                  ),
-                  onSubmitted: (value) {
-                    // 텍스트 입력 완료 시 onNext 콜백 호출
-                    if (value.isNotEmpty) {
-                      onNext(value);
-                    }
-                  },
-                ),
+              // 1. 이름 입력 페이지
+              NameInputPage(
+                controller: nameController,
+                onChanged: (value) {
+                  pageReady[0].value = value.isNotEmpty;
+                },
+              ),
+              // 2. 생년월일 입력 페이지
+              BirthDatePage(
+                monthController: monthController,
+                dayController: dayController,
+                yearController: yearController,
+                pageController: _pageController,
+                onChanged: () {
+                  setState(() {
+                    selectedMonth = monthController.text;
+                    selectedDay = dayController.text;
+                    selectedYear = yearController.text;
+                    birthDate =
+                        "${selectedYear ?? ''}년 ${selectedMonth ?? ''}월 ${selectedDay ?? ''}일";
+
+                    // 모든 필드가 채워졌는지 확인
+                    bool isComplete =
+                        monthController.text.isNotEmpty &&
+                        dayController.text.isNotEmpty &&
+                        yearController.text.isNotEmpty;
+                    pageReady[1].value = isComplete;
+                  });
+                },
+              ),
+              // 3. 전화번호 입력 페이지
+              PhoneInputPage(
+                controller: phoneController,
+                onChanged: (value) {
+                  pageReady[2].value = value.isNotEmpty;
+                },
+                pageController: _pageController,
+              ),
+              // 인증번호 입력 페이지
+              SmsCodePage(
+                controller: smsController,
+                onChanged: (value) {
+                  // 인증번호 입력 여부에 따라 상태 변경
+                  pageReady[3].value = value.isNotEmpty;
+
+                  // 인증 완료 후, 사용자가 인증번호를 변경하면 상태 초기화
+                  if (isVerified) {
+                    setState(() {
+                      isVerified = false;
+                    });
+                  }
+
+                  // 기존 타이머 취소
+                  _autoVerifyTimer?.cancel();
+
+                  // 인증번호가 입력되면 2초 후 자동 인증 시작
+                  if (value.isNotEmpty && value.length >= 6) {
+                    _autoVerifyTimer = Timer(Duration(seconds: 2), () {
+                      _performAutoVerification(value);
+                    });
+                  }
+                },
+                onResendPressed: () {
+                  // 인증번호 재전송 로직
+                  _authController.verifyPhoneNumber(phoneNumber, (
+                    verificationId,
+                    resendToken,
+                  ) {
+                    // 재전송 성공 시 처리
+                    ScaffoldMessenger.of(
+                      context,
+                    ).showSnackBar(SnackBar(content: Text('인증번호가 재전송되었습니다.')));
+                  }, (verificationId) {});
+                },
+                pageController: _pageController,
+              ),
+              // 4. 아이디 입력 페이지
+              IdInputPage(
+                controller: idController,
+                screenHeight: screenHeight,
+                errorMessage: idErrorMessage,
+                onChanged: (value) {
+                  pageReady[4].value = value.isNotEmpty;
+                },
+                onSubmitted: (value) {
+                  if (value.isNotEmpty) {
+                    id = value;
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => AuthFinalScreen(
+                              id: id,
+                              name: name,
+                              phone: phoneNumber,
+                              birthDate: birthDate,
+                            ),
+                      ),
+                    );
+                  }
+                },
+                pageController: _pageController,
+              ),
+              // 5. 약관동의 페이지
+              AgreementPage(
+                name: name,
+                agreeAll: agreeAll,
+                agreeServiceTerms: agreeServiceTerms,
+                agreePrivacyTerms: agreePrivacyTerms,
+                agreeMarketingInfo: agreeMarketingInfo,
+                onToggleAll: (bool value) {
+                  setState(() {
+                    agreeAll = value;
+                    // 전체 동의 시 모든 개별 항목도 함께 변경
+                    agreeServiceTerms = value;
+                    agreePrivacyTerms = value;
+                    agreeMarketingInfo = value;
+                    // 약관 페이지 준비 상태 업데이트 (필수 약관이 모두 체크되었는지 확인)
+                    pageReady[5].value = agreeServiceTerms && agreePrivacyTerms;
+                  });
+                },
+                onToggleServiceTerms: (bool value) {
+                  setState(() {
+                    agreeServiceTerms = value;
+                    // 개별 항목 변경 시 전체 동의 상태 업데이트
+                    _updateAgreeAllStatus();
+                    pageReady[5].value = agreeServiceTerms && agreePrivacyTerms;
+                  });
+                },
+                onTogglePrivacyTerms: (bool value) {
+                  setState(() {
+                    agreePrivacyTerms = value;
+                    // 개별 항목 변경 시 전체 동의 상태 업데이트
+                    _updateAgreeAllStatus();
+                    pageReady[5].value = agreeServiceTerms && agreePrivacyTerms;
+                  });
+                },
+                onToggleMarketingInfo: (bool value) {
+                  setState(() {
+                    agreeMarketingInfo = value;
+                    // 개별 항목 변경 시 전체 동의 상태 업데이트
+                    _updateAgreeAllStatus();
+                  });
+                },
+                pageController: _pageController,
+              ),
+              // 6. 프로필 이미지 선택 페이지
+              SelectProfileImagePage(
+                onImageSelected: (String? imagePath) {
+                  setState(() {
+                    profileImagePath = imagePath;
+                    pageReady[6].value = true; // 이미지 선택은 선택사항이므로 항상 true
+                  });
+                },
+                pageController: _pageController,
+                onSkip: _navigateToAuthFinal,
+              ),
+              // 7. 친구 추가 및 공유 페이지
+              FriendAddAndSharePage(
+                pageController: _pageController,
+                onSkip: _navigateToAuthFinal,
               ),
             ],
           ),
-        ),
-        // 하단 다음 버튼 제거 - 상단 우측의 다음 버튼으로 대체됨
-      ],
-    );
-  }
 
-  // -------------------------
-  // 공통으로 사용하는 Scroll + Container 위젯
-  // -------------------------
-  Widget _buildScrollContainer(double screenHeight, Widget child) {
-    return SingleChildScrollView(
-      child: Container(
-        constraints: BoxConstraints(minHeight: screenHeight),
-        alignment: Alignment.center,
-        child: child,
+          // 공통 Continue 버튼
+          // Hide the common Continue button only when we're on the SMS code page
+          (currentPage == 3)
+              ? SizedBox()
+              : Positioned(
+                bottom:
+                    MediaQuery.of(context).viewInsets.bottom > 0
+                        ? MediaQuery.of(context).viewInsets.bottom + 20.h
+                        : 30.h,
+                left: 0,
+                right: 0,
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: pageReady[currentPage],
+                  builder: (context, ready, child) {
+                    final bool isEnabled =
+                        ready &&
+                        (currentPage != 4 ||
+                            idErrorMessage == null ||
+                            idErrorMessage == '사용 가능한 아이디입니다.');
+
+                    return ContinueButton(
+                      isEnabled: isEnabled,
+                      onPressed:
+                          isEnabled
+                              ? () {
+                                FocusScope.of(context).unfocus();
+                                switch (currentPage) {
+                                  case 0: // 이름
+                                    name = nameController.text;
+                                    _pageController.nextPage(
+                                      duration: Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                    );
+                                    break;
+                                  case 1: // 생년월일
+                                    _pageController.nextPage(
+                                      duration: Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                    );
+                                    break;
+                                  case 2: // 전화번호
+                                    phoneNumber = phoneController.text;
+                                    _authController.verifyPhoneNumber(
+                                      phoneNumber,
+                                      (verificationId, token) {
+                                        // Navigate to SMS page when code sent
+                                        _pageController.nextPage(
+                                          duration: Duration(milliseconds: 300),
+                                          curve: Curves.easeInOut,
+                                        );
+                                      },
+                                      (verificationId) {},
+                                    );
+                                    break;
+                                  case 3: // 인증코드
+                                    smsCode = smsController.text;
+                                    _performAutoVerification(smsCode);
+                                    break;
+                                  case 4: // 아이디
+                                    id = idController.text;
+                                    _authController.prepareInviteLink(
+                                      inviterName: name,
+                                      inviterId: id,
+                                      forceRefresh: true,
+                                    );
+                                    _pageController.nextPage(
+                                      duration: Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                    );
+                                    break;
+                                  case 5: // 약관동의
+                                    _pageController.nextPage(
+                                      duration: Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                    );
+                                    break;
+                                  // 여기서 프로필 설정 페이지로 넘어가야함
+                                  case 6:
+                                    _pageController.nextPage(
+                                      duration: Duration(milliseconds: 300),
+                                      curve: Curves.easeInOut,
+                                    );
+                                    break;
+                                  case 7:
+                                    _navigateToAuthFinal();
+                                    break;
+                                }
+                              }
+                              : null,
+                    );
+                  },
+                ),
+              ),
+        ],
       ),
     );
   }
 
-  // -------------------------
-  // 공통으로 사용하는 Dropdown Container 위젯
-  // -------------------------
-  Widget _buildDropdownContainer({
-    required double width,
-    required String? selectedValue,
-    required String hintText,
-    required List<DropdownMenuItem<String>> items,
-    required ValueChanged<String?> onChanged,
-    double iconLeftPadding = 20,
-  }) {
-    return Container(
-      width: width,
-      height: 51,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(6),
-        color: Color(0xffFBFBFB),
-      ),
-      alignment: Alignment.centerRight,
-      child: DropdownButton<String>(
-        value: selectedValue,
-        underline: Container(),
-        hint: Text(
-          selectedValue ?? hintText,
-          style: TextStyle(
-            fontFamily: GoogleFonts.montserrat().fontFamily,
-            color: Color(0xffC0C0C0),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        dropdownColor: Colors.white,
-        style: TextStyle(
-          fontFamily: GoogleFonts.montserrat().fontFamily,
-          color: Colors.black,
-          fontWeight: FontWeight.w500,
-        ),
-        icon: Padding(
-          padding: EdgeInsets.only(left: iconLeftPadding),
-          child: Icon(
-            Icons.keyboard_arrow_down_outlined,
-            size: 30,
-            color: Color(0xffC0C0C0),
-          ),
-        ),
-        items: items,
-        onChanged: onChanged,
+  // 자동 인증 수행 함수
+  void _performAutoVerification(String code) async {
+    if (isCheckingUser) return;
+
+    setState(() {
+      isCheckingUser = true;
+    });
+
+    // SMS 코드 저장
+    smsCode = code;
+
+    // SMS 코드로 인증 및 상태 저장
+    _authController.signInWithSmsCodeAndSave(smsCode, phoneNumber, () async {
+      setState(() {
+        isCheckingUser = false;
+        isVerified = true;
+      });
+
+      // 기존 사용자 상관없이 다음 페이지로 넘어가기
+      FocusScope.of(context).unfocus();
+      _pageController.nextPage(
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+      );
+    });
+  }
+
+  // 전체 동의 상태 업데이트 함수
+  void _updateAgreeAllStatus() {
+    agreeAll = agreeServiceTerms && agreePrivacyTerms && agreeMarketingInfo;
+  }
+
+  void _navigateToAuthFinal() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder:
+            (context) => AuthFinalScreen(
+              id: id,
+              name: name,
+              phone: phoneNumber,
+              birthDate: birthDate,
+              profileImagePath: profileImagePath,
+            ),
       ),
     );
-  }
-
-  // -------------------------
-  // 다음 페이지로 이동
-  // -------------------------
-  void _goToNextPage() {
-    _pageController.nextPage(
-      duration: Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
-
-  // -------------------------
-  // 이전 페이지로 이동
-  // -------------------------
-  void _goToPreviousPage() {
-    _pageController.previousPage(
-      duration: Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-    );
-  }
-
-  // -------------------------
-  // 다음 버튼 클릭 시 처리
-  // -------------------------
-  void _handleNextButtonPressed() {
-    switch (currentPage) {
-      case 0:
-        _goToNextPage();
-        break;
-      case 1:
-        _goToNextPage();
-        break;
-      case 2:
-        _goToNextPage();
-        break;
-      case 3:
-        _goToNextPage();
-        break;
-      case 4:
-        // 마지막 페이지에서는 다음 버튼이 표시되지 않으므로 이 코드는 실행되지 않음
-        break;
-    }
   }
 }

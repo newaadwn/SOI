@@ -3,61 +3,86 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:soi/models/comment_record_model.dart';
 import '../../../utils/format_utils.dart';
 
 class ReactionRow extends StatelessWidget {
   final Map<String, dynamic> data;
   final String emoji;
-  const ReactionRow({super.key, required this.data, this.emoji = ''});
+  final CommentRecordModel? comment;
+  final String? userName; // 사용자 이름 직접 전달
+
+  const ReactionRow({
+    super.key,
+    required this.data,
+    this.emoji = '',
+    this.comment,
+    this.userName, // 추가
+  });
 
   @override
   Widget build(BuildContext context) {
+    final fallbackProfile = data['profileImageUrl'] as String? ?? '';
+    final profileImageUrl =
+        (comment?.profileImageUrl.isNotEmpty ?? false)
+            ? comment!.profileImageUrl
+            : fallbackProfile;
+
+    final userId =
+        comment?.recorderUser.isNotEmpty == true
+            ? comment!.recorderUser
+            : (data['uid'] as String? ?? '');
+
+    final createdAt = data['createdAt'];
+    final createdDate =
+        createdAt is Timestamp ? createdAt.toDate() : DateTime.now();
+
     return Padding(
       padding: EdgeInsets.only(bottom: 12.h),
       child: Column(
         children: [
-          // 리액션 내용
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 프로필 이미지
               ClipOval(
                 child:
-                    (data['profileImageUrl'] ?? '').toString().isNotEmpty
+                    profileImageUrl.isNotEmpty
                         ? CachedNetworkImage(
-                          imageUrl: data['profileImageUrl'],
-                          width: 38.w,
-                          height: 38.w,
+                          imageUrl: profileImageUrl,
+                          width: 44.w,
+                          height: 44.w,
+                          memCacheHeight: (44 * 2).toInt(),
+                          memCacheWidth: (44 * 2).toInt(),
                           fit: BoxFit.cover,
                         )
                         : Container(
-                          width: 38.w,
-                          height: 38.w,
+                          width: 44.w,
+                          height: 44.w,
                           color: const Color(0xFF4E4E4E),
                           child: const Icon(Icons.person, color: Colors.white),
                         ),
               ),
               SizedBox(width: 12.w),
-              // 아이디와 리액션 이모지를 묶은 Column
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // 사용자 이름 직접 표시 (FutureBuilder 제거)
                     Text(
-                      (data['id'] ?? '').toString(),
+                      userName ?? userId,
                       style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14.sp,
-                        fontWeight: FontWeight.w600,
-                        fontFamily: 'Pretendard',
+                        fontSize: 13,
+                        fontFamily: 'Pretendard Variable',
+                        fontWeight: FontWeight.w500,
+                        letterSpacing: -0.40,
                       ),
                     ),
-
                     Container(
                       alignment: Alignment.centerRight,
                       child: Text(
                         emoji.isEmpty ? '😊' : emoji,
-                        style: TextStyle(fontSize: 32.sp),
+                        style: TextStyle(fontSize: 25.sp),
                       ),
                     ),
                   ],
@@ -66,21 +91,17 @@ class ReactionRow extends StatelessWidget {
               SizedBox(width: 10.w),
             ],
           ),
-          // 시간 표시
           Row(
             children: [
               const Spacer(),
               Text(
-                FormatUtils.formatRelativeTime(
-                  (data['createdAt'] is Timestamp)
-                      ? (data['createdAt'] as Timestamp).toDate()
-                      : DateTime.now(),
-                ),
+                FormatUtils.formatRelativeTime(createdDate),
                 style: TextStyle(
-                  color: const Color(0xFFB5B5B5),
-                  fontSize: 12.sp,
-                  fontFamily: 'Pretendard',
-                  fontWeight: FontWeight.w400,
+                  color: const Color(0xFFC5C5C5),
+                  fontSize: 10,
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -0.40,
                 ),
               ),
               SizedBox(width: 12.w),

@@ -206,55 +206,22 @@ class _CategoryMembersBottomSheetState
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // 프로필 이미지
-        Container(
-          width: 60,
-          height: 60,
-          decoration: BoxDecoration(shape: BoxShape.circle),
-          child: ClipOval(
+        ClipOval(
+          child: SizedBox(
+            width: 60,
+            height: 60,
             child:
                 member.profileImage.isNotEmpty
                     ? CachedNetworkImage(
                       imageUrl: member.profileImage,
                       fit: BoxFit.cover,
-                      placeholder:
-                          (context, url) => Shimmer.fromColors(
-                            baseColor: Colors.grey.shade800,
-                            highlightColor: Colors.grey.shade700,
-                            child: Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ),
+                      memCacheHeight: 180,
+                      memCacheWidth: 180,
+                      placeholder: (context, url) => _buildMemberShimmer(),
                       errorWidget:
-                          (context, url, error) => Shimmer.fromColors(
-                            baseColor: Colors.grey.shade800,
-                            highlightColor: Colors.grey.shade700,
-                            child: Container(
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.grey.shade800,
-                              ),
-                            ),
-                          ),
+                          (context, url, error) => _buildMemberFallback(),
                     )
-                    : Shimmer.fromColors(
-                      baseColor: Colors.grey.shade800,
-                      highlightColor: Colors.grey.shade700,
-                      child: Container(
-                        width: 60,
-                        height: 60,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.grey.shade800,
-                        ),
-                      ),
-                    ),
+                    : _buildMemberFallback(),
           ),
         ),
 
@@ -335,4 +302,31 @@ class _CategoryMembersBottomSheetState
       ),
     );
   }
+}
+
+Widget _buildMemberShimmer() {
+  return Shimmer.fromColors(
+    baseColor: Colors.grey.shade700,
+    highlightColor: Colors.grey.shade500,
+    child: Container(
+      width: 60,
+      height: 60,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white,
+      ),
+    ),
+  );
+}
+
+Widget _buildMemberFallback() {
+  return Container(
+    width: 60,
+    height: 60,
+    decoration: const BoxDecoration(
+      shape: BoxShape.circle,
+      color: Color(0xFF5A5A5A),
+    ),
+    child: const Icon(Icons.person, color: Colors.white, size: 26),
+  );
 }

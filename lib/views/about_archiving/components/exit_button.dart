@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:provider/provider.dart';
+import 'package:soi/controllers/category_member_controller.dart';
 import '../../../../controllers/auth_controller.dart';
-import '../../../../controllers/category_controller.dart';
 import '../../../../models/category_data_model.dart';
 
 class ExitButton extends StatelessWidget {
@@ -92,7 +92,8 @@ class ExitButton extends StatelessWidget {
                 navigator.pop(); // 다이얼로그 닫기
 
                 // 실제 카테고리 나가기 로직 수행
-                final categoryController = context.read<CategoryController>();
+                final categoryController =
+                    context.read<CategoryMemberController>();
                 final authController = context.read<AuthController>();
                 final userId = authController.getUserId;
 

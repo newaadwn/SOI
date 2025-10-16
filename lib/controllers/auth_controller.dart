@@ -1,8 +1,11 @@
+import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:soi/models/auth_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
+import '../services/share_service.dart';
 import '../repositories/friend_repository.dart';
 import '../controllers/comment_record_controller.dart';
 
@@ -15,12 +18,15 @@ class AuthController extends ChangeNotifier {
   bool _isUploading = false;
   List<String> _searchResults = [];
   final List<String> _searchProfileImage = [];
+  String? _pendingInviteLink;
+  bool _isInviteLinkLoading = false;
 
   // 네비게이션 키
   GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
   // Service 인스턴스 - 모든 비즈니스 로직은 Service에서 처리
   final AuthService _authService = AuthService();
+  final ShareService _shareService = ShareService();
   final FriendRepository _friendRepository = FriendRepository();
 
   // 프로필 이미지 캐싱을 위한 변수들 추가
@@ -28,11 +34,19 @@ class AuthController extends ChangeNotifier {
   static const int _maxCacheSize = 100;
   final Map<String, bool> _loadingStates = {}; // 로딩 상태 관리
 
+  // Stream 관리를 위한 변수들
+  final Map<String, StreamController<String>> _profileStreamControllers = {};
+  final Map<String, StreamSubscription<DocumentSnapshot>>
+  _firestoreSubscriptions = {};
+  final Map<String, int> _streamRefCounts = {};
+
   // Getters
   String get verificationId => _verificationId;
   List<String> get searchResults => _searchResults;
   List<String> get searchProfileImage => _searchProfileImage;
   bool get isUploading => _isUploading;
+  bool get isInviteLinkLoading => _isInviteLinkLoading;
+  String? get pendingInviteLink => _pendingInviteLink;
 
   // 현재 사용자 정보 관련 getters
   User? get currentUser => _authService.currentUser;
@@ -42,6 +56,8 @@ class AuthController extends ChangeNotifier {
   static const String _keyIsLoggedIn = 'is_logged_in';
   static const String _keyUserId = 'user_id';
   static const String _keyPhoneNumber = 'user_phone_number';
+  static const String _keyOnboardingCompleted = 'onboarding_completed';
+  static const String _keyRegistrationInProgress = 'registration_in_progress';
 
   // 검색 결과 초기화
   void clearSearchResults() {
@@ -49,9 +65,99 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void clearPendingInviteLink() {
+    _pendingInviteLink = null;
+    notifyListeners();
+  }
+
   /// 프로필 이미지 URL 가져오기 (캐싱 포함)
   Future<String> getUserProfileImageUrlById(String userId) async {
     return await _authService.getUserProfileImageUrlById(userId);
+  }
+
+  /// 프로필 이미지 URL Stream 가져오기 (실시간 업데이트)
+  Stream<String> getUserProfileImageUrlStream(String userId) {
+    // 참조 카운트 증가
+    _streamRefCounts[userId] = (_streamRefCounts[userId] ?? 0) + 1;
+
+    // 이미 StreamController가 존재하면 기존 stream 반환
+    if (_profileStreamControllers.containsKey(userId)) {
+      return _profileStreamControllers[userId]!.stream;
+    }
+
+    // 새 BroadcastStreamController 생성 (여러 리스너 허용)
+    final controller = StreamController<String>.broadcast();
+    _profileStreamControllers[userId] = controller;
+
+    // 캐시된 값이 있으면 즉시 emit (빠른 초기 로딩)
+    if (_profileImageCache.containsKey(userId)) {
+      controller.add(_profileImageCache[userId]!);
+    }
+
+    // Firestore 실시간 리스너 설정
+    final subscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .listen(
+          (snapshot) {
+            if (snapshot.exists) {
+              final data = snapshot.data();
+              // 두 가지 필드명 지원 (기존 호환성)
+              final url =
+                  data?['profileImageUrl'] ?? data?['profile_image'] ?? '';
+
+              // 캐시 업데이트
+              _profileImageCache[userId] = url;
+
+              // Stream에 새 값 emit
+              if (!controller.isClosed) {
+                controller.add(url);
+              }
+            }
+          },
+          onError: (error) {
+            debugPrint('프로필 이미지 Stream 오류 - UserId: $userId, Error: $error');
+            if (!controller.isClosed) {
+              controller.add(''); // 에러 시 빈 문자열
+            }
+          },
+        );
+
+    _firestoreSubscriptions[userId] = subscription;
+    return controller.stream;
+  }
+
+  /// 프로필 이미지 Stream 참조 해제
+  void releaseProfileStream(String userId) {
+    final refCount = (_streamRefCounts[userId] ?? 1) - 1;
+
+    if (refCount <= 0) {
+      // 참조가 없으면 리소스 정리
+      _firestoreSubscriptions[userId]?.cancel();
+      _profileStreamControllers[userId]?.close();
+      _firestoreSubscriptions.remove(userId);
+      _profileStreamControllers.remove(userId);
+      _streamRefCounts.remove(userId);
+    } else {
+      _streamRefCounts[userId] = refCount;
+    }
+  }
+
+  @override
+  void dispose() {
+    // 모든 Stream 리소스 정리
+    for (final subscription in _firestoreSubscriptions.values) {
+      subscription.cancel();
+    }
+    for (final controller in _profileStreamControllers.values) {
+      controller.close();
+    }
+    _firestoreSubscriptions.clear();
+    _profileStreamControllers.clear();
+    _streamRefCounts.clear();
+
+    super.dispose();
   }
 
   /// 사용자 정보 가져오기
@@ -143,10 +249,16 @@ class AuthController extends ChangeNotifier {
 
   // SMS 코드로 로그인
   Future<void> signInWithSmsCode(String smsCode, Function() onSuccess) async {
-    await _authService.signInWithSmsCode(
+    final result = await _authService.signInWithSmsCode(
       verificationId: _verificationId,
       smsCode: smsCode,
     );
+
+    if (result.isSuccess) {
+      onSuccess();
+    } else {
+      throw Exception(result.error ?? '인증 실패');
+    }
   }
 
   // 사용자 정보 저장
@@ -167,6 +279,54 @@ class AuthController extends ChangeNotifier {
 
   Future<String> getUserName() async {
     return await _authService.getUserName();
+  }
+
+  Future<void> prepareInviteLink({
+    required String inviterName,
+    required String inviterId,
+    String? inviterProfileImage,
+    bool forceRefresh = false,
+  }) async {
+    if (_isInviteLinkLoading) return;
+    if (!forceRefresh &&
+        _pendingInviteLink != null &&
+        _pendingInviteLink!.isNotEmpty) {
+      return;
+    }
+
+    _isInviteLinkLoading = true;
+    notifyListeners();
+
+    try {
+      final link = await _authService.createFriendInviteLink(
+        inviterName: inviterName,
+        inviterId: inviterId,
+        inviterProfileImage: inviterProfileImage,
+      );
+      _pendingInviteLink = link;
+    } catch (e) {
+      _pendingInviteLink = null;
+      debugPrint('친구 초대 링크 준비 실패: $e');
+    } finally {
+      _isInviteLinkLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> sharePreparedInviteLink({
+    required BuildContext originContext,
+    String? message,
+  }) async {
+    final link = _pendingInviteLink;
+    if (link == null || link.isEmpty) {
+      throw Exception('공유할 링크가 준비되지 않았습니다.');
+    }
+
+    await _shareService.shareLink(
+      link,
+      message: message,
+      originContext: originContext,
+    );
   }
 
   Future<String> getUserPhoneNumber() async {
@@ -210,11 +370,47 @@ class AuthController extends ChangeNotifier {
 
         return true;
       } else {
+        /* Lines 213-214 omitted */
         return false;
       }
     } catch (e) {
       _isUploading = false;
       notifyListeners();
+      return false;
+    }
+  }
+
+  // 파일 경로에서 프로필 이미지 업로드
+  Future<bool> uploadProfileImageFromPath(String imagePath) async {
+    try {
+      _isUploading = true;
+      notifyListeners();
+
+      final result = await _authService.updateProfileImageFromPath(imagePath);
+
+      _isUploading = false;
+      notifyListeners();
+
+      if (result.isSuccess) {
+        // 캐시 업데이트
+        final currentUserId = getUserId;
+        if (currentUserId != null) {
+          _profileImageCache[currentUserId] = result.data ?? '';
+
+          // Stream 업데이트 - 이미 활성화된 Stream이 있다면 자동으로 Firestore가 업데이트할 것
+          // 하지만 즉시 반영을 위해 캐시를 업데이트
+        }
+
+        debugPrint('프로필 이미지 파일 업로드 성공');
+        return true;
+      } else {
+        debugPrint('프로필 이미지 파일 업로드 실패: ${result.error}');
+        return false;
+      }
+    } catch (e) {
+      _isUploading = false;
+      notifyListeners();
+      debugPrint('프로필 이미지 파일 업로드 오류: $e');
       return false;
     }
   }
@@ -237,11 +433,11 @@ class AuthController extends ChangeNotifier {
       );
 
       if (success) {
-        // 프로필 이미지 캐시 클리어 (새 이미지로 갱신)
-        _profileImageCache.remove(currentUserId);
+        // 프로필 이미지 캐시 업데이트
+        _profileImageCache[currentUserId] = newProfileImageUrl;
 
-        // UI 갱신을 위해 notifyListeners 호출
-        notifyListeners();
+        // Stream을 통해 자동으로 업데이트될 것이므로 notifyListeners는 불필요
+        // Firestore snapshot 리스너가 자동으로 새 값을 emit함
       }
     } catch (e) {
       rethrow;
@@ -266,9 +462,45 @@ class AuthController extends ChangeNotifier {
     final result = await _authService.deleteAccount();
 
     if (result.isSuccess) {
+      // 상태 초기화
+      _verificationId = '';
+      smsCode = '';
+      codeSent = false;
+      _isUploading = false;
+      _searchResults.clear();
+      _profileImageCache.clear();
+      notifyListeners();
+
       // debugPrint("계정이 삭제되었습니다.");
     } else {
       // debugPrint(result.error ?? "계정 삭제 중 오류가 발생했습니다.");
+      throw Exception(result.error ?? "계정 삭제 중 오류가 발생했습니다.");
+    }
+  }
+
+  // 계정 비활성화
+  Future<void> deactivateAccount() async {
+    final result = await _authService.deactivateAccount();
+
+    if (result.isSuccess) {
+      debugPrint("계정이 비활성화되었습니다.");
+      notifyListeners(); // UI 업데이트를 위해 추가
+    } else {
+      debugPrint(result.error ?? "계정 비활성화 중 오류가 발생했습니다.");
+      throw Exception(result.error ?? "계정 비활성화 중 오류가 발생했습니다.");
+    }
+  }
+
+  // 계정 활성화
+  Future<void> activateAccount() async {
+    final result = await _authService.activateAccount();
+
+    if (result.isSuccess) {
+      debugPrint("계정이 활성화되었습니다.");
+      notifyListeners(); // UI 업데이트를 위해 추가
+    } else {
+      debugPrint(result.error ?? "계정 활성화 중 오류가 발생했습니다.");
+      throw Exception(result.error ?? "계정 활성화 중 오류가 발생했습니다.");
     }
   }
 
@@ -277,7 +509,7 @@ class AuthController extends ChangeNotifier {
     notifyListeners();
   }
 
-  // ✅ ===== 자동 로그인 관련 메서드들 =====
+  // ===== 자동 로그인 관련 메서드들 =====
 
   /// 로그인 상태를 SharedPreferences에 저장
   Future<void> saveLoginState({
@@ -289,9 +521,10 @@ class AuthController extends ChangeNotifier {
       await prefs.setBool(_keyIsLoggedIn, true);
       await prefs.setString(_keyUserId, userId);
       await prefs.setString(_keyPhoneNumber, phoneNumber);
-      // debugPrint('🔐 로그인 상태 저장 완료: $userId');
+      await prefs.setBool(_keyOnboardingCompleted, true);
+      await prefs.remove(_keyRegistrationInProgress);
     } catch (e) {
-      // debugPrint('❌ 로그인 상태 저장 실패: $e');
+      debugPrint('❌ 로그인 상태 저장 실패: $e');
     }
   }
 
@@ -300,10 +533,13 @@ class AuthController extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool(_keyIsLoggedIn) ?? false;
-      // debugPrint('🔍 저장된 로그인 상태: $isLoggedIn');
-      return isLoggedIn;
+      final onboardingCompleted =
+          prefs.getBool(_keyOnboardingCompleted) ?? false;
+      final result = isLoggedIn && onboardingCompleted;
+
+      return result;
     } catch (e) {
-      // debugPrint('❌ 로그인 상태 확인 실패: $e');
+      debugPrint('❌ 로그인 상태 확인 실패: $e');
       return false;
     }
   }
@@ -317,7 +553,7 @@ class AuthController extends ChangeNotifier {
         'phoneNumber': prefs.getString(_keyPhoneNumber),
       };
     } catch (e) {
-      // debugPrint('❌ 저장된 사용자 정보 가져오기 실패: $e');
+      debugPrint('❌ 저장된 사용자 정보 가져오기 실패: $e');
       return {'userId': null, 'phoneNumber': null};
     }
   }
@@ -329,7 +565,7 @@ class AuthController extends ChangeNotifier {
       final userId = savedInfo['userId'];
 
       if (userId == null) {
-        // debugPrint('❌ 저장된 사용자 ID 없음');
+        debugPrint('❌ 저장된 사용자 ID 없음');
         return null;
       }
 
@@ -344,10 +580,10 @@ class AuthController extends ChangeNotifier {
         };
       }
 
-      // debugPrint('❌ Firestore에서 사용자 정보를 찾을 수 없음');
+      debugPrint('❌ Firestore에서 사용자 정보를 찾을 수 없음');
       return null;
     } catch (e) {
-      // debugPrint('❌ 사용자 Firestore 정보 가져오기 실패: $e');
+      debugPrint('❌ 사용자 Firestore 정보 가져오기 실패: $e');
       return null;
     }
   }
@@ -355,27 +591,24 @@ class AuthController extends ChangeNotifier {
   /// 자동 로그인 시도
   Future<bool> tryAutoLogin() async {
     try {
-      // debugPrint('🔄 자동 로그인 시도 중...');
-
       // 저장된 로그인 상태 확인
       final isUserLoggedIn = await isLoggedIn();
       if (!isUserLoggedIn) {
-        // debugPrint('❌ 저장된 로그인 정보 없음');
+        debugPrint('❌ 저장된 로그인 정보 없음');
         return false;
       }
 
       // Firebase Auth 현재 사용자 확인
       final currentUser = _authService.currentUser;
       if (currentUser == null) {
-        // debugPrint('❌ Firebase Auth 사용자 없음 - 로그인 상태 초기화');
+        debugPrint('❌ Firebase Auth 사용자 없음 - 로그인 상태 초기화');
         await clearLoginState();
         return false;
       }
 
-      // debugPrint('✅ 자동 로그인 성공: ${currentUser.uid}');
       return true;
     } catch (e) {
-      // debugPrint('❌ 자동 로그인 실패: $e');
+      debugPrint('❌ 자동 로그인 실패: $e');
       await clearLoginState();
       return false;
     }
@@ -388,9 +621,35 @@ class AuthController extends ChangeNotifier {
       await prefs.remove(_keyIsLoggedIn);
       await prefs.remove(_keyUserId);
       await prefs.remove(_keyPhoneNumber);
-      // debugPrint('🗑️ 로그인 상태 삭제 완료');
+      await prefs.remove(_keyOnboardingCompleted);
+      await prefs.remove(_keyRegistrationInProgress);
     } catch (e) {
-      // debugPrint('❌ 로그인 상태 삭제 실패: $e');
+      debugPrint('❌ 로그인 상태 삭제 실패: $e');
+    }
+  }
+
+  Future<void> _markRegistrationInProgress({
+    required String userId,
+    required String phoneNumber,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyUserId, userId);
+      await prefs.setString(_keyPhoneNumber, phoneNumber);
+      await prefs.setBool(_keyRegistrationInProgress, true);
+      await prefs.setBool(_keyOnboardingCompleted, false);
+      await prefs.remove(_keyIsLoggedIn);
+    } catch (e) {
+      debugPrint('❌ 회원가입 진행 상태 저장 실패: $e');
+    }
+  }
+
+  Future<bool> isRegistrationInProgress() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool(_keyRegistrationInProgress) ?? false;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -406,15 +665,28 @@ class AuthController extends ChangeNotifier {
     );
 
     if (result.isSuccess) {
-      // ✅ 로그인 성공 시 상태 저장
+      // 로그인 성공 시 상태 저장
       final currentUser = _authService.currentUser;
       if (currentUser != null) {
-        await saveLoginState(userId: currentUser.uid, phoneNumber: phoneNumber);
-        // debugPrint("✅ 로그인 성공 및 상태 저장 완료!");
+        await _markRegistrationInProgress(
+          userId: currentUser.uid,
+          phoneNumber: phoneNumber,
+        );
+
         onSuccess();
       }
     } else {
-      // debugPrint(result.error ?? "로그인에 실패했습니다.");
+      debugPrint(result.error ?? "로그인에 실패했습니다.");
+    }
+  }
+
+  // ID 중복 확인
+  Future<bool> checkIdDuplicate(String id) async {
+    try {
+      return await _authService.isIdDuplicate(id);
+    } catch (e) {
+      debugPrint('Error checking ID duplicate in AuthController: $e');
+      return false;
     }
   }
 }

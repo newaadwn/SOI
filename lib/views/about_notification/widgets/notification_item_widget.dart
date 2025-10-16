@@ -4,11 +4,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../models/notification_model.dart';
 
 /// 개별 알림 아이템 위젯
-class NotificationItemWidget extends StatelessWidget {
+class NotificationItemWidget extends StatefulWidget {
   final NotificationModel notification;
   final VoidCallback onTap;
   final VoidCallback onDelete;
   final bool isLast;
+  final Future<List<String>> Function()? loadUnknownMembers;
+  final Future<void> Function()? onConfirm;
 
   const NotificationItemWidget({
     super.key,
@@ -16,12 +18,75 @@ class NotificationItemWidget extends StatelessWidget {
     required this.onTap,
     required this.onDelete,
     this.isLast = false,
+    this.loadUnknownMembers,
+    this.onConfirm,
   });
 
   @override
+  State<NotificationItemWidget> createState() => _NotificationItemWidgetState();
+}
+
+class _NotificationItemWidgetState extends State<NotificationItemWidget> {
+  Future<List<String>>? _unknownMembersFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _primeUnknownMembersFuture();
+  }
+
+  @override
+  void didUpdateWidget(NotificationItemWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final notificationChanged =
+        oldWidget.notification.id != widget.notification.id;
+    final loaderChanged =
+        oldWidget.loadUnknownMembers != widget.loadUnknownMembers;
+    if (notificationChanged || loaderChanged) {
+      _primeUnknownMembersFuture();
+    }
+  }
+
+  void _primeUnknownMembersFuture() {
+    if (widget.notification.type == NotificationType.categoryInvite &&
+        widget.loadUnknownMembers != null) {
+      final pending = widget.notification.pendingCategoryMemberIds;
+      if (pending != null) {
+        _unknownMembersFuture = Future.value(pending);
+      } else {
+        _unknownMembersFuture = widget.loadUnknownMembers!();
+      }
+    } else {
+      _unknownMembersFuture = null;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (widget.notification.type == NotificationType.categoryInvite &&
+        _unknownMembersFuture != null) {
+      return FutureBuilder<List<String>>(
+        future: _unknownMembersFuture,
+        builder: (context, snapshot) {
+          final isLoading = snapshot.connectionState == ConnectionState.waiting;
+          final hasUnknown = (snapshot.data?.isNotEmpty ?? false);
+          if (!hasUnknown && !isLoading) {
+            return _buildDefaultItem();
+          }
+          return _buildCategoryInviteItem(
+            isLoading: isLoading,
+            hasUnknown: hasUnknown,
+          );
+        },
+      );
+    }
+
+    return _buildDefaultItem();
+  }
+
+  Widget _buildDefaultItem() {
     return InkWell(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         padding: EdgeInsets.only(left: 18.w, right: 18.w, bottom: 28.h),
         child: Row(
@@ -38,6 +103,44 @@ class NotificationItemWidget extends StatelessWidget {
     );
   }
 
+  Widget _buildCategoryInviteItem({
+    required bool isLoading,
+    required bool hasUnknown,
+  }) {
+    return InkWell(
+      onTap: widget.onTap,
+      child: Container(
+        padding: EdgeInsets.only(left: 18.w, right: 18.w, bottom: 28.h),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildProfileImage(),
+            SizedBox(width: 9.w),
+            Expanded(child: _buildNotificationText()),
+            SizedBox(width: 12.w),
+            // 오른쪽에 로딩/확인 버튼 또는 썸네일 표시
+            if (isLoading)
+              SizedBox(
+                width: 44.w,
+                height: 44.h,
+                child: Center(
+                  child: SizedBox(
+                    width: 24.w,
+                    height: 24.w,
+                    child: const CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+              )
+            else if (hasUnknown || widget.notification.requiresAcceptance)
+              _buildConfirmButton()
+            else
+              _buildThumbnail(),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// 프로필 이미지 구성
   Widget _buildProfileImage() {
     return Container(
@@ -46,7 +149,7 @@ class NotificationItemWidget extends StatelessWidget {
       decoration: BoxDecoration(shape: BoxShape.circle),
       child: ClipOval(
         child: CachedNetworkImage(
-          imageUrl: notification.actorProfileImage ?? '',
+          imageUrl: widget.notification.actorProfileImage ?? '',
           width: 44,
           height: 44,
           fit: BoxFit.cover,
@@ -67,7 +170,7 @@ class NotificationItemWidget extends StatelessWidget {
 
   /// 알림 텍스트 구성
   Widget _buildNotificationText() {
-    final userName = notification.actorName ?? '사용자';
+    final userName = widget.notification.actorName ?? '사용자';
     final remainingText = _getNotificationText();
 
     return Column(
@@ -107,19 +210,21 @@ class NotificationItemWidget extends StatelessWidget {
 
   /// 썸네일 이미지 구성
   Widget _buildThumbnail() {
-    switch (notification.type) {
+    switch (widget.notification.type) {
       case NotificationType.categoryInvite:
         return _buildCategoryThumbnail();
       case NotificationType.photoAdded:
         return _buildPhotoThumbnail();
       case NotificationType.voiceCommentAdded:
         return _buildVoiceCommentThumbnail();
+      case NotificationType.friendRequest:
+        return _buildFriendRequestThumbnail();
     }
   }
 
   /// 카테고리 썸네일
   Widget _buildCategoryThumbnail() {
-    final categoryImageUrl = notification.categoryThumbnailUrl;
+    final categoryImageUrl = widget.notification.categoryThumbnailUrl;
 
     return Container(
       width: 44.w,
@@ -147,7 +252,7 @@ class NotificationItemWidget extends StatelessWidget {
 
   /// 사진 썸네일
   Widget _buildPhotoThumbnail() {
-    final thumbnailUrl = notification.photoThumbnailUrl;
+    final thumbnailUrl = widget.notification.photoThumbnailUrl;
 
     return Container(
       width: 44.w,
@@ -188,16 +293,60 @@ class NotificationItemWidget extends StatelessWidget {
     );
   }
 
+  /// 친구 요청 썸네일
+  Widget _buildFriendRequestThumbnail() {
+    return Container(
+      width: 44.sp,
+      height: 44.sp,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8.r),
+        color: const Color(0xFF323232),
+      ),
+      child: Icon(Icons.person_add_alt, size: 24.sp),
+    );
+  }
+
   /// 알림 타입별 텍스트 반환
   String _getNotificationText() {
-    switch (notification.type) {
+    switch (widget.notification.type) {
       case NotificationType.categoryInvite:
-        return '님이 새 카테고리에 초대했습니다.';
+        return widget.notification.requiresAcceptance
+            ? '님이 새 카테고리에 초대했습니다. 수락하시겠어요?'
+            : '님이 새 카테고리에 초대했습니다.';
       case NotificationType.photoAdded:
-        return '님이 "${notification.categoryName}" 카테고리에 사진을 추가하였습니다.';
+        return '님이 "${widget.notification.categoryName}" 카테고리에 사진을 추가하였습니다.';
       case NotificationType.voiceCommentAdded:
         return '님이 음성 댓글을 달았습니다.';
+      case NotificationType.friendRequest:
+        return '님이 친구 요청을 보냈습니다.';
     }
+  }
+
+  Widget _buildConfirmButton() {
+    return SizedBox(
+      width: 44.w,
+      height: 29.h,
+      child: TextButton(
+        onPressed: widget.onConfirm == null ? null : () => widget.onConfirm!(),
+        style: TextButton.styleFrom(
+          backgroundColor: const Color(0xFFF3F3F3),
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(19.70),
+          ),
+        ),
+        child: Text(
+          '확인',
+          style: TextStyle(
+            color: const Color(0xFF1C1C1C),
+            fontSize: 12.sp,
+            fontFamily: 'Pretendard Variable',
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.40,
+          ),
+        ),
+      ),
+    );
   }
 
   /// 공통 위젯들

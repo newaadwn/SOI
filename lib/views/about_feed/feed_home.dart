@@ -7,7 +7,7 @@ import '../../controllers/photo_controller.dart';
 import '../../controllers/audio_controller.dart';
 import '../../controllers/comment_audio_controller.dart';
 import '../../models/photo_data_model.dart';
-import '../common_widget/photo_card_widget_common.dart';
+import '../common_widget/abput_photo/photo_card_widget_common.dart';
 import 'manager/feed_data_manager.dart';
 import 'manager/voice_comment_state_manager.dart';
 import 'manager/profile_cache_manager.dart';
@@ -132,7 +132,6 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
     _feedDataManager?.dispose();
     _voiceCommentStateManager?.dispose();
     _profileCacheManager?.dispose();
-    _feedAudioManager?.dispose();
 
     PaintingBinding.instance.imageCache.clear();
 
@@ -211,7 +210,14 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
 
   /// 음성 댓글 토글 - delegate to manager
   void _toggleVoiceComment(String photoId) {
+    debugPrint('🟠 [FeedHome] 음성 댓글 토글 시작: photoId=$photoId');
     _voiceCommentStateManager?.toggleVoiceComment(photoId);
+    // 명시적으로 setState 호출하여 UI 업데이트 보장
+    if (mounted) {
+      setState(() {
+        debugPrint('🟠 [FeedHome] setState 호출 완료');
+      });
+    }
   }
 
   /// 음성 댓글 녹음 완료 콜백 (임시 저장) - delegate to manager
@@ -227,6 +233,13 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
       waveformData,
       duration,
     );
+  }
+
+  /// 텍스트 댓글 완료 콜백 (임시 저장) - delegate to manager
+  Future<void> _onTextCommentCompleted(String photoId, String text) async {
+    debugPrint('🟢 [FeedHome] 텍스트 댓글 완료: photoId=$photoId, text=$text');
+    await _voiceCommentStateManager?.onTextCommentCompleted(photoId, text);
+    debugPrint('🟢 [FeedHome] StateManager.onTextCommentCompleted 완료');
   }
 
   /// 실제 음성 댓글 저장 (파형 클릭 시 호출) - delegate to manager
@@ -360,9 +373,13 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                     _voiceCommentStateManager!.voiceCommentSavedStates,
                 commentProfileImageUrls:
                     _voiceCommentStateManager!.commentProfileImageUrls,
+                pendingTextComments:
+                    _voiceCommentStateManager!
+                        .pendingTextComments, // Pending 텍스트 댓글 상태 전달
                 onToggleAudio: _toggleAudio,
                 onToggleVoiceComment: _toggleVoiceComment,
                 onVoiceCommentCompleted: _onVoiceCommentCompleted,
+                onTextCommentCompleted: _onTextCommentCompleted, // 텍스트 댓글 콜백 추가
                 onVoiceCommentDeleted: _onVoiceCommentDeleted,
                 onProfileImageDragged: _onProfileImageDragged,
                 onSaveRequested: _saveVoiceComment,
@@ -386,9 +403,14 @@ class _FeedHomeScreenState extends State<FeedHomeScreen> {
                       userId: userId,
                     );
                     if (success && mounted) {
+                      // 로컬 상태에서 즉시 제거
                       setState(() {
                         _feedDataManager!.removePhoto(index);
                       });
+
+                      // 백그라운드에서 전체 피드 새로고침으로 데이터 동기화 보장
+                      _feedDataManager!.loadUserCategoriesAndPhotos(context);
+
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text('사진이 삭제되었습니다.'),

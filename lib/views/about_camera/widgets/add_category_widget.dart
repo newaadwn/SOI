@@ -11,6 +11,7 @@ class AddCategoryWidget extends StatefulWidget {
   final ScrollController scrollController;
   final VoidCallback onBackPressed;
   final Function(List<SelectedFriendModel>) onSavePressed;
+  final FocusNode focusNode;
 
   const AddCategoryWidget({
     super.key,
@@ -18,6 +19,7 @@ class AddCategoryWidget extends StatefulWidget {
     required this.scrollController,
     required this.onBackPressed,
     required this.onSavePressed,
+    required this.focusNode,
   });
 
   @override
@@ -208,6 +210,7 @@ class _AddCategoryWidgetState extends State<AddCategoryWidget> {
                         TextField(
                           controller: widget.textController,
                           cursorColor: Color(0xFFF3F3F3),
+                          focusNode: widget.focusNode,
                           style: TextStyle(
                             color: const Color(0xFFf4f4f4),
                             fontSize: 15.sp,

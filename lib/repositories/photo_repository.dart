@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,7 +16,7 @@ class PhotoRepository {
 
   // ==================== 사진 업로드 ====================
 
-  /// 이미지 파일을 Firebase Storage에 업로드
+  // 이미지 파일을 supabase Storage에 업로드
   Future<String?> uploadImageToStorage({
     required File imageFile,
     required String categoryId,
@@ -28,54 +29,16 @@ class PhotoRepository {
           customFileName ??
           '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.png';
 
-      // supabase storage에 사진 업로드
-      supabase.storage.from('photos').upload(fileName, imageFile);
+      // supabase storage에 사진 업로드 - 완료될 때까지 기다림
+      await supabase.storage.from('photos').upload(fileName, imageFile);
 
-      // 즉시 공개 URL 생성 (다운로드 API 호출 없음)
+      // 업로드 완료 후 공개 URL 생성
       final publicUrl = supabase.storage.from('photos').getPublicUrl(fileName);
 
-      // 즉시 공개 URL 반환
+      // 업로드 완료된 공개 URL 반환
       return publicUrl;
     } catch (e) {
       debugPrint('이미지 업로드 오류: $e');
-      return null;
-    }
-  }
-
-  /// 오디오 파일을 Firebase Storage에 업로드
-  Future<String?> uploadAudioToStorage({
-    required File audioFile,
-    required String categoryId,
-    required String userId,
-    String? customFileName,
-  }) async {
-    final supabase = Supabase.instance.client;
-    try {
-      // 파일 존재 확인
-      if (!await audioFile.exists()) {
-        return null;
-      }
-
-      // 파일 크기 확인
-      final fileSize = await audioFile.length();
-
-      if (fileSize == 0) {
-        return null;
-      }
-
-      // 파일명 생성
-      final fileName =
-          customFileName ??
-          '${categoryId}_${userId}_${DateTime.now().millisecondsSinceEpoch}.m4a';
-
-      // supabase storage에 사진 업로드
-      supabase.storage.from('photos').upload(fileName, audioFile);
-
-      // 즉시 공개 URL 생성 (다운로드 API 호출 없음)
-      final publicUrl = supabase.storage.from('photos').getPublicUrl(fileName);
-
-      return publicUrl;
-    } catch (e) {
       return null;
     }
   }
@@ -121,6 +84,7 @@ class PhotoRepository {
     required String categoryId,
     List<double>? waveformData,
     Duration? duration,
+    String? caption,
   }) async {
     try {
       // 기본 데이터 구성
@@ -134,6 +98,13 @@ class PhotoRepository {
         'status': PhotoStatus.active.name,
         'duration': duration?.inSeconds ?? 0,
       };
+
+      // caption이 있을 때만 추가
+      if (caption != null && caption.isNotEmpty) {
+        photoData['caption'] = caption;
+      }
+
+      // 파형 데이터 처리 및 상세 로그
 
       // 파형 데이터 처리 및 상세 로그
       if (waveformData != null && waveformData.isNotEmpty) {
@@ -176,6 +147,7 @@ class PhotoRepository {
               .doc(categoryId)
               .collection('photos')
               .where('status', isEqualTo: PhotoStatus.active.name)
+              .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
               .orderBy('createdAt', descending: true)
               .get();
 
@@ -266,7 +238,10 @@ class PhotoRepository {
 
                 return PhotoDataModel.fromFirestore(data, doc.id);
               })
-              .where((photo) => photo.status == PhotoStatus.active)
+              .where(
+                (photo) =>
+                    photo.status == PhotoStatus.active && !photo.unactive,
+              )
               .toList();
 
       // 메모리에서 정렬
@@ -289,6 +264,7 @@ class PhotoRepository {
               .doc(categoryId)
               .collection('photos')
               .where('status', isEqualTo: PhotoStatus.active.name)
+              .where('unactive', isEqualTo: false) // 비활성화된 사진 제외
               .orderBy('createdAt', descending: true)
               .get();
 
@@ -307,18 +283,24 @@ class PhotoRepository {
 
   /// 카테고리별 사진 목록 스트림
   Stream<List<PhotoDataModel>> getPhotosByCategoryStream(String categoryId) {
+    // 복합 쿼리 인덱스 없이도 작동하도록 수동 필터링 사용
     return _firestore
         .collection('categories')
         .doc(categoryId)
         .collection('photos')
-        .where('status', isEqualTo: PhotoStatus.active.name)
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          return snapshot.docs.map((doc) {
-            final data = doc.data();
+          final allPhotos =
+              snapshot.docs.map((doc) {
+                final data = doc.data();
+                return PhotoDataModel.fromFirestore(data, doc.id);
+              }).toList();
 
-            return PhotoDataModel.fromFirestore(data, doc.id);
+          // 메모리에서 필터링 (status: active, unactive: false)
+          return allPhotos.where((photo) {
+            return photo.status == PhotoStatus.active &&
+                photo.unactive == false;
           }).toList();
         });
   }
@@ -331,6 +313,7 @@ class PhotoRepository {
               .collectionGroup('photos')
               .where('userID', isEqualTo: userId)
               .where('status', isEqualTo: PhotoStatus.active.name)
+              .where('unactive', isEqualTo: false)
               .orderBy('createdAt', descending: true)
               .get();
 
@@ -361,7 +344,7 @@ class PhotoRepository {
       }
       return null;
     } catch (e) {
-      // debugPrint('사진 조회 오류: $e');
+      debugPrint('사진 조회 오류: $e');
       return null;
     }
   }
@@ -381,12 +364,95 @@ class PhotoRepository {
           .doc(photoId)
           .update({
             'status': PhotoStatus.deleted.name,
+            'deletedAt': Timestamp.now(), // 삭제 시간 기록
             'updatedAt': Timestamp.now(),
           });
 
       return true;
     } catch (e) {
-      // debugPrint('사진 삭제 오류: $e');
+      debugPrint('사진 삭제 오류: $e');
+      return false;
+    }
+  }
+
+  /// 삭제된 사진 목록 조회 (사용자별)
+  Future<List<PhotoDataModel>> getDeletedPhotosByUser(String userId) async {
+    try {
+      // 1. 사용자가 속한 모든 카테고리 조회
+      final categorySnapshot =
+          await _firestore
+              .collection('categories')
+              .where('mates', arrayContains: userId)
+              .get();
+
+      List<PhotoDataModel> deletedPhotos = [];
+      Set<String> seenPhotoIds = {}; // 중복 방지
+
+      // 2. 각 카테고리에서 삭제된 사진들 조회
+      for (final categoryDoc in categorySnapshot.docs) {
+        try {
+          final photosSnapshot =
+              await categoryDoc.reference
+                  .collection('photos')
+                  .where('status', isEqualTo: PhotoStatus.deleted.name)
+                  .orderBy('deletedAt', descending: true)
+                  .get();
+
+          for (final photoDoc in photosSnapshot.docs) {
+            // 중복 방지 (같은 사진이 여러 카테고리에 있을 수 있음)
+            if (!seenPhotoIds.add(photoDoc.id)) {
+              continue;
+            }
+
+            final photoData = PhotoDataModel.fromFirestore(
+              photoDoc.data(),
+              photoDoc.id,
+            );
+
+            deletedPhotos.add(photoData);
+          }
+        } catch (e) {
+          debugPrint('카테고리 ${categoryDoc.id} 삭제된 사진 조회 오류: $e');
+          continue; // 개별 카테고리 오류는 무시하고 계속 진행
+        }
+      }
+
+      // 3. 삭제 시간 기준으로 정렬 (최신순)
+      deletedPhotos.sort((a, b) {
+        final aDeletedAt =
+            a.deletedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        final bDeletedAt =
+            b.deletedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+        return bDeletedAt.compareTo(aDeletedAt);
+      });
+
+      return deletedPhotos;
+    } catch (e) {
+      debugPrint('삭제된 사진 조회 전체 오류: $e');
+      return [];
+    }
+  }
+
+  /// 사진 복원 (deleted -> active)
+  Future<bool> restorePhoto({
+    required String categoryId,
+    required String photoId,
+  }) async {
+    try {
+      await _firestore
+          .collection('categories')
+          .doc(categoryId)
+          .collection('photos')
+          .doc(photoId)
+          .update({
+            'status': PhotoStatus.active.name,
+            'deletedAt': FieldValue.delete(), // 삭제 시간 필드 제거
+            'updatedAt': Timestamp.now(),
+          });
+
+      return true;
+    } catch (e) {
+      debugPrint('사진 복원 오류: $e');
       return false;
     }
   }
@@ -417,7 +483,7 @@ class PhotoRepository {
 
       return true;
     } catch (e) {
-      // debugPrint('사진 완전 삭제 오류: $e');
+      debugPrint('사진 완전 삭제 오류: $e');
       return false;
     }
   }
@@ -428,8 +494,6 @@ class PhotoRepository {
   Stream<List<Map<String, dynamic>>> getCategoryPhotosStreamAsMap(
     String categoryId,
   ) {
-    // debugPrint('🔄 [호환성] 카테고리별 사진 Map 스트림 시작 - CategoryId: $categoryId');
-
     return _firestore
         .collection('categories')
         .doc(categoryId)
@@ -438,8 +502,6 @@ class PhotoRepository {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) {
-          // debugPrint('📺 [호환성] 스트림 업데이트 - 사진 개수: ${snapshot.docs.length}');
-
           return snapshot.docs.map((doc) {
             final data = doc.data();
             data['id'] = doc.id;
@@ -457,7 +519,7 @@ class PhotoRepository {
       final ref = _storage.refFromURL(downloadUrl);
       await ref.delete();
     } catch (e) {
-      // debugPrint('Storage 파일 삭제 오류: $e');
+      debugPrint('Storage 파일 삭제 오류: $e');
     }
   }
 
@@ -496,7 +558,7 @@ class PhotoRepository {
         'deleted': deletedPhotos,
       };
     } catch (e) {
-      // debugPrint('사진 통계 조회 오류: $e');
+      debugPrint('사진 통계 조회 오류: $e');
       return {'total': 0, 'active': 0, 'deleted': 0};
     }
   }
@@ -507,8 +569,6 @@ class PhotoRepository {
     required Function(String audioUrl) extractWaveformData,
   }) async {
     try {
-      // debugPrint('🔧 기존 사진들에 파형 데이터 추가 시작 - CategoryId: $categoryId');
-
       final querySnapshot =
           await _firestore
               .collection('categories')
@@ -518,8 +578,6 @@ class PhotoRepository {
               .where('audioUrl', isNotEqualTo: '')
               .get();
 
-      // debugPrint('🎵 오디오가 있는 사진 개수: ${querySnapshot.docs.length}');
-
       for (final doc in querySnapshot.docs) {
         final data = doc.data();
         final audioUrl = data['audioUrl'] as String?;
@@ -527,13 +585,10 @@ class PhotoRepository {
 
         // 이미 파형 데이터가 있으면 스킵
         if (existingWaveform != null && existingWaveform.isNotEmpty) {
-          // debugPrint('⏭️ 파형 데이터 이미 존재: ${doc.id}');
           continue;
         }
 
         if (audioUrl != null && audioUrl.isNotEmpty) {
-          // debugPrint('🌊 파형 데이터 추출 중: ${doc.id}');
-
           try {
             // 파형 데이터 추출 (외부에서 전달받은 함수 사용)
             final waveformData = await extractWaveformData(audioUrl);
@@ -545,17 +600,15 @@ class PhotoRepository {
                 'updatedAt': FieldValue.serverTimestamp(),
               });
             } else {
-              // debugPrint('⚠️ 파형 데이터 추출 실패: ${doc.id}');
+              debugPrint('⚠️ 파형 데이터 추출 실패: ${doc.id}');
             }
           } catch (e) {
-            // debugPrint('❌ 파형 데이터 추출 오류 (${doc.id}): $e');
+            debugPrint('❌ 파형 데이터 추출 오류 (${doc.id}): $e');
           }
         }
       }
-
-      // debugPrint('🎉 기존 사진들에 파형 데이터 추가 완료');
     } catch (e) {
-      // debugPrint('❌ 파형 데이터 일괄 추가 실패: $e');
+      debugPrint('❌ 파형 데이터 일괄 추가 실패: $e');
       rethrow;
     }
   }
@@ -568,8 +621,6 @@ class PhotoRepository {
     double? audioDuration,
   }) async {
     try {
-      // debugPrint('🌊 사진에 파형 데이터 추가: $photoId');
-
       final updateData = <String, dynamic>{
         'waveformData': waveformData,
         'updatedAt': FieldValue.serverTimestamp(),
@@ -586,10 +637,9 @@ class PhotoRepository {
           .doc(photoId)
           .update(updateData);
 
-      // debugPrint('✅ 파형 데이터 추가 완료: $photoId (${waveformData.length} samples)');
       return true;
     } catch (e) {
-      // debugPrint('❌ 파형 데이터 추가 실패: $e');
+      debugPrint('❌ 파형 데이터 추가 실패: $e');
       return false;
     }
   }

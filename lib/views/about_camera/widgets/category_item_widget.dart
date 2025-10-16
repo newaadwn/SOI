@@ -5,7 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 /// 카테고리 아이템 위젯
 /// 각 카테고리를 표현하는 UI 요소입니다.
 /// 아이콘이나 이미지 URL을 함께 표시할 수 있습니다.
-class CategoryItemWidget extends StatelessWidget {
+class CategoryItemWidget extends StatefulWidget {
   final String? imageUrl;
   final String? image;
   final String label;
@@ -24,13 +24,38 @@ class CategoryItemWidget extends StatelessWidget {
   });
 
   @override
+  State<CategoryItemWidget> createState() => _CategoryItemWidgetState();
+}
+
+class _CategoryItemWidgetState extends State<CategoryItemWidget>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => false; // 메모리 절약을 위해 keepAlive 비활성화
+
+  @override
+  void dispose() {
+    // 이미지 캐시에서 해당 이미지 제거
+    if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) {
+      try {
+        PaintingBinding.instance.imageCache.evict(
+          NetworkImage(widget.imageUrl!),
+        );
+      } catch (e) {
+        // 캐시 제거 실패해도 계속 진행
+      }
+    }
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context); // AutomaticKeepAliveClientMixin 때문에 필요
     final screenWidth = MediaQuery.sizeOf(context).width;
     final isSelected = _isSelectedCategory();
     final dimensions = _calculateDimensions(screenWidth);
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: AnimatedContainer(
         duration: Duration(milliseconds: 200), // ✅ 선택 시 부드러운 애니메이션
         width: dimensions.itemWidth,
@@ -49,7 +74,8 @@ class CategoryItemWidget extends StatelessWidget {
 
   /// 선택된 카테고리인지 확인
   bool _isSelectedCategory() {
-    return categoryId != null && categoryId == selectedCategoryId;
+    return widget.categoryId != null &&
+        widget.categoryId == widget.selectedCategoryId;
   }
 
   /// 화면 크기에 따른 반응형 치수 계산
@@ -82,7 +108,7 @@ class CategoryItemWidget extends StatelessWidget {
       width: dimensions.containerSize,
       height: dimensions.containerSize,
       decoration: BoxDecoration(
-        color: (image != null) ? Colors.white : Colors.transparent,
+        color: (widget.image != null) ? Colors.white : Colors.transparent,
         shape: BoxShape.circle,
       ),
       child: ClipOval(
@@ -102,9 +128,9 @@ class CategoryItemWidget extends StatelessWidget {
   /// 컨테이너 내부 위젯 빌드
   Widget _buildContainerChild(_CategoryDimensions dimensions) {
     // 기본 아이콘이 있는 경우 (추가하기 버튼)
-    if (image != null) {
+    if (widget.image != null) {
       return Image.asset(
-        image!,
+        widget.image!,
         color: Colors.black,
         width: 27.w,
         height: 27.h,
@@ -113,15 +139,24 @@ class CategoryItemWidget extends StatelessWidget {
     }
 
     // 이미지 URL이 있는 경우
-    if (imageUrl != null && imageUrl!.isNotEmpty) {
+    if (widget.imageUrl != null && widget.imageUrl!.isNotEmpty) {
       return SizedBox(
         width: dimensions.containerSize, // 컨테이너 크기와 일치
         height: dimensions.containerSize, // 컨테이너 크기와 일치
         child: CachedNetworkImage(
-          imageUrl: imageUrl!,
+          imageUrl: widget.imageUrl!,
           fit: BoxFit.cover,
           width: dimensions.containerSize,
           height: dimensions.containerSize,
+          // 메모리 최적화: 카테고리 이미지 크기 엄격 제한 (1.9GB 급증 문제 해결)
+          memCacheWidth:
+              (dimensions.containerSize * 1.5).round(), // 1.5배로 감소 (기존 2배에서)
+          memCacheHeight: (dimensions.containerSize * 1.5).round(),
+          maxWidthDiskCache: 150, // 디스크 캐시 더 제한 (기존 200에서)
+          maxHeightDiskCache: 150, // 디스크 캐시 더 제한
+          filterQuality: FilterQuality.low, // 품질 낮춤으로 메모리 절약
+          // 추가 최적화: 이미지 압축 레벨 설정
+          cacheManager: null, // 기본 캐시 매니저 사용하여 자동 정리
           placeholder: (context, url) => _buildLoadingIndicator(dimensions),
           errorWidget: (context, url, error) => _buildErrorIcon(dimensions),
         ),
@@ -187,16 +222,16 @@ class CategoryItemWidget extends StatelessWidget {
   /// 카테고리 라벨 빌드
   Widget _buildCategoryLabel(_CategoryDimensions dimensions) {
     return Text(
-      label,
+      widget.label,
       textAlign: TextAlign.center,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
       style: TextStyle(
         fontSize: 12.sp,
-        fontWeight: FontWeight.w700, // 피그마 디자인에 맞춘 폰트 웨이트
+        fontWeight: FontWeight.w700,
         fontFamily: 'Pretendard',
         color: Colors.white,
-        height: 1.0, // 줄 간격 조정
+        height: 1.0,
         letterSpacing: -0.4,
       ),
     );

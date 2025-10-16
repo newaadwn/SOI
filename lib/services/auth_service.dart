@@ -1,8 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import '../repositories/auth_repository.dart';
 import '../models/auth_model.dart';
 import '../models/auth_result.dart';
+import 'firebase_deeplink_service.dart';
 
 // 비즈니스 로직을 처리하는 Service
 // Repository를 사용해서 실제 비즈니스 규칙을 적용
@@ -18,20 +22,18 @@ class AuthService {
 
   Future<String> getUserProfileImageUrlById(String userId) async {
     try {
-      // debugPrint('👤 프로필 이미지 URL 조회 시작 - UserId: $userId');
       return await _repository.getUserProfileImageUrlById(userId);
     } catch (e) {
-      // debugPrint('사용자 프로필 이미지 가져오기 실패: $e');
+      debugPrint('사용자 프로필 이미지 가져오기 실패: $e');
       return '';
     }
   }
 
   Future<AuthModel?> getUserInfo(String userId) async {
     try {
-      // debugPrint('👤 사용자 정보 조회 시작 - UserId: $userId');
       return await _repository.getUserInfo(userId);
     } catch (e) {
-      // debugPrint('사용자 정보 가져오기 실패: $e');
+      debugPrint('사용자 정보 가져오기 실패: $e');
       return null;
     }
   }
@@ -67,7 +69,6 @@ class AuthService {
       // reCAPTCHA 관련 에러는 사용자에게 친숙한 메시지로 변경
       if (e.toString().contains('web-internal-error') ||
           e.toString().contains('reCAPTCHA')) {
-        // debugPrint('reCAPTCHA 관련 에러 발생, 사용자에게는 일반적인 메시지 표시');
         return AuthResult.success(); // 실제로는 성공으로 처리 (백그라운드 에러이므로)
       }
 
@@ -107,7 +108,6 @@ class AuthService {
         return AuthResult.failure('로그인에 실패했습니다.');
       }
     } catch (e) {
-      // debugPrint('SMS 로그인 오류: $e');
       return AuthResult.failure('인증 코드 확인 중 오류가 발생했습니다: $e');
     }
   }
@@ -164,7 +164,6 @@ class AuthService {
 
       return AuthResult.success(user);
     } catch (e) {
-      // debugPrint('사용자 생성 오류: $e');
       return AuthResult.failure('사용자 정보 저장 중 오류가 발생했습니다: $e');
     }
   }
@@ -175,7 +174,6 @@ class AuthService {
       await _repository.signOut();
       return AuthResult.success();
     } catch (e) {
-      // debugPrint('로그아웃 오류: $e');
       return AuthResult.failure('로그아웃 중 오류가 발생했습니다.');
     }
   }
@@ -183,9 +181,13 @@ class AuthService {
   // 현재 사용자 정보 조회
   Future<AuthModel?> getCurrentUser() async {
     final currentUser = _repository.currentUser;
-    if (currentUser == null) return null;
+    if (currentUser == null) {
+      return null;
+    }
 
-    return await _repository.getUser(currentUser.uid);
+    final authModel = await _repository.getUser(currentUser.uid);
+
+    return authModel;
   }
 
   // 사용자 ID 조회
@@ -198,6 +200,23 @@ class AuthService {
   Future<String> getUserName() async {
     final user = await getCurrentUser();
     return user?.name ?? '';
+  }
+
+  Future<String> createFriendInviteLink({
+    required String inviterName,
+    required String inviterId,
+    String? inviterProfileImage,
+  }) async {
+    try {
+      return FirebaseDeeplinkService.createFriendInviteLink(
+        inviterName: inviterName,
+        inviterId: inviterId,
+        inviterProfileImage: inviterProfileImage,
+      );
+    } catch (e) {
+      debugPrint('친구 초대 링크 생성 실패: $e');
+      rethrow;
+    }
   }
 
   // 사용자 전화번호 조회
@@ -279,7 +298,36 @@ class AuthService {
     }
   }
 
-  // 회원 탈퇴
+  // 파일 경로에서 프로필 이미지 업데이트
+  Future<AuthResult> updateProfileImageFromPath(String imagePath) async {
+    try {
+      final currentUser = _repository.currentUser;
+      if (currentUser == null) {
+        return AuthResult.failure('로그인이 필요합니다.');
+      }
+
+      if (imagePath.isEmpty) {
+        return AuthResult.failure('유효하지 않은 이미지 경로입니다.');
+      }
+
+      final downloadUrl = await _repository.uploadProfileImageFromPath(
+        currentUser.uid,
+        imagePath,
+      );
+
+      await _repository.updateUser(currentUser.uid, {
+        'profile_image': downloadUrl,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      return AuthResult.success(downloadUrl);
+    } catch (e) {
+      debugPrint('❌ 프로필 이미지 파일 업로드 오류: $e');
+      return AuthResult.failure('프로필 이미지 업데이트 중 오류가 발생했습니다.');
+    }
+  }
+
+  // 회원 탈퇴 (빠른 화면 전환을 위해 비동기 처리)
   Future<AuthResult> deleteAccount() async {
     try {
       final currentUser = _repository.currentUser;
@@ -287,21 +335,118 @@ class AuthService {
         return AuthResult.failure('로그인이 필요합니다.');
       }
 
-      // Firestore에서 사용자 데이터 삭제
-      await _repository.deleteUser(currentUser.uid);
+      final userId = currentUser.uid;
 
-      // Firebase Auth에서 계정 삭제
-      await currentUser.delete();
+      // 1) Cloud Function 트리거 (백엔드에서 전체 삭제 + Auth 삭제). 결과는 기다리지 않음
+      try {
+        final callable = FirebaseFunctions.instance.httpsCallable(
+          'deleteUserData',
+        );
+        // ignore: unawaited_futures
+        Future(() async {
+          try {
+            debugPrint('🔄 Cloud Function deleteUserData 호출 시작...');
+            await callable.call().timeout(const Duration(seconds: 30));
+            debugPrint('✅ Cloud Function deleteUserData 호출 완료');
+          } catch (e) {
+            debugPrint('❌ Cloud Function deleteUserData 호출 실패: $e');
+            // CF 호출 실패 시, 클라이언트 폴백 삭제 (백그라운드)
+            try {
+              debugPrint('🔄 클라이언트 폴백 삭제 시작...');
+              await _repository.deleteUser(userId);
+              debugPrint('✅ 클라이언트 폴백 삭제 완료');
+            } catch (fallbackError) {
+              debugPrint('❌ 사용자 데이터 폴백 삭제 실패: $fallbackError');
+            }
+          }
+        });
+      } catch (_) {
+        // 무시하고 폴백은 위에서 처리
+      }
+
+      // 2) 로컬 캐시 및 저장된 인증 정보 즉시 정리 (바로 화면 전환 가능)
+      await _clearAllLocalData();
+
+      // 3) Firebase Auth 계정 삭제는 서버(Admin SDK)에서 처리되므로 클라이언트에서는 대기하지 않음
 
       return AuthResult.success();
     } catch (e) {
-      // debugPrint('계정 삭제 오류: $e');
-      return AuthResult.failure('계정 삭제 중 오류가 발생했습니다.');
+      debugPrint('❌ 계정 삭제 오류: $e');
+      return AuthResult.failure('계정 삭제 중 오류가 발생했습니다: $e');
+    }
+  }
+
+  /// 모든 로컬 데이터 정리
+  Future<void> _clearAllLocalData() async {
+    try {
+      // SharedPreferences 정리
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      // Firebase Auth 로컬 캐시 정리
+    } catch (e) {
+      debugPrint('⚠️ 로컬 데이터 정리 중 오류: $e');
     }
   }
 
   // 사용자 검색
   Future<List<String>> searchUsersByNickname(String nickname) async {
     return await _repository.searchUsersByNickname(nickname);
+  }
+
+  // ID 중복 확인
+  Future<bool> isIdDuplicate(String id) async {
+    try {
+      return await _repository.isIdDuplicate(id);
+    } catch (e) {
+      debugPrint('Error checking ID duplicate in AuthService: $e');
+      return false;
+    }
+  }
+
+  // 계정 비활성화 (사진들의 unactive 필드를 true로 설정)
+  Future<AuthResult> deactivateAccount() async {
+    try {
+      final currentUser = _repository.currentUser;
+      if (currentUser == null) {
+        return AuthResult.failure('로그인이 필요합니다.');
+      }
+
+      final userId = currentUser.uid;
+
+      // 사용자가 올린 모든 사진의 unactive 필드를 true로 업데이트
+      await _repository.deactivateUserPhotos(userId);
+
+      // 사용자 비활성화 상태 업데이트
+      await _repository.updateUserDeactivationStatus(userId, true);
+
+      return AuthResult.success();
+    } catch (e) {
+      debugPrint('❌ 계정 비활성화 과정에서 오류 발생: $e');
+      return AuthResult.failure('계정 비활성화 중 오류가 발생했습니다.');
+    }
+  }
+
+  // 계정 활성화 (사진들의 unactive 필드를 false로 설정)
+  Future<AuthResult> activateAccount() async {
+    try {
+      final currentUser = _repository.currentUser;
+      if (currentUser == null) {
+        return AuthResult.failure('로그인이 필요합니다.');
+      }
+
+      final userId = currentUser.uid;
+
+      // 사용자가 올린 모든 사진의 unactive 필드를 false로 업데이트
+      await _repository.activateUserPhotos(userId);
+
+      // 사용자 활성화 상태 업데이트
+      await _repository.updateUserDeactivationStatus(userId, false);
+
+      return AuthResult.success();
+    } catch (e) {
+      debugPrint('❌ 계정 활성화 과정에서 오류 발생: $e');
+      return AuthResult.failure('계정 활성화 중 오류가 발생했습니다.');
+    }
   }
 }

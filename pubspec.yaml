@@ -54,6 +54,7 @@ dependencies:
   url_launcher: ^6.3.1
   file_picker: ^8.1.4
   shared_preferences: ^2.3.3
+  share_plus: ^12.0.0
   sqflite: ^2.4.1
   path: ^1.9.1
   intl: ^0.20.0
@@ -80,7 +81,7 @@ dependencies:
   iconoir_flutter: ^7.11.0
   colorful_iconify_flutter: ^0.0.5
   antdesign_icons: ^0.0.3
-  flutter_svg: ^2.2.0
+  flutter_svg: ^2.2.1
   flutter_contacts: ^1.1.9+2
   image_gallery_saver: ^2.0.3
   supabase_flutter: ^2.10.0

@@ -77,109 +77,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  /// 로그아웃 다이얼로그 표시
+  /// 로그아웃 바텀시트 표시
   void _showLogoutDialog() {
-    showDialog(
+    showModalBottomSheet<void>(
       context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: 314.w,
-            height: 234.h,
-            decoration: BoxDecoration(
-              color: const Color(0xFF323232),
-              borderRadius: BorderRadius.circular(14.2),
-            ),
-            child: Column(
-              children: [
-                // 제목
-                Padding(
-                  padding: EdgeInsets.only(top: 31.h),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF323232),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: 34.h),
+              Text(
+                '로그아웃 하시겠어요?',
+                style: TextStyle(
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 19.8.sp,
+                  color: const Color(0xFFF9F9F9),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 28.h),
+              SizedBox(
+                width: 344.w,
+                height: 38.h,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(sheetContext).pop();
+                    await _performLogout();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF9F9F9),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                  ),
                   child: Text(
-                    '로그아웃 하시겠어요?',
+                    '확인',
                     style: TextStyle(
                       fontFamily: 'Pretendard Variable',
-                      fontWeight: FontWeight.w700,
-                      fontSize: (19.8).sp,
-                      color: Color(0xFFF9F9F9),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 17.8.sp,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ),
-
-                const Spacer(),
-
-                // 버튼들
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 64.w),
-                  child: Column(
-                    children: [
-                      // 확인 버튼
-                      GestureDetector(
-                        onTap: () async {
-                          Navigator.of(context).pop(); // 다이얼로그 닫기
-                          await _performLogout();
-                        },
-                        child: Container(
-                          width: (185.55).w,
-                          height: 38.h,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF9F9F9),
-                            borderRadius: BorderRadius.circular(14.2),
-                          ),
-                          child: Center(
-                            child: Padding(
-                              padding: EdgeInsets.only(top: 3.h),
-                              child: Text(
-                                '확인',
-                                style: TextStyle(
-                                  fontFamily: 'Pretendard Variable',
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: (17.8).sp,
-                                  color: Color(0xFF000000),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      SizedBox(height: 14.h),
-
-                      // 취소 버튼
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).pop(); // 다이얼로그 닫기
-                        },
-                        child: Container(
-                          width: (185.55).w,
-                          height: (38).h,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF5A5A5A),
-                            borderRadius: BorderRadius.circular(14.2),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '취소',
-                              style: TextStyle(
-                                fontFamily: 'Pretendard Variable',
-                                fontWeight: FontWeight.w500,
-                                fontSize: (17.8).sp,
-                                color: Color(0xFFCCCCCC),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+              ),
+              SizedBox(height: 14.h),
+              SizedBox(
+                width: 344.w,
+                height: 38.h,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(sheetContext).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Color(0xFF323232),
+                    elevation: 0,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                  ),
+                  child: Text(
+                    '취소',
+                    style: TextStyle(
+                      fontFamily: 'Pretendard Variable',
+                      fontWeight: FontWeight.w500,
+                      fontSize: 17.8.sp,
+                      color: const Color(0xFFCCCCCC),
+                    ),
                   ),
                 ),
-
-                SizedBox(height: 46.h),
-              ],
-            ),
+              ),
+              SizedBox(height: (16.5).h),
+            ],
           ),
         );
       },
@@ -210,122 +189,103 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  /// 계정 삭제 다이얼로그 표시
+  /// 계정 삭제 바텀시트 표시
   void _showDeleteAccountDialog() {
-    showDialog(
+    showModalBottomSheet<void>(
       context: context,
-      barrierDismissible: false,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: 314.w,
-            height: 286.h,
-            decoration: BoxDecoration(
-              color: const Color(0xFF323232),
-              borderRadius: BorderRadius.circular(14.2),
-            ),
-            child: Column(
-              children: [
-                // 제목
-                Padding(
-                  padding: EdgeInsets.only(top: 37.h),
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: const Color(0xFF323232),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SizedBox(height: 26.h),
+              Text(
+                '탈퇴하기',
+                style: TextStyle(
+                  fontFamily: 'Pretendard Variable',
+                  fontWeight: FontWeight.w700,
+                  fontSize: 19.8.sp,
+                  color: const Color(0xFFF9F9F9),
+                ),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: 12.h),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.w),
+                child: Text(
+                  '탈퇴 버튼 선택시, 계정은\n삭제되며 복구가 불가능합니다.',
+                  style: TextStyle(
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: FontWeight.w500,
+                    fontSize: 15.8.sp,
+                    height: 1.6,
+                    color: const Color(0xFFF9F9F9),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              SizedBox(height: 28.h),
+              SizedBox(
+                width: 344.w,
+                height: 38.h,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(sheetContext).pop();
+                    await _performDeleteAccount();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFF9F9F9),
+                    foregroundColor: Colors.black,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                  ),
                   child: Text(
-                    '탈퇴하기',
+                    '탈퇴',
                     style: TextStyle(
                       fontFamily: 'Pretendard Variable',
-                      fontWeight: FontWeight.w700,
-                      fontSize: (19.8).sp,
-                      color: Color(0xFFF9F9F9),
+                      fontWeight: FontWeight.w600,
+                      fontSize: 17.8.sp,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ),
-
-                // 설명 텍스트
-                Padding(
-                  padding: EdgeInsets.only(top: 12.h, left: 39.w, right: 39.w),
+              ),
+              SizedBox(height: 14.h),
+              SizedBox(
+                width: 344.w,
+                height: 38.h,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(sheetContext).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    elevation: 0,
+                    backgroundColor: const Color(0xFF323232),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(19),
+                    ),
+                  ),
                   child: Text(
-                    '탈퇴 버튼 선택시, 계정은\n삭제되며 복구가 불가능합니다.',
+                    '취소',
                     style: TextStyle(
                       fontFamily: 'Pretendard Variable',
                       fontWeight: FontWeight.w500,
-                      fontSize: (15.8).sp,
-                      height: 1.66,
-                      color: Color(0xFFF9F9F9),
+                      fontSize: 17.8.sp,
+                      color: const Color(0xFFCCCCCC),
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ),
-
-                const Spacer(),
-
-                // 버튼들
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 64.w),
-                  child: Column(
-                    children: [
-                      // 탈퇴 버튼
-                      GestureDetector(
-                        onTap: () async {
-                          Navigator.of(context).pop(); // 다이얼로그 닫기
-                          await _performDeleteAccount();
-                        },
-                        child: Container(
-                          width: 185.55.w,
-                          height: 38.h,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF9F9F9),
-                            borderRadius: BorderRadius.circular(14.2),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '탈퇴',
-                              style: TextStyle(
-                                fontFamily: 'Pretendard Variable',
-                                fontWeight: FontWeight.w600,
-                                fontSize: (17.8).sp,
-                                color: Color(0xFF000000),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      SizedBox(height: 13.h),
-
-                      // 취소 버튼
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).pop(); // 다이얼로그 닫기
-                        },
-                        child: Container(
-                          width: (185.55).w,
-                          height: 38.h,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF5A5A5A),
-                            borderRadius: BorderRadius.circular(14.2),
-                          ),
-                          child: Center(
-                            child: Text(
-                              '취소',
-                              style: TextStyle(
-                                fontFamily: 'Pretendard Variable',
-                                fontWeight: FontWeight.w500,
-                                fontSize: (17.8).sp,
-                                color: Color(0xFFCCCCCC),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                SizedBox(height: 35.h),
-              ],
-            ),
+              ),
+              SizedBox(height: (16.5).h),
+            ],
           ),
         );
       },
@@ -349,18 +309,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
         );
       }
 
-      // 계정 삭제 실행
-      await authController.deleteUser();
+      // 계정 삭제 실행 (비동기 시작)
+      final deletion = authController.deleteUser();
+
+      // 로컬 로그인 상태는 즉시 정리하여 자동로그인 방지
+      try {
+        await authController.clearLoginState();
+      } catch (_) {}
 
       if (mounted) {
-        // 로딩 다이얼로그 닫기
+        // 로딩 다이얼로그 닫기 후 즉시 시작 화면으로 이동
         Navigator.of(context).pop();
-
-        // 계정 삭제 성공 시 로그인 화면으로 이동
         Navigator.of(
           context,
         ).pushNamedAndRemoveUntil('/start', (route) => false);
       }
+
+      // 백그라운드에서 삭제 진행 에러는 로깅만
+      // ignore: unawaited_futures
+      deletion.catchError((e) {
+        debugPrint('계정 삭제 백그라운드 오류: $e');
+      });
     } catch (e) {
       if (mounted) {
         // 로딩 다이얼로그 닫기
@@ -613,6 +582,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildSettingsItem('알림 설정', hasToggle: true),
               Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem('언어', value: '한국어'),
+              Divider(height: 1, color: const Color(0xFF323232)),
+              _buildSettingsItem('개인정보 보호', value: ''),
+              Divider(height: 1, color: const Color(0xFF323232)),
+              _buildSettingsItem('게시물 관리', value: ''),
             ],
           ),
         ),
@@ -650,7 +623,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _buildSettingsItem('개인정보 처리방침'),
               Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem('서비스 이용 약관'),
-
               Divider(height: 1, color: const Color(0xFF323232)),
               _buildSettingsItem('앱 버전', value: '1.0.0'),
             ],
@@ -689,21 +661,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               _buildSettingsItem('앱 정보 동의 설정'),
               Divider(height: 1, color: const Color(0xFF323232)),
-              _buildSettingsItem('차단된 친구'),
-              Divider(height: 1, color: const Color(0xFF323232)),
-              GestureDetector(
-                onTap: () {
-                  _showLogoutDialog();
-                },
-                child: _buildSettingsItem('로그아웃', isRed: true),
+
+              _buildSettingsItem(
+                '회원 탈퇴',
+                isRed: true,
+                onTap: _showDeleteAccountDialog,
               ),
               Divider(height: 1, color: const Color(0xFF323232)),
-              GestureDetector(
-                onTap: () {
-                  _showDeleteAccountDialog();
-                },
-                child: _buildSettingsItem('계정 삭제', isRed: true),
-              ),
+              _buildSettingsItem('로그아웃', isRed: true, onTap: _showLogoutDialog),
             ],
           ),
         ),
@@ -716,51 +681,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String? value,
     bool hasToggle = false,
     bool isRed = false,
+    VoidCallback? onTap,
   }) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: TextStyle(
-                fontFamily: 'Pretendard Variable',
-                fontWeight: FontWeight.w400,
-                fontSize: 16.sp,
-                color:
-                    isRed ? const Color(0xFFFF0000) : const Color(0xFFF9F9F9),
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          if (hasToggle)
-            GestureDetector(
-              onTap: () {
-                setState(() {
-                  _isNotificationEnabled = !_isNotificationEnabled;
-                });
-              },
-              child: _profileSwitch(_isNotificationEnabled),
-            )
-          else if (value != null)
-            Flexible(
+    return GestureDetector(
+      onTap:
+          onTap ??
+          () {
+            if (title == '개인정보 보호') {
+              Navigator.pushNamed(context, '/privacy_protect');
+            } else if (title == '게시물 관리') {
+              Navigator.pushNamed(context, '/post_management');
+            }
+          },
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 16.w, vertical: 16.h),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Expanded(
               child: Text(
-                value,
+                title,
                 style: TextStyle(
                   fontFamily: 'Pretendard Variable',
                   fontWeight: FontWeight.w400,
                   fontSize: 16.sp,
-                  color: const Color(0xFFF9F9F9),
+                  color:
+                      isRed ? const Color(0xFFFF0000) : const Color(0xFFF9F9F9),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.right,
               ),
             ),
-        ],
+            if (hasToggle)
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _isNotificationEnabled = !_isNotificationEnabled;
+                  });
+                },
+                child: _profileSwitch(_isNotificationEnabled),
+              )
+            else if (value != null)
+              Flexible(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    fontFamily: 'Pretendard Variable',
+                    fontWeight: FontWeight.w400,
+                    fontSize: 16.sp,
+                    color: const Color(0xFFF9F9F9),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
